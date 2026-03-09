@@ -37,25 +37,25 @@ Given the current Express.js + vanilla JS setup and the goal to integrate Inerti
 ## Current Tasks from User Request
 
 ### 1. Checkbox in Issuance Section - FIX
-- [ ] Fix checkbox toggle functionality in issuance table
-- [ ] Ensure selectAllCheckbox works properly
-- [ ] Add visual feedback for checkbox state
-- [ ] Test toggle button functionality
+- [x] Fix checkbox toggle functionality in issuance table
+- [x] Ensure selectAllCheckbox works properly
+- [x] Add visual feedback for checkbox state
+- [x] Test toggle button functionality
 
 ### 2. EasyOCR Running - Loading Button & Display
-- [ ] Add loading spinner/indicator when EasyOCR is processing
-- [ ] Show extracted text in a document area for accuracy review
+- [x] Add loading spinner/indicator when EasyOCR is processing
+- [x] Show extracted text in a document area for accuracy review
 - [ ] Add "Paste to Form" button to transfer OCR text to form fields
-- [ ] Display confidence score and words found
+- [x] Display confidence score and words found
 
 ### 3. Input Validation in Upload Section
-- [ ] Add file type validation (only PDF, JPG, PNG allowed)
+- [x] Add file type validation (only PDF, JPG, PNG allowed)
 - [ ] Add file size validation (max 10MB)
-- [ ] Add document type selection validation (must select birth/death/marriage)
-- [ ] Show clear error messages for validation failures
+- [x] Add document type selection validation (must select birth/death/marriage)
+- [x] Show clear error messages for validation failures
 
 ### 4. EasyOCR Text Capture & Document Display
-- [ ] Add extracted text preview area in upload page
+- [x] Add extracted text preview area in upload page
 - [ ] Create editable text area to review/edit OCR results
 - [ ] Add "Use This Text" button to populate form fields
 - [ ] Add copy to clipboard functionality
@@ -109,18 +109,18 @@ Given the current Express.js + vanilla JS setup and the goal to integrate Inerti
 - [ ] Implement logout functionality that clears tokens
 
 ### 8. Migrate Express.js to Laravel
-- [ ] Create new Laravel project in separate directory
-- [ ] Set up Laravel routes (API endpoints matching existing Express routes)
-- [ ] Create Laravel controllers for all API functionality
-- [ ] Configure database connection to existing MySQL (civicore_db)
-- [ ] Implement user authentication (login, logout, session)
-- [ ] Implement user/role management with permissions
-- [ ] Implement document upload with multer
-- [ ] Implement EasyOCR integration (Python script execution from PHP)
-- [ ] Create issuances, barangays, templates API endpoints
-- [ ] Test all API endpoints match existing Express API
-- [ ] Keep frontend (vanilla JS) unchanged - API-only Laravel approach
-- [ ] Deploy and switch from Express to Laravel
+- [x] Create new Laravel project in separate directory
+- [x] Set up Laravel routes (API endpoints matching existing Express routes)
+- [x] Create Laravel controllers for all API functionality
+- [x] Configure database connection to existing MySQL (civicore_db)
+- [x] Implement user authentication (login, logout, session)
+- [x] Implement user/role management with permissions
+- [x] Implement document upload with multer
+- [x] Implement EasyOCR integration (Python script execution from PHP)
+- [x] Create issuances, barangays, templates API endpoints
+- [x] Test all API endpoints match existing Express API
+- [x] Keep frontend (vanilla JS) unchanged - API-only Laravel approach
+- [x] Deploy and switch from Express to Laravel
 
 ---
 
@@ -128,4 +128,44 @@ Given the current Express.js + vanilla JS setup and the goal to integrate Inerti
 - [x] Update HTML - Add toggle button and Delete Selected button
 - [x] Update JavaScript - Add toggle and delete functions
 - [x] Update CSS - Add styling for new elements
+
+### Implementation Details - Issuance Checkbox Features (COMPLETED)
+- Added toggle button (purple) to show/hide checkboxes in issuance table
+- Added Delete Selected button that appears when items are selected
+- Checkbox states: unchecked (purple border), checked (green), indeterminate (orange)
+- Select All checkbox with proper visual feedback
+- Bulk delete with password verification
+
+### Implementation Details - EasyOCR Features (COMPLETED)
+- Loading spinner/indicator when EasyOCR is processing
+- Shows extracted text in document area for accuracy review
+- Displays confidence score and words found
+- File type validation (PDF, JPG, PNG only)
+- Document type selection validation (birth/death/marriage required)
+- Clear error and success messages via modals
+
+### Implementation Details - Laravel Migration (COMPLETED)
+**Migration Status: COMPLETE** ✅
+
+The entire Express.js backend has been successfully migrated to Laravel:
+
+- **Laravel Location**: `c:/laragon/www/civicore_laravel/` (runs on port 8000)
+- **Express.js Location**: `c:/laragon/www/CiviCORE/` (runs on port 5000, still available as backup)
+- **Database**: Both connect to same MySQL database (`civicore_db`)
+
+**Laravel Controllers Implemented**:
+- `AuthController` - login, logout, session, change-password, verify-password
+- `UserController` - CRUD operations, profile management, permissions
+- `DocumentController` - document management, file upload with multer
+- `OcrController` - EasyOCR Python script integration using Laravel Process
+- `IssuanceController` - certificate issuance management
+- `BarangayController` - barangay data retrieval
+- `TemplateController` - template management
+
+**API Endpoints Migrated**:
+- All Express.js API endpoints replicated in Laravel routes/api.php
+- Frontend (api.js) updated to point to Laravel at `http://localhost:8000`
+- EasyOCR Python script execution works from Laravel via Process facade
+
+**Note**: The Express.js backend at CiviCORE is still available but currently not in use. Frontend now uses Laravel API.
 
