@@ -72,11 +72,11 @@ Given the current Express.js + vanilla JS setup and the goal to integrate Inerti
 ## Major TODO List (Long-term)
 
 ### 6. Transfer to React - No Page Loading
-- [ ] Convert existing vanilla JS to React components
-- [ ] Implement React Router for navigation
-- [ ] Use React state management for data
-- [ ] Implement Server-Side Rendering (SSR) for initial load
-- [ ] Add React loading states and transitions
+- [x] Convert existing vanilla JS to React components (React components created in resources/js/components/)
+- [x] Implement React Router for navigation (React Router DOM installed and configured in app.jsx)
+- [x] Use React state management for data (React useState/useEffect hooks used in components)
+- [ ] Implement Server-Side Rendering (SSR) for initial load (Not implemented - using client-side rendering)
+- [ ] Add React loading states and transitions (Basic loading states exist, transitions not implemented)
 
 ### 9. Integrate Inertia.js for Laravel + React (SKIPPED - Using Pure React Instead)
 - [x] SKIPPED - Using pure React with Vite (Option 2 chosen by user)
