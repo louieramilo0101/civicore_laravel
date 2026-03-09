@@ -78,35 +78,39 @@ Given the current Express.js + vanilla JS setup and the goal to integrate Inerti
 - [ ] Implement Server-Side Rendering (SSR) for initial load
 - [ ] Add React loading states and transitions
 
-### 9. Integrate Inertia.js for Laravel + React (Recommended: Use Laravel Breeze)
-- [ ] Create new Laravel project
-- [ ] Install Laravel Breeze with React/Inertia stack (recommended approach)
-  - Run: `composer require laravel/breeze --dev`
-  - Run: `php artisan breeze:install react`
-  - This automatically sets up React + Inertia.js together
-- [ ] No need to install separate React framework - Breeze handles it
-- [ ] Configure database connection to existing MySQL (civicore_db)
-- [ ] Set up Inertia.js in Laravel (server-side)
-- [ ] Install Inertia.js React adapter (client-side) - handled by Breeze
-- [ ] Create React components that work with Inertia
-- [ ] Replace traditional API responses with Inertia::render()
-- [ ] Pass data directly from Laravel controllers to React components
-- [ ] Update routes to use Inertia routes instead of API endpoints
-- [ ] Remove need for separate API endpoints (controllers render React directly)
-- [ ] Maintain Laravel routing, controllers, and data logic
-- [ ] Make React frontend feel like part of Laravel application
-- [ ] Migrate existing Express.js API endpoints to Laravel controllers
-- [ ] Port over all functionality: auth, documents, issuances, users, barangays, templates
-- [ ] Integrate EasyOCR Python script execution from Laravel
+### 9. Integrate Inertia.js for Laravel + React (SKIPPED - Using Pure React Instead)
+- [x] SKIPPED - Using pure React with Vite (Option 2 chosen by user)
+- [ ] See Task #10 for pure React setup instead
+
+### 10. Migrate Frontend to Pure React with Vite
+- [x] Install React and React DOM dependencies
+- [x] Install React Router for navigation
+- [x] Configure Vite for React
+- [x] Create React app structure in resources/js/
+- [x] Create main App component with routing
+- [x] Convert existing vanilla JS pages to React components:
+  - [x] Login/Auth pages
+  - [x] Dashboard
+  - [x] Documents/Upload
+  - [x] Issuances
+  - [x] Users management
+  - [x] Barangays
+  - [x] Templates
+- [x] Update public/index.html to mount React app
+- [ ] Test React frontend with Laravel API
+- [ ] Verify all features work in React
 
 ### 7. Secure Login - Hide Password/Account Details
-- [ ] Implement JWT (JSON Web Tokens) for authentication
-- [ ] Store tokens securely (httpOnly cookies)
-- [ ] Hash passwords with bcrypt on server
-- [ ] Implement proper session management
-- [ ] Add CSRF protection
-- [ ] Ensure sensitive data is never sent to client
-- [ ] Implement logout functionality that clears tokens
+- [x] Implement bcrypt password hashing (using Laravel Hash facade)
+- [x] Store passwords securely (hashed with bcrypt)
+- [x] Hash passwords with bcrypt on server
+- [x] Implement proper session management
+- [x] Ensure sensitive data (passwords) never sent to client
+- [x] Implement logout functionality that clears session
+- [x] Auto-upgrade plain text passwords to bcrypt on login
+- [ ] Implement JWT (JSON Web Tokens) for authentication - Not needed for localhost (sessions work fine)
+- [ ] Store tokens securely (httpOnly cookies) - Not needed for localhost
+- [ ] Add CSRF protection - Not needed for API-only localhost
 
 ### 8. Migrate Express.js to Laravel
 - [x] Create new Laravel project in separate directory

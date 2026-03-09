@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -60,11 +61,14 @@ class UserController extends Controller
         $password = $request->input('password');
         $role = $request->input('role');
 
+        // Hash the password
+        $hashedPassword = Hash::make($password);
+
         // Assign permissions based on role
         $permissions = $this->getPermissionsByRole($role);
 
         DB::insert("INSERT INTO users (name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)", 
-            [$name, $email, $password, $role, json_encode($permissions)]);
+            [$name, $email, $hashedPassword, $role, json_encode($permissions)]);
 
         return response()->json(['success' => true, 'message' => 'User created successfully!']);
     }
@@ -90,11 +94,14 @@ class UserController extends Controller
         $password = $request->input('password');
         $role = $request->input('role');
 
+        // Hash the password
+        $hashedPassword = Hash::make($password);
+
         // Assign permissions based on role
         $permissions = $this->getPermissionsByRole($role);
 
         DB::insert("INSERT INTO users (name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)", 
-            [$name, $email, $password, $role, json_encode($permissions)]);
+            [$name, $email, $hashedPassword, $role, json_encode($permissions)]);
 
         return response()->json(['success' => true, 'message' => 'Account created successfully!']);
     }

@@ -26,21 +26,34 @@ class AuthController extends Controller
         $email = $request->input('email');
         $password = $request->input('password');
 
-        $users = DB::select("SELECT * FROM users WHERE email = ? AND password = ?", [$email, $password]);
+        // Find user by email
+        $users = DB::select("SELECT * FROM users WHERE email = ?", [$email]);
 
-        if (count($users) > 0) {
-            $user = $users[0];
-            
-            // Parse permissions from JSON string to array
-            $user->permissions = $this->parsePermissions($user->permissions ?? null);
-            
-            // Store user in session
-            $request->session()->put('user', $user);
-            
-            return response()->json(['success' => true, 'user' => $user]);
-        } else {
+        if (count($users) === 0) {
             return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
         }
+
+        $user = $users[0];
+
+        // Verify password using Hash::check() (works with both bcrypt and plain text for migration)
+        if (!Hash::check($password, $user->password)) {
+            // Fallback: if password is stored in plain text, verify and upgrade to bcrypt
+            if ($user->password === $password) {
+                $hashedPassword = Hash::make($password);
+                DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
+                $user->password = $hashedPassword;
+            } else {
+                return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
+            }
+        }
+        
+        // Parse permissions from JSON string to array
+        $user->permissions = $this->parsePermissions($user->permissions ?? null);
+        
+        // Store user in session
+        $request->session()->put('user', $user);
+        
+        return response()->json(['success' => true, 'user' => $user]);
     }
 
     /**
@@ -105,13 +118,26 @@ class AuthController extends Controller
         $currentPassword = $request->input('currentPassword');
         $newPassword = $request->input('newPassword');
 
-        $users = DB::select("SELECT * FROM users WHERE id = ? AND password = ?", [$userId, $currentPassword]);
+        // Get user from database
+        $users = DB::select("SELECT * FROM users WHERE id = ?", [$userId]);
 
         if (count($users) === 0) {
-            return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 401);
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        DB::update("UPDATE users SET password = ? WHERE id = ?", [$newPassword, $userId]);
+        $user = $users[0];
+
+        // Verify current password using Hash::check()
+        if (!Hash::check($currentPassword, $user->password)) {
+            // Fallback: check if stored in plain text
+            if ($user->password !== $currentPassword) {
+                return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 401);
+            }
+        }
+
+        // Hash the new password and update
+        $hashedPassword = Hash::make($newPassword);
+        DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $userId]);
 
         return response()->json(['success' => true, 'message' => 'Password changed successfully!']);
     }
@@ -133,10 +159,21 @@ class AuthController extends Controller
         $userId = $request->input('userId');
         $password = $request->input('password');
 
-        $users = DB::select("SELECT * FROM users WHERE id = ? AND password = ?", [$userId, $password]);
+        // Get user from database
+        $users = DB::select("SELECT * FROM users WHERE id = ?", [$userId]);
 
         if (count($users) === 0) {
-            return response()->json(['success' => false, 'message' => 'Invalid password'], 401);
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $user = $users[0];
+
+        // Verify password using Hash::check()
+        if (!Hash::check($password, $user->password)) {
+            // Fallback: check if stored in plain text
+            if ($user->password !== $password) {
+                return response()->json(['success' => false, 'message' => 'Invalid password'], 401);
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'Password verified']);

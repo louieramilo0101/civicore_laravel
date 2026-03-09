@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- React Root Container (for React migration - mount React app here) -->
+    <div id="root"></div>
+    
     <!-- LANDING PAGE -->
     <div class="landing-container active" id="landingContainer">
         <div class="landing-header">
@@ -698,5 +701,9 @@
     <script src="js/accounts.js"></script>     <!-- User management -->
     <script src="js/maps.js"></script>        <!-- Mapping functions -->
     <script src="js/main.js"></script>        <!-- Initialization -->
+    
+    <!-- React App (Vite built) -->
+    @viteReactRefresh
+    @vite(['resources/js/app.jsx'])
 </body>
 </html>
