@@ -20,6 +20,9 @@ use App\Http\Controllers\OcrController;
 |
 */
 
+// Apply web middleware for session support on API routes
+Route::middleware(['web'])->group(function () {
+
 // Auth Routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout']);
@@ -58,3 +61,5 @@ Route::get('/barangays', [BarangayController::class, 'index']);
 // Template Routes
 Route::get('/templates', [TemplateController::class, 'index']);
 Route::put('/templates/{type}', [TemplateController::class, 'update']);
+
+});

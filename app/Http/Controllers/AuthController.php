@@ -35,16 +35,34 @@ class AuthController extends Controller
 
         $user = $users[0];
 
-        // Verify password using Hash::check() (works with both bcrypt and plain text for migration)
-        if (!Hash::check($password, $user->password)) {
-            // Fallback: if password is stored in plain text, verify and upgrade to bcrypt
+        // Verify password - handle both bcrypt and plain text passwords
+        $passwordValid = false;
+        
+        try {
+            // First try bcrypt verification
+            if (Hash::check($password, $user->password)) {
+                $passwordValid = true;
+            }
+        } catch (\RuntimeException $e) {
+            // If bcrypt check fails (e.g., password is not bcrypt), try plain text comparison
             if ($user->password === $password) {
+                $passwordValid = true;
+                // Upgrade to bcrypt for future logins
                 $hashedPassword = Hash::make($password);
                 DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
-                $user->password = $hashedPassword;
-            } else {
-                return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
             }
+        }
+        
+        // Also check plain text as fallback (for passwords already stored as plain text)
+        if (!$passwordValid && $user->password === $password) {
+            $passwordValid = true;
+            // Upgrade to bcrypt for future logins
+            $hashedPassword = Hash::make($password);
+            DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
+        }
+
+        if (!$passwordValid) {
+            return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
         }
         
         // Parse permissions from JSON string to array

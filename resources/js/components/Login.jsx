@@ -77,11 +77,7 @@ function Login() {
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
-                <div className="demo-users">
-                    <strong>Demo Users:</strong><br />
-                    Admin: admin@naic-registry.com / password123<br />
-                    User: user@naic-registry.com / password123
-                </div>
+                
             </div>
         </div>
     );
