@@ -3,37 +3,81 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Laravel-12.0-red?style=for-the-badge&logo=laravel" alt="Laravel Version">
   <img src="https://img.shields.io/badge/PHP-8.2-purple?style=for-the-badge&logo=php" alt="PHP Version">
-  <img src="https://img.shields.io/badge-License-MIT-green?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react" alt="React Version">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
 </p>
 
 ## About Civicore
 
 Civicore is a web-based civic document management system designed for local government units (LGUs), specifically barangays. It facilitates the creation, management, and issuance of civic documents such as birth certificates, death certificates, marriage certificates, and other official issuances.
 
-## Features
+---
 
-### Core Features
+## 🚀 Features
+
+### ✅ Completed Features
+
+#### Core Features
 - **User Authentication** - Secure login/logout with session management
+  - Optimized login response time (reduced from 3-4 seconds to near instant)
+  - Loading spinner UI during authentication
+  - Session persistence with auto-refresh
+  - Password change and verification functionality
 - **User Management** - Create, update, and manage user accounts
+  - CRUD operations for user accounts
+  - Profile management
+  - Permission-based access control
 - **Document Management** - Upload and manage civic documents
+  - Support for PDF, JPG, PNG file uploads
+  - Document categorization and storage
 - **OCR Processing** - Extract text from documents using EasyOCR
+  - Python-based OCR engine integration
+  - Text extraction from uploaded images and PDFs
 - **Certificate Issuance** - Generate and manage official certificates
+  - Automatic certificate numbering
+  - Multiple certificate types (birth, death, marriage, etc.)
+  - Issuance tracking and management
 - **Barangay Management** - Manage barangay information and data
+  - Barangay information storage
+  - Integration with document templates
 - **Template System** - Customizable document templates
+  - Dynamic template rendering
+  - Easy template updates
 
-### Technical Features
+#### Technical Features
 - RESTful API architecture
 - EasyOCR integration for document text extraction
 - File upload support (PDF, JPG, PNG)
-- Input validation
+- Input validation with Laravel validators
 - CORS support for cross-origin requests
+- Session-based authentication
+- React frontend components with Vite
 
-## Tech Stack
+---
+
+## 📊 Project Progress
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| User Authentication | ✅ Complete | Optimized for fast response |
+| User Management | ✅ Complete | Full CRUD operations |
+| Document Upload | ✅ Complete | PDF, JPG, PNG support |
+| OCR Processing | ✅ Complete | EasyOCR integration |
+| Certificate Issuance | ✅ Complete | Auto-numbering system |
+| Barangay Management | ✅ Complete | Data management |
+| Template System | ✅ Complete | Dynamic templates |
+| LoadingSpinner Component | ✅ Complete | Modern loading UI |
+| React Migration | 🔄 In Progress | Partial - components added |
+| Performance Optimization | 🔄 In Progress | Login delay fix applied |
+
+---
+
+## 🛠 Tech Stack
 
 - **Backend:** Laravel 12.x (PHP 8.2+)
 - **Database:** MySQL (civicore_db)
 - **OCR Engine:** EasyOCR (Python)
-- **Frontend:** Vanilla JavaScript (in progress - React migration planned)
+- **Frontend:** React 18 with Vite (hybrid with Vanilla JS)
 - **Server:** Built-in PHP development server
 
 ## Prerequisites
@@ -168,12 +212,21 @@ civicore_laravel/
 ├── public/
 │   ├── index.html           # Frontend application
 │   └── js/                  # JavaScript files
+├── resources/
+│   ├── js/
+│   │   └── components/      # React components
+│   │       ├── LoadingSpinner.jsx
+│   │       ├── Login.jsx
+│   │       ├── Dashboard.jsx
+│   │       ├── Documents.jsx
+│   │       ├── Issuances.jsx
+│   │       ├── Users.jsx
+│   │       ├── Barangays.jsx
+│   │       └── Templates.jsx
+│   └── views/               # Blade templates
 ├── routes/
 │   ├── api.php              # API routes
 │   └── web.php              # Web routes
-├── resources/
-│   ├── views/               # Blade templates
-│   └── css/                 # Stylesheets
 ├── storage/                 # Storage directory
 ├── ocr_processor.py         # EasyOCR processing script
 └── composer.json            # PHP dependencies
@@ -188,11 +241,20 @@ The application uses EasyOCR for extracting text from uploaded documents. The OC
 python ocr_processor.py
 ```
 
-## Development Roadmap
+## Recent Updates
+
+### Performance Optimization
+- **Login Response Time Improvement**: Fixed the login delay issue that caused 3-4 second wait times on invalid login attempts
+  - Optimized password verification logic
+  - Added early return for invalid email
+  - Reduced unnecessary processing steps
+- **LoadingSpinner Component**: Added a reusable React loading spinner component for better UX during authentication and data loading
+
+### Development Roadmap
 
 See [TODO.md](./TODO.md) for the complete development roadmap including:
 - Current tasks and improvements
-- Long-term goals (React migration, Inertia.js integration)
+- Long-term goals (complete React migration, Inertia.js integration)
 - Completed features
 
 ## License
@@ -207,4 +269,5 @@ For issues and feature requests, please create an issue in the project repositor
 
 - Built with [Laravel](https://laravel.com)
 - OCR powered by [EasyOCR](https://github.com/JaidedAI/EasyOCR)
+- Frontend built with [React](https://reactjs.org)
 
