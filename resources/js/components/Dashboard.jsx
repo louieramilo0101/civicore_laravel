@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import LoadingSpinner from './LoadingSpinner';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -44,6 +45,12 @@ function Dashboard() {
 
     return (
         <div className="page active" id="dashboardPage">
+            {loading && (
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <LoadingSpinner size="lg" message="Loading dashboard..." />
+                </div>
+            )}
+            {!loading && (
             <div className="stats-grid">
                 <div className="stat-card">
                     <div className="stat-label">Total Documents</div>
@@ -83,6 +90,7 @@ function Dashboard() {
                     </p>
                 </div>
             </div>
+            )}
         </div>
     );
 }

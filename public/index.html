@@ -534,12 +534,19 @@
                         </div>
                         <div>
                             <label style="font-weight: 600; margin-bottom: 10px; display: block;">⚙️ Actions:</label>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn-primary" onclick="printSelectedIssuance()" style="flex: 1; background: #27ae60; min-width: 120px;">📄 Print Selected</button>
-                                <button class="btn-primary" onclick="printAllIssuance()" style="flex: 1; background: #2980b9; min-width: 120px;">🖨️ Print All</button>
-                                <button class="btn-primary danger" id="deleteSelectedBtn" onclick="deleteSelectedIssuance()" style="flex: 1; background: #e74c3c; min-width: 120px; display: none;" title="Delete Selected">🗑️ Delete Selected</button>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                                <button class="btn-primary" onclick="printSelectedIssuance()" style="padding: 8px 12px; background: #27ae60; font-size: 12px; min-width: auto;">📄 Print Selected</button>
+                                <button class="btn-primary" onclick="printAllIssuance()" style="padding: 8px 12px; background: #2980b9; font-size: 12px; min-width: auto;">🖨️ Print All</button>
+                                <button class="btn-primary danger" id="deleteSelectedBtn" onclick="deleteSelectedIssuance()" style="padding: 8px 12px; background: linear-gradient(135deg, #e74c3c, #c0392b); font-size: 12px; min-width: auto; display: none;" title="Delete Selected">🗑️ Delete Selected</button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Delete Selected Button Row - Shows when items selected -->
+                    <div id="deleteSelectedRow" style="margin-bottom: 20px; display: none;">
+                        <button class="btn-primary danger" id="deleteSelectedBtnFull" onclick="deleteSelectedIssuance()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);">
+                            🗑️ Delete Selected (<span id="selectedCount">0</span>)
+                        </button>
                     </div>
 
                     <div style="overflow-x: auto;">

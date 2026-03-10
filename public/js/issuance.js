@@ -1103,12 +1103,29 @@ function toggleCheckboxes() {
 function updateDeleteSelectedButton() {
     const selectedIds = getSelectedIssuanceIds();
     const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const deleteSelectedRow = document.getElementById('deleteSelectedRow');
+    const selectedCountSpan = document.getElementById('selectedCount');
     
+    // Update the count display
+    if (selectedCountSpan) {
+        selectedCountSpan.textContent = selectedIds.length;
+    }
+    
+    // Show/hide inline delete button
     if (deleteSelectedBtn) {
         if (selectedIds.length > 0 && checkboxesVisible) {
             deleteSelectedBtn.style.display = 'inline-flex';
         } else {
             deleteSelectedBtn.style.display = 'none';
+        }
+    }
+    
+    // Show/hide full width delete button row
+    if (deleteSelectedRow) {
+        if (selectedIds.length > 0 && checkboxesVisible) {
+            deleteSelectedRow.style.display = 'block';
+        } else {
+            deleteSelectedRow.style.display = 'none';
         }
     }
 }

@@ -20,13 +20,16 @@ use App\Http\Controllers\OcrController;
 |
 */
 
-// Apply web middleware for session support on API routes
+// Auth Routes - NOT requiring session (login, logout, session check can work without)
+// These routes use API middleware only
+Route::post('/login', [AuthController::class, 'login']);
+Route::get('/session', [AuthController::class, 'session']);
+
+// Routes that require session support
 Route::middleware(['web'])->group(function () {
 
-// Auth Routes
-Route::post('/login', [AuthController::class, 'login']);
+// Auth Routes that need session
 Route::post('/logout', [AuthController::class, 'logout']);
-Route::get('/session', [AuthController::class, 'session']);
 Route::post('/change-password', [AuthController::class, 'changePassword']);
 Route::post('/verify-password', [AuthController::class, 'verifyPassword']);
 

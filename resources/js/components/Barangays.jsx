@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -28,7 +29,9 @@ function Barangays() {
                 <h2 style={{ marginBottom: '20px', color: 'var(--primary-color)' }}>Barangay Management</h2>
                 
                 {loading ? (
-                    <p>Loading...</p>
+                    <div className="flex items-center justify-center py-8">
+                        <LoadingSpinner size="md" message="Loading barangays..." />
+                    </div>
                 ) : barangays.length === 0 ? (
                     <div className="empty-state">
                         <div className="icon">🏘️</div>

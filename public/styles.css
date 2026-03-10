@@ -1465,14 +1465,17 @@ body {
 }
 
 /* ===== CHECKBOX STYLES FOR ISSUANCE TABLE ===== */
+/* Professional Checkbox Styling */
 .checkbox-container {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     position: relative;
-    padding-left: 25px;
+    padding-left: 28px;
     cursor: pointer;
     user-select: none;
     margin: 0;
+    height: 22px;
 }
 
 .checkbox-container input {
@@ -1483,34 +1486,46 @@ body {
     width: 0;
 }
 
+/* Custom checkbox - modern design */
 .checkbox-custom {
     position: absolute;
-    top: 0;
+    top: 50%;
     left: 0;
-    height: 18px;
-    width: 18px;
+    transform: translateY(-50%);
+    height: 20px;
+    width: 20px;
     background-color: #fff;
-    border: 2px solid #d4a574;
-    border-radius: 3px;
+    border: 2px solid #c0c0c0;
+    border-radius: 4px;
     transition: all 0.2s ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .checkbox-container:hover .checkbox-custom {
-    background-color: #f5e6d3;
-    border-color: #c49a6c;
+    background-color: #f8f9fa;
+    border-color: #3498db;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
 }
 
+.checkbox-container input:focus ~ .checkbox-custom {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+/* Checked state */
 .checkbox-container input:checked ~ .checkbox-custom {
     background-color: #27ae60;
     border-color: #27ae60;
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
 }
 
+/* Checkmark - modern design */
 .checkbox-custom:after {
     content: "";
     position: absolute;
     display: none;
-    left: 5px;
-    top: 1px;
+    left: 6px;
+    top: 2px;
     width: 5px;
     height: 10px;
     border: solid white;
@@ -1520,23 +1535,37 @@ body {
 
 .checkbox-container input:checked ~ .checkbox-custom:after {
     display: block;
+    animation: checkmark 0.15s ease-out forwards;
+}
+
+@keyframes checkmark {
+    0% {
+        opacity: 0;
+        transform: rotate(45deg) scale(0.5);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(45deg) scale(1);
+    }
 }
 
 /* Indeterminate state */
 .checkbox-container input:indeterminate ~ .checkbox-custom {
     background-color: #f39c12;
     border-color: #f39c12;
+    box-shadow: 0 2px 4px rgba(243, 156, 18, 0.3);
 }
 
 .checkbox-container input:indeterminate ~ .checkbox-custom:after {
     display: block;
     left: 4px;
-    top: 0;
-    width: 6px;
+    top: 8px;
+    width: 8px;
     height: 2px;
     border: solid white;
     border-width: 0 0 2px 0;
     transform: none;
+    animation: checkmark 0.1s ease-out forwards;
 }
 
 /* Table header checkbox alignment */
@@ -1550,6 +1579,7 @@ td.checkbox-column {
     text-align: center;
     vertical-align: middle;
     width: 50px;
+    padding: 12px 8px;
 }
 
 th.checkbox-column .checkbox-container,
@@ -1565,12 +1595,41 @@ td.checkbox-column .checkbox-container {
     display: none !important;
 }
 
-/* Checkbox column alignment in tables */
-th.checkbox-column,
-td.checkbox-column {
-    text-align: center;
-    vertical-align: middle;
-    width: 50px;
+/* ===== DELETE SELECTED BUTTON STYLING ===== */
+#deleteSelectedBtn {
+    display: none;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    white-space: nowrap;
+}
+
+#deleteSelectedBtn:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+#deleteSelectedBtn:active {
+    transform: translateY(0);
+}
+
+#deleteSelectedBtn.visible {
+    display: inline-flex !important;
+}
+
+#deleteSelectedBtn svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* Toggle button styles */

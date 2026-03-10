@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -73,7 +74,13 @@ function Issuances() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan="6">Loading...</td></tr>
+                                <tr>
+                                    <td colSpan="6">
+                                        <div className="flex items-center justify-center py-8">
+                                            <LoadingSpinner size="md" message="Loading issuances..." />
+                                        </div>
+                                    </td>
+                                </tr>
                             ) : filteredIssuances.length === 0 ? (
                                 <tr><td colSpan="6">No issuances found</td></tr>
                             ) : (

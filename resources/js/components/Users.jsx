@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -31,7 +32,9 @@ function Users() {
                 <h2 style={{ marginBottom: '20px', color: 'var(--primary-color)' }}>User Account Management</h2>
                 
                 {loading ? (
-                    <p>Loading...</p>
+                    <div className="flex items-center justify-center py-8">
+                        <LoadingSpinner size="md" message="Loading users..." />
+                    </div>
                 ) : users.length === 0 ? (
                     <p>No users found</p>
                 ) : (

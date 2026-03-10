@@ -20,7 +20,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 400);
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 400);
         }
 
         $email = $request->input('email');
@@ -30,35 +30,32 @@ class AuthController extends Controller
         $users = DB::select("SELECT * FROM users WHERE email = ?", [$email]);
 
         if (count($users) === 0) {
+            // Early return for invalid email - no need to wait for bcrypt
             return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
         }
 
         $user = $users[0];
 
-        // Verify password - handle both bcrypt and plain text passwords
+        // Verify password - optimized logic to reduce delay
         $passwordValid = false;
         
-        try {
-            // First try bcrypt verification
+        // Check if stored password is bcrypt (starts with $2y$ or $2a$)
+        if (preg_match('/^\$2[ayb]\$.{56}$/', $user->password)) {
+            // Use Hash::check for bcrypt passwords
             if (Hash::check($password, $user->password)) {
                 $passwordValid = true;
+                // Upgrade to bcrypt for future logins (only on successful login)
+                $hashedPassword = Hash::make($password);
+                DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
             }
-        } catch (\RuntimeException $e) {
-            // If bcrypt check fails (e.g., password is not bcrypt), try plain text comparison
+        } else {
+            // Plain text password - compare directly
             if ($user->password === $password) {
                 $passwordValid = true;
                 // Upgrade to bcrypt for future logins
                 $hashedPassword = Hash::make($password);
                 DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
             }
-        }
-        
-        // Also check plain text as fallback (for passwords already stored as plain text)
-        if (!$passwordValid && $user->password === $password) {
-            $passwordValid = true;
-            // Upgrade to bcrypt for future logins
-            $hashedPassword = Hash::make($password);
-            DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
         }
 
         if (!$passwordValid) {
