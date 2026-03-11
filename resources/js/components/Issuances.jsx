@@ -3,6 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
 import SkeletonLoader from './SkeletonLoader';
+import { 
+    HeartIcon, 
+    XCircleIcon, 
+    ClipboardDocumentListIcon,
+    InboxIcon,
+    DocumentIcon,
+    QueueListIcon
+} from '@heroicons/react/24/outline';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -33,10 +41,10 @@ function Issuances() {
 
     const getTypeIcon = (type) => {
         switch(type) {
-            case 'birth': return '👶';
-            case 'death': return '⚰️';
-            case 'marriage_license': return '💍';
-            default: return '📄';
+            case 'birth': return HeartIcon;
+            case 'death': return XCircleIcon;
+            case 'marriage_license': return ClipboardDocumentListIcon;
+            default: return DocumentIcon;
         }
     };
 
@@ -49,10 +57,10 @@ function Issuances() {
     };
 
     const filterButtons = [
-        { id: 'all', label: 'All', icon: '📋' },
-        { id: 'birth', label: 'Birth', icon: '👶' },
-        { id: 'death', label: 'Death', icon: '⚰️' },
-        { id: 'marriage_license', label: 'Marriage', icon: '💍' }
+        { id: 'all', label: 'All', icon: QueueListIcon },
+        { id: 'birth', label: 'Birth', icon: HeartIcon },
+        { id: 'death', label: 'Death', icon: XCircleIcon },
+        { id: 'marriage_license', label: 'Marriage', icon: ClipboardDocumentListIcon }
     ];
 
     return (
@@ -75,7 +83,9 @@ function Issuances() {
                 <motion.div className="mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
                     <label className="block font-semibold mb-2 text-sm md:text-base">Filter by Type:</label>
                     <div className="flex flex-wrap gap-2">
-                        {filterButtons.map((btn, index) => (
+                        {filterButtons.map((btn, index) => {
+                            const BtnIcon = btn.icon;
+                            return (
                             <motion.button 
                                 key={btn.id}
                                 className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors ${filter === btn.id ? 'bg-[#d4a574] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -86,9 +96,11 @@ function Issuances() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                             >
-                                {btn.icon} {btn.label}
+                                <BtnIcon className="w-4 h-4 inline-block mr-1" />
+                                {btn.label}
                             </motion.button>
-                        ))}
+                            );
+                        })}
                     </div>
                 </motion.div>
 
@@ -108,10 +120,12 @@ function Issuances() {
                             {loading ? (
                                 <tr><td colSpan="6"><SkeletonLoader type="table" rows={5} /></td></tr>
                             ) : filteredIssuances.length === 0 ? (
-                                <tr><td colSpan="6"><motion.div className="text-center py-8 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}><div className="text-4xl mb-2">📭</div><p>No issuances found</p></motion.div></td></tr>
+                                <tr><td colSpan="6"><motion.div className="text-center py-8 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}><InboxIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" /><p>No issuances found</p></motion.div></td></tr>
                             ) : (
                                 <AnimatePresence>
-                                    {filteredIssuances.map((issuance, index) => (
+                                    {filteredIssuances.map((issuance, index) => {
+                                        const TypeIcon = getTypeIcon(issuance.certType);
+                                        return (
                                         <motion.tr 
                                             key={issuance.id} 
                                             className="border-b border-gray-100 hover:bg-gray-50"
@@ -122,13 +136,17 @@ function Issuances() {
                                             whileHover={{ backgroundColor: 'rgba(0,0,0,0.02)' }}
                                         >
                                             <td className="p-3 text-sm">{issuance.certNumber}</td>
-                                            <td className="p-3 text-sm">{getTypeIcon(issuance.certType)} {issuance.certType}</td>
+                                            <td className="p-3 text-sm flex items-center gap-2">
+                                                <TypeIcon className="w-4 h-4 text-[#d4a574]" />
+                                                {issuance.certType}
+                                            </td>
                                             <td className="p-3 text-sm">{issuance.recipientName}</td>
                                             <td className="p-3 text-sm">{issuance.barangay}</td>
                                             <td className="p-3 text-sm">{issuance.issuanceDate}</td>
                                             <td className="p-3 text-sm"><span className={`px-2 py-1 rounded-full text-xs font-medium ${issuance.status === 'Issued' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{issuance.status}</span></td>
                                         </motion.tr>
-                                    ))}
+                                        );
+                                    })}
                                 </AnimatePresence>
                             )}
                         </tbody>
