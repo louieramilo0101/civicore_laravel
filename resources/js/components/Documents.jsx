@@ -1,5 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
+import SkeletonLoader from './SkeletonLoader';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -60,79 +63,143 @@ function Documents() {
         }
     };
 
+    const documentTypes = [
+        { id: 'birth', name: 'Birth Certificate', icon: '👶', desc: 'Upload and process birth certificates' },
+        { id: 'death', name: 'Death Certificate', icon: '⚰️', desc: 'Upload and process death certificates' },
+        { id: 'marriage', name: 'Marriage License', icon: '💍', desc: 'Upload and process marriage licenses' }
+    ];
+
     return (
-        <div className="page" id="uploadPage">
+        <motion.div 
+            className="page" 
+            id="uploadPage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+        >
             <div className="upload-container">
-                <div className="upload-section">
-                    <h2>Upload Document</h2>
+                <motion.div 
+                    className="upload-section"
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                    <motion.h2
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        Upload Document
+                    </motion.h2>
+                    
                     <div className="document-types">
-                        <div 
-                            className={`doc-type-btn ${selectedType === 'birth' ? 'active' : ''}`}
-                            onClick={() => setSelectedType('birth')}
-                        >
-                            <div className="doc-name">👶 Birth Certificate</div>
-                            <div className="doc-desc">Upload and process birth certificates</div>
-                        </div>
-                        <div 
-                            className={`doc-type-btn ${selectedType === 'death' ? 'active' : ''}`}
-                            onClick={() => setSelectedType('death')}
-                        >
-                            <div className="doc-name">⚰️ Death Certificate</div>
-                            <div className="doc-desc">Upload and process death certificates</div>
-                        </div>
-                        <div 
-                            className={`doc-type-btn ${selectedType === 'marriage' ? 'active' : ''}`}
-                            onClick={() => setSelectedType('marriage')}
-                        >
-                            <div className="doc-name">💍 Marriage License</div>
-                            <div className="doc-desc">Upload and process marriage licenses</div>
-                        </div>
+                        {documentTypes.map((type, index) => (
+                            <motion.div 
+                                key={type.id}
+                                className={`doc-type-btn ${selectedType === type.id ? 'active' : ''}`}
+                                onClick={() => setSelectedType(type.id)}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 + (index * 0.1) }}
+                                whileHover={{ scale: 1.02, borderColor: '#d4a574' }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <div className="doc-name">{type.icon} {type.name}</div>
+                                <div className="doc-desc">{type.desc}</div>
+                            </motion.div>
+                        ))}
                     </div>
-                    <div className="upload-area">
+                    
+                    <motion.div 
+                        className="upload-area"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                    >
                         <input 
                             type="file" 
                             accept=".pdf,.jpg,.jpeg,.png"
                             onChange={handleFileChange}
                             style={{ marginBottom: '15px' }}
                         />
-                        {file && <p>Selected: {file.name}</p>}
-                    </div>
-                    <button 
+                        {file && (
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                key={file.name}
+                            >
+                                Selected: {file.name}
+                            </motion.p>
+                        )}
+                    </motion.div>
+                    
+                    <motion.button 
                         className="btn-primary" 
                         onClick={handleUpload}
                         disabled={uploading}
                         style={{ width: '100%' }}
+                        whileHover={{ scale: uploading ? 1 : 1.02 }}
+                        whileTap={{ scale: uploading ? 1 : 0.98 }}
                     >
                         {uploading ? 'Uploading...' : 'Process with OCR'}
-                    </button>
-                </div>
-                <div className="documents-list">
-                    <h3>Recent Documents</h3>
+                    </motion.button>
+                </motion.div>
+
+                <motion.div 
+                    className="documents-list"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.2 }}
+                >
+                    <motion.h3
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        Recent Documents
+                    </motion.h3>
+                    
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
-                            <LoadingSpinner size="md" message="Loading documents..." />
+                            <SkeletonLoader type="list" rows={5} />
                         </div>
                     ) : documents.length === 0 ? (
-                        <div className="empty-state">
+                        <motion.div 
+                            className="empty-state"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.4 }}
+                        >
                             <div className="icon">📭</div>
                             <p>No documents uploaded yet</p>
-                        </div>
+                        </motion.div>
                     ) : (
-                        documents.slice(0, 10).map(doc => (
-                            <div key={doc.id} className="document-item">
-                                <div className="doc-icon">
-                                    {doc.docType === 'birth' ? '👶' : doc.docType === 'death' ? '⚰️' : '💍'}
-                                </div>
-                                <div className="doc-info">
-                                    <div className="doc-name">{doc.personName || 'Unknown'}</div>
-                                    <div className="doc-meta">{doc.docType} - {doc.status}</div>
-                                </div>
-                            </div>
-                        ))
+                        <AnimatePresence>
+                            {documents.slice(0, 10).map((doc, index) => (
+                                <motion.div 
+                                    key={doc.id} 
+                                    className="document-item"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    whileHover={{ backgroundColor: 'rgba(0,0,0,0.02)', scale: 1.01 }}
+                                >
+                                    <div className="doc-icon">
+                                        {doc.docType === 'birth' ? '👶' : doc.docType === 'death' ? '⚰️' : '💍'}
+                                    </div>
+                                    <div className="doc-info">
+                                        <div className="doc-name">{doc.personName || 'Unknown'}</div>
+                                        <div className="doc-meta">{doc.docType} - {doc.status}</div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     )}
-                </div>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 

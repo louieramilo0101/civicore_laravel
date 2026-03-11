@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
+import { AnimatedStatCard, AnimatedCounter } from './AnimatedCounter';
+import SkeletonLoader from './SkeletonLoader';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -14,7 +17,6 @@ function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch dashboard stats
         const fetchStats = async () => {
             try {
                 const [docsRes, usersRes] = await Promise.all([
@@ -43,55 +45,171 @@ function Dashboard() {
 
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 30 },
+        visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.5, ease: "easeOut" }
+        }
+    };
+
     return (
-        <div className="page active" id="dashboardPage">
+        <motion.div 
+            className="page active" 
+            id="dashboardPage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+        >
             {loading && (
                 <div className="flex items-center justify-center min-h-[400px]">
                     <LoadingSpinner size="lg" message="Loading dashboard..." />
                 </div>
             )}
+            
             {!loading && (
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <div className="stat-label">Total Documents</div>
-                    <div className="stat-value">{loading ? '...' : stats.totalDocs}</div>
-                    <div className="stat-change">✓ Updated today</div>
-                </div>
-                <div className="stat-card success">
-                    <div className="stat-label">Processed</div>
-                    <div className="stat-value">{loading ? '...' : stats.processedDocs}</div>
-                    <div className="stat-change">✓ This month</div>
-                </div>
-                <div className="stat-card warning">
-                    <div className="stat-label">Pending</div>
-                    <div className="stat-value">{loading ? '...' : stats.pendingDocs}</div>
-                    <div className="stat-change">⚠ Requires attention</div>
-                </div>
-                <div className="stat-card danger">
-                    <div className="stat-label">Users</div>
-                    <div className="stat-value">{loading ? '...' : stats.totalUsers}</div>
-                    <div className="stat-change">✓ Active accounts</div>
-                </div>
-            </div>
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
+                    {/* Stats Grid with Animated Counters */}
+                    <motion.div className="stats-grid" variants={itemVariants}>
+                        <AnimatedStatCard 
+                            label="Total Documents" 
+                            value={stats.totalDocs}
+                            icon="📄"
+                            color="#d4a574"
+                            delay={0}
+                        />
+                        <AnimatedStatCard 
+                            label="Processed" 
+                            value={stats.processedDocs}
+                            icon="✅"
+                            color="#27ae60"
+                            delay={0.1}
+                        />
+                        <AnimatedStatCard 
+                            label="Pending" 
+                            value={stats.pendingDocs}
+                            icon="⏳"
+                            color="#f39c12"
+                            delay={0.2}
+                        />
+                        <AnimatedStatCard 
+                            label="Users" 
+                            value={stats.totalUsers}
+                            icon="👥"
+                            color="#9b59b6"
+                            delay={0.3}
+                        />
+                    </motion.div>
 
-            <div className="charts-container">
-                <div className="chart-card">
-                    <h3>Quick Actions</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <Link to="/documents" className="btn-primary" style={{ textAlign: 'center' }}>📤 Upload Document</Link>
-                        <Link to="/issuances" className="btn-primary" style={{ textAlign: 'center' }}>✅ Issue Certificate</Link>
-                        <Link to="/users" className="btn-primary" style={{ textAlign: 'center' }}>👥 Manage Users</Link>
-                    </div>
-                </div>
-                <div className="chart-card">
-                    <h3>Welcome, {user.name || 'User'}!</h3>
-                    <p style={{ color: 'var(--text-light)' }}>
-                        You are logged in as {user.role || 'User'}.
-                    </p>
-                </div>
-            </div>
+                    {/* Charts Container */}
+                    <motion.div 
+                        className="charts-container"
+                        variants={itemVariants}
+                    >
+                        <motion.div 
+                            className="chart-card"
+                            whileHover={{ 
+                                y: -5,
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                transition: { duration: 0.2 }
+                            }}
+                        >
+                            <h3>Quick Actions</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {[
+                                    { to: "/documents", icon: "📤", text: "Upload Document" },
+                                    { to: "/issuances", icon: "✅", text: "Issue Certificate" },
+                                    { to: "/users", icon: "👥", text: "Manage Users" }
+                                ].map((action, index) => (
+                                    <motion.div
+                                        key={action.to}
+                                        whileHover={{ scale: 1.02, x: 5 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <Link 
+                                            to={action.to} 
+                                            className="btn-primary" 
+                                            style={{ 
+                                                textAlign: 'center',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '10px',
+                                                padding: '14px'
+                                            }}
+                                        >
+                                            <span>{action.icon}</span>
+                                            <span>{action.text}</span>
+                                        </Link>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                        
+                        <motion.div 
+                            className="chart-card"
+                            whileHover={{ 
+                                y: -5,
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                transition: { duration: 0.2 }
+                            }}
+                        >
+                            <motion.h3
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                Welcome, {user.name || 'User'}!
+                            </motion.h3>
+                            <motion.p 
+                                style={{ color: 'var(--text-light)', marginTop: '15px' }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5 }}
+                            >
+                                You are logged in as <strong>{user.role || 'User'}</strong>.
+                            </motion.p>
+                            <motion.div
+                                style={{ 
+                                    marginTop: '20px', 
+                                    padding: '15px', 
+                                    background: 'var(--light-bg)', 
+                                    borderRadius: '8px' 
+                                }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6 }}
+                            >
+                                <p style={{ fontSize: '14px', color: 'var(--text-light)' }}>
+                                    📅 {new Date().toLocaleDateString('en-US', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                    })}
+                                </p>
+                            </motion.div>
+                        </motion.div>
+                    </motion.div>
+                </motion.div>
             )}
-        </div>
+        </motion.div>
     );
 }
 

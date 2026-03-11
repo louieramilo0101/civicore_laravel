@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -29,9 +30,7 @@ function Login() {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Store user info in sessionStorage
                 sessionStorage.setItem('user', JSON.stringify(data.user));
-                // Redirect to dashboard
                 navigate('/');
             } else {
                 setError(data.message || 'Login failed');
@@ -43,43 +42,143 @@ function Login() {
         }
     };
 
+    const pageVariants = {
+        initial: { opacity: 0 },
+        animate: { 
+            opacity: 1,
+            transition: { duration: 0.5 }
+        },
+        exit: { opacity: 0 }
+    };
+
     return (
-        <div className="login-container" style={{ display: 'block' }}>
-            <div className="login-box">
-                <a href="#" className="back-to-home" onClick={(e) => { e.preventDefault(); navigate('/'); }}>← Back to Home</a>
-                <h1>Civil Registry of Naic</h1>
-                <p className="subtitle">Document Management System (React)</p>
-                <form onSubmit={handleLogin}>
-                    <div className="form-group">
+        <motion.div 
+            className="login-container" 
+            style={{ display: 'block' }}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
+            <motion.div 
+                className="login-box"
+                initial={{ opacity: 0, y: -30, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+            >
+                <motion.a 
+                    href="#" 
+                    className="back-to-home" 
+                    onClick={(e) => { e.preventDefault(); navigate('/'); }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    whileHover={{ x: -3 }}
+                >
+                    ← Back to Home
+                </motion.a>
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    Civil Registry of Naic
+                </motion.h1>
+                <motion.p 
+                    className="subtitle"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                >
+                    Document Management System (React)
+                </motion.p>
+                
+                <motion.form 
+                    onSubmit={handleLogin}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                >
+                    <motion.div 
+                        className="form-group"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 }}
+                    >
                         <label htmlFor="email">Email</label>
-                        <input 
+                        <motion.input 
                             type="email" 
                             id="email" 
                             placeholder="Enter your email" 
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            whileFocus={{ 
+                                borderColor: '#d4a574',
+                                boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
+                            }}
                         />
-                    </div>
-                    <div className="form-group">
+                    </motion.div>
+                    
+                    <motion.div 
+                        className="form-group"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 }}
+                    >
                         <label htmlFor="password">Password</label>
-                        <input 
+                        <motion.input 
                             type="password" 
                             id="password" 
                             placeholder="Enter your password" 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            whileFocus={{ 
+                                borderColor: '#d4a574',
+                                boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
+                            }}
                         />
-                    </div>
-                    {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
-                    <button type="submit" className="login-btn" disabled={loading}>
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-                </form>
-                
-            </div>
-        </div>
+                    </motion.div>
+                    
+                    <AnimatePresence mode='wait'>
+                        {error && (
+                            <motion.div 
+                                style={{ color: 'red', marginBottom: '15px' }}
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    
+                    <motion.button 
+                        type="submit" 
+                        className="login-btn" 
+                        disabled={loading}
+                        whileHover={{ 
+                            scale: loading ? 1 : 1.02,
+                            backgroundColor: loading ? '#d4a574' : '#e5b887'
+                        }}
+                        whileTap={{ scale: loading ? 1 : 0.98 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {loading ? (
+                            <motion.span
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                            >
+                                Logging in...
+                            </motion.span>
+                        ) : (
+                            'Login'
+                        )}
+                    </motion.button>
+                </motion.form>
+            </motion.div>
+        </motion.div>
     );
 }
 
