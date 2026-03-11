@@ -174,6 +174,8 @@ def main():
     parser.add_argument('--lang', default='en,tl', help='Comma-separated language codes (default: en,tl)')
     parser.add_argument('--type', choices=['image', 'pdf', 'auto'], default='auto', 
                         help='File type (auto-detect by default)')
+    parser.add_argument('--save-txt', action='store_true', default=True,
+                        help='Save extracted text to a .txt file (default: True)')
     
     args = parser.parse_args()
     
@@ -206,6 +208,18 @@ def main():
         result = process_pdf_ocr(file_path, lang)
     else:
         result = process_image_ocr(file_path, lang)
+    
+    # Save extracted text to .txt file for verification
+    if args.save_txt and result.get('success') and result.get('text'):
+        try:
+            # Create .txt file in the same directory as the input file
+            txt_file_path = str(Path(file_path).with_suffix('.txt'))
+            with open(txt_file_path, 'w', encoding='utf-8') as f:
+                f.write(result['text'])
+            result['txt_file_saved'] = txt_file_path
+            print(f"Text file saved to: {txt_file_path}", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Could not save text file: {str(e)}", file=sys.stderr)
     
     # Output result as JSON
     print(json.dumps(result))

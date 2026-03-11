@@ -67,6 +67,22 @@ async function processOCR(filePath, languages = 'en,tl') {
     return await response.json();
 }
 
+// OCR Processing by Document ID (for database-stored files)
+async function processOCRById(documentId, languages = 'en,tl') {
+    const response = await fetch(`${API_BASE}/api/ocr/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId, languages })
+    });
+    return await response.json();
+}
+
+// Document Download/View from Database
+async function downloadDocument(id) {
+    const response = await fetch(`${API_BASE}/api/documents/download/${id}`);
+    return response;
+}
+
 // Issuances API
 async function getAllIssuances() {
     const response = await fetch(`${API_BASE}/api/issuances`);

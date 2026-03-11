@@ -99,11 +99,11 @@ if (processBtn) {
         }
         
         // Show processing status
-        processBtn.textContent = 'Processing with EasyOCR...';
+        processBtn.textContent = 'Uploading and storing in database...';
         processBtn.disabled = true;
         
         try {
-            // Upload file to server first
+            // Upload file to server - now stores in database
             const uploadResult = await uploadDocument(uploadedFile, selectedDocType, '', 'Poblacion');
             
             if (!uploadResult.success) {
@@ -111,12 +111,12 @@ if (processBtn) {
                 return;
             }
             
-            // Now process with EasyOCR
-            const filePath = `uploads/${uploadResult.filename}`;
+            // Now process with EasyOCR using document ID (from database)
             processBtn.textContent = 'Running EasyOCR...';
             
             try {
-                const ocrResult = await processOCR(filePath);
+                // Use documentId instead of filePath for database-stored files
+                const ocrResult = await processOCRById(uploadResult.id);
                 
                 if (ocrResult.success) {
                     const extractedText = ocrResult.text || '';
@@ -124,9 +124,10 @@ if (processBtn) {
                     const wordsFound = ocrResult.words_found || 0;
                     
                     showUploadSuccess(
-                        `File "${uploadedFile.name}" uploaded and processed with EasyOCR!<br><br>` +
+                        `File "${uploadedFile.name}" uploaded and stored in database!<br><br>` +
                         `<strong>Document Type:</strong> ${selectedDocType}<br>` +
                         `<strong>File Size:</strong> ${uploadResult.size}<br>` +
+                        `<strong>Storage:</strong> Database (BLOB)<br>` +
                         `<strong>Words Found:</strong> ${wordsFound}<br>` +
                         `<strong>Confidence:</strong> ${(confidence * 100).toFixed(1)}%<br><br>` +
                         `<strong>Extracted Text:</strong><br>` +
@@ -134,18 +135,20 @@ if (processBtn) {
                     );
                 } else {
                     showUploadSuccess(
-                        `File "${uploadedFile.name}" uploaded successfully!<br><br>` +
+                        `File "${uploadedFile.name}" uploaded and stored in database!<br><br>` +
                         `<strong>Document Type:</strong> ${selectedDocType}<br>` +
-                        `<strong>File Size:</strong> ${uploadResult.size}<br><br>` +
+                        `<strong>File Size:</strong> ${uploadResult.size}<br>` +
+                        `<strong>Storage:</strong> Database (BLOB)<br><br>` +
                         `<strong>Note:</strong> OCR processing failed: ${ocrResult.error || 'Unknown error'}`
                     );
                 }
             } catch (ocrError) {
                 console.error('OCR Error:', ocrError);
                 showUploadSuccess(
-                    `File "${uploadedFile.name}" uploaded successfully!<br><br>` +
+                    `File "${uploadedFile.name}" uploaded and stored in database!<br><br>` +
                     `<strong>Document Type:</strong> ${selectedDocType}<br>` +
-                    `<strong>File Size:</strong> ${uploadResult.size}<br><br>` +
+                    `<strong>File Size:</strong> ${uploadResult.size}<br>` +
+                    `<strong>Storage:</strong> Database (BLOB)<br><br>` +
                     `<strong>Note:</strong> OCR processing encountered an error.`
                 );
             }
