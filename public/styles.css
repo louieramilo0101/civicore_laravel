@@ -140,26 +140,52 @@ body {
     border: 2px solid var(--gold);
     background: transparent;
     color: var(--gold);
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.landing-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: var(--gold);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+    opacity: 0.2;
 }
 
 .landing-btn:hover {
     background: var(--gold);
     color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+}
+
+.landing-btn:hover::after {
+    width: 300px;
+    height: 300px;
 }
 
 .landing-btn.primary {
-    background: var(--gold);
+    background: linear-gradient(135deg, var(--gold) 0%, #c49a67 100%);
     color: var(--primary-color);
+    box-shadow: 0 4px 6px rgba(212, 165, 116, 0.3);
 }
 
 .landing-btn.primary:hover {
     background: transparent;
+    border-color: var(--gold);
     color: var(--gold);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
 }
 
 /* ===== LOGIN PAGE ===== */
@@ -304,20 +330,47 @@ body {
 
 .login-btn {
     width: 100%;
-    padding: 12px;
-    background: var(--gold);
-    color: var(--primary-color);
+    padding: 14px;
+    background: linear-gradient(135deg, #d4a574 0%, #c49a67 100%);
+    color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(212, 165, 116, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
 }
 
 .login-btn:hover {
     transform: translateY(-2px);
-    background: #e5b887;
+    background: linear-gradient(135deg, #e5b887 0%, #d4a574 100%);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+}
+
+.login-btn:hover::after {
+    width: 300px;
+    height: 300px;
+}
+
+.login-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(212, 165, 116, 0.3);
 }
 
 .demo-users {
@@ -720,26 +773,57 @@ body {
 }
 
 .btn-small {
-    padding: 6px 12px;
-    background: var(--secondary-color);
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #d4a574 0%, #c49a67 100%);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
-    transition: background 0.3s;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(212, 165, 116, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-small::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
 }
 
 .btn-small:hover {
-    background: #2980b9;
+    background: linear-gradient(135deg, #2980b9 0%, #2573a7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(41, 128, 185, 0.4);
+}
+
+.btn-small:hover::after {
+    width: 200px;
+    height: 200px;
+}
+
+.btn-small:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(41, 128, 185, 0.3);
 }
 
 .btn-small.danger {
-    background: var(--accent-color);
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
 }
 
 .btn-small.danger:hover {
-    background: #c0392b;
+    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
 
 /* ===== ACTION BUTTON GROUP ===== */
@@ -906,26 +990,62 @@ body {
 
 .btn-primary {
     padding: 12px 25px;
-    background: var(--secondary-color);
+    background: linear-gradient(135deg, #d4a574 0%, #c49a67 100%);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
-    transition: background 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(212, 165, 116, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
 }
 
 .btn-primary:hover {
-    background: #2980b9;
+    background: linear-gradient(135deg, #2980b9 0%, #2573a7 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(41, 128, 185, 0.4);
 }
 
+.btn-primary:hover::after {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(41, 128, 185, 0.3);
+}
+
+.btn-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.3), 0 6px 20px rgba(41, 128, 185, 0.4);
+}
+
+/* Success button */
 .btn-success {
-    background: var(--success-color);
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    box-shadow: 0 4px 6px rgba(39, 174, 96, 0.3);
 }
 
 .btn-success:hover {
-    background: #229954;
+    background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
 }
 
 .ocr-fields {
