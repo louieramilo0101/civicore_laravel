@@ -10,17 +10,51 @@ use Illuminate\Support\Facades\Validator;
 class UserController extends Controller
 {
     /**
-     * Get all users
+     * Get all users with pagination
      */
-    public function index()
+    public function index(Request $request)
     {
-        $users = DB::select("SELECT * FROM users ORDER BY id DESC");
+        $page = (int) $request->query('page', 1);
+        $perPage = min((int) $request->query('per_page', 20), 100); // Cap at 100
+        $search = $request->query('search', '');
+        
+        // Build query with optional search
+        $query = "SELECT * FROM users";
+        $countQuery = "SELECT COUNT(*) as total FROM users";
+        $params = [];
+        
+        if (!empty($search)) {
+            $whereClause = " WHERE name LIKE ? OR email LIKE ? OR role LIKE ?";
+            $query .= $whereClause;
+            $countQuery .= $whereClause;
+            $searchTerm = "%{$search}%";
+            $params = [$searchTerm, $searchTerm, $searchTerm];
+        }
+        
+        // Get total count
+        $totalResult = DB::select($countQuery, $params);
+        $total = $totalResult[0]->total;
+        
+        // Add ordering and pagination
+        $query .= " ORDER BY id DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = ($page - 1) * $perPage;
+        
+        $users = DB::select($query, $params);
         
         foreach ($users as $user) {
             $user->permissions = $this->parsePermissions($user->permissions ?? null);
         }
         
-        return response()->json($users);
+        return response()->json([
+            'data' => $users,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => ceil($total / $perPage),
+            ]
+        ]);
     }
 
     /**

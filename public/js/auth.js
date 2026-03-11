@@ -148,7 +148,7 @@ function handleLoginSubmit(e) {
     })
     .catch(error => {
         console.error('Login error:', error);
-        showErrorModal('Could not connect to the server. Make sure node server.js is running!');
+        showErrorModal('Could not connect to the server. Make sure the Laravel development server is running!');
     });
 }
 

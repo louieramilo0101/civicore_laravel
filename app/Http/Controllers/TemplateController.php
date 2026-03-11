@@ -4,22 +4,26 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class TemplateController extends Controller
 {
     /**
-     * Get all templates
+     * Get all templates (cached)
      */
     public function index()
     {
-        $templates = DB::select("SELECT * FROM templates");
+        // Cache templates for 60 minutes
+        $templates = Cache::remember('templates.all', 60, function () {
+            $results = DB::select("SELECT * FROM templates");
+            $result = [];
+            foreach ($results as $template) {
+                $result[$template->type] = $template->content;
+            }
+            return $result;
+        });
         
-        $result = [];
-        foreach ($templates as $template) {
-            $result[$template->type] = $template->content;
-        }
-        
-        return response()->json($result);
+        return response()->json($templates);
     }
 
     /**
@@ -37,6 +41,9 @@ class TemplateController extends Controller
         } else {
             DB::insert("INSERT INTO templates (type, content) VALUES (?, ?)", [$type, $content]);
         }
+        
+        // Clear cache after update
+        Cache::forget('templates.all');
         
         return response()->json(['success' => true]);
     }
