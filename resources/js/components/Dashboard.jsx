@@ -66,8 +66,6 @@ function Dashboard() {
 
     return (
         <motion.div 
-            className="page active" 
-            id="dashboardPage"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -85,8 +83,11 @@ function Dashboard() {
                     initial="hidden"
                     animate="visible"
                 >
-                    {/* Stats Grid with Animated Counters */}
-                    <motion.div className="stats-grid" variants={itemVariants}>
+                    {/* Stats Grid - Responsive: 1 col mobile, 2 col tablet, 4 col desktop */}
+                    <motion.div 
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8"
+                        variants={itemVariants}
+                    >
                         <AnimatedStatCard 
                             label="Total Documents" 
                             value={stats.totalDocs}
@@ -117,26 +118,27 @@ function Dashboard() {
                         />
                     </motion.div>
 
-                    {/* Charts Container */}
+                    {/* Quick Actions & Welcome - Responsive: 1 col mobile, 2 col desktop */}
                     <motion.div 
-                        className="charts-container"
+                        className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
                         variants={itemVariants}
                     >
+                        {/* Quick Actions Card */}
                         <motion.div 
-                            className="chart-card"
+                            className="bg-white rounded-xl shadow-md p-4 md:p-6"
                             whileHover={{ 
                                 y: -5,
                                 boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                                 transition: { duration: 0.2 }
                             }}
                         >
-                            <h3>Quick Actions</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <h3 className="text-lg font-bold text-[#1a2f4a] mb-4">Quick Actions</h3>
+                            <div className="flex flex-col gap-3">
                                 {[
                                     { to: "/documents", icon: "📤", text: "Upload Document" },
                                     { to: "/issuances", icon: "✅", text: "Issue Certificate" },
                                     { to: "/users", icon: "👥", text: "Manage Users" }
-                                ].map((action, index) => (
+                                ].map((action) => (
                                     <motion.div
                                         key={action.to}
                                         whileHover={{ scale: 1.02, x: 5 }}
@@ -144,26 +146,19 @@ function Dashboard() {
                                     >
                                         <Link 
                                             to={action.to} 
-                                            className="btn-primary" 
-                                            style={{ 
-                                                textAlign: 'center',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '10px',
-                                                padding: '14px'
-                                            }}
+                                            className="block w-full py-3 px-4 bg-[#d4a574] hover:bg-[#c49a67] text-white font-semibold rounded-lg text-center transition-colors"
                                         >
-                                            <span>{action.icon}</span>
-                                            <span>{action.text}</span>
+                                            <span className="mr-2">{action.icon}</span>
+                                            {action.text}
                                         </Link>
                                     </motion.div>
                                 ))}
                             </div>
                         </motion.div>
                         
+                        {/* Welcome Card */}
                         <motion.div 
-                            className="chart-card"
+                            className="bg-white rounded-xl shadow-md p-4 md:p-6"
                             whileHover={{ 
                                 y: -5,
                                 boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
@@ -171,14 +166,15 @@ function Dashboard() {
                             }}
                         >
                             <motion.h3
+                                className="text-lg font-bold text-[#1a2f4a]"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.4 }}
                             >
-                                Welcome, {user.name || 'User'}!
+                                Welcome, {user.name || 'User'}! 👋
                             </motion.h3>
                             <motion.p 
-                                style={{ color: 'var(--text-light)', marginTop: '15px' }}
+                                className="text-gray-500 mt-3 text-sm md:text-base"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.5 }}
@@ -186,17 +182,12 @@ function Dashboard() {
                                 You are logged in as <strong>{user.role || 'User'}</strong>.
                             </motion.p>
                             <motion.div
-                                style={{ 
-                                    marginTop: '20px', 
-                                    padding: '15px', 
-                                    background: 'var(--light-bg)', 
-                                    borderRadius: '8px' 
-                                }}
+                                className="mt-4 p-3 bg-gray-100 rounded-lg"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.6 }}
                             >
-                                <p style={{ fontSize: '14px', color: 'var(--text-light)' }}>
+                                <p className="text-sm text-gray-500">
                                     📅 {new Date().toLocaleDateString('en-US', { 
                                         weekday: 'long', 
                                         year: 'numeric', 

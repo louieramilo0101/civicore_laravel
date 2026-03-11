@@ -13,6 +13,7 @@ import Issuances from './components/Issuances';
 import Users from './components/Users';
 import Barangays from './components/Barangays';
 import Templates from './components/Templates';
+import Layout from './components/Layout';
 
 // Simple auth check - checks if user is logged in via session
 const isAuthenticated = () => {
@@ -64,44 +65,56 @@ const AnimatedRoutes = () => {
                 } />
                 <Route path="/" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Dashboard />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Dashboard />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/documents" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Documents />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Documents />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/issuances" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Issuances />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Issuances />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/users" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Users />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Users />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/barangays" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Barangays />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Barangays />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/templates" element={
                     <ProtectedRoute>
-                        <AnimatedPage>
-                            <Templates />
-                        </AnimatedPage>
+                        <Layout>
+                            <AnimatedPage>
+                                <Templates />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
             </Routes>

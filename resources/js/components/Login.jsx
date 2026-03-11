@@ -53,22 +53,21 @@ function Login() {
 
     return (
         <motion.div 
-            className="login-container" 
-            style={{ display: 'block' }}
+            className="min-h-screen flex items-center justify-center p-4"
             variants={pageVariants}
             initial="initial"
             animate="animate"
             exit="exit"
         >
             <motion.div 
-                className="login-box"
+                className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8"
                 initial={{ opacity: 0, y: -30, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
             >
                 <motion.a 
                     href="#" 
-                    className="back-to-home" 
+                    className="text-gray-500 text-sm font-semibold hover:text-[#1a2f4a] transition-colors inline-block mb-4"
                     onClick={(e) => { e.preventDefault(); navigate('/'); }}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -78,6 +77,7 @@ function Login() {
                     ← Back to Home
                 </motion.a>
                 <motion.h1
+                    className="text-2xl md:text-3xl font-bold text-[#1a2f4a] text-center mb-2"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
@@ -85,12 +85,12 @@ function Login() {
                     Civil Registry of Naic
                 </motion.h1>
                 <motion.p 
-                    className="subtitle"
+                    className="text-gray-500 text-center text-sm mb-6"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
                 >
-                    Document Management System (React)
+                    Document Management System
                 </motion.p>
                 
                 <motion.form 
@@ -100,12 +100,12 @@ function Login() {
                     transition={{ delay: 0.5 }}
                 >
                     <motion.div 
-                        className="form-group"
+                        className="mb-4"
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.6 }}
                     >
-                        <label htmlFor="email">Email</label>
+                        <label htmlFor="email" className="block font-semibold text-[#1a2f4a] mb-2 text-sm">Email</label>
                         <motion.input 
                             type="email" 
                             id="email" 
@@ -113,6 +113,7 @@ function Login() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            className="w-full p-3 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-[#d4a574] text-base"
                             whileFocus={{ 
                                 borderColor: '#d4a574',
                                 boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
@@ -121,12 +122,12 @@ function Login() {
                     </motion.div>
                     
                     <motion.div 
-                        className="form-group"
+                        className="mb-4"
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.7 }}
                     >
-                        <label htmlFor="password">Password</label>
+                        <label htmlFor="password" className="block font-semibold text-[#1a2f4a] mb-2 text-sm">Password</label>
                         <motion.input 
                             type="password" 
                             id="password" 
@@ -134,6 +135,7 @@ function Login() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            className="w-full p-3 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-[#d4a574] text-base"
                             whileFocus={{ 
                                 borderColor: '#d4a574',
                                 boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
@@ -144,7 +146,7 @@ function Login() {
                     <AnimatePresence mode='wait'>
                         {error && (
                             <motion.div 
-                                style={{ color: 'red', marginBottom: '15px' }}
+                                className="text-red-500 mb-4 text-sm"
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
@@ -156,7 +158,7 @@ function Login() {
                     
                     <motion.button 
                         type="submit" 
-                        className="login-btn" 
+                        className="w-full py-3 bg-[#d4a574] hover:bg-[#c49a67] text-white font-semibold rounded-lg transition-colors text-base md:text-lg"
                         disabled={loading}
                         whileHover={{ 
                             scale: loading ? 1 : 1.02,

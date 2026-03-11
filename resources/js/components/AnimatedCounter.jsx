@@ -54,7 +54,7 @@ export const AnimatedStatCard = ({
 }) => {
     return (
         <motion.div
-            className="stat-card"
+            className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ 
@@ -72,19 +72,19 @@ export const AnimatedStatCard = ({
             }}
         >
             <motion.div 
-                className="stat-label"
+                className="text-xs md:text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: delay + 0.2 }}
             >
                 {label}
             </motion.div>
-            <div className="stat-value" style={{ fontSize: '36px' }}>
-                {icon && <span style={{ marginRight: '10px' }}>{icon}</span>}
+            <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1a2f4a]">
+                {icon && <span className="mr-2">{icon}</span>}
                 <AnimatedCounter value={value} prefix={prefix} suffix={suffix} />
             </div>
             <motion.div 
-                className="stat-change"
+                className="text-xs md:text-sm text-green-600 mt-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: delay + 0.4 }}
