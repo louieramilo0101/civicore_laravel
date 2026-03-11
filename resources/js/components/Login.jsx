@@ -31,7 +31,7 @@ function Login() {
 
             if (response.ok && data.success) {
                 sessionStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/');
+                navigate('/dashboard');
             } else {
                 setError(data.message || 'Login failed');
             }
