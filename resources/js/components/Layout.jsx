@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { 
+    ChartBarIcon, 
+    DocumentIcon, 
+    ClipboardDocumentCheckIcon, 
+    UsersIcon, 
+    MapPinIcon,
+    DocumentTextIcon
+} from '@heroicons/react/24/outline';
 
 const Layout = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
 
     const menuItems = [
-        { path: '/', icon: '📊', label: 'Dashboard' },
-        { path: '/documents', icon: '📄', label: 'Documents' },
-        { path: '/issuances', icon: '✅', label: 'Issuances' },
-        { path: '/users', icon: '👥', label: 'Users' },
-        { path: '/barangays', icon: '🗺️', label: 'Barangays' },
-        { path: '/templates', icon: '📝', label: 'Templates' },
+        { path: '/dashboard', icon: ChartBarIcon, label: 'Dashboard' },
+        { path: '/documents', icon: DocumentIcon, label: 'Documents' },
+        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Issuances' },
+        { path: '/users', icon: UsersIcon, label: 'Users' },
+        { path: '/barangays', icon: MapPinIcon, label: 'Barangays' },
+        { path: '/templates', icon: DocumentTextIcon, label: 'Templates' },
     ];
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -62,7 +71,9 @@ const Layout = ({ children }) => {
 
                 {/* Menu */}
                 <nav className="p-2">
-                    {menuItems.map((item) => (
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
                         <Link
                             key={item.path}
                             to={item.path}
@@ -76,18 +87,27 @@ const Layout = ({ children }) => {
                                 }
                             `}
                         >
-                            <span className="text-lg">{item.icon}</span>
+                            <Icon className="w-5 h-5" />
                             <span className="text-sm font-medium">{item.label}</span>
                         </Link>
-                    ))}
+                        );
+                    })}
                 </nav>
 
                 {/* Logout */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
                     <button 
-                        onClick={() => {
+                        onClick={async () => {
+                            try {
+                                await fetch(`${window.location.origin}/api/logout`, {
+                                    method: 'POST',
+                                    credentials: 'include'
+                                });
+                            } catch (e) {
+                                // Ignore errors
+                            }
                             sessionStorage.clear();
-                            window.location.href = '/login';
+                            navigate('/login');
                         }}
                         className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
                     >

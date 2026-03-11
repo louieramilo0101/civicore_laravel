@@ -3,6 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
 import SkeletonLoader from './SkeletonLoader';
+import { 
+    HeartIcon, 
+    XCircleIcon, 
+    ArrowUpTrayIcon,
+    InboxIcon,
+    DocumentIcon
+} from '@heroicons/react/24/outline';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -64,10 +71,19 @@ function Documents() {
     };
 
     const documentTypes = [
-        { id: 'birth', name: 'Birth Certificate', icon: '👶', desc: 'Upload and process birth certificates' },
-        { id: 'death', name: 'Death Certificate', icon: '⚰️', desc: 'Upload and process death certificates' },
-        { id: 'marriage', name: 'Marriage License', icon: '💍', desc: 'Upload and process marriage licenses' }
+        { id: 'birth', name: 'Birth Certificate', icon: HeartIcon, desc: 'Upload and process birth certificates' },
+        { id: 'death', name: 'Death Certificate', icon: XCircleIcon, desc: 'Upload and process death certificates' },
+        { id: 'marriage', name: 'Marriage License', icon: ArrowUpTrayIcon, desc: 'Upload and process marriage licenses' }
     ];
+
+    const getDocIcon = (docType) => {
+        switch(docType) {
+            case 'birth': return HeartIcon;
+            case 'death': return XCircleIcon;
+            case 'marriage': return ArrowUpTrayIcon;
+            default: return DocumentIcon;
+        }
+    };
 
     return (
         <motion.div 
@@ -93,7 +109,9 @@ function Documents() {
                     </motion.h2>
                     
                     <div className="grid gap-3 mb-4">
-                        {documentTypes.map((type, index) => (
+                        {documentTypes.map((type, index) => {
+                            const TypeIcon = type.icon;
+                            return (
                             <motion.div 
                                 key={type.id}
                                 className={`p-3 md:p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -106,10 +124,14 @@ function Documents() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
-                                <div className="font-semibold text-[#1a2f4a]">{type.icon} {type.name}</div>
+                                <div className="font-semibold text-[#1a2f4a] flex items-center gap-2">
+                                    <TypeIcon className="w-5 h-5 text-[#d4a574]" />
+                                    {type.name}
+                                </div>
                                 <div className="text-xs md:text-sm text-gray-500">{type.desc}</div>
                             </motion.div>
-                        ))}
+                            );
+                        })}
                     </div>
                     
                     <motion.div 
@@ -151,12 +173,14 @@ function Documents() {
                         <div className="flex items-center justify-center py-8"><SkeletonLoader type="list" rows={5} /></div>
                     ) : documents.length === 0 ? (
                         <motion.div className="text-center py-8 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}>
-                            <div className="text-4xl mb-2">📭</div>
+                            <InboxIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                             <p>No documents uploaded yet</p>
                         </motion.div>
                     ) : (
                         <AnimatePresence>
-                            {documents.slice(0, 10).map((doc, index) => (
+                            {documents.slice(0, 10).map((doc, index) => {
+                                const DocIcon = getDocIcon(doc.docType);
+                                return (
                                 <motion.div 
                                     key={doc.id} 
                                     className="flex items-center gap-3 p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50"
@@ -166,13 +190,14 @@ function Documents() {
                                     transition={{ delay: index * 0.05 }}
                                     whileHover={{ backgroundColor: 'rgba(0,0,0,0.02)', scale: 1.01 }}
                                 >
-                                    <div className="text-2xl">{doc.docType === 'birth' ? '👶' : doc.docType === 'death' ? '⚰️' : '💍'}</div>
+                                    <DocIcon className="w-6 h-6 text-[#d4a574]" />
                                     <div className="flex-1 min-w-0">
                                         <div className="font-medium text-[#1a2f4a] truncate">{doc.personName || 'Unknown'}</div>
                                         <div className="text-xs text-gray-500 capitalize">{doc.docType} - {doc.status}</div>
                                     </div>
                                 </motion.div>
-                            ))}
+                                );
+                            })}
                         </AnimatePresence>
                     )}
                 </motion.div>

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import './bootstrap';
 
 // Import React components
+import Landing from './components/Landing';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Documents from './components/Documents';
@@ -58,12 +59,20 @@ const AnimatedRoutes = () => {
     return (
         <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
+                {/* Public Routes */}
+                <Route path="/" element={
+                    <AnimatedPage>
+                        <Landing />
+                    </AnimatedPage>
+                } />
                 <Route path="/login" element={
                     <AnimatedPage>
                         <Login />
                     </AnimatedPage>
                 } />
-                <Route path="/" element={
+                
+                {/* Protected Routes */}
+                <Route path="/dashboard" element={
                     <ProtectedRoute>
                         <Layout>
                             <AnimatedPage>
@@ -117,6 +126,9 @@ const AnimatedRoutes = () => {
                         </Layout>
                     </ProtectedRoute>
                 } />
+                
+                {/* Redirect root to landing */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </AnimatePresence>
     );

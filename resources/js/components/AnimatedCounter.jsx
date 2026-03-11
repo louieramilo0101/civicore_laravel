@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useSpring, useTransform } from 'framer-motion';
+import { 
+    DocumentTextIcon,
+    ClipboardDocumentCheckIcon,
+    ClockIcon,
+    UsersIcon,
+    HeartIcon,
+    ArrowUpTrayIcon,
+    InboxIcon
+} from '@heroicons/react/24/outline';
 
 const AnimatedCounter = ({ 
     value = 0, 
@@ -46,7 +55,7 @@ const AnimatedCounter = ({
 export const AnimatedStatCard = ({ 
     label, 
     value, 
-    icon, 
+    icon: Icon, 
     color = '#d4a574',
     prefix = '',
     suffix = '',
@@ -79,8 +88,8 @@ export const AnimatedStatCard = ({
             >
                 {label}
             </motion.div>
-            <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1a2f4a]">
-                {icon && <span className="mr-2">{icon}</span>}
+            <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1a2f4a] flex items-center">
+                {Icon && <Icon className="w-8 h-8 mr-2" style={{ color: color }} />}
                 <AnimatedCounter value={value} prefix={prefix} suffix={suffix} />
             </div>
             <motion.div 

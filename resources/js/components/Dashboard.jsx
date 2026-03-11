@@ -2,8 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
-import { AnimatedStatCard, AnimatedCounter } from './AnimatedCounter';
+import { AnimatedStatCard } from './AnimatedCounter';
 import SkeletonLoader from './SkeletonLoader';
+import { 
+    DocumentTextIcon, 
+    ClipboardDocumentCheckIcon, 
+    ClockIcon, 
+    UsersIcon, 
+    ArrowUpTrayIcon 
+} from '@heroicons/react/24/outline';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -91,28 +98,28 @@ function Dashboard() {
                         <AnimatedStatCard 
                             label="Total Documents" 
                             value={stats.totalDocs}
-                            icon="📄"
+                            icon={DocumentTextIcon}
                             color="#d4a574"
                             delay={0}
                         />
                         <AnimatedStatCard 
                             label="Processed" 
                             value={stats.processedDocs}
-                            icon="✅"
+                            icon={ClipboardDocumentCheckIcon}
                             color="#27ae60"
                             delay={0.1}
                         />
                         <AnimatedStatCard 
                             label="Pending" 
                             value={stats.pendingDocs}
-                            icon="⏳"
+                            icon={ClockIcon}
                             color="#f39c12"
                             delay={0.2}
                         />
                         <AnimatedStatCard 
                             label="Users" 
                             value={stats.totalUsers}
-                            icon="👥"
+                            icon={UsersIcon}
                             color="#9b59b6"
                             delay={0.3}
                         />
@@ -135,10 +142,12 @@ function Dashboard() {
                             <h3 className="text-lg font-bold text-[#1a2f4a] mb-4">Quick Actions</h3>
                             <div className="flex flex-col gap-3">
                                 {[
-                                    { to: "/documents", icon: "📤", text: "Upload Document" },
-                                    { to: "/issuances", icon: "✅", text: "Issue Certificate" },
-                                    { to: "/users", icon: "👥", text: "Manage Users" }
-                                ].map((action) => (
+                                    { to: "/documents", icon: ArrowUpTrayIcon, text: "Upload Document" },
+                                    { to: "/issuances", icon: ClipboardDocumentCheckIcon, text: "Issue Certificate" },
+                                    { to: "/users", icon: UsersIcon, text: "Manage Users" }
+                                ].map((action) => {
+                                    const ActionIcon = action.icon;
+                                    return (
                                     <motion.div
                                         key={action.to}
                                         whileHover={{ scale: 1.02, x: 5 }}
@@ -146,13 +155,14 @@ function Dashboard() {
                                     >
                                         <Link 
                                             to={action.to} 
-                                            className="block w-full py-3 px-4 bg-[#d4a574] hover:bg-[#c49a67] text-white font-semibold rounded-lg text-center transition-colors"
+                                            className="block w-full py-3 px-4 bg-[#d4a574] hover:bg-[#c49a67] text-white font-semibold rounded-lg text-center transition-colors flex items-center justify-center gap-2"
                                         >
-                                            <span className="mr-2">{action.icon}</span>
+                                            <ActionIcon className="w-5 h-5" />
                                             {action.text}
                                         </Link>
                                     </motion.div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </motion.div>
                         
