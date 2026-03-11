@@ -91,6 +91,22 @@
 
     <!-- MAIN APPLICATION -->
     <div class="main-container" id="mainContainer">
+        <!-- MOBILE HEADER -->
+        <div class="mobile-header" id="mobileHeader">
+            <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="mobile-logo">
+                <span class="logo-icon">🏛️</span>
+                <span class="logo-text">Civil Registry</span>
+            </div>
+        </div>
+
+        <!-- SIDEBAR OVERLAY -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
         <!-- SIDEBAR -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -697,18 +713,6 @@
         </div>
     </div>
 
-    <!-- Internal JavaScript - Load in order (dependencies matter) -->
-    <script src="js/api.js"></script>         <!-- API functions for MySQL database -->
-    <script src="js/auth.js"></script>        <!-- Login/logout functions -->
-    <script src="js/userInfo.js"></script>    <!-- User info functions -->
-    <script src="js/script.js"></script>      <!-- Main application logic -->
-    <script src="js/navigation.js"></script>  <!-- Page navigation -->
-    <script src="js/documents.js"></script>   <!-- Upload, OCR, documents -->
-    <script src="js/issuance.js"></script>     <!-- Certificate issuance -->
-    <script src="js/accounts.js"></script>     <!-- User management -->
-    <script src="js/maps.js"></script>        <!-- Mapping functions -->
-    <script src="js/main.js"></script>        <!-- Initialization -->
-    
     <!-- React App (Vite built) -->
     @viteReactRefresh
     @vite(['resources/js/app.jsx'])

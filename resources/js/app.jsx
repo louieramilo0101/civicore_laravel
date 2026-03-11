@@ -1,9 +1,11 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import './bootstrap';
 
-// Import React components (will be created)
+// Import React components
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Documents from './components/Documents';
@@ -11,6 +13,7 @@ import Issuances from './components/Issuances';
 import Users from './components/Users';
 import Barangays from './components/Barangays';
 import Templates from './components/Templates';
+import Layout from './components/Layout';
 
 // Simple auth check - checks if user is logged in via session
 const isAuthenticated = () => {
@@ -25,42 +28,105 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-function App() {
+// Animated page wrapper
+const AnimatedPage = ({ children }) => {
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<Login />} />
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+            {children}
+        </motion.div>
+    );
+};
+
+// Scroll to top on route change
+const ScrollToTop = () => {
+    const { pathname } = useLocation();
+    React.useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    return null;
+};
+
+// Animated Routes component
+const AnimatedRoutes = () => {
+    const location = useLocation();
+
+    return (
+        <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+                <Route path="/login" element={
+                    <AnimatedPage>
+                        <Login />
+                    </AnimatedPage>
+                } />
                 <Route path="/" element={
                     <ProtectedRoute>
-                        <Dashboard />
+                        <Layout>
+                            <AnimatedPage>
+                                <Dashboard />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/documents" element={
                     <ProtectedRoute>
-                        <Documents />
+                        <Layout>
+                            <AnimatedPage>
+                                <Documents />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/issuances" element={
                     <ProtectedRoute>
-                        <Issuances />
+                        <Layout>
+                            <AnimatedPage>
+                                <Issuances />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/users" element={
                     <ProtectedRoute>
-                        <Users />
+                        <Layout>
+                            <AnimatedPage>
+                                <Users />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/barangays" element={
                     <ProtectedRoute>
-                        <Barangays />
+                        <Layout>
+                            <AnimatedPage>
+                                <Barangays />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="/templates" element={
                     <ProtectedRoute>
-                        <Templates />
+                        <Layout>
+                            <AnimatedPage>
+                                <Templates />
+                            </AnimatedPage>
+                        </Layout>
                     </ProtectedRoute>
                 } />
             </Routes>
+        </AnimatePresence>
+    );
+};
+
+function App() {
+    return (
+        <BrowserRouter>
+            <ScrollToTop />
+            <AnimatedRoutes />
         </BrowserRouter>
     );
 }
