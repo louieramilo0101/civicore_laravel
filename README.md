@@ -82,59 +82,90 @@ Civicore is a web-based civic document management system designed for local gove
 
 ## Prerequisites
 
-- PHP 8.2 or higher
+**Server Environment (Laragon Recommended):**
+- PHP 8.2+
 - Composer
-- MySQL 5.7 or higher
-- Node.js & npm (for asset compilation)
-- Python 3.x (for OCR processing)
-- EasyOCR: `pip install easyocr`
+- Node.js 18+ & npm
+- MySQL 8+ (Laragon default port: **3307**)
+- Python 3.x + `pip install easyocr` (for OCR)
 
-## Installation
+## Installation (Complete Setup - Tested on Laragon)
 
-### 1. Clone the Repository
+### 1. Clone & Install Dependencies (Clear Cache for Fresh Install)
 ```bash
 git clone <repository-url>
 cd civicore_laravel
+composer install --no-cache --optimize-autoloader
+npm ci
 ```
 
-### 2. Install Dependencies
+### 2. Copy & Configure .env
 ```bash
-composer install
-npm install
+copy .env.example .env
 ```
+**Edit `.env` (Critical for Laragon):**
+```
+APP_NAME=Civicore
+APP_ENV=local
+APP_KEY=  # Will be generated in step 3
+APP_DEBUG=true
+APP_URL=http://localhost:8000
 
-### 3. Configure Environment
-```bash
-cp .env.example .env
-```
-
-### 4. Update .env File
-Edit the `.env` file with your database credentials:
-```
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=3307  # Laragon MySQL port (check Laragon tray icon)
 DB_DATABASE=civicore_db
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
+DB_USERNAME=root
+DB_PASSWORD=  # Usually empty in Laragon
 ```
 
-### 5. Generate Application Key
+### 3. Generate APP_KEY (Required - Fixes Encryption Errors)
 ```bash
 php artisan key:generate
 ```
 
-### 6. Run Migrations
-```bash
-php artisan migrate
+### 4. Setup Database (IMPORT DATA - Don't Migrate!)
+- Open **phpMyAdmin/HeidiSQL** (Laragon → MySQL → phpMyAdmin)
+- Create database `civicore_db` (utf8mb4_unicode_ci)
+- Import `civicore-export.sql` (includes users: admin@civicore.com)
+```
+**Default Login:** admin@civicore.com / Check `check_bcrypt_cost.php` or reset password
 ```
 
-### 7. Start Development Server
+### 5. Storage & Permissions (Fixes 500 Errors)
+```bash
+php artisan storage:link
+# Windows/Laragon:
+icacls storage /grant "Everyone":F /T
+icacls bootstrap\cache /grant "Everyone":F /T
+```
+
+### 6. Cache & Assets
+```bash
+php artisan config:cache
+php artisan route:cache
+npm run dev  # or npm run build for production
+```
+
+### 7. Start Server
 ```bash
 php artisan serve
 ```
+**Access:** http://localhost:8000
 
-The application will be available at `http://localhost:8000`
+## Troubleshooting Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| **"No application encryption key generated"** | `php artisan key:generate` |
+| **DB Connection Failed** | Check DB_PORT=3307 (Laragon), create `civicore_db`, import SQL dump |
+| **500 Internal Server Error** | `php artisan storage:link`, fix storage perms, check `storage/logs/laravel.log` |
+| **Login Fails** | Import civicore-export.sql has users; run `check_user.php` for passwords |
+| **npm/yarn issues** | `rm -rf node_modules package-lock.json && npm ci` |
+| **Composer slow** | `composer install --no-cache` |
+| **Slow login** | Already optimized; clear cache: `php artisan cache:clear` |
+
+**Logs:** `tail -f storage/logs/laravel.log` during startup.
 
 ## API Endpoints
 

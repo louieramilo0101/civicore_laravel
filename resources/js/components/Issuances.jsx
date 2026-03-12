@@ -30,10 +30,10 @@ function Issuances() {
 
     const getTypeIcon = (type) => {
         switch(type) {
-            case 'birth': return '👶';
-            case 'death': return '⚰️';
-            case 'marriage_license': return '💍';
-            default: return '📄';
+            case 'birth': return 'Birth';
+            case 'death': return 'Death';
+            case 'marriage_license': return 'Marriage';
+            default: return 'Certificate';
         }
     };
 
@@ -54,9 +54,9 @@ function Issuances() {
                     <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Filter by Type:</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button className="btn-primary" onClick={() => setFilter('all')}>All</button>
-                        <button className="btn-primary" onClick={() => setFilter('birth')}>👶 Birth</button>
-                        <button className="btn-primary" onClick={() => setFilter('death')}>⚰️ Death</button>
-                        <button className="btn-primary" onClick={() => setFilter('marriage_license')}>👰 Marriage</button>
+                        <button className="btn-primary" onClick={() => setFilter('birth')}>Birth</button>
+                        <button className="btn-primary" onClick={() => setFilter('death')}>Death</button>
+                        <button className="btn-primary" onClick={() => setFilter('marriage_license')}>Marriage</button>
                     </div>
                 </div>
 

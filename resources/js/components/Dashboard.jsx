@@ -55,22 +55,22 @@ function Dashboard() {
                 <div className="stat-card">
                     <div className="stat-label">Total Documents</div>
                     <div className="stat-value">{loading ? '...' : stats.totalDocs}</div>
-                    <div className="stat-change">✓ Updated today</div>
+                    <div className="stat-change">Updated today</div>
                 </div>
                 <div className="stat-card success">
                     <div className="stat-label">Processed</div>
                     <div className="stat-value">{loading ? '...' : stats.processedDocs}</div>
-                    <div className="stat-change">✓ This month</div>
+                    <div className="stat-change">This month</div>
                 </div>
                 <div className="stat-card warning">
                     <div className="stat-label">Pending</div>
                     <div className="stat-value">{loading ? '...' : stats.pendingDocs}</div>
-                    <div className="stat-change">⚠ Requires attention</div>
+                    <div className="stat-change">Requires attention</div>
                 </div>
                 <div className="stat-card danger">
                     <div className="stat-label">Users</div>
                     <div className="stat-value">{loading ? '...' : stats.totalUsers}</div>
-                    <div className="stat-change">✓ Active accounts</div>
+                    <div className="stat-change">Active accounts</div>
                 </div>
             </div>
 
@@ -78,9 +78,9 @@ function Dashboard() {
                 <div className="chart-card">
                     <h3>Quick Actions</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <Link to="/documents" className="btn-primary" style={{ textAlign: 'center' }}>📤 Upload Document</Link>
-                        <Link to="/issuances" className="btn-primary" style={{ textAlign: 'center' }}>✅ Issue Certificate</Link>
-                        <Link to="/users" className="btn-primary" style={{ textAlign: 'center' }}>👥 Manage Users</Link>
+                        <Link to="/documents" className="btn-primary" style={{ textAlign: 'center' }}>Upload Document</Link>
+                        <Link to="/issuances" className="btn-primary" style={{ textAlign: 'center' }}>Issue Certificate</Link>
+                        <Link to="/users" className="btn-primary" style={{ textAlign: 'center' }}>Manage Users</Link>
                     </div>
                 </div>
                 <div className="chart-card">

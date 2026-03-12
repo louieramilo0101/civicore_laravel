@@ -10,6 +10,8 @@ async function initIssuancePage() {
     await generateCertNumber();
     await loadIssuanceData();
     initializeDateInputValidation();
+    // Reset checkbox state when entering issuance page
+    resetCheckboxState();
 }
 
 // --- Load Barangays to Dropdown ---
@@ -331,17 +333,17 @@ async function viewIssuanceDocument(id) {
         const record = await getIssuanceById(id);
         console.log('Fetched record:', record);
         
-        if (!record) {
-            console.error('No record found for ID:', id);
-            alert('Record not found');
-            return;
-        }
-        
-        if (record.error) {
-            console.error('Error fetching record:', record.error);
-            alert('Error loading record: ' + record.error);
-            return;
-        }
+            if (!record) {
+                console.error('No record found for ID:', id);
+                showErrorModal('Record not found');
+                return;
+            }
+            
+            if (record.error) {
+                console.error('Error fetching record:', record.error);
+                showErrorModal('Error loading record: ' + record.error);
+                return;
+            }
         
         // Find associated doc if exists - using 'date' field instead of 'dateAdded'
         const docs = await getAllDocuments();
@@ -354,7 +356,7 @@ async function viewIssuanceDocument(id) {
         displayIssuanceDocumentModal(record, matchingDoc);
     } catch (error) {
         console.error('Error in viewIssuanceDocument:', error);
-        alert('Error loading document: ' + error.message);
+        showErrorModal('Error loading document: ' + error.message);
     }
 }
 
@@ -403,14 +405,14 @@ async function printIssuanceRecord(id) {
         console.log('Fetched record for printing:', record);
         
         if (!record || record.error) {
-            console.error('No record found or error:', record);
-            alert('Record not found or error loading record');
+        console.error('No record found or error:', record);
+            showErrorModal('Record not found or error loading record');
             return;
         }
         
         const w = window.open('', '_blank');
         if (!w) {
-            alert('Please allow popups to print');
+            showErrorModal('Please allow popups to print');
             return;
         }
         
@@ -445,7 +447,7 @@ async function printIssuanceRecord(id) {
         w.document.close();
     } catch (error) {
         console.error('Error in printIssuanceRecord:', error);
-        alert('Error printing document: ' + error.message);
+        showErrorModal('Error printing document: ' + error.message);
     }
 }
 
@@ -525,7 +527,20 @@ function initializeDashboardCharts() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        bottom: 20
                     }
                 }
             }
@@ -550,7 +565,20 @@ function initializeDashboardCharts() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        bottom: 20
                     }
                 }
             }
@@ -587,6 +615,19 @@ function initializeDashboardCharts() {
                         ticks: {
                             stepSize: 1
                         }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
                     }
                 }
             }
@@ -624,6 +665,19 @@ function initializeDashboardCharts() {
                                 return value + '%';
                             }
                         }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
                     }
                 }
             }
@@ -883,7 +937,7 @@ async function printSelectedIssuance() {
     const selectedIds = getSelectedIssuanceIds();
     
     if (selectedIds.length === 0) {
-        alert('Please select at least one certificate to print.');
+        showErrorModal('Please select at least one certificate to print.');
         return;
     }
     
@@ -892,7 +946,7 @@ async function printSelectedIssuance() {
     try {
         const w = window.open('', '_blank');
         if (!w) {
-            alert('Please allow popups to print');
+            showErrorModal('Please allow popups to print');
             return;
         }
         
@@ -905,8 +959,8 @@ async function printSelectedIssuance() {
         }
         
         if (records.length === 0) {
-            alert('No records found for printing.');
-            w.close();
+            showErrorModal('No records found for printing.');
+            if (w) w.close();
             return;
         }
         
@@ -953,7 +1007,7 @@ async function printSelectedIssuance() {
         w.document.close();
     } catch (error) {
         console.error('Error in printSelectedIssuance:', error);
-        alert('Error printing documents: ' + error.message);
+        showErrorModal('Error printing documents: ' + error.message);
     }
 }
 
@@ -965,13 +1019,13 @@ async function printAllIssuance() {
         const records = await getAllIssuances();
         
         if (!records || records.length === 0) {
-            alert('No records found to print.');
+            showErrorModal('No records found to print.');
             return;
         }
         
         const w = window.open('', '_blank');
         if (!w) {
-            alert('Please allow popups to print');
+            showErrorModal('Please allow popups to print');
             return;
         }
         
@@ -1018,7 +1072,7 @@ async function printAllIssuance() {
         w.document.close();
     } catch (error) {
         console.error('Error in printAllIssuance:', error);
-        alert('Error printing documents: ' + error.message);
+        showErrorModal('Error printing documents: ' + error.message);
     }
 }
 
@@ -1028,6 +1082,55 @@ async function printAllIssuance() {
 
 // --- Track checkbox visibility state ---
 let checkboxesVisible = false;
+
+// --- Reset Checkbox State - Call this when navigating away ---
+function resetCheckboxState() {
+    checkboxesVisible = false;
+    const checkboxes = document.querySelectorAll('.issuance-checkbox');
+    const headerCheckbox = document.getElementById('selectAllCheckbox');
+    const toggleBtn = document.getElementById('toggleCheckboxesBtn');
+    
+    // Hide all checkboxes
+    checkboxes.forEach(checkbox => {
+        const container = checkbox.closest('.checkbox-container');
+        if (container) {
+            container.classList.add('checkbox-hidden');
+        }
+        const td = checkbox.closest('td');
+        if (td) {
+            td.classList.add('checkbox-hidden');
+        }
+        // Uncheck all
+        checkbox.checked = false;
+    });
+    
+    // Hide header checkbox
+    if (headerCheckbox) {
+        const headerContainer = headerCheckbox.closest('.checkbox-container');
+        if (headerContainer) {
+            headerContainer.classList.add('checkbox-hidden');
+        }
+        const th = headerCheckbox.closest('th');
+        if (th) {
+            th.classList.add('checkbox-hidden');
+        }
+        headerCheckbox.checked = false;
+        headerCheckbox.indeterminate = false;
+    }
+    
+    // Hide delete buttons and reset toggle button color
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const deleteSelectedRow = document.getElementById('deleteSelectedRow');
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.style.display = 'none';
+    }
+    if (deleteSelectedRow) {
+        deleteSelectedRow.style.display = 'none';
+    }
+    if (toggleBtn) {
+        toggleBtn.style.background = '#9b59b6'; // Reset to purple
+    }
+}
 
 // --- Toggle Checkboxes Visibility ---
 function toggleCheckboxes() {
@@ -1135,7 +1238,7 @@ function deleteSelectedIssuance() {
     const selectedIds = getSelectedIssuanceIds();
     
     if (selectedIds.length === 0) {
-        alert('Please select at least one certificate to delete.');
+        showErrorModal('Please select at least one certificate to delete.');
         return;
     }
     

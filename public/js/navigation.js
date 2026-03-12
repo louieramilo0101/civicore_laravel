@@ -25,6 +25,11 @@ function navigateToPage(pageId) {
     // Update page title
     updatePageTitle();
     
+    // Reset checkbox state when leaving issuance page
+    if (typeof resetCheckboxState === 'function') {
+        resetCheckboxState();
+    }
+    
     // Load page-specific data
     if (pageId === 'dashboardPage') {
         setTimeout(updateAllStatistics, 100);

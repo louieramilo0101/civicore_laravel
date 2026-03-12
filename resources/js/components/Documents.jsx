@@ -70,21 +70,21 @@ function Documents() {
                             className={`doc-type-btn ${selectedType === 'birth' ? 'active' : ''}`}
                             onClick={() => setSelectedType('birth')}
                         >
-                            <div className="doc-name">👶 Birth Certificate</div>
+                            <div className="doc-name">Birth Certificate</div>
                             <div className="doc-desc">Upload and process birth certificates</div>
                         </div>
                         <div 
                             className={`doc-type-btn ${selectedType === 'death' ? 'active' : ''}`}
                             onClick={() => setSelectedType('death')}
                         >
-                            <div className="doc-name">⚰️ Death Certificate</div>
+                            <div className="doc-name">Death Certificate</div>
                             <div className="doc-desc">Upload and process death certificates</div>
                         </div>
                         <div 
                             className={`doc-type-btn ${selectedType === 'marriage' ? 'active' : ''}`}
                             onClick={() => setSelectedType('marriage')}
                         >
-                            <div className="doc-name">💍 Marriage License</div>
+                            <div className="doc-name">Marriage License</div>
                             <div className="doc-desc">Upload and process marriage licenses</div>
                         </div>
                     </div>
@@ -114,14 +114,14 @@ function Documents() {
                         </div>
                     ) : documents.length === 0 ? (
                         <div className="empty-state">
-                            <div className="icon">📭</div>
+                            <div className="icon">📄</div>
                             <p>No documents uploaded yet</p>
                         </div>
                     ) : (
                         documents.slice(0, 10).map(doc => (
                             <div key={doc.id} className="document-item">
                                 <div className="doc-icon">
-                                    {doc.docType === 'birth' ? '👶' : doc.docType === 'death' ? '⚰️' : '💍'}
+                                    {doc.docType === 'birth' ? 'Birth' : doc.docType === 'death' ? 'Death' : 'Marriage'}
                                 </div>
                                 <div className="doc-info">
                                     <div className="doc-name">{doc.personName || 'Unknown'}</div>
