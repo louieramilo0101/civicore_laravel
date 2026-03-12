@@ -1,30 +1,28 @@
 # TODO Index
 
-This folder contains all TODO lists for tracking project progress and documentation.
+This folder contains all TODO lists for tracking project progress.
 
 ## All TODO Lists
-
 | # | File | Task | Status | Date Created |
 |---|------|------|--------|--------------|
 | 1 | TODO-2024-01-React-Migration.md | Complete React Migration | ✅ Complete | 2024-01 |
-| 2 | TODO-2025-03-Alert-to-Popup.md | Replace alert() with custom popup | 🔄 In Progress | 2025-03 |
+| 2 | TODO-2025-03-Alert-to-Popup.md | Replace alert() with toast | 🔄 In Progress | 2025-03 |
+| 3 | TODO-icon-migration.md | Icon migration | ⏳ Planned | TBD |
+| 4 | TODO-Fixes-Plan.md | General fixes | ⏳ Planned | TBD |
 
----
-
-## How to Add a New TODO
-
-1. Copy the `template.md` file and rename it with the format: `TODO-YYYY-MM-Task-Name.md`
-2. Fill in the task details following the template structure
-3. Add an entry to this INDEX.md file
+## How to Add New TODO
+1. Copy `template.md` → `TODO-YYYY-MM-Task-Name.md`
+2. Fill template structure
+3. Add entry to INDEX.md
 
 ## Folder Structure
-
 ```
 TODO/
-├── INDEX.md                    # This file - master list of all TODOs
-├── TODO-2024-01-React-Migration.md  # Completed task
-├── TODO-2025-03-Alert-to-Popup.md    # In progress
-├── TODO-icon-migration.md      # In progress
-└── template.md                 # Template for new TODO lists
+├── INDEX.md                    # Master list
+├── TODO-2024-01-React-Migration.md
+├── TODO-2025-03-Alert-to-Popup.md
+├── TODO-icon-migration.md
+├── TODO-Fixes-Plan.md
+└── template.md
 ```
 

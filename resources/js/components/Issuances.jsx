@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
+import SkeletonLoader from './SkeletonLoader';
+import { 
+    HeartIcon, 
+    XCircleIcon, 
+    ClipboardDocumentListIcon,
+    InboxIcon,
+    DocumentIcon,
+    QueueListIcon
+} from '@heroicons/react/24/outline';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '/api';
 
 function Issuances() {
     const [issuances, setIssuances] = useState([]);
@@ -14,7 +24,7 @@ function Issuances() {
 
     const fetchIssuances = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/issuances`, { credentials: 'include' });
+            const response = await fetch(`${API_BASE}/issuances`, { credentials: 'include' });
             const data = await response.json();
             setIssuances(data || []);
         } catch (err) {
@@ -30,78 +40,152 @@ function Issuances() {
 
     const getTypeIcon = (type) => {
         switch(type) {
-            case 'birth': return 'Birth';
-            case 'death': return 'Death';
-            case 'marriage_license': return 'Marriage';
-            default: return 'Certificate';
+            case 'birth': return HeartIcon;
+            case 'death': return XCircleIcon;
+            case 'marriage_license': return ClipboardDocumentListIcon;
+            default: return DocumentIcon;
         }
     };
 
     const getStatusClass = (status) => {
         switch(status) {
-            case 'Issued': return 'status-issued';
-            case 'Pending': return 'status-pending';
-            default: return '';
+            case 'Issued': return 'bg-green-100 text-green-700';
+            case 'Pending': return 'bg-yellow-100 text-yellow-700';
+            default: return 'bg-gray-100 text-gray-700';
         }
     };
 
-    return (
-        <div className="page" id="issuancePage">
-            <div style={{ background: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
-                <h2 style={{ marginBottom: '20px', color: 'var(--primary-color)' }}>Certificate Issuance Management</h2>
-                
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Filter by Type:</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button className="btn-primary" onClick={() => setFilter('all')}>All</button>
-                        <button className="btn-primary" onClick={() => setFilter('birth')}>Birth</button>
-                        <button className="btn-primary" onClick={() => setFilter('death')}>Death</button>
-                        <button className="btn-primary" onClick={() => setFilter('marriage_license')}>Marriage</button>
-                    </div>
-                </div>
+    const filterButtons = [
+        { id: 'all', label: 'All Certificates', icon: QueueListIcon },
+        { id: 'birth', label: 'Birth', icon: HeartIcon },
+        { id: 'death', label: 'Death', icon: XCircleIcon },
+        { id: 'marriage_license', label: 'Marriage', icon: ClipboardDocumentListIcon }
+    ];
 
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+        >
+            <motion.div 
+                className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <motion.h2 className="text-lg md:text-xl font-bold text-[#1a2f4a] mb-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                    Certificate Issuance Management
+                </motion.h2>
+                
+                <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+                    <label className="block font-semibold mb-3 text-sm md:text-base text-gray-700">Filter Certificates:</label>
+                    <div className="flex flex-wrap gap-2">
+                        {filterButtons.map((btn, index) => {
+                            const BtnIcon = btn.icon;
+                            return (
+                            <motion.button 
+                                key={btn.id}
+                                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm ${
+                                    filter === btn.id 
+                                        ? 'bg-[#d4a574] text-white shadow-md' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm border border-gray-200'
+                                }`}
+                                onClick={() => setFilter(btn.id)}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 + (index * 0.05) }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <BtnIcon className="w-4 h-4 inline-block mr-1" />
+                                {btn.label}
+                            </motion.button>
+                            );
+                        })}
+                    </div>
+                </motion.div>
+
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full">
                         <thead>
-                            <tr style={{ background: 'var(--light-bg)', borderBottom: '2px solid #ddd' }}>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Certificate No.</th>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Type</th>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Name</th>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Barangay</th>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Date</th>
-                                <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Status</th>
+                            <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Certificate No.</th>
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Type</th>
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Recipient</th>
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Barangay</th>
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Date</th>
+                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
+                                Array(5).fill().map((_, i) => (
+                                    <tr key={i}><td colSpan="6"><SkeletonLoader type="table" rows={1} /></td></tr>
+                                ))
+                            ) : filteredIssuances.length === 0 ? (
                                 <tr>
                                     <td colSpan="6">
-                                        <div className="flex items-center justify-center py-8">
-                                            <LoadingSpinner size="md" message="Loading issuances..." />
-                                        </div>
+                                        <motion.div className="text-center py-12 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
+                                            <InboxIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                                            <h3 className="text-lg font-medium text-gray-900 mb-1">No issuances found</h3>
+                                            <p className="text-sm text-gray-500">Try adjusting your filters above</p>
+                                        </motion.div>
                                     </td>
                                 </tr>
-                            ) : filteredIssuances.length === 0 ? (
-                                <tr><td colSpan="6">No issuances found</td></tr>
                             ) : (
-                                filteredIssuances.map(issuance => (
-                                    <tr key={issuance.id} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '12px' }}>{issuance.certNumber}</td>
-                                        <td style={{ padding: '12px' }}>{getTypeIcon(issuance.certType)} {issuance.certType}</td>
-                                        <td style={{ padding: '12px' }}>{issuance.recipientName}</td>
-                                        <td style={{ padding: '12px' }}>{issuance.barangay}</td>
-                                        <td style={{ padding: '12px' }}>{issuance.issuanceDate}</td>
-                                        <td style={{ padding: '12px' }}>
-                                            <span className={getStatusClass(issuance.status)}>{issuance.status}</span>
-                                        </td>
-                                    </tr>
-                                ))
+                                <AnimatePresence>
+                                    {filteredIssuances.map((issuance, index) => {
+                                        const TypeIcon = getTypeIcon(issuance.certType);
+                                        return (
+                                        <motion.tr 
+                                            key={issuance.id} 
+                                            className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            transition={{ delay: index * 0.05 }}
+                                        >
+                                            <td className="p-4 text-sm font-medium text-gray-900">{issuance.certNumber || 'N/A'}</td>
+                                            <td className="p-4 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <TypeIcon className="w-5 h-5 text-[#d4a574]" />
+                                                    <span className="capitalize">{issuance.certType?.replace('_', ' ') || 'N/A'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-sm font-medium text-gray-900">{issuance.recipientName || issuance.name || 'N/A'}</td>
+                                            <td className="p-4 text-sm text-gray-700">{issuance.barangay || 'N/A'}</td>
+                                            <td className="p-4 text-sm text-gray-700">{issuance.issuanceDate ? new Date(issuance.issuanceDate).toLocaleDateString() : 'N/A'}</td>
+                                            <td className="p-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(issuance.status)}`}>
+                                                    {issuance.status || 'Unknown'}
+                                                </span>
+                                            </td>
+                                        </motion.tr>
+                                        );
+                                    })}
+                                </AnimatePresence>
                             )}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+
+                {filteredIssuances.length > 0 && (
+                    <motion.div 
+                        className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
+                        <p className="text-sm text-blue-800 font-medium">
+                            Showing <span className="font-bold">{filteredIssuances.length}</span> {filter === 'all' ? 'certificates' : filter.replace('_', ' ')} 
+                            • <span className="font-bold">{issuances.length}</span> total issuances
+                        </p>
+                    </motion.div>
+                )}
+            </motion.div>
+        </motion.div>
     );
 }
 

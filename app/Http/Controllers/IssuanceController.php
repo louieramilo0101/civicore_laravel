@@ -9,12 +9,55 @@ use Illuminate\Support\Facades\Validator;
 class IssuanceController extends Controller
 {
     /**
-     * Get all issuances
+     * Get all issuances with pagination
      */
-    public function index()
+    public function index(Request $request)
     {
-        $issuances = DB::select("SELECT * FROM issuances ORDER BY id DESC");
-        return response()->json($issuances);
+        $page = (int) $request->query('page', 1);
+        $perPage = min((int) $request->query('per_page', 20), 100);
+        $type = $request->query('type', '');
+        $search = $request->query('search', '');
+        
+        // Build query
+        $whereClause = "";
+        $params = [];
+        
+        if (!empty($type) || !empty($search)) {
+            $conditions = [];
+            if (!empty($type)) {
+                $conditions[] = "type = ?";
+                $params[] = $type;
+            }
+            if (!empty($search)) {
+                $conditions[] = "(name LIKE ? OR certNumber LIKE ?)";
+                $searchTerm = "%{$search}%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+            $whereClause = " WHERE " . implode(" AND ", $conditions);
+        }
+        
+        // Get total count
+        $countQuery = "SELECT COUNT(*) as total FROM issuances" . $whereClause;
+        $totalResult = DB::select($countQuery, $params);
+        $total = $totalResult[0]->total;
+        
+        // Get paginated results
+        $query = "SELECT * FROM issuances" . $whereClause . " ORDER BY id DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = ($page - 1) * $perPage;
+        
+        $issuances = DB::select($query, $params);
+        
+        return response()->json([
+            'data' => $issuances,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => ceil($total / $perPage),
+            ]
+        ]);
     }
 
     /**

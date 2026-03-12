@@ -10,12 +10,57 @@ use Illuminate\Support\Facades\Storage;
 class DocumentController extends Controller
 {
     /**
-     * Get all documents
+     * Get all documents with pagination
      */
-    public function index()
+    public function index(Request $request)
     {
-        $documents = DB::select("SELECT * FROM documents ORDER BY id DESC");
-        return response()->json($documents);
+        $page = (int) $request->query('page', 1);
+        $perPage = min((int) $request->query('per_page', 20), 100);
+        $type = $request->query('type', '');
+        $search = $request->query('search', '');
+        
+        // Build query
+        $whereClause = "";
+        $params = [];
+        
+        if (!empty($type) || !empty($search)) {
+            $conditions = [];
+            if (!empty($type)) {
+                $conditions[] = "type = ?";
+                $params[] = $type;
+            }
+            if (!empty($search)) {
+                $conditions[] = "(name LIKE ? OR personName LIKE ? OR barangay LIKE ?)";
+                $searchTerm = "%{$search}%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+            $whereClause = " WHERE " . implode(" AND ", $conditions);
+        }
+        
+        // Get total count
+        $countQuery = "SELECT COUNT(*) as total FROM documents" . $whereClause;
+        $totalResult = DB::select($countQuery, $params);
+        $total = $totalResult[0]->total;
+        
+        // Get paginated results (exclude file_data for performance)
+        $query = "SELECT id, name, type, date, size, status, personName, barangay, metadata, ocr_text, created_at, updated_at 
+                  FROM documents" . $whereClause . " ORDER BY id DESC LIMIT ? OFFSET ?";
+        $params[] = $perPage;
+        $params[] = ($page - 1) * $perPage;
+        
+        $documents = DB::select($query, $params);
+        
+        return response()->json([
+            'data' => $documents,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => ceil($total / $perPage),
+            ]
+        ]);
     }
 
     /**
@@ -49,7 +94,7 @@ class DocumentController extends Controller
     }
 
     /**
-     * Upload file
+     * Upload file - stores file content directly in database
      */
     public function upload(Request $request)
     {
@@ -73,24 +118,25 @@ class DocumentController extends Controller
         $originalName = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
         $filename = 'file-' . time() . '-' . rand(100000000, 999999999) . '.' . $extension;
-        
-        // Store file
-        $path = $file->storeAs('uploads', $filename);
+
+        // Get file content to store in database
+        $fileContent = file_get_contents($file->getRealPath());
 
         // Get file size
         $size = number_format($file->getSize() / (1024 * 1024), 2) . ' MB';
 
-        // Save to database
+        // Save file info metadata (without filesystem path)
         $fileInfo = json_encode([
             'originalName' => $originalName,
             'filename' => $filename,
-            'path' => $path,
             'size' => $file->getSize(),
-            'mimetype' => $file->getMimeType()
+            'mimetype' => $file->getMimeType(),
+            'storedIn' => 'database'
         ]);
 
-        DB::insert("INSERT INTO documents (name, type, date, size, status, previewData, personName, barangay, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-            [$originalName, $docType, date('m/d/Y'), $size, 'Uploaded', null, $personName, $barangay, $fileInfo]);
+        // Save to database with file content
+        DB::insert("INSERT INTO documents (name, type, date, size, status, previewData, personName, barangay, metadata, file_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+            [$originalName, $docType, date('m/d/Y'), $size, 'Uploaded', null, $personName, $barangay, $fileInfo, $fileContent]);
 
         return response()->json([
             'success' => true,
@@ -106,21 +152,38 @@ class DocumentController extends Controller
      */
     public function destroy($id)
     {
-        // Get document first to delete file
-        $documents = DB::select("SELECT * FROM documents WHERE id = ?", [$id]);
-        
-        if (count($documents) > 0) {
-            $doc = $documents[0];
-            if (!empty($doc->metadata)) {
-                $metadata = json_decode($doc->metadata, true);
-                if (isset($metadata['filename'])) {
-                    Storage::delete('uploads/' . $metadata['filename']);
-                }
-            }
-        }
-
+        // Delete from database - file_data will be deleted automatically
         DB::delete("DELETE FROM documents WHERE id = ?", [$id]);
         
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Download/view file from database
+     */
+    public function download($id)
+    {
+        $documents = DB::select("SELECT * FROM documents WHERE id = ?", [$id]);
+        
+        if (count($documents) === 0) {
+            return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        $doc = $documents[0];
+        $metadata = json_decode($doc->metadata, true);
+        
+        // Get file content from database
+        $fileContent = $doc->file_data;
+        
+        if (empty($fileContent)) {
+            return response()->json(['error' => 'File content not found in database'], 404);
+        }
+
+        $filename = $metadata['originalName'] ?? 'document.pdf';
+        $mimetype = $metadata['mimetype'] ?? 'application/pdf';
+
+        return response($fileContent)
+            ->header('Content-Type', $mimetype)
+            ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
     }
 }

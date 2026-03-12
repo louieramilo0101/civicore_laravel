@@ -46,6 +46,7 @@ Route::get('/documents', [DocumentController::class, 'index']);
 Route::post('/documents', [DocumentController::class, 'store']);
 Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
 Route::post('/documents/upload', [DocumentController::class, 'upload']);
+Route::get('/documents/download/{id}', [DocumentController::class, 'download']);
 
 // OCR Routes
 Route::post('/ocr/process', [OcrController::class, 'process']);

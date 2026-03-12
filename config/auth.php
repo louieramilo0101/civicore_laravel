@@ -112,4 +112,20 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Hashing Configuration
+    |--------------------------------------------------------------------------
+    |
+    | This option controls the bcrypt cost factor used for password hashing.
+    | Lower values (8-10) provide faster hashing while remaining secure.
+    | Default is 10, reducing to 8 significantly speeds up authentication
+    | while maintaining good security for internal applications.
+    |
+    */
+
+    'hash' => [
+        'rounds' => env('BCRYPT_ROUNDS', 8),
+    ],
+
 ];
