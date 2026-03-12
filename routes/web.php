@@ -4,10 +4,10 @@ use Illuminate\Support\Facades\Route;
 
 // Serve the frontend index.html for the root route
 Route::get('/', function () {
-    return file_get_contents(public_path('index.html'));
-});
+    return view('app');
+})->name('home');
 
-// Serve index.html for all other routes (SPA fallback)
+// SPA fallback route
 Route::get('/{any}', function () {
-    return file_get_contents(public_path('index.html'));
+    return view('app');
 })->where('any', '.*');
