@@ -1,11 +1,32 @@
-@import 'tailwindcss';
-
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+@import "tailwindcss";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-primary: #0f172a;
+    --color-gold: #d4a574;
+    --color-gold-hover: #c49a67;
+}
+
+@layer base {
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        @apply bg-slate-50 text-slate-900 antialiased;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+}
+
+@layer components {
+    /* Fixed the missing background for the Landing page */
+    .theme-gradient {
+        @apply min-h-screen bg-[#0f172a] relative overflow-hidden;
+        background-image: 
+            radial-gradient(circle at 0% 0%, rgba(212, 165, 116, 0.15) 0%, transparent 35%),
+            radial-gradient(circle at 100% 100%, rgba(212, 165, 116, 0.1) 0%, transparent 35%);
+    }
+
+    .bg-mesh {
+        @apply absolute inset-0 opacity-20 pointer-events-none;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 30-30 30L0 30z' fill='%23d4a574' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+    }
 }

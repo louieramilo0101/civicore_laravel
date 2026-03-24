@@ -1,19 +1,26 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import './bootstrap';
+import '../css/app.css';
 
-// Import React components
-import Landing from './components/Landing';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import Documents from './components/Documents';
-import Issuances from './components/Issuances';
-import Users from './components/Users';
-import Barangays from './components/Barangays';
-import Templates from './components/Templates';
-import Layout from './components/Layout';
+// Make sure you delete the line that says import '../css/styles.css'
+
+// Import React components with explicit paths
+import Landing from './components/Landing.jsx';
+import Login from './components/Login.jsx';
+import Dashboard from './components/Dashboard.jsx';
+import Documents from './components/Documents.jsx';
+import Issuances from './components/Issuances.jsx';
+import Mapping from './components/Mapping.jsx';
+import Accounts from './components/Accounts.jsx';
+import Layout from './components/Layout.jsx';
+import PublicLayout from './components/PublicLayout.jsx';
+
+// Import new public pages
+import AboutPortal from './components/AboutPortal.jsx';
+import DigitalServices from './components/DigitalServices.jsx';
+import ContactDirectory from './components/ContactDirectory.jsx';
 
 // Simple auth check
 const isAuthenticated = () => {
@@ -21,25 +28,20 @@ const isAuthenticated = () => {
 };
 
 // Protected Route wrapper
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     if (!isAuthenticated()) {
         return <Navigate to="/login" replace />;
     }
+    
+    if (allowedRoles.length > 0) {
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (!allowedRoles.includes(user.role)) {
+            // If they can't access this, send them to the most basic allowed page
+            return <Navigate to="/documents" replace />;
+        }
+    }
+    
     return children;
-};
-
-// Animated page wrapper
-const AnimatedPage = ({ children }) => {
-    return (
-        <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-            {children}
-        </motion.div>
-    );
 };
 
 // Scroll to top on route change
@@ -51,102 +53,38 @@ const ScrollToTop = () => {
     return null;
 };
 
-// Animated Routes component
-const AnimatedRoutes = () => {
-    const location = useLocation();
-
-    return (
-        <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-                {/* Public Routes */}
-                <Route path="/" element={
-                    <AnimatedPage>
-                        <Landing />
-                    </AnimatedPage>
-                } />
-                <Route path="/login" element={
-                    <AnimatedPage>
-                        <Login />
-                    </AnimatedPage>
-                } />
-                
-                {/* Protected Routes */}
-                <Route path="/dashboard" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Dashboard />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/documents" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Documents />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/issuances" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Issuances />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/users" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Users />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/barangays" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Barangays />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                <Route path="/templates" element={
-                    <ProtectedRoute>
-                        <Layout>
-                            <AnimatedPage>
-                                <Templates />
-                            </AnimatedPage>
-                        </Layout>
-                    </ProtectedRoute>
-                } />
-                
-                {/* Redirect root to landing */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </AnimatePresence>
-    );
-};
+import { ModalProvider } from './components/ModalContext.jsx';
 
 function App() {
     return (
-        <BrowserRouter>
-            <ScrollToTop />
-            <AnimatedRoutes />
-        </BrowserRouter>
+        <ModalProvider>
+            <BrowserRouter>
+                <ScrollToTop />
+                <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<PublicLayout><Landing /></PublicLayout>} />
+                    <Route path="/about" element={<PublicLayout><AboutPortal /></PublicLayout>} />
+                    <Route path="/services" element={<PublicLayout><DigitalServices /></PublicLayout>} />
+                    <Route path="/contact" element={<PublicLayout><ContactDirectory /></PublicLayout>} />
+                    <Route path="/login" element={<Login />} />
+                    
+                    {/* Protected Routes */}
+                    <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['Superadmin', 'Admin']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
+                    <Route path="/documents" element={<ProtectedRoute><Layout><Documents /></Layout></ProtectedRoute>} />
+                    <Route path="/issuances" element={<ProtectedRoute allowedRoles={['Superadmin', 'Admin']}><Layout><Issuances /></Layout></ProtectedRoute>} />
+                    <Route path="/mapping" element={<ProtectedRoute allowedRoles={['Superadmin', 'Admin']}><Layout><Mapping /></Layout></ProtectedRoute>} />
+                    <Route path="/accounts" element={<ProtectedRoute><Layout><Accounts /></Layout></ProtectedRoute>} />
+                    
+                    {/* Redirect root to landing */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </BrowserRouter>
+        </ModalProvider>
     );
 }
 
 // Mount the React app
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-    <React.StrictMode>
-        <App />
-    </React.StrictMode>
+    <App /> 
 );
-

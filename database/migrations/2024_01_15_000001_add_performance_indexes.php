@@ -12,21 +12,30 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add index on users.email for faster login lookups
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-        
-        // Add index on documents.type for filtering
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(type)');
-        
-        // Add index on issuances.type for certificate number generation
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_issuances_type ON issuances(type)');
-        
-        // Add index on issuances.certNumber for sorting
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_issuances_cert_number ON issuances(certNumber)');
-        
-        // Add index on barangays.name for sorting
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_barangays_name ON barangays(name)');
+        Schema::table('users', function (Blueprint $table) {
+            $table->index('email');
+        });
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->index('type');
+                $table->index('status');
+                $table->index('created_at');
+                $table->index(['personName', 'barangay']);
+            });
+        }
+        if (Schema::hasTable('issuances')) {
+            Schema::table('issuances', function (Blueprint $table) {
+                $table->index('type');
+                $table->index('certNumber');
+            });
+        }
+        if (Schema::hasTable('barangays')) {
+            Schema::table('barangays', function (Blueprint $table) {
+                $table->index('name');
+            });
+        }
     }
+
 
     /**
      * Reverse the migrations.

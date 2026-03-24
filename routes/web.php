@@ -1,13 +1,7 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 
-// Serve the frontend index.html for the root route
-Route::get('/', function () {
-    return view('app');
-})->name('home');
-
-// SPA fallback route
-Route::get('/{any}', function () {
-    return view('app');
-})->where('any', '.*');
+// This tells Laravel: "For ANY URL, just load app.blade.php and let React figure it out"
+Route::get('/{any?}', function () {
+    return view('app'); // This matches your app.blade.php file
+})->where('any', '.*'); 

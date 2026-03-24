@@ -15,11 +15,32 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
+        // Create specific users for different roles
+        // Superadmin account
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Super Admin',
+            'email' => 'superadmin@civicore.com',
+            'role' => 'Superadmin',
+            'password' => 'password',
         ]);
+
+        // Admin account
+        User::factory()->create([
+            'name' => 'Admin Officer',
+            'email' => 'admin@civicore.com',
+            'role' => 'Admin',
+            'password' => 'password',
+        ]);
+
+        // Regular User account
+        User::factory()->create([
+            'name' => 'Civilian User',
+            'email' => 'user@civicore.com',
+            'role' => 'User',
+            'password' => 'password',
+        ]);
+
+        // Optional more test users
+        // User::factory(5)->create();
     }
 }

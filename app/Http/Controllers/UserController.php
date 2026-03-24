@@ -14,16 +14,27 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
         $page = (int) $request->query('page', 1);
-        $perPage = min((int) $request->query('per_page', 20), 100); // Cap at 100
+        $perPage = min((int) $request->query('per_page', 20), 100);
         $search = $request->query('search', '');
         
-        // Build query with optional search
+        // Build query
         $query = "SELECT * FROM users";
         $countQuery = "SELECT COUNT(*) as total FROM users";
         $params = [];
         
-        if (!empty($search)) {
+        // RBAC filtering: Only Superadmin can see everyone
+        if (strtolower($currentUser->role ?? '') !== 'superadmin') {
+            $whereClause = " WHERE id = ?";
+            $query .= $whereClause;
+            $countQuery .= $whereClause;
+            $params = [$currentUser->id];
+        } elseif (!empty($search)) {
             $whereClause = " WHERE name LIKE ? OR email LIKE ? OR role LIKE ?";
             $query .= $whereClause;
             $countQuery .= $whereClause;
@@ -31,11 +42,9 @@ class UserController extends Controller
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
         
-        // Get total count
         $totalResult = DB::select($countQuery, $params);
         $total = $totalResult[0]->total;
         
-        // Add ordering and pagination
         $query .= " ORDER BY id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
@@ -44,6 +53,7 @@ class UserController extends Controller
         
         foreach ($users as $user) {
             $user->permissions = $this->parsePermissions($user->permissions ?? null);
+            unset($user->password); // Security
         }
         
         return response()->json([
@@ -95,14 +105,16 @@ class UserController extends Controller
         $password = $request->input('password');
         $role = $request->input('role');
 
-        // Hash the password
-        $hashedPassword = Hash::make($password);
-
         // Assign permissions based on role
         $permissions = $this->getPermissionsByRole($role);
 
-        DB::insert("INSERT INTO users (name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)", 
-            [$name, $email, $hashedPassword, $role, json_encode($permissions)]);
+        \App\Models\User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'role' => $role,
+            'permissions' => $permissions
+        ]);
 
         return response()->json(['success' => true, 'message' => 'User created successfully!']);
     }
@@ -128,14 +140,16 @@ class UserController extends Controller
         $password = $request->input('password');
         $role = $request->input('role');
 
-        // Hash the password
-        $hashedPassword = Hash::make($password);
-
         // Assign permissions based on role
         $permissions = $this->getPermissionsByRole($role);
 
-        DB::insert("INSERT INTO users (name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)", 
-            [$name, $email, $hashedPassword, $role, json_encode($permissions)]);
+        \App\Models\User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'role' => $role,
+            'permissions' => $permissions
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Account created successfully!']);
     }
@@ -199,14 +213,14 @@ class UserController extends Controller
         }
 
         switch ($role) {
-            case 'Super Admin':
+            case 'Superadmin':
                 return ["View Dashboard", "Upload Documents", "Manage Users", "Edit Permissions", "Mapping Analytics"];
             case 'Admin':
                 return ["View Dashboard", "Upload Documents", "Mapping Analytics", "View Reports"];
             case 'User':
-                return ["View Dashboard", "View Services"];
+                return ["Upload Documents", "View Account"];
             default:
-                return ["View Dashboard", "View Services"];
+                return ["View Account"];
         }
     }
 

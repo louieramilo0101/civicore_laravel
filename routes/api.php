@@ -8,6 +8,7 @@ use App\Http\Controllers\IssuanceController;
 use App\Http\Controllers\BarangayController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\OcrController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,8 +21,16 @@ use App\Http\Controllers\OcrController;
 |
 */
 
-// Routes that require session support
-Route::middleware(['web'])->group(function () {
+Route::middleware('web')->group(function () {
+    Route::get('/debug-auth', function (Request $request) {
+        return [
+            'user' => $request->user(),
+            'session_exists' => $request->session()->has('user'),
+            'role_in_session' => $request->session()->get('user.role'),
+            'total_users' => \App\Models\User::count(),
+            'roles_available' => \App\Models\User::pluck('role', 'email')
+        ];
+    });
 
 // Auth Routes - need session middleware for cookie handling
 Route::post('/login', [AuthController::class, 'login']);
@@ -40,6 +49,9 @@ Route::post('/create-account', [UserController::class, 'createAccount']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 Route::put('/users/{id}/profile', [UserController::class, 'updateProfile']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
+
+// Dashboard Routes
+Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
 // Document Routes
 Route::get('/documents', [DocumentController::class, 'index']);

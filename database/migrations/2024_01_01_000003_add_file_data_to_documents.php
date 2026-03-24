@@ -11,12 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            // Add LONGBLOB column to store file content directly in database
-            // Using LONGBLOB to support files up to 4GB (practical limit ~16MB for PHP)
-            $table->longText('file_data')->nullable()->after('metadata');
-        });
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                // Add LONGBLOB column to store file content directly in database
+                // Using LONGBLOB to support files up to 4GB (practical limit ~16MB for PHP)
+                $table->longText('file_data')->nullable()->after('metadata');
+            });
+        }
     }
+
 
     /**
      * Reverse the migrations.

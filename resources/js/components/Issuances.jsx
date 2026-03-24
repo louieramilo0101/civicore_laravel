@@ -1,193 +1,480 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import LoadingSpinner from './LoadingSpinner';
-import SkeletonLoader from './SkeletonLoader';
+import { motion } from 'framer-motion';
 import { 
-    HeartIcon, 
-    XCircleIcon, 
-    ClipboardDocumentListIcon,
-    InboxIcon,
-    DocumentIcon,
-    QueueListIcon
+    PrinterIcon, DocumentMinusIcon, 
+    MagnifyingGlassIcon, PlusCircleIcon,
+    AdjustmentsHorizontalIcon, EyeIcon,
+    TrashIcon, CheckCircleIcon, ClockIcon
 } from '@heroicons/react/24/outline';
+import { useModal } from './ModalContext.jsx';
+import SkeletonLoader from './SkeletonLoader.jsx';
 
-const API_BASE = '/api';
+const Issuances = () => {
+    const { showAlert } = useModal();
+    const [isLoading, setIsLoading] = useState(true);
+    const [certificates, setCertificates] = useState([]);
+    const [selectedType, setSelectedType] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectAll, setSelectAll] = useState(false);
+    const [showNewModal, setShowNewModal] = useState(false);
+    
+    const [newCert, setNewCert] = useState({
+        number: '',
+        type: 'birth',
+        name: '',
+        barangay: '',
+        date: '',
+        status: 'Issued'
+    });
 
-function Issuances() {
-    const [issuances, setIssuances] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all');
+    const fetchIssuances = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/issuances', { credentials: 'include' });
+            const data = await res.json();
+            if (data.data) {
+                const results = data.data.map(i => ({
+                    id: i.id,
+                    number: i.certNumber,
+                    type: i.type,
+                    name: i.name,
+                    barangay: i.barangay,
+                    date: i.issuanceDate,
+                    status: i.status
+                }));
+                setCertificates(results);
+                sessionStorage.setItem('cache_issuances', JSON.stringify(results));
+            }
+        } catch (e) {
+            console.error("Error fetching issuances:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    // Load from database initially
     useEffect(() => {
         fetchIssuances();
     }, []);
 
-    const fetchIssuances = async () => {
+    // Generate real cert number from database when modal opens or type changes
+    useEffect(() => {
+        if (showNewModal) {
+            fetch(`/api/issuances/next-cert-number/${newCert.type}`, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => setNewCert(prev => ({ ...prev, number: data.certNumber })))
+                .catch(e => console.error("Error fetching cert num:", e));
+        }
+    }, [showNewModal, newCert.type]);
+
+    const filteredCertificates = certificates.filter(cert => 
+        (selectedType === 'all' || cert.type.toLowerCase().includes(selectedType.toLowerCase())) &&
+        (cert.number.toLowerCase().includes(searchTerm.toLowerCase()) || cert.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const selectedCerts = filteredCertificates.filter(cert => cert.selected);
+
+    const toggleSelectAll = () => {
+        setCertificates(prev => prev.map(cert => ({ ...cert, selected: !selectAll })));
+        setSelectAll(!selectAll);
+    };
+
+    const addNewIssuance = async (e) => {
+        e.preventDefault();
+        if (!newCert.name || !newCert.date || !newCert.number) {
+            showAlert({
+                title: 'Validation Error',
+                message: 'Please fill all required fields before proceeding.',
+                type: 'warning'
+            });
+            return;
+        }
+        
         try {
-            const response = await fetch(`${API_BASE}/issuances`, { credentials: 'include' });
-            const data = await response.json();
-            setIssuances(data || []);
-        } catch (err) {
-            console.error('Error fetching issuances:', err);
-        } finally {
-            setLoading(false);
+            const payload = {
+                certNumber: newCert.number,
+                type: newCert.type,
+                name: newCert.name,
+                barangay: newCert.barangay,
+                issuanceDate: newCert.date,
+                status: newCert.status
+            };
+            
+            const res = await fetch('/api/issuances', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                fetchIssuances();
+                setShowNewModal(false);
+                setNewCert({ number: '', type: 'birth', name: '', barangay: '', date: '', status: 'Issued' });
+                showAlert({
+                    title: 'Success',
+                    message: 'New issuance has been saved successfully.',
+                    type: 'success'
+                });
+            } else {
+                showAlert({
+                    title: 'Error Saving',
+                    message: data.error || "Failed to save issuance. Please try again.",
+                    type: 'error'
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            showAlert({
+                title: 'Network Error',
+                message: "A network error occurred while saving the issuance.",
+                type: 'error'
+            });
         }
     };
 
-    const filteredIssuances = filter === 'all' 
-        ? issuances 
-        : issuances.filter(i => i.certType === filter);
-
-    const getTypeIcon = (type) => {
-        switch(type) {
-            case 'birth': return HeartIcon;
-            case 'death': return XCircleIcon;
-            case 'marriage_license': return ClipboardDocumentListIcon;
-            default: return DocumentIcon;
-        }
+    const handleDelete = async (id) => {
+        showAlert({
+            title: 'Delete Issuance',
+            message: 'Are you sure you want to permanently delete this issuance record? This action cannot be undone.',
+            type: 'warning',
+            showCancel: true,
+            confirmText: 'Delete',
+            onConfirm: async () => {
+                try {
+                    const res = await fetch(`/api/issuances/${id}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        // Update local state
+                        const updated = certificates.filter(c => c.id !== id);
+                        setCertificates(updated);
+                        sessionStorage.setItem('cache_issuances', JSON.stringify(updated));
+                        
+                        showAlert({
+                            title: 'Deleted',
+                            message: 'The issuance has been successfully deleted.',
+                            type: 'success'
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error deleting issuance:", error);
+                }
+            }
+        });
     };
 
-    const getStatusClass = (status) => {
-        switch(status) {
-            case 'Issued': return 'bg-green-100 text-green-700';
-            case 'Pending': return 'bg-yellow-100 text-yellow-700';
-            default: return 'bg-gray-100 text-gray-700';
-        }
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
     };
 
-    const filterButtons = [
-        { id: 'all', label: 'All Certificates', icon: QueueListIcon },
-        { id: 'birth', label: 'Birth', icon: HeartIcon },
-        { id: 'death', label: 'Death', icon: XCircleIcon },
-        { id: 'marriage_license', label: 'Marriage', icon: ClipboardDocumentListIcon }
-    ];
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+    };
 
+    // Render layout immediately, skeletons for data sections
     return (
         <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-6 max-w-7xl mx-auto"
         >
-            <motion.div 
-                className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-            >
-                <motion.h2 className="text-lg md:text-xl font-bold text-[#1a2f4a] mb-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-                    Certificate Issuance Management
-                </motion.h2>
-                
-                <motion.div className="mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-                    <label className="block font-semibold mb-3 text-sm md:text-base text-gray-700">Filter Certificates:</label>
-                    <div className="flex flex-wrap gap-2">
-                        {filterButtons.map((btn, index) => {
-                            const BtnIcon = btn.icon;
-                            return (
-                            <motion.button 
-                                key={btn.id}
-                                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm ${
-                                    filter === btn.id 
-                                        ? 'bg-[#d4a574] text-white shadow-md' 
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm border border-gray-200'
-                                }`}
-                                onClick={() => setFilter(btn.id)}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 + (index * 0.05) }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                <BtnIcon className="w-4 h-4 inline-block mr-1" />
-                                {btn.label}
-                            </motion.button>
-                            );
-                        })}
+            {/* Header & Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {isLoading ? (
+                    <div className="col-span-3">
+                        <SkeletonLoader type="cards" rows={1} />
                     </div>
-                </motion.div>
+                ) : (
+                    <>
+                        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex items-center justify-between">
+                            <div>
+                                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-1">Total Issuances</p>
+                                <h3 className="text-3xl font-black text-slate-800">{certificates.length}</h3>
+                            </div>
+                            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
+                                <DocumentMinusIcon className="w-6 h-6" />
+                            </div>
+                        </motion.div>
+                        
+                        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex items-center justify-between">
+                            <div>
+                                <p className="text-emerald-500 text-sm font-bold uppercase tracking-wider mb-1">Issued Status</p>
+                                <h3 className="text-3xl font-black text-slate-800">{certificates.filter(c => c.status === 'Issued').length}</h3>
+                            </div>
+                            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
+                                <CheckCircleIcon className="w-6 h-6" />
+                            </div>
+                        </motion.div>
 
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full">
+                        <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex items-center justify-between">
+                            <div>
+                                <p className="text-amber-500 text-sm font-bold uppercase tracking-wider mb-1">Pending Review</p>
+                                <h3 className="text-3xl font-black text-slate-800">{certificates.filter(c => c.status === 'Pending').length}</h3>
+                            </div>
+                            <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-amber-500">
+                                <ClockIcon className="w-6 h-6" />
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </div>
+
+            {/* Main Table Container */}
+            <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col">
+                
+                {/* Search & Filters */}
+                <div className="p-6 border-b border-slate-100 bg-slate-50/30">
+                    <div className="flex flex-col lg:flex-row justify-between gap-4">
+                        {/* Search */}
+                        <div className="relative max-w-md w-full">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search by name or certificate number..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] sm:text-sm transition-all shadow-sm"
+                            />
+                        </div>
+
+                        {/* Filters & Actions */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                                {['all', 'birth', 'death', 'marriage'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setSelectedType(type)}
+                                        className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                                            selectedType === type 
+                                                ? 'bg-white text-slate-800 shadow-sm' 
+                                                : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <div className="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
+                            <button 
+                                onClick={() => setShowNewModal(!showNewModal)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#0f172a] text-white text-sm font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+                            >
+                                <PlusCircleIcon className="w-5 h-5" />
+                                New Issuance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bulk Actions Bar */}
+                {selectedCerts.length > 0 && (
+                    <div className="bg-indigo-50/50 px-6 py-3 border-b border-indigo-100 flex items-center justify-between text-sm">
+                        <span className="font-semibold text-indigo-800">
+                            {selectedCerts.length} items selected
+                        </span>
+                        <div className="flex gap-2">
+                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">
+                                <PrinterIcon className="w-4 h-4" /> Print Selected
+                            </button>
+                            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg hover:bg-rose-100 font-medium">
+                                <TrashIcon className="w-4 h-4" /> Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Data Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Certificate No.</th>
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Type</th>
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Recipient</th>
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Barangay</th>
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Date</th>
-                                <th className="p-4 text-left font-semibold text-sm text-gray-700">Status</th>
+                            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
+                                <th className="p-4 pl-6 w-12">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectAll && filteredCertificates.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 text-[#d4a574] border-slate-300 rounded focus:ring-[#d4a574] cursor-pointer accent-[#d4a574]"
+                                    />
+                                </th>
+                                <th className="p-4">Certificate No.</th>
+                                <th className="p-4">Reg. Type</th>
+                                <th className="p-4">Recipient Name</th>
+                                <th className="p-4">Barangay</th>
+                                <th className="p-4">Date Added</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 pr-6 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {loading ? (
-                                Array(5).fill().map((_, i) => (
-                                    <tr key={i}><td colSpan="6"><SkeletonLoader type="table" rows={1} /></td></tr>
-                                ))
-                            ) : filteredIssuances.length === 0 ? (
+                        <tbody className="divide-y divide-slate-100">
+                            {isLoading ? (
                                 <tr>
-                                    <td colSpan="6">
-                                        <motion.div className="text-center py-12 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
-                                            <InboxIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                                            <h3 className="text-lg font-medium text-gray-900 mb-1">No issuances found</h3>
-                                            <p className="text-sm text-gray-500">Try adjusting your filters above</p>
-                                        </motion.div>
+                                    <td colSpan="8" className="p-0">
+                                        <SkeletonLoader type="table" rows={8} />
+                                    </td>
+                                </tr>
+                            ) : filteredCertificates.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="p-8 text-center text-slate-500">
+                                        No certificates found matching your criteria.
                                     </td>
                                 </tr>
                             ) : (
-                                <AnimatePresence>
-                                    {filteredIssuances.map((issuance, index) => {
-                                        const TypeIcon = getTypeIcon(issuance.certType);
-                                        return (
-                                        <motion.tr 
-                                            key={issuance.id} 
-                                            className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ delay: index * 0.05 }}
-                                        >
-                                            <td className="p-4 text-sm font-medium text-gray-900">{issuance.certNumber || 'N/A'}</td>
-                                            <td className="p-4 text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <TypeIcon className="w-5 h-5 text-[#d4a574]" />
-                                                    <span className="capitalize">{issuance.certType?.replace('_', ' ') || 'N/A'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-sm font-medium text-gray-900">{issuance.recipientName || issuance.name || 'N/A'}</td>
-                                            <td className="p-4 text-sm text-gray-700">{issuance.barangay || 'N/A'}</td>
-                                            <td className="p-4 text-sm text-gray-700">{issuance.issuanceDate ? new Date(issuance.issuanceDate).toLocaleDateString() : 'N/A'}</td>
-                                            <td className="p-4">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(issuance.status)}`}>
-                                                    {issuance.status || 'Unknown'}
+                                filteredCertificates.map((cert) => (
+                                    <tr key={cert.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="p-4 pl-6">
+                                            <input 
+                                                type="checkbox"
+                                                checked={cert.selected || false}
+                                                onChange={() => setCertificates(prev => prev.map(c => c.id === cert.id ? {...c, selected: !c.selected} : c))}
+                                                className="w-4 h-4 text-[#d4a574] border-slate-300 rounded focus:ring-[#d4a574] cursor-pointer accent-[#d4a574]"
+                                            />
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="font-bold text-slate-800">{cert.number}</span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                                                {cert.type}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="font-semibold text-slate-700">{cert.name}</span>
+                                        </td>
+                                        <td className="p-4 text-slate-600 text-sm">
+                                            {cert.barangay}
+                                        </td>
+                                        <td className="p-4 text-slate-500 text-sm">
+                                            {cert.date}
+                                        </td>
+                                        <td className="p-4">
+                                            {cert.status === 'Issued' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Issued
                                                 </span>
-                                            </td>
-                                        </motion.tr>
-                                        );
-                                    })}
-                                </AnimatePresence>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="p-4 pr-6 text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View details">
+                                                    <EyeIcon className="w-4 h-4" />
+                                                </button>
+                                                <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Print document">
+                                                    <PrinterIcon className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(cert.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
+                                                    title="Delete record"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
                             )}
                         </tbody>
                     </table>
                 </div>
-
-                {filteredIssuances.length > 0 && (
-                    <motion.div 
-                        className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                    >
-                        <p className="text-sm text-blue-800 font-medium">
-                            Showing <span className="font-bold">{filteredIssuances.length}</span> {filter === 'all' ? 'certificates' : filter.replace('_', ' ')} 
-                            • <span className="font-bold">{issuances.length}</span> total issuances
-                        </p>
-                    </motion.div>
-                )}
             </motion.div>
+
+            {/* New Issuance Modal/Form overlay - Simplified for standard display */}
+            {showNewModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-3xl overflow-hidden flex flex-col"
+                    >
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h3 className="text-xl font-bold text-slate-800">Issue New Certificate</h3>
+                            <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-600 font-bold p-2">✕</button>
+                        </div>
+                        
+                        <form onSubmit={addNewIssuance} className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Type</label>
+                                    <select 
+                                        value={newCert.type} 
+                                        onChange={(e) => setNewCert({...newCert, type: e.target.value})}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm outline-none focus:border-[#d4a574] focus:ring-2 focus:ring-[#d4a574]/20 transition-all font-medium" 
+                                    >
+                                        <option value="birth">Live Birth</option>
+                                        <option value="death">Death</option>
+                                        <option value="marriage">Marriage</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Certificate Number</label>
+                                    <input 
+                                        value={generateCertNumber()} 
+                                        readOnly 
+                                        className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 text-sm font-mono cursor-not-allowed" 
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Recipient Full Name *</label>
+                                    <input 
+                                        value={newCert.name} 
+                                        onChange={(e) => setNewCert({...newCert, name: e.target.value})}
+                                        placeholder="e.g. Juan P. Dela Cruz"
+                                        required
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm outline-none focus:border-[#d4a574] focus:ring-2 focus:ring-[#d4a574]/20 transition-all" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Barangay</label>
+                                    <select 
+                                        value={newCert.barangay} 
+                                        onChange={(e) => setNewCert({...newCert, barangay: e.target.value})}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm outline-none focus:border-[#d4a574] focus:ring-2 focus:ring-[#d4a574]/20 transition-all" 
+                                    >
+                                        <option value="">Select Barangay...</option>
+                                        <option value="Poblacion">Poblacion</option>
+                                        <option value="Bagong Bayan">Bagong Bayan</option>
+                                        <option value="Halang">Halang</option>
+                                        <option value="Sabang">Sabang</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Registration Date *</label>
+                                    <input 
+                                        type="date" 
+                                        value={newCert.date} 
+                                        onChange={(e) => setNewCert({...newCert, date: e.target.value})}
+                                        required
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm outline-none focus:border-[#d4a574] focus:ring-2 focus:ring-[#d4a574]/20 transition-all" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
+                                <button type="button" onClick={() => setShowNewModal(false)} className="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors">Cancel</button>
+                                <button type="submit" className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#0f172a] hover:bg-slate-800 transition-colors shadow-sm">Save & Issue Certificate</button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+
         </motion.div>
     );
-}
+};
 
 export default Issuances;
 

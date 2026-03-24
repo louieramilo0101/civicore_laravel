@@ -1,29 +1,10 @@
-# React SPA Migration - COMPLETE ✅
-# Professional Toast Notifications - NEXT
+# Login Fix TODO
 
-## React Migration (Completed)
-- [x] Create resources/views/app.blade.php (React SPA template)
-- [x] Update routes/web.php to use Blade view  
-- [x] Backup and remove public/index.html → public/index.html.bak
-- [x] Ensure resources/js/app.jsx has all routes (Landing added)
-- [x] Migrate styles from public/styles.css to Tailwind/components
-- [x] Run `npm run build` and test with `php artisan serve`
-- [x] Test full app flow (landing → login → dashboard → navigation → logout)
+## Steps:
+- [x] Step 1: Update routes/api.php to wrap routes with 'web' middleware for session support
+- [x] Step 2: Update resources/js/components/Login.jsx to add API call to /api/login, handle response, set sessionStorage, show loading/error states
+- [ ] Step 3: Test login flow end-to-end
+- [ ] Step 4: Clear caches if needed (route:clear, config:clear)
+- [ ] Step 5: Complete task
 
-## Replace Alert with Toast Notifications
-**Task Overview**: Replace all browser `alert()` calls with `react-hot-toast`
-
-**Files with alerts**:
-- `resources/js/components/Documents.jsx` - 3 alerts
-
-**Plan**:
-1. `npm install react-hot-toast`
-2. Add `<Toaster />` to `app.jsx`
-3. Replace alerts with `toast.error()`, `toast.success()`
-
-## Steps
-- [ ] 1. Install react-hot-toast
-- [ ] 2. Add Toaster to app.jsx
-- [ ] 3. Update Documents.jsx alerts
-- [ ] 4. Test toast notifications
-- [ ] 5. Update this TODO as complete
+**Notes:** CSS stays component-styled (Tailwind classes only, no global CSS changes).

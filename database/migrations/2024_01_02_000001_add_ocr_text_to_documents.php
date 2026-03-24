@@ -11,12 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            // Add LONGTEXT column to store OCR extracted text
-            // Using LONGTEXT to support large amounts of extracted text
-            $table->longText('ocr_text')->nullable()->after('file_data');
-        });
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                // Add LONGTEXT column to store OCR extracted text
+                // Using LONGTEXT to support large amounts of extracted text
+                $table->longText('ocr_text')->nullable()->after('file_data');
+            });
+        }
     }
+
 
     /**
      * Reverse the migrations.

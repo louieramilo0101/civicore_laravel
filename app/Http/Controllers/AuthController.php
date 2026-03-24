@@ -36,26 +36,21 @@ class AuthController extends Controller
 
         $user = $users[0];
 
-        // Verify password - optimized logic to reduce delay
+        // Verify password - improved logic
         $passwordValid = false;
         
-        // Check if stored password is bcrypt (starts with $2y$ or $2a$)
-        if (preg_match('/^\$2[ayb]\$.{56}$/', $user->password)) {
-            // Use Hash::check for bcrypt passwords
-            if (Hash::check($password, $user->password)) {
-                $passwordValid = true;
-                // Upgrade to bcrypt for future logins (only on successful login)
-                $hashedPassword = Hash::make($password);
-                DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
-            }
-        } else {
-            // Plain text password - compare directly
-            if ($user->password === $password) {
-                $passwordValid = true;
-                // Upgrade to bcrypt for future logins
-                $hashedPassword = Hash::make($password);
-                DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
-            }
+        // Try Hash::check first (safe fallback for non-bcrypt)
+        if (Hash::check($password, $user->password)) {
+            $passwordValid = true;
+        } elseif ($user->password === $password) {
+            // Plain text fallback
+            $passwordValid = true;
+        }
+        
+        if ($passwordValid) {
+            // Always upgrade to bcrypt
+            $hashedPassword = Hash::make($password);
+            DB::update("UPDATE users SET password = ? WHERE id = ?", [$hashedPassword, $user->id]);
         }
 
         if (!$passwordValid) {
@@ -142,12 +137,9 @@ class AuthController extends Controller
 
         $user = $users[0];
 
-        // Verify current password using Hash::check()
-        if (!Hash::check($currentPassword, $user->password)) {
-            // Fallback: check if stored in plain text
-            if ($user->password !== $currentPassword) {
-                return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 401);
-            }
+        // Verify current password (handles both hashed and plain)
+        if (!Hash::check($currentPassword, $user->password) && $user->password !== $currentPassword) {
+            return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 401);
         }
 
         // Hash the new password and update
@@ -183,12 +175,9 @@ class AuthController extends Controller
 
         $user = $users[0];
 
-        // Verify password using Hash::check()
-        if (!Hash::check($password, $user->password)) {
-            // Fallback: check if stored in plain text
-            if ($user->password !== $password) {
-                return response()->json(['success' => false, 'message' => 'Invalid password'], 401);
-            }
+        // Verify password (handles both hashed and plain)
+        if (!Hash::check($password, $user->password) && $user->password !== $password) {
+            return response()->json(['success' => false, 'message' => 'Invalid password'], 401);
         }
 
         return response()->json(['success' => true, 'message' => 'Password verified']);

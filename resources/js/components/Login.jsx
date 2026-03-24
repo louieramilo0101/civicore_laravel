@@ -1,188 +1,152 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useModal } from './ModalContext.jsx';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-const API_BASE = 'http://localhost:8000';
-
-function Login() {
+export default function Login() {
     const navigate = useNavigate();
+    const { showAlert } = useModal();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setError('');
-        setLoading(true);
-
+        setIsLoading(true);
+        
         try {
-            const response = await fetch(`${API_BASE}/api/login`, {
+            const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: {
+                headers: { 
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+                    'Accept': 'application/json' 
                 },
-                credentials: 'include',
+                credentials: 'include', // Sends/receives session cookies
                 body: JSON.stringify({ email, password })
             });
-
+            
             const data = await response.json();
-
-            if (response.ok && data.success) {
-                sessionStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/dashboard');
+            
+            if (data.success) {
+                // Store user data for the auth guard
+                sessionStorage.setItem('user', JSON.stringify(data.user)); 
+                console.log("Authenticated successfully");
+                navigate('/dashboard', { replace: true });
             } else {
-                setError(data.message || 'Login failed');
+                showAlert({
+                    title: 'Authentication Failed',
+                    message: data.message || "Invalid credentials. Please try again.",
+                    type: 'error'
+                });
             }
-        } catch (err) {
-            setError('Connection error. Make sure Laravel server is running on port 8000.');
+        } catch (error) {
+            console.error('Login failed:', error);
+            showAlert({
+                title: 'Network Error',
+                message: "Network error. Please check your connection to the server.",
+                type: 'error'
+            });
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const pageVariants = {
-        initial: { opacity: 0 },
-        animate: { 
-            opacity: 1,
-            transition: { duration: 0.5 }
-        },
-        exit: { opacity: 0 }
-    };
-
     return (
-        <motion.div 
-            className="min-h-screen flex items-center justify-center p-4"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-        >
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0f172a] relative overflow-hidden">
+            {/* Background Decorative Element */}
+            <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-[#d4a574]/5 blur-[120px] rounded-full pointer-events-none" />
+
             <motion.div 
-                className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8"
-                initial={{ opacity: 0, y: -30, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-sm bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl relative overflow-hidden"
             >
-                <motion.a 
-                    href="#" 
-                    className="text-gray-500 text-sm font-semibold hover:text-[#1a2f4a] transition-colors inline-block mb-4"
-                    onClick={(e) => { e.preventDefault(); navigate('/'); }}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 }}
-                    whileHover={{ x: -3 }}
-                >
-                    ← Back to Home
-                </motion.a>
-                <motion.h1
-                    className="text-2xl md:text-3xl font-bold text-[#1a2f4a] text-center mb-2"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    Civil Registry of Naic
-                </motion.h1>
-                <motion.p 
-                    className="text-gray-500 text-center text-sm mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                >
-                    Document Management System
-                </motion.p>
-                
-                <motion.form 
-                    onSubmit={handleLogin}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                >
-                    <motion.div 
-                        className="mb-4"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 }}
+                <div className="h-1.5 w-full bg-[#d4a574]/80" />
+
+                <div className="p-10">
+                    <button 
+                        type="button"
+                        onClick={() => navigate('/')} 
+                        className="cursor-pointer text-[#d4a574]/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-10 hover:text-[#d4a574] transition-colors flex items-center gap-2 group"
                     >
-                        <label htmlFor="email" className="block font-semibold text-[#1a2f4a] mb-2 text-sm">Email</label>
-                        <motion.input 
-                            type="email" 
-                            id="email" 
-                            placeholder="Enter your email" 
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full p-3 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-[#d4a574] text-base"
-                            whileFocus={{ 
-                                borderColor: '#d4a574',
-                                boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
-                            }}
-                        />
-                    </motion.div>
+                        <span>←</span> BACK TO PORTAL
+                    </button>
                     
-                    <motion.div 
-                        className="mb-4"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.7 }}
-                    >
-                        <label htmlFor="password" className="block font-semibold text-[#1a2f4a] mb-2 text-sm">Password</label>
-                        <motion.input 
-                            type="password" 
-                            id="password" 
-                            placeholder="Enter your password" 
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full p-3 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-[#d4a574] text-base"
-                            whileFocus={{ 
-                                borderColor: '#d4a574',
-                                boxShadow: '0 0 0 3px rgba(212, 165, 116, 0.2)'
-                            }}
-                        />
-                    </motion.div>
+                    <div className="mb-10">
+                        <h1 className="text-3xl font-black text-white tracking-tight mb-2 italic uppercase">CiviCORE</h1>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.15em]">Naic Civil Registry System</p>
+                    </div>
                     
-                    <AnimatePresence mode='wait'>
-                        {error && (
-                            <motion.div 
-                                className="text-red-500 mb-4 text-sm"
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                            >
-                                {error}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                    
-                    <motion.button 
-                        type="submit" 
-                        className="w-full py-3 bg-[#d4a574] hover:bg-[#c49a67] text-white font-semibold rounded-lg transition-colors text-base md:text-lg"
-                        disabled={loading}
-                        whileHover={{ 
-                            scale: loading ? 1 : 1.02,
-                            backgroundColor: loading ? '#d4a574' : '#e5b887'
-                        }}
-                        whileTap={{ scale: loading ? 1 : 0.98 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        {loading ? (
-                            <motion.span
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                            >
-                                Logging in...
-                            </motion.span>
-                        ) : (
-                            'Login'
-                        )}
-                    </motion.button>
-                </motion.form>
+                    <form className="space-y-6" onSubmit={handleLogin}>
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Email</label>
+                            <input 
+                                name="email"
+                                type="email" 
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="admin@naic.gov.ph" 
+                                required
+                                className="w-full p-4 bg-black/20 border border-white/5 rounded-2xl text-white text-sm outline-none focus:border-[#d4a574]/50 focus:ring-4 focus:ring-[#d4a574]/5 transition-all placeholder:text-slate-600" 
+                            />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+                            <div className="relative">
+                                <input 
+                                    name="password"
+                                    type={showPassword ? "text" : "password"} 
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••" 
+                                    required
+                                    className="w-full p-4 bg-black/20 border border-white/5 rounded-2xl text-white text-sm outline-none focus:border-[#d4a574]/50 focus:ring-4 focus:ring-[#d4a574]/5 transition-all placeholder:text-slate-600 pr-12" 
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#d4a574] transition-colors focus:outline-none"
+                                >
+                                    {showPassword ? (
+                                        <EyeSlashIcon className="w-5 h-5" />
+                                    ) : (
+                                        <EyeIcon className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <motion.button 
+                            type="submit"
+                            disabled={isLoading}
+                            whileHover={!isLoading ? { scale: 1.02 } : {}}
+                            whileTap={!isLoading ? { scale: 0.96 } : {}}
+                            className={`w-full bg-gradient-to-r from-[#d4a574] to-[#b88c5d] text-[#0f172a] font-black py-5 rounded-2xl transition-all duration-300 uppercase tracking-[0.2em] text-[11px] shadow-[0_0_20px_rgba(212,165,116,0.15)] hover:shadow-[0_10px_30px_rgba(212,165,116,0.4)] mt-4 relative overflow-hidden group ${isLoading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                            <span className="relative z-10 flex items-center justify-center gap-3">
+                                {isLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4 text-[#0f172a]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <circle cx="12" cy="12" r="10" strokeWidth="4" strokeDasharray="32" strokeLinecap="round" className="opacity-25"></circle>
+                                            <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                                        </svg>
+                                        VERIFYING...
+                                    </>
+                                ) : 'SIGN INTO SYSTEM'}
+                            </span>
+                            <div className="absolute inset-0 bg-white/20 translate-y-[110%] group-hover:translate-y-0 transition-transform duration-300 ease-out z-0" />
+                        </motion.button>
+                    </form>
+                </div>
             </motion.div>
-        </motion.div>
+
+            <footer className="mt-12 text-center opacity-30">
+                <p className="text-white text-[9px] font-bold uppercase tracking-[0.4em]">Authorized Personnel Only • Naic Civil Registry © 2024</p>
+            </footer>
+        </div>
     );
 }
-
-export default Login;
-
