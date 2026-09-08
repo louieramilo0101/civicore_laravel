@@ -6,10 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Represents the Ticket application component.
+ */
 class Ticket extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /** Stores the fillable value used by this component. */
     protected $fillable = [
         'ticket_number',
         'client_name',
@@ -30,6 +34,7 @@ class Ticket extends Model
         'issued_at',
     ];
 
+    /** Stores the casts value used by this component. */
     protected $casts = [
         'details'      => 'array',
         'expires_at'   => 'datetime',
@@ -38,6 +43,9 @@ class Ticket extends Model
         'queue_number' => 'integer',
     ];
 
+    /**
+     * Executes the document operation.
+     */
     public function document()
     {
         return $this->belongsTo(Document::class);
@@ -60,11 +68,17 @@ class Ticket extends Model
         return $query->where('request_status', 'pending');
     }
 
+    /**
+     * Executes the scope ready requests operation.
+     */
     public function scopeReadyRequests($query)
     {
         return $query->where('request_status', 'ready_for_pickup');
     }
 
+    /**
+     * Executes the scope active lobby queue operation.
+     */
     public function scopeActiveLobbyQueue($query)
     {
         return $query->whereIn('queue_status', ['waiting', 'serving']);

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ArrowDownTrayIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
+/** Displays a registry document with print and download actions. */
 const DocumentViewerModal = ({ isOpen, onClose, fileUrl, fileName, onPrint, onDownload }) => {
     if (!isOpen || !fileUrl) return null;
 

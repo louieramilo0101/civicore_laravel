@@ -36,6 +36,7 @@ const DECADES = [
     { label: '1930s', start: 1930 },
 ];
 
+/** Provides segmented date entry with calendar and quick-date actions. */
 export default function DatePickerInput({
     value = '',
     onChange,
@@ -49,6 +50,7 @@ export default function DatePickerInput({
     const popoverRef = useRef(null);
 
     // Parse value (format YYYY-MM-DD)
+    /** Parses the component’s ISO date value into calendar segments. */
     const parseDate = (val) => {
         if (!val || typeof val !== 'string') return { year: '', month: '', day: '' };
         const parts = val.split('-');
@@ -88,6 +90,7 @@ export default function DatePickerInput({
     }, [isOpen]);
 
     // Calculate maximum days in selected month/year
+    /** Returns the number of days in a zero-based calendar month. */
     const getDaysInMonth = (y, m) => {
         const yearInt = parseInt(y, 10) || currentYearNum;
         const monthInt = parseInt(m, 10) || 1;
@@ -97,6 +100,7 @@ export default function DatePickerInput({
     const maxDays = getDaysInMonth(year, month);
 
     // Emit helper
+    /** Normalizes changed date segments and emits the resulting ISO value. */
     const handleSegmentChange = (newYear, newMonth, newDay) => {
         const y = newYear !== undefined ? newYear : year;
         const m = newMonth !== undefined ? newMonth : month;

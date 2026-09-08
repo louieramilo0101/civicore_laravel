@@ -11,6 +11,7 @@ import { useData } from './DataContext.jsx';
 import SignaturePad from './SignaturePad.jsx';
 
 // ── Helper: compute age from a date string ───────────────────────────────────
+/** Computes a person’s completed age from an ISO date string. */
 export function computeAge(dobString) {
     if (!dobString) return null;
     const dob = new Date(dobString.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
@@ -23,6 +24,7 @@ export function computeAge(dobString) {
 }
 
 // ── Parental Consent Modal ────────────────────────────────────────────────────
+/** Requests consent details when a certificate requires parental approval. */
 export const ParentalConsentModal = ({ onConfirm, onCancel }) => (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 leading-normal">
         <motion.div
@@ -84,6 +86,7 @@ import { DeathConfig, DeathTemplateOverlayFields } from './forms/DeathCertificat
 import { MarriageConfig, MarriageTemplateOverlayFields } from './forms/MarriageCertificateConfig.js';
 import { NAIC_BARANGAYS } from './forms/SharedConfig.js';
 
+/** Normalizes a barangay name before fuzzy matching. */
 const normalizeBrgyString = (name) => {
     if (!name) return '';
     return name.toLowerCase()
@@ -92,6 +95,7 @@ const normalizeBrgyString = (name) => {
         .trim();
 };
 
+/** Finds the closest configured barangay label for OCR output. */
 const findClosestBarangay = (raw) => {
     if (!raw) return '';
     const normalizedRaw = normalizeBrgyString(raw);
@@ -109,6 +113,7 @@ const FIELD_CONFIG = {
     marriage: MarriageConfig
 };
 
+/** Merges OCR output and file metadata into editable form state. */
 const getInitialFormData = (type, ocrFields, fileObj) => {
     let ef = ocrFields || {};
     if (typeof ef === 'string') {
@@ -184,6 +189,7 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
     return init;
 };
 
+/** Returns the certificate-specific maximum length for a field. */
 const getFieldMaxLength = (field) => {
     if (field.maxLength) return field.maxLength;
     const k = (field.key || '').toLowerCase();
@@ -197,6 +203,7 @@ const getFieldMaxLength = (field) => {
     return 100;
 };
 
+/** Presents OCR results for correction, validation, and document registration. */
 const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, onDuplicateStatusChange, isSaving = false, isViewOnly = false, hideBoxes = false }) => {
     const { stats } = useData();
 
@@ -408,6 +415,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
      * - Medium          (<0.85) → slate border (default)
      * - High            (>=0.85) → emerald ring flash (only on first load)
      */
+    /** Maps OCR confidence and validation state to a visual class. */
     const getConfidenceClass = (fieldKey, hasError) => {
         if (hasError) return 'border-rose-500 bg-rose-50/40 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm';
         const meta = fieldConfidence[fieldKey];
@@ -418,6 +426,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         return 'border-slate-200 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
     };
 
+    /** Indicates whether a field needs manual review. */
     const isLowConf = (fieldKey) => {
         const meta = fieldConfidence[fieldKey];
         return meta && (meta.low_confidence || meta.confidence < 0.65);
@@ -487,6 +496,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         });
     });
 
+    /** Validates and submits the edited OCR data to the parent workflow. */
     const handleSubmit = (e, minimize = false) => {
         if (e) e.preventDefault();
 

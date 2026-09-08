@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Registers the application's API routes and middleware groups.
+ */
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;

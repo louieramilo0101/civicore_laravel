@@ -1,3 +1,4 @@
+/** @type {string[]} Official barangay names used by certificate forms. */
 export const NAIC_BARANGAYS = [
     'Gomez-Zamora (Pob.)', 'Capt. C. Nazareno (Pob.)', 'Ibayo Silangan', 'Ibayo Estacion', 'Kanluran',
     'Makina', 'Sapa', 'Bucana Malaki', 'Bucana Sasahan', 'Bagong Karsada',
@@ -7,8 +8,10 @@ export const NAIC_BARANGAYS = [
     'Humbac', 'Munting Mapino', 'Sabang', 'Timalan Balsahan', 'Timalan Concepcion'
 ].sort();
 
+/** @type {string[]} Supported name suffix values for form selectors. */
 export const SUFFIX_OPTIONS = ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'M.D.', 'Esq.', 'Ph.D.'];
 
+/** Builds the reusable first, middle, last, and suffix field definitions. */
 export const NAME_FIELDS = (prefix = '') => [
     { key: `${prefix}last_name`, label: 'Last Name', type: 'text', required: true, width: 'sm:col-span-1' },
     { key: `${prefix}first_name`, label: 'First Name', type: 'text', required: true, width: 'sm:col-span-1' },

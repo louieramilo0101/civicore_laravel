@@ -1,12 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
+// Utility-only class replacements applied to authored frontend source files.
 const targetClasses = [
     { from: "bg-white rounded-2xl p-6 shadow-sm border border-slate-100", to: "bg-white/60 backdrop-blur-xl rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60" },
     { from: "bg-white rounded-2xl shadow-sm border border-slate-100", to: "bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60" },
     { from: "bg-white p-6 rounded-2xl shadow-sm border border-slate-100", to: "bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60" }
 ];
 
+// Keep this explicit so generated and dependency directories are never touched.
 const files = [
     "resources/js/components/Documents.jsx",
     "resources/js/components/Issuances.jsx",

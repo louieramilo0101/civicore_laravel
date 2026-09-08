@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 
+/**
+ * Represents the User Controller application component.
+ */
 class UserController extends Controller
 {
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -106,11 +109,17 @@ class UserController extends Controller
         return $this->createUser($request);
     }
 
+    /**
+     * Executes the create account operation.
+     */
     public function createAccount(Request $request)
     {
         return $this->createUser($request);
     }
 
+    /**
+     * Executes the create user operation.
+     */
     private function createUser(Request $request)
     {
         $actor = $this->sessionUser($request);
@@ -316,6 +325,9 @@ class UserController extends Controller
 
     // ─── Format ───────────────────────────────────────────────────────────────
 
+    /**
+     * Executes the format user operation.
+     */
     private function formatUser(User $user): array
     {
         return [

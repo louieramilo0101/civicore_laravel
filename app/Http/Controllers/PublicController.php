@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\Setting;
 use App\Models\Announcement;
 
+/**
+ * Represents the Public Controller application component.
+ */
 class PublicController extends Controller
 {
     /**

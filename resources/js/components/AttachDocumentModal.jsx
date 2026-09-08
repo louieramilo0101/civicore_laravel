@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
+/** Lets staff attach an existing registry document to a pending request. */
 export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach }) {
     const [ocrQuery, setOcrQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);

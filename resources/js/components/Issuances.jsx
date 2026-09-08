@@ -31,6 +31,7 @@ const NAIC_BARANGAYS = [
 ].sort();
 
 // ── Issuance Preview Modal ──────────────────────────────────────────────────
+/** Previews an issued certificate and exposes print/download actions. */
 export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openRequestModal }) => {
     const viewUrl = cert.source === 'issuance'
         ? `/api/issuances/view/${cert.realId}`
@@ -107,6 +108,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
     );
 };
 
+/** Manages issuance review, approval, printing, and bulk actions. */
 const Issuances = () => {
     const { showAlert } = useModal();
     const {
@@ -159,10 +161,12 @@ const Issuances = () => {
         type: 'info'
     });
 
+    /** Toggles one issuance in the bulk-selection set. */
     const toggleSelect = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
+    /** Selects or clears all issuance identifiers in the current view. */
     const toggleSelectAll = (idsToToggle) => {
         const allSelected = idsToToggle.every(id => selectedIds.includes(id));
         if (allSelected) {
@@ -173,6 +177,7 @@ const Issuances = () => {
     };
 
     // Helper to wrap actions with confirmation
+    /** Routes an issuance action through the confirmation modal. */
     const withConfirmation = (actionData) => {
         setConfirmAction({
             isOpen: true,
@@ -397,6 +402,7 @@ const Issuances = () => {
     };
 
 
+    /** Opens the source request associated with an issuance. */
     const openRequestModal = (cert) => {
         // Pre-generate an automatic OR number: OR-YYYYMMDD-XXXX
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');

@@ -8,6 +8,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Represents the Announcement Controller application component.
+ */
 class AnnouncementController extends Controller
 {
     /**
@@ -23,6 +26,9 @@ class AnnouncementController extends Controller
         return true;
     }
 
+    /**
+     * Executes the index operation.
+     */
     public function index()
     {
         try {
@@ -33,6 +39,9 @@ class AnnouncementController extends Controller
         }
     }
 
+    /**
+     * Executes the store operation.
+     */
     public function store(Request $request)
     {
         if (!$this->checkAdmin($request)) {
@@ -70,6 +79,9 @@ class AnnouncementController extends Controller
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
 
+    /**
+     * Executes the update operation.
+     */
     public function update(Request $request, $id)
     {
         if (!$this->checkAdmin($request)) {
@@ -113,6 +125,9 @@ class AnnouncementController extends Controller
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
 
+    /**
+     * Executes the destroy operation.
+     */
     public function destroy(Request $request, $id)
     {
         if (!$this->checkAdmin($request)) {

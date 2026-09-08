@@ -7,12 +7,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
+/**
+ * Represents the Document Archive Test application component.
+ */
 class DocumentArchiveTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Stores the database identifier for the authenticated administrator. */
     protected int $adminId;
 
+    /**
+     * Executes the set up operation.
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +39,9 @@ class DocumentArchiveTest extends TestCase
         ]);
     }
 
+    /**
+     * Executes the test_can_retrieve_only_archived_documents operation.
+     */
     public function test_can_retrieve_only_archived_documents()
     {
         // Insert active document
@@ -68,6 +78,9 @@ class DocumentArchiveTest extends TestCase
         $response->assertJsonPath('data.0.name', 'Archived Doc.pdf');
     }
 
+    /**
+     * Executes the test_can_restore_soft_deleted_document operation.
+     */
     public function test_can_restore_soft_deleted_document()
     {
         // Insert archived document
@@ -113,6 +126,9 @@ class DocumentArchiveTest extends TestCase
         ]);
     }
 
+    /**
+     * Executes the test_can_purge_document_and_files operation.
+     */
     public function test_can_purge_document_and_files()
     {
         // Create mock files in storage

@@ -2,8 +2,14 @@
 
 namespace App\Services;
 
+/**
+ * Represents the Template Config Service application component.
+ */
 class TemplateConfigService
 {
+    /**
+     * Executes the get fields for type operation.
+     */
     public static function getFieldsForType($type)
     {
         if ($type === 'birth') {
@@ -221,6 +227,9 @@ class TemplateConfigService
         return [];
     }
     
+    /**
+     * Executes the get template path operation.
+     */
     public static function getTemplatePath($type)
     {
         $type = strtolower($type);

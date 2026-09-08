@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
+/** Scans a ticket QR code and returns the selected request to the caller. */
 export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) {
     const fileInputRef = useRef(null);
     const nativeCameraInputRef = useRef(null);

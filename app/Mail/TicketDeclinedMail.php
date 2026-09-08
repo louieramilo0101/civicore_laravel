@@ -10,11 +10,16 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Ticket;
 
+/**
+ * Represents the Ticket Declined Mail application component.
+ */
 class TicketDeclinedMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /** Stores the ticket value used by this component. */
     public $ticket;
+    /** Stores the reason value used by this component. */
     public $reason;
 
     /**

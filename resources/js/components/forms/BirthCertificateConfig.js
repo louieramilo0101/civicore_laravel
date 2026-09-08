@@ -1,5 +1,6 @@
 import { NAIC_BARANGAYS, NAME_FIELDS, SUFFIX_OPTIONS } from './SharedConfig.js';
 
+/** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized birth-certificate overlay regions. */
 export const BirthTemplateOverlayFields = [
     // REGISTRY DETAILS
     { key: 'registry_number', label: 'Registry No.', x: 0.63, y: 0.10, w: 0.20, h: 0.015 },
@@ -106,6 +107,7 @@ export const BirthTemplateOverlayFields = [
     { key: 'office_registry_code', label: 'Office Grid Code', x: 0.10, y: 1.03, w: 0.85, h: 0.015 },
 ];
 
+/** @type {Array<Object>} Birth-certificate form field definitions and validation metadata. */
 export const BirthConfig = [
     {
         section: 'Registry Details',

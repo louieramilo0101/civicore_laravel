@@ -8,6 +8,7 @@ import { useData } from './DataContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
 
+/** Manages archived records and restore or purge operations. */
 const ArchiveManager = () => {
     const { backgroundTasks, runBackgroundTask, refreshAll } = useData();
 
@@ -91,12 +92,14 @@ const ArchiveManager = () => {
             ? registryArchive
             : filteredArchivedTickets;
 
+    /** Toggles one archived record in the bulk-selection set. */
     const toggleSelectArchive = (id) => {
         setSelectedArchiveIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
     };
 
+    /** Selects or clears all records currently visible in the archive list. */
     const toggleSelectAllArchive = (filteredArchive) => {
         if (selectedArchiveIds.length === filteredArchive.length && filteredArchive.length > 0) {
             setSelectedArchiveIds([]);
@@ -197,6 +200,7 @@ const ArchiveManager = () => {
         });
     };
 
+    /** Restores the selected archived records through the shared task queue. */
     const bulkRestoreArchived = () => {
         if (!selectedArchiveIds.length) return;
         setConfirmModal({
@@ -226,6 +230,7 @@ const ArchiveManager = () => {
         });
     };
 
+    /** Permanently removes the selected archived records after confirmation. */
     const bulkPurgeArchived = () => {
         if (!selectedArchiveIds.length) return;
         setConfirmModal({

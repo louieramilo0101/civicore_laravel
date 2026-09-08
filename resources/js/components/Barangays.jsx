@@ -7,6 +7,7 @@ import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const API_BASE = 'http://localhost:8000';
 
+/** Manages the barangay directory used by administrative workflows. */
 function Barangays() {
     const [barangays, setBarangays] = useState([]);
     const [loading, setLoading] = useState(true);

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Fade animation
+/** Animates children into view with a fade transition. */
 export const FadeIn = ({ children, delay = 0, duration = 0.4 }) => {
     return (
         <motion.div
@@ -20,6 +21,7 @@ export const FadeIn = ({ children, delay = 0, duration = 0.4 }) => {
 };
 
 // Slide from right animation
+/** Animates children into view from the right. */
 export const SlideInRight = ({ children, delay = 0, duration = 0.5 }) => {
     return (
         <motion.div
@@ -38,6 +40,7 @@ export const SlideInRight = ({ children, delay = 0, duration = 0.5 }) => {
 };
 
 // Slide from bottom animation
+/** Animates children into view from below. */
 export const SlideInUp = ({ children, delay = 0, duration = 0.5 }) => {
     return (
         <motion.div
@@ -56,6 +59,7 @@ export const SlideInUp = ({ children, delay = 0, duration = 0.5 }) => {
 };
 
 // Scale animation
+/** Animates children into view with a scale transition. */
 export const ScaleIn = ({ children, delay = 0, duration = 0.4 }) => {
     return (
         <motion.div
@@ -113,6 +117,7 @@ const itemVariants = {
 };
 
 // Page transition component
+/** Wraps a routed page in the application’s standard transition. */
 const PageTransition = ({ children, className = '' }) => {
     return (
         <motion.div
@@ -132,6 +137,7 @@ const PageTransition = ({ children, className = '' }) => {
 };
 
 // Animated list item for lists
+/** Applies a staggered entrance transition to one list item. */
 export const AnimatedListItem = ({ children, index = 0 }) => {
     return (
         <motion.div
@@ -147,6 +153,7 @@ export const AnimatedListItem = ({ children, index = 0 }) => {
 };
 
 // Staggered children wrapper
+/** Coordinates staggered child animations for a list or grid. */
 export const StaggerContainer = ({ children, className = '', staggerDelay = 0.05 }) => {
     const containerVariants = {
         initial: {},

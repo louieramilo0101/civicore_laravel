@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { UserIcon, UsersIcon, DocumentTextIcon, ArchiveBoxIcon, ShieldCheckIcon, ClockIcon } from '@heroicons/react/24/outline';
 
+/** Lists the digital services available through the public portal. */
 export default function DigitalServices() {
     const services = [
         { title: 'Birth Registration', icon: <UserIcon className="w-10 h-10 text-[#d4a574]" />, desc: 'Processing and archiving of birth certificates to establish the fundamental legal identity of every citizen.' },

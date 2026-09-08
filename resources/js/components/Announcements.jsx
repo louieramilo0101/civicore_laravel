@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MegaphoneIcon, PlusIcon, TrashIcon, CheckCircleIcon, XCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
+/** Displays published civic announcements for the current audience. */
 export default function Announcements() {
     const [activeTab, setActiveTab] = useState('broadcasts'); // 'broadcasts' or 'settings'
     

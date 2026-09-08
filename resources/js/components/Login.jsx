@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useModal } from './ModalContext.jsx';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
+/** Handles staff sign-in and verification-code entry. */
 export default function Login() {
     const navigate = useNavigate();
     const { showAlert } = useModal();

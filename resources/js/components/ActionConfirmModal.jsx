@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon, InformationCircleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
+/** Confirms a potentially destructive staff action before execution. */
 const ActionConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, type = 'info' }) => {
+    /** Maps the action type to the modal’s semantic color treatment. */
     const getColor = () => {
         switch (type) {
             case 'danger': return 'rose';

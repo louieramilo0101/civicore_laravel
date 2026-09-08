@@ -13,19 +13,32 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
+/**
+ * Represents the Process Image Ocr Job application component.
+ */
 class ProcessImageOcrJob implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Stores the timeout value used by this component. */
     public $timeout = 300;
+    /** Stores the tries value used by this component. */
     public $tries = 3;
 
+    /** Stores the documentId value used by this component. */
     protected $documentId;
+    /** Stores the imagePath value used by this component. */
     protected $imagePath;
+    /** Stores the pageNo value used by this component. */
     protected $pageNo;
+    /** Stores the docType value used by this component. */
     protected $docType;
+    /** Stores the languages value used by this component. */
     protected $languages;
 
+    /**
+     * Creates a new component instance.
+     */
     public function __construct($documentId, $imagePath, $pageNo = 1, $docType = '', $languages = 'en,tl')
     {
         $this->documentId = $documentId;
@@ -35,11 +48,17 @@ class ProcessImageOcrJob implements ShouldQueue
         $this->languages = $languages;
     }
 
+    /**
+     * Executes the middleware operation.
+     */
     public function middleware()
     {
         return [(new WithoutOverlapping('gemini-ocr-lock'))->releaseAfter(60)];
     }
 
+    /**
+     * Executes the handle operation.
+     */
     public function handle(): void
     {
         if ($this->batch() && $this->batch()->cancelled()) {

@@ -10,6 +10,7 @@ import { PencilIcon, ArrowUturnLeftIcon, TrashIcon, CheckCircleIcon } from '@her
  *   disabled  {bool}    Disables drawing when true (view-only mode).
  *   fieldKey  {string}  Used for the canvas element ID.
  */
+/** Captures, edits, and returns a handwritten signature as an image value. */
 const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) => {
     const canvasRef = useRef(null);
     const isDrawingRef = useRef(false);
@@ -43,6 +44,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
     }, [isEditing]);
 
     // ── Mouse/Touch drawing helpers ──────────────────────────────────────────
+    /** Converts pointer coordinates into canvas-local coordinates. */
     const getPos = (e, canvas) => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -102,6 +104,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         }
     }, [onChange]);
 
+    /** Removes the most recent signature stroke. */
     const handleUndo = () => {
         if (!canvasRef.current || historyRef.current.length === 0) return;
         const canvas = canvasRef.current;
@@ -119,6 +122,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         }
     };
 
+    /** Clears the current signature canvas and value. */
     const handleClear = () => {
         if (!canvasRef.current) return;
         const canvas = canvasRef.current;
@@ -129,6 +133,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         onChange('n/a');
     };
 
+    /** Serializes the signature canvas and returns it to the parent. */
     const handleDone = () => {
         if (isEmpty) onChange('n/a');
         setIsEditing(false);

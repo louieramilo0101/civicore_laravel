@@ -1,5 +1,6 @@
 import { NAIC_BARANGAYS, NAME_FIELDS } from './SharedConfig.js';
 
+/** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized marriage-certificate overlay regions. */
 export const MarriageTemplateOverlayFields = [
     // REGISTRY DETAILS
     { key: 'province', label: 'Province', x: 0.09, y: 0.076, w: 0.38, h: 0.014 },
@@ -99,6 +100,7 @@ export const MarriageTemplateOverlayFields = [
     { key: 'remarks', label: 'Remarks', x: 0.05, y: 0.918, w: 0.90, h: 0.040 },
 ];
 
+/** @type {Array<Object>} Marriage-certificate form field definitions and validation metadata. */
 export const MarriageConfig = [
     {
         section: 'Registry Details',

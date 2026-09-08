@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+/** Provides the shared shell for unauthenticated portal pages. */
 export default function PublicLayout({ children }) {
     const location = useLocation();
 

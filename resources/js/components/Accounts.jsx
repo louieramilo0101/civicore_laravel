@@ -10,6 +10,7 @@ import SkeletonLoader from './SkeletonLoader.jsx';
 import Avatar from './Avatar.jsx';
 import { AVATAR_LIBRARY } from './AvatarLibrary.js';
 
+/** Manages user accounts, roles, avatars, and password policy feedback. */
 const Accounts = () => {
     const { showAlert } = useModal();
     const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
@@ -112,10 +113,12 @@ const Accounts = () => {
     const chartRef = useRef(null);
     const canvasRef = useRef(null);
 
+    /** Evaluates the password rules displayed beside the account form. */
     const isStrongPassword = (pw) => {
         return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\W])[A-Za-z\d@$!%*?&\W]{8,}$/.test(pw);
     };
 
+    /** Shows live password-rule status for the account editor. */
     const PasswordRequirements = ({ password }) => {
         if (!password) return null;
 

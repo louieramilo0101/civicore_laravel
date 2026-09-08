@@ -4,6 +4,7 @@
  * high-quality, distinct 'Beam' avatars using the boring-avatars library.
  */
 
+/** @type {Array<{id: string, name: string, url: string}>} Curated avatar choices shown in account settings. */
 export const AVATAR_LIBRARY = [
     { id: 'lib_1', name: 'Justice Sentinel', seed: 'Sentinel' },
     { id: 'lib_2', name: 'Elite Guardian', seed: 'Guardian' },
@@ -27,6 +28,7 @@ export const AVATAR_LIBRARY = [
     { id: 'lib_20', name: 'Support Hero', seed: 'Hero' },
 ];
 
+/** Returns a stable library avatar for a user-provided seed. */
 export const getLibraryAvatarBySeed = (seed) => {
     // This helper identifies if a user is using a library seed
     return AVATAR_LIBRARY.find(a => a.seed === seed);

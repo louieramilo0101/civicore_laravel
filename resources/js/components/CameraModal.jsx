@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { createCaptureEngine, detectCaptureEnvironment } from './captureEngine';
 
+/** Provides camera capture, cropping, rotation, and image confirmation. */
 const CameraModal = ({ isOpen, onClose, onCapture }) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -141,6 +142,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
         let stuckStartTime = 0;
         let blackFeedStartTime = 0;
 
+        /** Draws the live camera frame and crop guides onto the preview canvas. */
         const render = (time) => {
             const canvas = overlayCanvasRef.current;
             const video = videoRef.current;
@@ -595,6 +597,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     };
 
     // Thorough Camera Hardware LED Release
+    /** Stops the current camera stream and clears preview resources. */
     const stopCamera = () => {
         if (activeStreamRef.current) {
             try {
@@ -644,6 +647,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
                 };
             }, []);
 
+    /** Closes the modal and performs camera cleanup. */
     const handleClose = () => {
         modalOpenRef.current = false;
         stopCamera();
@@ -713,6 +717,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
         stopCamera();
     };
 
+    /** Applies the selected crop and image adjustments before confirmation. */
     const processFinalWarp = () => {
         if (!capturedFile) return;
 
@@ -735,6 +740,7 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
         setIsCapturing(false);
     };
 
+    /** Emits the processed image to the parent capture workflow. */
     const handleConfirm = () => {
         if (!capturedFile || !previewImage) return;
         processFinalWarp();

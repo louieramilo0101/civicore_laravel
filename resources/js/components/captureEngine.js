@@ -13,6 +13,7 @@ const CAPTURE_PROFILES = {
     }
 };
 
+/** Orders detected quadrilateral points clockwise from the top-left corner. */
 const sortPoints = (pts) => {
     const sorted = [...pts].sort((a, b) => a.y - b.y);
     const top = sorted.slice(0, 2).sort((a, b) => a.x - b.x);
@@ -20,6 +21,7 @@ const sortPoints = (pts) => {
     return { tl: top[0], tr: top[1], br: bottom[1], bl: bottom[0] };
 };
 
+/** Detects camera capabilities used to select the capture strategy. */
 export const detectCaptureEnvironment = () => {
     if (typeof window === 'undefined') return 'desktop';
 
@@ -30,12 +32,14 @@ export const detectCaptureEnvironment = () => {
     return coarsePointer || narrowViewport || mobileUA ? 'mobile' : 'desktop';
 };
 
+/** Creates the camera preview, edge-detection, capture, and cleanup API. */
 export const createCaptureEngine = () => {
     const environment = detectCaptureEnvironment();
     const profile = CAPTURE_PROFILES[environment];
     let activeStream = null;
     let lastFacingMode = profile.facingMode;
 
+    /** Stops the active media stream and releases camera resources. */
     const stop = () => {
         if (activeStream) {
             try {
@@ -122,6 +126,7 @@ export const createCaptureEngine = () => {
         return stream;
     };
 
+    /** Detects likely document corners from the current video frame. */
     const detectEdges = ({ videoElement } = {}) => {
         const cv = window.cv;
         if (!videoElement || videoElement.readyState < 2 || !videoElement.videoWidth || !videoElement.videoHeight || videoElement.videoWidth < 10 || videoElement.videoHeight < 10 || videoElement.paused || videoElement.ended) {
@@ -273,6 +278,7 @@ export const createCaptureEngine = () => {
         return null;
     };
 
+    /** Captures the current video frame as a data URL and file. */
     const capture = ({ videoElement, quality = 0.9 } = {}) => {
         if (!videoElement) return null;
 

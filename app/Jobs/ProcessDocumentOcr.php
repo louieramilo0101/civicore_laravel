@@ -16,19 +16,32 @@ use Illuminate\Support\Facades\Bus;
 use App\Jobs\ProcessImageOcrJob;
 use Throwable;
 
+/**
+ * Represents the Process Document Ocr application component.
+ */
 class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /** Stores the tries value used by this component. */
     public $tries = 3;
+    /** Stores the backoff value used by this component. */
     public $backoff = [60, 120, 300];
+    /** Stores the timeout value used by this component. */
     public $timeout = 900;
+    /** Stores the uniqueFor value used by this component. */
     public $uniqueFor = 3600;
 
+    /** Stores the documentId value used by this component. */
     protected $documentId;
+    /** Stores the docType value used by this component. */
     protected $docType;
+    /** Stores the languages value used by this component. */
     protected $languages;
 
+    /**
+     * Creates a new component instance.
+     */
     public function __construct($documentId, $docType = '', $languages = 'en,tl')
     {
         $this->documentId = $documentId;
@@ -37,11 +50,17 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
         $this->onQueue('low');
     }
 
+    /**
+     * Executes the unique id operation.
+     */
     public function uniqueId()
     {
         return (string) $this->documentId;
     }
 
+    /**
+     * Executes the handle operation.
+     */
     public function handle(): void
     {
         Log::info("ProcessDocumentOcr Coordinator starting for Document ID: " . $this->documentId);

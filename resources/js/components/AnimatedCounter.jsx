@@ -52,7 +52,8 @@ const AnimatedCounter = ({
 };
 
 // Wrapper component for stat cards with animation
-export const AnimatedStatCard = ({ 
+/** Displays a dashboard statistic with an animated numeric transition. */
+export const AnimatedStatCard = ({
     label, 
     value, 
     icon: Icon, 

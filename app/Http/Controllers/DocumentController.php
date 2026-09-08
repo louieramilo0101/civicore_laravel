@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Bus;
 use App\Models\Document;
 use App\Jobs\ProcessDocumentOcr;
 
+/**
+ * Represents the Document Controller application component.
+ */
 class DocumentController extends Controller
 {
     /**
@@ -107,6 +110,9 @@ class DocumentController extends Controller
         ]);
     }
 
+    /**
+     * Executes the bulk process operation.
+     */
     public function bulkProcess(Request $request) 
     {
         // 1. Make sure we actually received an array of IDs
@@ -147,6 +153,9 @@ class DocumentController extends Controller
         ]);
     }
 
+    /**
+     * Executes the toggle ocr operation.
+     */
     public function toggleOcr(Request $request, $id)
     {
         $doc = DB::table('documents')->where('id', $id)->first();
@@ -341,6 +350,9 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Executes the validate uploaded file operation.
+     */
     private function validateUploadedFile($file)
     {
         $allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'bmp', 'docx', 'doc', 'txt', 'webp', 'rtf'];
@@ -709,6 +721,9 @@ class DocumentController extends Controller
         return false;
     }
 
+    /**
+     * Executes the build full name operation.
+     */
     private function buildFullName($fields, $type)
     {
         if (!$fields) return null;

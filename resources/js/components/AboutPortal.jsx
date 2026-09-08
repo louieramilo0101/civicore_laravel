@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircleIcon, ShieldCheckIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
+/** Renders the public portal overview and service information. */
 export default function AboutPortal() {
     return (
         <section className="py-24 px-6 md:px-24 min-h-[70vh] flex items-center">

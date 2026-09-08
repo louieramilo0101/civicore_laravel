@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import os from 'os';
 
+/** Selects a non-loopback local address for network-accessible HMR. */
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     

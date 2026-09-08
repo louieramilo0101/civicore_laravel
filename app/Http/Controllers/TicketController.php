@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
 
+/**
+ * Represents the Ticket Controller application component.
+ */
 class TicketController extends Controller
 {
     // ─── Helpers ────────────────────────────────────────────────────────────
@@ -31,6 +34,9 @@ class TicketController extends Controller
         return $expiry;
     }
 
+    /**
+     * Executes the build ticket url operation.
+     */
     private function buildTicketUrl(Request $request, string $token): string
     {
         $host = $request->getSchemeAndHttpHost();
@@ -92,6 +98,9 @@ class TicketController extends Controller
         return [$filename, base64_encode($pngData)];
     }
 
+    /**
+     * Executes the current user name operation.
+     */
     private function currentUserName(Request $request): string
     {
         $userId = $request->session()->get('user_id');
@@ -100,6 +109,9 @@ class TicketController extends Controller
         return $user ? $user->name : $request->session()->get('user_name', 'System');
     }
 
+    /**
+     * Executes the generate official receipt number operation.
+     */
     private function generateOfficialReceiptNumber(): string
     {
         return 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
@@ -540,6 +552,9 @@ class TicketController extends Controller
 
     // ─── Staff: Update Status (Legacy compatibility) ─────────────────────────
 
+    /**
+     * Executes the update status operation.
+     */
     public function updateStatus(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
@@ -584,6 +599,9 @@ class TicketController extends Controller
 
     // ─── Staff: Link Document (Legacy compatibility) ─────────────────────────
 
+    /**
+     * Executes the link document operation.
+     */
     public function linkDocument(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [

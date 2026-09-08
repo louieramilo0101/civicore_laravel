@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Represents the Activity Log Controller application component.
+ */
 class ActivityLogController extends Controller
 {
     /**

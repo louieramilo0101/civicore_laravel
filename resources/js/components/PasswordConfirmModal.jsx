@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LockClosedIcon, XMarkIcon, ShieldCheckIcon, EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
+/** Requests a user password before allowing a protected operation. */
 const PasswordConfirmModal = ({ isOpen, onConfirm, onCancel, title, message }) => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

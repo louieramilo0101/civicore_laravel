@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+/** Renders an inline loading indicator with an optional status message. */
 const LoadingSpinner = ({ size = 'md', message = 'Loading...' }) => {
     const sizeClasses = {
         sm: 'w-4 h-4 border-2',
@@ -51,6 +52,7 @@ const LoadingSpinner = ({ size = 'md', message = 'Loading...' }) => {
 };
 
 // Enhanced Loading Spinner with overlay option
+/** Covers the current view with a loading state when requested. */
 export const LoadingOverlay = ({ show, message = 'Loading...' }) => {
     if (!show) return null;
 
@@ -87,6 +89,7 @@ export const LoadingOverlay = ({ show, message = 'Loading...' }) => {
 };
 
 // Pulse Loading Dots
+/** Renders a compact animated loading label for inline actions. */
 export const LoadingDots = ({ message = 'Loading' }) => {
     return (
         <div className="flex items-center gap-2">

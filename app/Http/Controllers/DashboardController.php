@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Represents the Dashboard Controller application component.
+ */
 class DashboardController extends Controller
 {
     /**

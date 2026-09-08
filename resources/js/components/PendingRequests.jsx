@@ -23,21 +23,87 @@ import {
 import axios from 'axios';
 import AttachDocumentModal from './AttachDocumentModal';
 
+/**
+ * @typedef {Object} TicketDetails
+ * @property {string} [first_name] Birth certificate first name.
+ * @property {string} [middle_name] Birth certificate middle name.
+ * @property {string} [last_name] Birth certificate last name.
+ * @property {string} [date_of_birth] Birth date in HTML date-input format.
+ * @property {string} [place_of_birth] Birth place.
+ * @property {string} [father_name] Father's name.
+ * @property {string} [mother_name] Mother's maiden name.
+ * @property {string} [deceased_first_name] Deceased person's first name.
+ * @property {string} [deceased_middle_name] Deceased person's middle name.
+ * @property {string} [deceased_last_name] Deceased person's last name.
+ * @property {string} [date_of_death] Death date in HTML date-input format.
+ * @property {string} [place_of_death] Death place.
+ * @property {string} [husband_first_name] Husband's first name.
+ * @property {string} [husband_middle_name] Husband's middle name.
+ * @property {string} [husband_last_name] Husband's last name.
+ * @property {string} [wife_first_name] Wife's first name.
+ * @property {string} [wife_middle_name] Wife's middle name.
+ * @property {string} [wife_last_name] Wife's last name.
+ * @property {string} [date_of_marriage] Marriage date in HTML date-input format.
+ * @property {string} [place_of_marriage] Marriage place.
+ */
+
+/**
+ * @typedef {Object} Ticket
+ * @property {number|string} id Unique ticket identifier.
+ * @property {string} ticket_number Human-readable ticket number.
+ * @property {string} client_name Requester's name.
+ * @property {string} [email] Requester's email address.
+ * @property {string} [phone] Requester's phone number.
+ * @property {'birth'|'death'|'marriage'} purpose Requested certificate type.
+ * @property {TicketDetails} [details] Certificate-specific request fields.
+ * @property {string} request_status Current processing status.
+ * @property {string} [queue_status] Current lobby queue status.
+ * @property {number|string} [document_id] Linked registry document identifier.
+ * @property {Object} [document] Linked registry document summary.
+ */
+
+/**
+ * @typedef {Object} PendingRequestsProps
+ * @property {(options: Object) => void} [showAlert] Displays a global alert.
+ * @property {() => void} [refreshCounter] Notifies the parent to refresh counts.
+ * @property {import('react').ReactNode} [viewSelectors] Optional parent view controls.
+ * @property {number} [counter=0] Parent refresh counter.
+ */
+
+/**
+ * Displays the digital request inbox and provides staff workflows for scanning,
+ * reviewing, attaching, declining, and issuing civil registry requests.
+ *
+ * @param {PendingRequestsProps} props Component properties supplied by the parent view.
+ * @returns {JSX.Element} The pending-request management interface.
+ */
 export default function PendingRequests({ showAlert, refreshCounter, viewSelectors, counter }) {
+    /** @type {[Ticket[], import('react').Dispatch<import('react').SetStateAction<Ticket[]>>]} */
     const [tickets, setTickets] = useState([]);
+    /** @type {[Object, import('react').Dispatch<import('react').SetStateAction<Object>>]} */
     const [stats, setStats] = useState({ pending_inbox: 0, attached_today: 0, completed_today: 0 });
+    /** @type {[Ticket|null, import('react').Dispatch<import('react').SetStateAction<Ticket|null>>]} */
     const [selectedTicket, setSelectedTicket] = useState(null);
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [searchQuery, setSearchQuery] = useState('');
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [purposeFilter, setPurposeFilter] = useState('all');
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [statusFilter, setStatusFilter] = useState('pending');
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isLoading, setIsLoading] = useState(false);
 
+    /** Tracks the previous result count so new-request notifications are not emitted on first load. */
     const prevCountRef = React.useRef(0);
 
+    /** Plays a short, non-blocking notification tone for newly received requests. */
     const playNotificationSound = () => {
         try {
+            /** Browser audio context used to synthesize the notification tone. */
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            /** Oscillator that produces the tone's pitch. */
             const osc = ctx.createOscillator();
+            /** Gain node that controls the tone's volume envelope. */
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.setValueAtTime(587.33, ctx.currentTime);
@@ -51,25 +117,42 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         } catch (e) {}
     };
 
-    // Modal triggers
+    // Modal and workflow state. Each flag controls one staff-facing overlay or action.
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isAttachOpen, setIsAttachOpen] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isDeclineOpen, setIsDeclineOpen] = useState(false);
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [declineReason, setDeclineReason] = useState('');
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [declinePreset, setDeclinePreset] = useState('');
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [scannerError, setScannerError] = useState('');
 
+    /** Stores the identifier of the ticket currently being declined. */
+    /** @type {[number|string|null, import('react').Dispatch<import('react').SetStateAction<number|string|null>>]} */
     const [deletingId, setDeletingId] = useState(null);
 
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIssuing, setIsIssuing] = useState(false);
 
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isWalkinModalOpen, setIsWalkinModalOpen] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isPopupOpen, setIsPopupOpen] = useState(false);
+    /** @type {[Ticket|null, import('react').Dispatch<import('react').SetStateAction<Ticket|null>>]} */
     const [scannedData, setScannedData] = useState(null);
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [walkinName, setWalkinName] = useState('');
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [walkinPurpose, setWalkinPurpose] = useState('birth');
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isCreatingWalkin, setIsCreatingWalkin] = useState(false);
+    /** @type {[TicketDetails, import('react').Dispatch<import('react').SetStateAction<TicketDetails>>]} */
     const [walkinDetails, setWalkinDetails] = useState({
         first_name: '', middle_name: '', last_name: '', date_of_birth: '', place_of_birth: '', father_name: '', mother_name: '',
         deceased_first_name: '', deceased_middle_name: '', deceased_last_name: '', date_of_death: '', place_of_death: '',
@@ -77,25 +160,40 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         wife_first_name: '', wife_middle_name: '', wife_last_name: '', date_of_marriage: '', place_of_marriage: ''
     });
 
+    /**
+     * Starts the original live QR scanner when its modal opens and guarantees
+     * that the scanner and camera are released when the modal closes.
+     */
     useEffect(() => {
         if (!isScannerOpen) return;
 
+        /** Active html5-qrcode scanner instance for this effect lifecycle. */
         let scanner = null;
+        /** Animation-frame handle used to wait for the portal reader element. */
         let frameId = null;
         setScannerError('');
 
+        /**
+         * Handles a decoded QR value by checking the ticket into the queue.
+         * @param {string} decodedText Raw text returned by html5-qrcode.
+         * @returns {Promise<void>} Resolves after the lookup attempt completes.
+         */
         const onScanSuccess = async (decodedText) => {
             await scanner?.clear().catch(() => {});
             scanner = null;
             setIsScannerOpen(false);
 
             try {
+                /** Extract the final token when the QR value is a full URL. */
                 const ticketToken = decodedText.includes('/')
                     ? decodedText.split('/').filter(Boolean).pop()
                     : decodedText;
+                /** Ask Laravel to validate and check in the scanned ticket. */
+                /** Response returned by the ticket check-in endpoint. */
                 const response = await axios.post('/api/v1/tickets/scan', {
                     qr_code_token: ticketToken,
                 });
+                /** Normalize both wrapped and legacy API response formats. */
                 const ticketRecord = response.data.ticket || response.data;
                 setScannedData(ticketRecord);
                 setSelectedTicket(ticketRecord);
@@ -107,7 +205,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             }
         };
 
+        /** Creates the scanner after the portal has mounted its reader element. */
         const initializeScanner = () => {
+            /** Portal-mounted DOM node consumed by html5-qrcode. */
             const reader = document.getElementById('reader');
             if (!reader) {
                 setScannerError('The scanner could not initialize. Please close this window and try again.');
@@ -135,18 +235,37 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         };
     }, [isScannerOpen]);
 
-    const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
+    /**
+     * Removes unsupported characters from staff-entered names.
+     * @param {string} val Candidate name value.
+     * @returns {string} Sanitized name.
+     */
+    const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-ñ\Ñ\u00C0-\u024F]/g, '') : '';
 
+    /**
+     * Updates one walk-in detail and sanitizes name-like fields.
+     * @param {string} field Detail key to update.
+     * @param {string} val New field value.
+     * @returns {void}
+     */
     const handleWalkinDetailChange = (field, val) => {
+        /** Whether the selected field represents a person's name. */
         const isName = field.includes('name') && !field.includes('place') && !field.includes('date');
+        /** Value after applying name validation where appropriate. */
         const cleanVal = isName ? sanitizeName(val) : val;
         setWalkinDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
-    // Caching (SWR) on mount / purpose or status filter change
+    /**
+     * Loads cached inbox data immediately, then refreshes it from the API when
+     * the selected purpose or request-status filter changes.
+     */
     useEffect(() => {
+        /** Cache key scoped to the active purpose and status filters. */
         const cacheKey = `civicore_pending_tickets_${purposeFilter}_${statusFilter}`;
+        /** Previously cached ticket list, if one exists. */
         const cachedTickets = sessionStorage.getItem(cacheKey);
+        /** Previously cached summary statistics, if one exists. */
         const cachedStats = sessionStorage.getItem('civicore_pending_stats');
 
         if (cachedTickets) {
@@ -161,16 +280,23 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         fetchPendingTickets(!cachedTickets);
     }, [purposeFilter, statusFilter]);
 
-    // Refresh tickets silently when parent counter updates
+    /** Refreshes the inbox silently when the parent reports a data change. */
     useEffect(() => {
         if (counter > 0) {
             fetchPendingTickets(false);
         }
     }, [counter]);
 
+    /**
+     * Retrieves filtered ticket records and staff statistics, updates the UI
+     * cache, and preserves the currently selected ticket when possible.
+     * @param {boolean} [showLoading=true] Whether to display the loading state.
+     * @returns {Promise<void>} Resolves after both API requests finish.
+     */
     const fetchPendingTickets = async (showLoading = true) => {
         try {
             if (showLoading) setIsLoading(true);
+            /** Fetch the filtered inbox and its aggregate dashboard statistics together. */
             const [ticketsRes, statsRes] = await Promise.all([
                 axios.get('/api/v1/tickets', {
                     params: {
@@ -186,9 +312,12 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 })
             ]);
 
+            /** Compare the latest result count with the previous refresh for notifications. */
             const prevCount = prevCountRef.current;
+            /** Ticket records returned by the filtered inbox endpoint. */
             const newTickets = ticketsRes.data;
             if (prevCount > 0 && newTickets.length > prevCount) {
+                /** The API returns newest requests first, so the first item is newest. */
                 const latest = newTickets[0];
                 playNotificationSound();
                 if (showAlert && latest) {
@@ -209,6 +338,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             if (ticketsRes.data.length > 0) {
                 if (selectedTicket) {
+                    /** Keep the selected record synchronized with refreshed server data. */
                     const matched = ticketsRes.data.find(t => t.id === selectedTicket.id);
                     setSelectedTicket(matched || ticketsRes.data[0]);
                 } else {
@@ -225,15 +355,24 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
+    /**
+     * Links a registry document to the selected request and moves it to the
+     * ready-for-pickup workflow state.
+     * @param {number|string} docId Registry document identifier.
+     * @param {string} [printRemarks=''] Optional printing instructions.
+     * @returns {Promise<void>} Resolves after the attachment is saved.
+     */
     const handleAttachAndConfirm = async (docId, printRemarks = '') => {
         if (!selectedTicket || !docId) return;
 
         try {
+            /** Server response for the document-attachment request. */
             const res = await axios.patch(`/api/v1/tickets/${selectedTicket.id}/attach`, {
                 document_id: docId,
                 print_remarks: printRemarks
             });
             if (res.data.success) {
+                /** Apply the server-confirmed workflow state to the local selection. */
                 const updatedTicket = {
                     ...selectedTicket,
                     document_id: docId,
@@ -257,11 +396,17 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
+    /** Opens the decline dialog for the currently selected request. */
     const handleDeclineRequest = async () => {
         if (!selectedTicket) return;
         setIsDeclineOpen(true);
     };
 
+    /**
+     * Persists the selected decline reason and optionally sends the requester
+     * a notification through the backend.
+     * @returns {Promise<void>} Resolves after the decline workflow completes.
+     */
     const confirmDeclineRequest = async () => {
         if (!selectedTicket || !declineReason.trim()) {
             showAlert({ title: 'Reason Required', message: 'Please provide a reason for declining this request.', type: 'warning' });
@@ -269,6 +414,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
         setDeletingId(selectedTicket.id);
         try {
+            /** Server response for the decline request. */
             const res = await axios.patch(`/api/v1/tickets/${selectedTicket.id}/cancel`, {
                 reason: declineReason.trim(),
                 send_email: true
@@ -291,15 +437,21 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
+    /** Opens the identity-verification dialog before final issuance. */
     const handleDirectIssue = () => {
         if (!selectedTicket) return;
         setIsVerifyOpen(true);
     };
 
+    /**
+     * Marks the selected attached request as issued after staff verification.
+     * @returns {Promise<void>} Resolves after the issue request completes.
+     */
     const handleFinalIssue = async () => {
         if (!selectedTicket) return;
         setIsIssuing(true);
         try {
+            /** Server response for the final issuance request. */
             const res = await axios.post(`/api/v1/tickets/${selectedTicket.id}/issue`);
             if (res.data.success) {
                 showAlert({
@@ -319,9 +471,15 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
+    /**
+     * Opens the linked document in a hidden iframe and invokes the browser print dialog.
+     * @param {Ticket} ticket Ticket whose linked document should be printed.
+     * @returns {void}
+     */
     const handlePrintTicketDocument = (ticket) => {
         if (!ticket?.document_id) return;
 
+        /** Hidden print surface used so the inbox page remains in place. */
         const iframe = document.createElement('iframe');
         iframe.src = `/api/documents/view/${ticket.document_id}?raw=1`;
         iframe.style.position = 'fixed';
@@ -330,6 +488,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         iframe.style.opacity = '0';
         iframe.style.pointerEvents = 'none';
 
+        /** Prints the loaded document, then removes the temporary iframe. */
         const printWhenReady = () => {
             iframe.contentWindow?.focus();
             iframe.contentWindow?.print();
@@ -340,6 +499,11 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         document.body.appendChild(iframe);
     };
 
+    /**
+     * Creates a staff-entered walk-in request using the same ticket API as
+     * online submissions, then resets the form and refreshes the inbox.
+     * @returns {Promise<void>} Resolves after the ticket creation attempt.
+     */
     const handleCreateWalkinTicket = async () => {
         if (!walkinName.trim()) {
             showAlert({ title: 'Error', message: 'Client name is required.', type: 'warning' });
@@ -347,6 +511,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
         setIsCreatingWalkin(true);
         try {
+            /** Server response containing the newly created walk-in ticket. */
             const res = await axios.post('/api/v1/tickets', {
                 client_name: walkinName.trim(),
                 purpose: walkinPurpose,
@@ -374,6 +539,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
+    /** Tickets matching the free-text search currently entered by staff. */
     const filteredTickets = tickets.filter(t =>
         t.ticket_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.client_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -476,7 +642,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             </div>
                         ) : (
                             filteredTickets.map(t => {
+                                /** Whether this row is the currently selected request. */
                                 const isSelected = selectedTicket?.id === t.id;
+                                /** Purpose-specific visual badge classes. */
                                 const badgeClass = t.purpose === 'birth'
                                     ? 'bg-blue-50 text-blue-700 border-blue-100'
                                     : t.purpose === 'death'
@@ -897,6 +1065,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 text-xs font-semibold focus:border-rose-400 focus:ring focus:ring-rose-200 focus:ring-opacity-50 transition-all cursor-pointer"
                                         value={declinePreset}
                                         onChange={(e) => {
+                                            /** Selected preset decline reason from the form control. */
                                             const val = e.target.value;
                                             setDeclinePreset(val);
                                             if (val && val !== 'custom') {

@@ -2,6 +2,7 @@
 import React from 'react';
 import BoringAvatar from "boring-avatars";
 
+/** Renders a user avatar from an image source or deterministic fallback. */
 const Avatar = ({ name, src, size = 12, className = '' }) => {
     // CiviCORE Branded Palette
     const colors = ['#0f172a', '#d4a574', '#64748b', '#1e293b', '#926a41'];

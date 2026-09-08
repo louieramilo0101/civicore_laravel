@@ -22,6 +22,7 @@ import ActionCenter from './ActionCenter.jsx';
 import Avatar from './Avatar.jsx';
 import TicketScannerModal from './TicketScannerModal.jsx';
 
+/** Adapts the application shell and controls for small-screen devices. */
 const MobileDeviceLayout = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
@@ -77,6 +78,7 @@ const MobileDeviceLayout = ({ children }) => {
     };
 
     // Scroll Handler for Auto-hiding Navigation Bar & Top Header
+    /** Tracks mobile scroll direction for compact navigation behavior. */
     const handleScroll = (e) => {
         const scrollTop = e.target.scrollTop;
         const delta = scrollTop - lastScrollTopRef.current;

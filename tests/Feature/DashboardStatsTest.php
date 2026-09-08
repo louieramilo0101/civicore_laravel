@@ -6,12 +6,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
+/**
+ * Represents the Dashboard Stats Test application component.
+ */
 class DashboardStatsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Stores the database identifier for the authenticated test user. */
     protected int $userId;
 
+    /**
+     * Executes the set up operation.
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -28,6 +35,9 @@ class DashboardStatsTest extends TestCase
         ]);
     }
 
+    /**
+     * Executes the test_dashboard_stats_filters_out_pending_and_extracted_queue_documents operation.
+     */
     public function test_dashboard_stats_filters_out_pending_and_extracted_queue_documents()
     {
         // 1. Processed documents (status: processed, active, issued) - should be in totalDocs and processedDocs

@@ -1,4 +1,8 @@
 <?php
+
+/**
+ * Registers the web fallback route used by the frontend application.
+ */
 use Illuminate\Support\Facades\Route;
 
 // This tells Laravel: "For ANY URL, just load app.blade.php and let React figure it out"

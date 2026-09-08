@@ -16,6 +16,7 @@ namespace App\Services;
  */
 class OcrParserService
 {
+    /** Defines the birth anchors configuration values. */
     private const BIRTH_ANCHORS = [
         'province'                   => ['\bprovince\b'],
         'city_municipality'          => ['city/municipality', 'city municipality', 'cily municipality', '\bmunicipality\b'],
@@ -56,6 +57,7 @@ class OcrParserService
         'registered_by_date'         => ['25\. date', 'registered.*date'],
     ];
 
+    /** Defines the death anchors configuration values. */
     private const DEATH_ANCHORS = [
         'province'                   => ['\bprovince\b'],
         'city_municipality'          => ['city/municipality', 'city municipality', '\bmunicipality\b'],
@@ -84,6 +86,7 @@ class OcrParserService
         'registered_by_name'         => ['29\. registered by', 'registered.*name'],
     ];
 
+    /** Defines the marriage anchors configuration values. */
     private const MARRIAGE_ANCHORS = [
         'province'                   => ['\bprovince\b'],
         'city_municipality'          => ['city/municipality', 'city municipality', '\bmunicipality\b'],
@@ -104,12 +107,16 @@ class OcrParserService
         'registered_by_name'         => ['22\. registered by', 'registered.*name'],
     ];
 
+    /** Defines the skip words configuration values. */
     private const SKIP_WORDS = [
         'OFFICE', 'GENERAL', 'REGISTRAR', 'CERTIFICATE', 'BIRTH', 'REPUBLIC', 'FORM', 
         'PHILIPPINES', 'DEPARTMENT', 'HEALTH', 'STATISTICS', 'AUTHORITY', 'MUNICIPAL', 
         'PROVINCIAL', 'CIVIL', 'REGISURY', 'REGISTRY', 'NUMBER', 'AFFIDAVIT', 'ACKNOWLEDGMENT', 'CERTIFICATION'
     ];
 
+    /**
+     * Executes the parse text operation.
+     */
     public function parseText(string $rawText): array
     {
         $fields = [];
@@ -185,6 +192,9 @@ class OcrParserService
         ];
     }
 
+    /**
+     * Executes the extract by anchors operation.
+     */
     private function extractByAnchors(array $lines, array $anchors): array
     {
         $fields = [];
@@ -217,6 +227,9 @@ class OcrParserService
         return $fields;
     }
 
+    /**
+     * Executes the find name candidates operation.
+     */
     private function findNameCandidates(array $lines): array
     {
         $names = [];
@@ -236,6 +249,9 @@ class OcrParserService
         return $names;
     }
 
+    /**
+     * Executes the is label operation.
+     */
     private function isLabel(string $text): bool
     {
         $text = strtoupper(trim($text));
@@ -247,6 +263,9 @@ class OcrParserService
         return false;
     }
 
+    /**
+     * Executes the fix month operation.
+     */
     private function fixMonth(string $m): string
     {
         $map = ['jan'=>'January','feb'=>'February','mar'=>'March','apr'=>'April','may'=>'May','jun'=>'June','jul'=>'July','aug'=>'August','sep'=>'September','oct'=>'October','nov'=>'November','dec'=>'December'];
@@ -255,6 +274,9 @@ class OcrParserService
         return ucfirst($m);
     }
 
+    /**
+     * Executes the fix barangay operation.
+     */
     private function fixBarangay(string $val): string
     {
         $brgyList = [
@@ -279,6 +301,9 @@ class OcrParserService
         return '';
     }
 
+    /**
+     * Executes the clean operation.
+     */
     private function clean(string $key, string $val): string
     {
         $val = trim(preg_replace('/^[|\-=.:]+/', '', $val));

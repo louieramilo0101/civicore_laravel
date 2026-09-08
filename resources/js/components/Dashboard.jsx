@@ -19,6 +19,7 @@ import {
 import { useData } from './DataContext';
 
 // Helper Component for the traveling light effect
+/** Renders the animated edge accent used by dashboard metric cards. */
 const BorderBeam = ({ color = "#4f46e5", duration = 8, delay = 0 }) => (
     <div className="absolute inset-0 pointer-events-none rounded-[inherit] overflow-hidden">
         <svg
@@ -61,6 +62,7 @@ const BorderBeam = ({ color = "#4f46e5", duration = 8, delay = 0 }) => (
     </div>
 );
 
+/** Renders staff dashboard metrics, charts, and operational summaries. */
 function Dashboard() {
     const { stats, refreshStats, loading: dataLoading } = useData();
     const [chartData, setChartData] = useState(null);
@@ -104,6 +106,7 @@ function Dashboard() {
 
         Object.values(chartRefs.current).forEach(chart => chart?.destroy());
 
+        /** Creates or replaces a Chart.js instance for a dashboard panel. */
         const createChart = (id, config) => {
             const ctx = document.getElementById(id);
             if (ctx) chartRefs.current[id] = new Chart(ctx, config);

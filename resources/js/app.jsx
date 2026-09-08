@@ -27,6 +27,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 
+/** Reads and parses the authenticated user from session storage. */
 const getUser = () => {
     try {
         const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
@@ -36,6 +37,7 @@ const getUser = () => {
     }
 };
 
+/** Returns whether a valid authenticated user is present. */
 const isAuthenticated = () => !!getUser();
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
@@ -43,6 +45,7 @@ const isAuthenticated = () => !!getUser();
 // allowedRoles: if empty → any authenticated user may access
 //               if set   → user.role must be in the list
 //
+/** Guards a route using authentication and optional role requirements. */
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     if (!isAuthenticated()) {
         return <Navigate to="/login" replace />;
@@ -60,6 +63,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 };
 
 // ─── Scroll to top on route change ───────────────────────────────────────────
+/** Resets scroll position whenever the active route changes. */
 const ScrollToTop = () => {
     const { pathname } = useLocation();
     React.useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -67,6 +71,7 @@ const ScrollToTop = () => {
 };
 
 // ─── App ─────────────────────────────────────────────────────────────────────
+/** Configures the application providers and route tree. */
 function App() {
     return (
         <DataProvider>

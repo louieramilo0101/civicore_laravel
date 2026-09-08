@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 
 const DataContext = createContext();
 
+/** Returns shared cached civic data and refresh operations. */
 export const useData = () => {
     const context = useContext(DataContext);
     if (!context) {
@@ -10,6 +11,7 @@ export const useData = () => {
     return context;
 };
 
+/** Owns shared dashboard, document, issuance, history, and template state. */
 export const DataProvider = ({ children }) => {
     const DATA_VERSION = '1.0.3';
     
@@ -79,6 +81,7 @@ export const DataProvider = ({ children }) => {
     const [backgroundTasks, setBackgroundTasks] = useState([]);
     const [undoableTasks, setUndoableTasks] = useState([]);
 
+    /** Runs an asynchronous action while exposing progress and undoable status. */
     const runBackgroundTask = useCallback(async (name, actionFn, options = {}) => {
         // High-precision ID to prevent state-update collisions
         const taskId = `${options.id || Math.random().toString(36).substring(2, 9)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -150,6 +153,7 @@ export const DataProvider = ({ children }) => {
 
     // ── Fetching Logic ────────────────────────────────────────────────────────
     
+    /** Checks whether the session contains a user with an assigned role. */
     const isAuthenticated = () => {
         const userJson = sessionStorage.getItem('user');
         if (!userJson) return false;

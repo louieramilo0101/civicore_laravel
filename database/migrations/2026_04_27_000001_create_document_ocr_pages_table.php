@@ -4,8 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Defines the Migration migration implementation.
+ */
 return new class extends Migration
 {
+    /**
+     * Apply the migration changes.
+     */
     public function up(): void
     {
         Schema::create('document_ocr_pages', function (Blueprint $table) {
@@ -22,6 +28,9 @@ return new class extends Migration
         });
     }
 
+    /**
+     * Reverse the migration changes.
+     */
     public function down(): void
     {
         Schema::dropIfExists('document_ocr_pages');

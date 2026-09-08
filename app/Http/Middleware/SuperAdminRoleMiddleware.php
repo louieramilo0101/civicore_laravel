@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
 
+/**
+ * Represents the Super Admin Role Middleware application component.
+ */
 class SuperAdminRoleMiddleware
 {
     /**

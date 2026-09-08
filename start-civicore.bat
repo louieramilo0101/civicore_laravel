@@ -1,4 +1,5 @@
 @echo off
+REM Starts the CiviCORE Laravel and frontend development services.
 setlocal
 
 title CiviCORE Control Center

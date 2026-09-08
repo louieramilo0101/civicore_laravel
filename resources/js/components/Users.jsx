@@ -7,6 +7,7 @@ import SkeletonLoader from './SkeletonLoader';
 
 const API_BASE = 'http://localhost:8000';
 
+/** Manages staff and citizen account records. */
 function Users() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ function Users() {
     const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
     const isAdmin = currentUser.role === 'admin';
 
+    /** Selects the visual treatment for a user role badge. */
     const getRoleBadgeStyle = (role) => {
         return { 
             padding: '4px 8px', 

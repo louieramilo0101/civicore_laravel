@@ -1,6 +1,7 @@
 const TARGET_LONG_EDGE = 1024;
 const MAX_LONG_EDGE = 1024;
 
+/** Identifies the broad device class for upload tuning. */
 const detectDeviceType = () => {
     if (typeof window === 'undefined') return 'desktop';
     const coarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches;
@@ -8,6 +9,7 @@ const detectDeviceType = () => {
     return coarsePointer || mobileUA ? 'mobile' : 'desktop';
 };
 
+/** Calculates the resize factor while preserving the source aspect ratio. */
 const getLongEdgeScale = (width, height) => {
     const longEdge = Math.max(width, height);
     if (longEdge <= MAX_LONG_EDGE) return 1;
@@ -96,6 +98,7 @@ const tryPerspectiveTransform = ({ sourceFile, corners }) => {
     });
 };
 
+/** Preprocesses an uploaded image for OCR while preserving the public API. */
 export const preprocessUploadFile = async (input, options = {}) => {
     const sourceFile = input?.file || input;
     if (!(sourceFile instanceof File)) {

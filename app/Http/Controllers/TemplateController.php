@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Represents the Template Controller application component.
+ */
 class TemplateController extends Controller
 {
     /**

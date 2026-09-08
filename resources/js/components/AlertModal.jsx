@@ -29,7 +29,8 @@ const buttonColors = {
     info: 'bg-sky-500 hover:bg-sky-400 text-sky-950',
 };
 
-export default function AlertModal({ 
+/** Presents a consistent alert dialog for success, warning, and error states. */
+export default function AlertModal({
     isOpen, 
     onConfirm,
     onCancel,

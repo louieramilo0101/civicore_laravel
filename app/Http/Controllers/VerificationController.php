@@ -8,6 +8,9 @@ use App\Mail\VerificationCodeMail;
 use App\Models\VerificationCode;
 use Carbon\Carbon;
 
+/**
+ * Represents the Verification Controller application component.
+ */
 class VerificationController extends Controller
 {
     /**

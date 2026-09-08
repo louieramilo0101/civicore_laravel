@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClockIcon, MegaphoneIcon, ArrowRightIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
+/** Renders the public portal landing page and service entry points. */
 export default function Landing() {
     const navigate = useNavigate();
 

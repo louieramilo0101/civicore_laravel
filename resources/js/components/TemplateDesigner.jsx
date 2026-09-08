@@ -12,6 +12,7 @@ import {
 import { useData } from './DataContext.jsx';
 import axios from 'axios';
 
+/** Provides drag-and-position editing for template overlay fields. */
 const TemplateDesigner = ({ template, onClose, onSave }) => {
     const { refreshTemplates } = useData();
     const [fields, setFields] = useState(template.config?.fields || []);
@@ -35,15 +36,18 @@ const TemplateDesigner = ({ template, onClose, onSave }) => {
         { key: 'date_of_marriage', label: 'Date of Marriage' },
     ];
 
+    /** Adds a configured field to the editable overlay list. */
     const addField = (field) => {
         if (fields.find(f => f.key === field.key)) return;
         setFields([...fields, { ...field, x: 0.1, y: 0.1, w: 0.25, h: 0.04 }]);
     };
 
+    /** Removes one field from the editable overlay list. */
     const removeField = (key) => {
         setFields(fields.filter(f => f.key !== key));
     };
 
+    /** Applies a bounded position delta to one overlay field. */
     const updateFieldPos = (key, delta) => {
         setFields(fields.map(f => {
             if (f.key === key) {

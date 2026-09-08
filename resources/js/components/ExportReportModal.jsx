@@ -20,6 +20,7 @@ const BARANGAY_LIST = [
     'Humbac', 'Munting Mapino', 'Sabang', 'Timalan Balsahan', 'Timalan Concepcion'
 ];
 
+/** Lets staff choose a report format and start an export. */
 export default function ExportReportModal({ isOpen, onClose }) {
     const [format, setFormat] = useState('csv'); // 'csv' or 'excel'
     const [docType, setDocType] = useState('all'); // 'all', 'birth', 'death', 'marriage'
@@ -32,6 +33,7 @@ export default function ExportReportModal({ isOpen, onClose }) {
 
     if (!isOpen) return null;
 
+    /** Validates the selected format and requests the report download. */
     const handleExport = () => {
         setIsExporting(true);
         setDownloadSuccess(false);

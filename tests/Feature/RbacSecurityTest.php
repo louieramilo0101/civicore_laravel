@@ -6,10 +6,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
+/**
+ * Represents the Rbac Security Test application component.
+ */
 class RbacSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Executes the test_guest_cannot_access_protected_routes operation.
+     */
     public function test_guest_cannot_access_protected_routes()
     {
         // Try to access a protected session route (e.g. list documents)
@@ -19,6 +25,9 @@ class RbacSecurityTest extends TestCase
         $response->assertJson(['error' => 'Unauthenticated.']);
     }
 
+    /**
+     * Executes the test_admin_cannot_access_super_admin_routes operation.
+     */
     public function test_admin_cannot_access_super_admin_routes()
     {
         // Create an Admin user (valid database role)
@@ -40,6 +49,9 @@ class RbacSecurityTest extends TestCase
         $response->assertJson(['error' => 'Forbidden.']);
     }
 
+    /**
+     * Executes the test_super_admin_can_access_super_admin_routes operation.
+     */
     public function test_super_admin_can_access_super_admin_routes()
     {
         // Create a SuperAdmin user (valid database role)

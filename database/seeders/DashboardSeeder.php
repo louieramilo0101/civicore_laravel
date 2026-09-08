@@ -6,6 +6,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
+/**
+ * Represents the Dashboard Seeder application component.
+ */
 class DashboardSeeder extends Seeder
 {
     /**

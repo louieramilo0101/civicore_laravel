@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * Represents the Issuance Controller application component.
+ */
 class IssuanceController extends Controller
 {
     /**
@@ -261,6 +264,9 @@ class IssuanceController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Executes the request print operation.
+     */
     public function requestPrint(Request $request, $id)
     {
         $userId = $request->session()->get('user_id');
@@ -294,6 +300,9 @@ class IssuanceController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Executes the approve print operation.
+     */
     public function approvePrint(Request $request, $id)
     {
         $userId = $request->session()->get('user_id');
@@ -317,6 +326,9 @@ class IssuanceController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Executes the reject print operation.
+     */
     public function rejectPrint(Request $request, $id)
     {
         $userId = $request->session()->get('user_id');
@@ -338,6 +350,9 @@ class IssuanceController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Executes the next cert number operation.
+     */
     public function nextCertNumber($type)
     {
         // Determine prefix based on type

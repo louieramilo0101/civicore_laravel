@@ -20,6 +20,7 @@ import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
+/** Previews an uploaded or registered document without leaving the list. */
 const DocumentPreviewModal = ({ file, onClose }) => {
     const viewUrl = `/api/documents/view/${file.id}`;
     const downloadUrl = `/api/documents/download/${file.id}`;
@@ -107,6 +108,7 @@ const DocumentPreviewModal = ({ file, onClose }) => {
 };
 
 // ── Main Documents Component ──────────────────────────────────────────────────
+/** Manages document uploads, OCR review, registration, and archival actions. */
 const Documents = () => {
     const { showAlert } = useModal();
     const {
@@ -137,6 +139,7 @@ const Documents = () => {
             const fetched = globalFiles.filter(f => !archivedIds.includes(f.id));
 
             // Remove uploading files that have appeared in fetched files (by base name comparison)
+            /** Removes the extension from a stored filename for display. */
             const getBaseName = (filename) => {
                 if (!filename) return '';
                 const base = filename.replace(/\.[^/.]+$/, '');
@@ -216,12 +219,14 @@ const Documents = () => {
     const [showExportModal, setShowExportModal] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: null, title: '', message: '', type: 'info' });
 
+    /** Toggles one document in the bulk-selection set. */
     const toggleSelect = (id) => {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
     };
 
+    /** Selects or clears all documents currently visible in the list. */
     const toggleSelectAll = (filteredFiles) => {
         if (selectedIds.length === filteredFiles.length && filteredFiles.length > 0) {
             setSelectedIds([]);
@@ -404,6 +409,7 @@ const Documents = () => {
         }
     };
 
+    /** Opens the manual registration workflow for a document. */
     const handleManualRegistration = () => {
         setActiveOcr({
             file: { id: 'manual', name: 'Manual Entry', status: 'extracted', extracted_fields: {}, type: selectedDocType, file_path: null },
@@ -528,6 +534,7 @@ const Documents = () => {
         });
     };
 
+    /** Tracks duplicate-review state returned by the OCR form. */
     const handleDuplicateStatusChange = (fileId, hasDuplicate) => {
         setFiles(prev => prev.map(f => {
             if (f.id === fileId) {
@@ -546,6 +553,7 @@ const Documents = () => {
         });
     };
 
+    /** Persists an OCR-reviewed document and its extracted certificate fields. */
     const saveRecord = ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false }) => {
         if (!activeOcr) return Promise.reject(new Error('No active OCR'));
         if (savingRecordRef.current) return Promise.reject(new Error('Save already in progress'));
@@ -599,6 +607,7 @@ const Documents = () => {
         });
     };
 
+    /** Builds the display name appropriate to a certificate type. */
     const buildPersonName = (fields, type) => {
         if (!fields) return '';
         if (type === 'marriage') {

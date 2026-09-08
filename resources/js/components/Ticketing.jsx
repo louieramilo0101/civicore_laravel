@@ -38,6 +38,7 @@ const NAIC_BARANGAYS = [
     'Humbac', 'Munting Mapino', 'Sabang', 'Timalan Balsahan', 'Timalan Concepcion'
 ].sort();
 
+/** Runs the public ticket request and staff queue workflows. */
 export default function Ticketing({ mode = 'portal' }) {
     const { token } = useParams();
     const navigate = useNavigate();
@@ -80,6 +81,7 @@ export default function Ticketing({ mode = 'portal' }) {
 
     const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
 
+    /** Updates one certificate-specific ticket detail field. */
     const handleDetailChange = (field, val) => {
         const isNameField = field.includes('name') && !field.includes('place') && !field.includes('date');
         const cleanVal = isNameField ? sanitizeName(val) : val;
@@ -251,6 +253,7 @@ export default function Ticketing({ mode = 'portal' }) {
         }
     };
 
+    /** Calls the next eligible request in the staff queue. */
     const handleCallNext = () => {
         const pending = tickets.filter(t => t.status === 'Pending');
         if (pending.length === 0) {
@@ -273,6 +276,7 @@ export default function Ticketing({ mode = 'portal' }) {
         }
     };
 
+    /** Prefills the request form from a selected ticket. */
     const handlePrefill = (t) => {
         sessionStorage.setItem('civicore_ticket_prefill', JSON.stringify({
             ticket_id: t.id,
@@ -684,6 +688,7 @@ export default function Ticketing({ mode = 'portal' }) {
 
     // ── RENDER STAFF QUEUE DASHBOARD (PRIVATE BOARD) ──────────────────────────────
     if (mode === 'staff') {
+        /** Notifies the parent shell that ticket counters should refresh. */
         const triggerCounterRefresh = () => {
             setCounter(prev => prev + 1);
         };

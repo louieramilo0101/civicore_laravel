@@ -17,6 +17,7 @@ import {
 import { useData } from './DataContext.jsx';
 import axios from 'axios';
 
+/** Manages certificate template profiles and designer entry points. */
 function Templates() {
     const { templates, refreshTemplates, loading: globalLoading } = useData();
     const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -24,6 +25,7 @@ function Templates() {
     
     const loading = globalLoading.templates || uploading;
 
+    /** Forces a fresh template profile fetch for the current view. */
     const fetchTemplates = () => refreshTemplates(true);
 
     const containerVariants = {

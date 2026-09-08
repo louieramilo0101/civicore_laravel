@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Setting;
 use App\Models\User;
 
+/**
+ * Represents the Setting Controller application component.
+ */
 class SettingController extends Controller
 {
     /**

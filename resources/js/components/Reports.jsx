@@ -25,6 +25,7 @@ const BARANGAY_LIST = [
     'Humbac', 'Munting Mapino', 'Sabang', 'Timalan Balsahan', 'Timalan Concepcion'
 ];
 
+/** Renders operational reports and export controls. */
 export default function Reports() {
     const [format, setFormat] = useState('csv'); // 'csv' or 'excel'
     const [docType, setDocType] = useState('all');
@@ -81,6 +82,7 @@ export default function Reports() {
         }
     };
 
+    /** Exports the current report data in the requested format. */
     const handleExport = (targetFormat = 'csv') => {
         setFormat(targetFormat);
         setIsExporting(true);
@@ -394,6 +396,7 @@ export default function Reports() {
     );
 }
 
+/** Provides the string predicate expected by the report formatter. */
 function is_string(val) {
     return typeof val === 'string';
 }

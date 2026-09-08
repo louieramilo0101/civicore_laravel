@@ -5,6 +5,7 @@ import {
     ExclamationCircleIcon, ArrowPathIcon 
 } from '@heroicons/react/24/outline';
 
+/** Renders transient save and background-task notifications. */
 const SaveToasts = ({ tasks }) => {
     // Show active (running) and finished (success/error/deleted) tasks
     const activeTasks = tasks || [];

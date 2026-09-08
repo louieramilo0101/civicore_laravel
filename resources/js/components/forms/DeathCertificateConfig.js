@@ -1,5 +1,6 @@
 import { NAIC_BARANGAYS, NAME_FIELDS } from './SharedConfig.js';
 
+/** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized death-certificate overlay regions. */
 export const DeathTemplateOverlayFields = [
     // REGISTRY DETAILS (header)
     { key: 'province', label: 'Province', x: 0.08, y: 0.072, w: 0.30, h: 0.014 },
@@ -106,6 +107,7 @@ export const DeathTemplateOverlayFields = [
 ];
 
 
+/** @type {Array<Object>} Death-certificate form field definitions and validation metadata. */
 export const DeathConfig = [
     {
         section: 'Registry Details',

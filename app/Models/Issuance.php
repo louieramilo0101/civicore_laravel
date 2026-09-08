@@ -5,12 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Represents the Issuance application component.
+ */
 class Issuance extends Model
 {
     use SoftDeletes;
 
+    /** Stores the table value used by this component. */
     protected $table = 'issuances';
 
+    /** Stores the fillable value used by this component. */
     protected $fillable = [
         'document_id',
         'certNumber',
@@ -24,6 +29,9 @@ class Issuance extends Model
         'file_path',
     ];
 
+    /**
+     * Executes the document operation.
+     */
     public function document()
     {
         return $this->belongsTo(Document::class);

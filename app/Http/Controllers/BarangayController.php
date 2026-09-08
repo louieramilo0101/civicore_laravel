@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * Represents the Barangay Controller application component.
+ */
 class BarangayController extends Controller
 {
     /**

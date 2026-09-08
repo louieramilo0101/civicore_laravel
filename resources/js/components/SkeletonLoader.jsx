@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+/** Renders a layout-matched placeholder while data is loading. */
 const SkeletonLoader = ({ type = 'table', rows = 5 }) => {
     // Table skeleton loader
     if (type === 'table') {

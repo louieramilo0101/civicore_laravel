@@ -5,12 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Represents the Document application component.
+ */
 class Document extends Model
 {
     use SoftDeletes;
 
+    /** Stores the table value used by this component. */
     protected $table = 'documents';
 
+    /** Stores the fillable value used by this component. */
     protected $fillable = [
         'name',
         'type',
@@ -31,6 +36,7 @@ class Document extends Model
         'encoded_by',
     ];
 
+    /** Stores the casts value used by this component. */
     protected $casts = [
         'metadata' => 'json',
         'extracted_fields' => 'json',
@@ -39,16 +45,25 @@ class Document extends Model
         'updated_at' => 'datetime',
     ];
 
+    /**
+     * Executes the issuance operation.
+     */
     public function issuance()
     {
         return $this->hasOne(Issuance::class);
     }
 
+    /**
+     * Executes the ocr pages operation.
+     */
     public function ocrPages()
     {
         return $this->hasMany(DocumentOcrPage::class);
     }
 
+    /**
+     * Executes the history logs operation.
+     */
     public function historyLogs()
     {
         return $this->hasMany(DocumentHistoryLog::class);

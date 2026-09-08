@@ -13,6 +13,8 @@ class UserFactory extends Factory
 {
     /**
      * The current password being used by the factory.
+     *
+     * @var string|null
      */
     protected static ?string $password;
 

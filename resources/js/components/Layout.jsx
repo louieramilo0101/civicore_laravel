@@ -18,6 +18,7 @@ import ActionCenter from './ActionCenter.jsx';
 import Avatar from './Avatar.jsx';
 import MobileDeviceLayout from './MobileDeviceLayout.jsx';
 
+/** Provides the authenticated application shell, sidebar, and navigation. */
 const Layout = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -30,6 +31,7 @@ const Layout = ({ children }) => {
     });
 
     useEffect(() => {
+        /** Keeps the responsive sidebar state synchronized with viewport width. */
         const handleResize = () => {
             setIsMobileDevice(window.innerWidth < 1024);
         };
@@ -63,7 +65,9 @@ const Layout = ({ children }) => {
 
     const menuItems = allMenuItems.filter(item => item.roles.includes(user.role));
 
+    /** Toggles the mobile navigation drawer. */
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+    /** Closes the mobile navigation drawer. */
     const closeSidebar = () => setSidebarOpen(false);
 
     const handleLogout = async () => {

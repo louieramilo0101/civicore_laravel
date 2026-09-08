@@ -24,6 +24,7 @@ import Avatar from 'boring-avatars';
 
 import { useData } from './DataContext.jsx';
 
+/** Normalizes a transaction type for map and chart grouping. */
 const getNormalizedType = (item) => {
     if (!item) return 'birth';
     if (item.certificate_type) return item.certificate_type;
@@ -34,6 +35,7 @@ const getNormalizedType = (item) => {
     return 'birth';
 };
 
+/** Normalizes barangay labels for matching and display. */
 const normalizeBrgy = (name) => {
     if (!name) return '';
     return name.toLowerCase()
@@ -75,6 +77,7 @@ const staticBarangays = [
     { coords: [14.33699, 120.7790], name: 'Timalan Concepcion' }
 ];
 
+/** Renders geographic transaction activity and barangay analytics. */
 const Mapping = () => {
     const mapRef = useRef(null);
     const chartRef = useRef(null);
@@ -103,6 +106,7 @@ const Mapping = () => {
     const [dateTo, setDateTo] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
+    /** Determines whether a transaction falls within the active date filter. */
     const isWithinTimeframe = (dateStr) => {
         if (!dateStr) return false;
         const recordDate = new Date(dateStr);
@@ -126,6 +130,7 @@ const Mapping = () => {
         return true; // 'all'
     };
 
+    /** Clears the active map date filter and closes its picker. */
     const clearFilter = () => { setQuickFilter('all'); setDateFrom(''); setDateTo(''); setShowDatePicker(false); };
     const applyCustomRange = () => { if (dateFrom && dateTo) { setQuickFilter('custom'); setShowDatePicker(false); } };
 
@@ -412,6 +417,7 @@ const Mapping = () => {
         }
     }, [isLoading, apiData, docsData, showHeatmap, showRatioMode, quickFilter, dateFrom, dateTo]);
 
+    /** Exports the filtered map transactions as a CSV download. */
     const exportToCSV = () => {
         const headers = ["Certificate No.", "Type", "Subject Name", "Barangay", "Print Date", "Status", "Encoded By"];
         const rows = filteredPrints.map(p => [
@@ -437,6 +443,7 @@ const Mapping = () => {
         document.body.removeChild(link);
     };
 
+    /** Centers the map on a named barangay when coordinates are available. */
     const locateBarangay = (brgyName) => {
         const marker = markersRef.current[brgyName];
         if (marker && mapRef.current) {
@@ -462,6 +469,7 @@ const Mapping = () => {
 
 
 
+    /** Calculates transaction throughput for the selected timeframe. */
     const getTransactionVelocity = () => {
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -480,6 +488,7 @@ const Mapping = () => {
         return { dailyCount, weeklyCount };
     };
 
+    /** Produces ranked barangay summaries for the analytics panel. */
     const getBarangayRankings = () => {
         const brgyCountsLocal = {};
         

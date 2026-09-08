@@ -22,6 +22,7 @@ from functools import wraps
 process_lock = threading.Lock()
 
 def serialize_processing(func):
+    """Serialize access to an OCR endpoint while preserving its callable API."""
     """Decorator to force sequential execution of an endpoint."""
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -189,6 +190,7 @@ PH_PROVINCES = [
 ]
 
 def _fuzzy_match(value: str, candidates: list, cutoff: float = 0.72) -> str:
+    """Return the closest candidate when its similarity exceeds the cutoff."""
     """
     Simple character-level similarity match. Returns the best match from
     `candidates` if it exceeds `cutoff`, otherwise returns the original value.
@@ -210,6 +212,7 @@ def _fuzzy_match(value: str, candidates: list, cutoff: float = 0.72) -> str:
     return best_match
 
 def _clean_ocr_field(field_name: str, raw_value: str) -> str:
+    """Normalize OCR artifacts using field-specific cleaning rules."""
     """
     Intelligently clean a raw OCR string based on the expected field type.
     - Strips trailing/leading noise
@@ -288,6 +291,7 @@ def _clean_ocr_field(field_name: str, raw_value: str) -> str:
     return text.strip()
 
 def load_template_profiles():
+    """Load configured template profiles used by quick-fill OCR."""
     global QUICK_FILL_TEMPLATE_FAMILIES, QUICK_FILL_REQUIRED_FIELDS
     if not TEMPLATE_PROFILE_PATH.exists():
         print(f"No external ROI profile found at {TEMPLATE_PROFILE_PATH}; using built-in defaults.")
@@ -307,6 +311,7 @@ def load_template_profiles():
         print(f"Failed to load ROI profile ({TEMPLATE_PROFILE_PATH}): {exc}. Using built-in defaults.")
 
 def detect_document_type(text: str) -> str:
+    """Classify OCR text using certificate-specific marker phrases."""
     lower = text.lower()
     birth_hits    = sum(1 for kw in BIRTH_KEYWORDS    if kw in lower)
     death_hits    = sum(1 for kw in DEATH_KEYWORDS    if kw in lower)
@@ -357,6 +362,7 @@ def _validate_field_value(field_name: str, value: str) -> bool:
     return len(text) >= 2
 
 def _validate_input_file(file_path: str, expected_extensions=None):
+    """Validate that an OCR input exists and has an accepted extension."""
     if not file_path or not os.path.exists(file_path) or not os.path.isfile(file_path):
         raise HTTPException(status_code=400, detail='File not found or inaccessible.')
 
@@ -444,6 +450,7 @@ def _run_easyocr_roi(crop: Image.Image):
         return '', 0.0
 
 def detect_template_family(image_path: str):
+    """Detect the configured certificate template family from an image."""
     try:
         img = Image.open(image_path).convert('L')
     except Exception:
@@ -467,6 +474,7 @@ def detect_template_family(image_path: str):
     return selected_family, header_text, best_hits
 
 def quick_fill_extract_from_rois(image_path: str, template_family: str):
+    """Extract high-value fields from the configured template regions."""
     cfg = QUICK_FILL_TEMPLATE_FAMILIES.get(template_family)
     if not cfg:
         return {}, {}
@@ -618,6 +626,7 @@ def smart_split_name(full_name: str) -> dict:
         }
 
 class SpatialExtractor:
+    """Locate OCR values relative to recognized anchor text and coordinates."""
     def __init__(self, raw_results):
         self.items = []
         for bbox, text, prob in raw_results:
@@ -844,6 +853,7 @@ def extract_marriage_fields(text: str, lines: list, raw_results=None) -> dict:
     return fields
 
 def extract_fields(doc_type: str, text: str, lines: list, raw_results=None) -> dict:
+    """Dispatch spatial or regex field extraction for a document type."""
     if doc_type == 'birth': return extract_birth_fields(text, lines, raw_results)
     elif doc_type == 'death': return extract_death_fields(text, lines, raw_results)
     elif doc_type == 'marriage': return extract_marriage_fields(text, lines, raw_results)
@@ -852,6 +862,7 @@ def extract_fields(doc_type: str, text: str, lines: list, raw_results=None) -> d
 # -- OCR Reader (Persistent) --------------------------------------------------
 _reader = None
 def get_reader():
+    """Return the shared lazily initialized EasyOCR reader."""
     global _reader
     if _reader is None:
         try:
@@ -879,6 +890,7 @@ load_template_profiles()
 print("OCR Server initialized.")
 
 def preprocess_image(image_path: str, output_path: str = None) -> str:
+    """Prepare an image for OCR while returning its processed file path."""
     """
     Cleans up the image for better OCR accuracy:
     - Deskewing (Straighten the document)
@@ -1092,6 +1104,7 @@ SIGNATURE_COORDS = {
 import base64
 
 def crop_and_binarize_signatures(image_path: str, doc_type: str) -> dict:
+    """Extract configured signature regions as transparent PNG data URLs."""
     """
     Crops the signature regions from the scanned image according to defined coordinates,
     applies adaptive threshold binarization to isolate the ink from the background paper,
@@ -1160,6 +1173,7 @@ current_key_index = 0
 @app.post('/ocr/gemini')
 @serialize_processing
 def process_ocr_gemini(data: dict):
+    """Process a document with Gemini OCR and normalize its structured output."""
     global current_key_index
     file_path = data.get('file_path')
     doc_type = data.get('doc_type', 'birth')
@@ -1587,6 +1601,7 @@ def process_ocr_gemini(data: dict):
 @app.post('/ocr')
 @serialize_processing
 def process_ocr(data: OCRRequest):
+    """Run the selected OCR engines and return normalized certificate data."""
     file_path = data.file_path
     ext = _validate_input_file(file_path)
     expected_type = data.doc_type

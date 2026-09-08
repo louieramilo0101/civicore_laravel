@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader';
 
+/** Renders contact information and support channels for portal users. */
 export default function ContactDirectory() {
     const [openingHours, setOpeningHours] = useState('');
     const [isLoading, setIsLoading] = useState(true);

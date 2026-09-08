@@ -30,6 +30,7 @@ except ImportError:
 _reader = None
 
 def get_reader(lang):
+    """Return the lazily initialized EasyOCR reader for the requested languages."""
     global _reader
     if _reader is None:
         print(f"Initializing EasyOCR ({lang})…", file=sys.stderr)
@@ -46,6 +47,7 @@ MARRIAGE_KEYWORDS = ['certificate of marriage', 'marriage license', 'marriage co
                      'wife', 'spouse', 'date of marriage', 'place of marriage', 'republic form no. 97']
 
 def detect_document_type(text: str) -> str:
+    """Classify OCR text as a supported civil-registry certificate type."""
     """Return 'birth', 'death', 'marriage', or 'unknown'."""
     lower = text.lower()
     birth_hits    = sum(1 for kw in BIRTH_KEYWORDS    if kw in lower)
@@ -65,6 +67,7 @@ def _first_match(patterns, text, flags=re.IGNORECASE):
     return None
 
 def smart_split_name(full_name: str) -> dict:
+    """Split common Philippine name layouts into structured name fields."""
     """Break a full name string into structured components."""
     if not full_name:
         return {'last_name': '', 'first_name': '', 'middle_name': '', 'suffix': ''}
@@ -104,6 +107,7 @@ def smart_split_name(full_name: str) -> dict:
         }
 
 def extract_birth_fields(text: str, lines: list) -> dict:
+    """Extract birth-certificate fields from OCR text and lines."""
     fields = {}
 
     # Name of child
@@ -144,6 +148,7 @@ def extract_birth_fields(text: str, lines: list) -> dict:
 
 
 def extract_death_fields(text: str, lines: list) -> dict:
+    """Extract death-certificate fields from OCR text and lines."""
     fields = {}
 
     name_str = _first_match([
@@ -170,6 +175,7 @@ def extract_death_fields(text: str, lines: list) -> dict:
 
 
 def extract_marriage_fields(text: str, lines: list) -> dict:
+    """Extract marriage-certificate fields from OCR text and lines."""
     fields = {}
 
     # Husband
@@ -196,6 +202,7 @@ def extract_marriage_fields(text: str, lines: list) -> dict:
 
 
 def extract_fields(doc_type: str, text: str, lines: list) -> dict:
+    """Dispatch field extraction to the parser for the detected document type."""
     if doc_type == 'birth':
         return extract_birth_fields(text, lines)
     elif doc_type == 'death':
@@ -207,6 +214,7 @@ def extract_fields(doc_type: str, text: str, lines: list) -> dict:
 
 # ── OCR runners ──────────────────────────────────────────────────────────────
 def run_ocr_on_image(image_path: str, lang: list) -> dict:
+    """Run OCR on one image and return text, confidence, and structured fields."""
     reader = get_reader(lang)
     with Image.open(image_path) as img:
         # If image is wider than 1500px, scale it down
@@ -228,6 +236,7 @@ def run_ocr_on_image(image_path: str, lang: list) -> dict:
 
 
 def run_ocr_on_pdf(pdf_path: str, lang: list) -> dict:
+    """Render PDF pages and combine their OCR results into one response."""
     try:
         from pdf2image import convert_from_path
     except ImportError:
@@ -268,6 +277,7 @@ def run_ocr_on_pdf(pdf_path: str, lang: list) -> dict:
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main():
+    """Parse command-line input and execute the standalone OCR pipeline."""
     parser = argparse.ArgumentParser(description='CiviCORE OCR Processor')
     parser.add_argument('input_file',          help='Path to image or PDF')
     parser.add_argument('--lang',              default='en,tl', help='Comma-separated language codes')

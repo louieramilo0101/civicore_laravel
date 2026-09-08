@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
+/** Prevents a rendering failure from taking down the entire application shell. */
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);

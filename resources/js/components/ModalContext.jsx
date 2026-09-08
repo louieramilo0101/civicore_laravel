@@ -3,6 +3,7 @@ import AlertModal from './AlertModal';
 
 const ModalContext = createContext(null);
 
+/** Provides application-wide alert and confirmation modal state. */
 export const ModalProvider = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [config, setConfig] = useState({
@@ -59,6 +60,7 @@ export const ModalProvider = ({ children }) => {
     );
 };
 
+/** Returns modal controls from the nearest ModalProvider. */
 export const useModal = () => {
     const context = useContext(ModalContext);
     if (!context) {

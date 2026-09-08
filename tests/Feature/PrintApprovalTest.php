@@ -6,10 +6,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
+/**
+ * Represents the Print Approval Test application component.
+ */
 class PrintApprovalTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Executes the test_staff_can_request_print_approval operation.
+     */
     public function test_staff_can_request_print_approval()
     {
         // 1. Create a staff user (e.g. role = Staff or Admin)
@@ -53,6 +59,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Staff User', $record->requested_by);
     }
 
+    /**
+     * Executes the test_regular_staff_cannot_approve_print_request operation.
+     */
     public function test_regular_staff_cannot_approve_print_request()
     {
         $staffId = DB::table('users')->insertGetId([
@@ -87,6 +96,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Pending Approval', $record->status);
     }
 
+    /**
+     * Executes the test_super_admin_can_approve_print_request operation.
+     */
     public function test_super_admin_can_approve_print_request()
     {
         $superAdminId = DB::table('users')->insertGetId([
@@ -123,6 +135,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Super Admin', $record->approved_by);
     }
 
+    /**
+     * Executes the test_super_admin_can_reject_print_request operation.
+     */
     public function test_super_admin_can_reject_print_request()
     {
         $superAdminId = DB::table('users')->insertGetId([
@@ -158,6 +173,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Active', $record->status);
     }
 
+    /**
+     * Executes the test_issuing_approved_document_transitions_status operation.
+     */
     public function test_issuing_approved_document_transitions_status()
     {
         $staffId = DB::table('users')->insertGetId([
@@ -193,6 +211,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Staff User', $record->encoded_by);
     }
 
+    /**
+     * Executes the test_staff_can_request_print_approval_without_or_number_generates_automatic_or operation.
+     */
     public function test_staff_can_request_print_approval_without_or_number_generates_automatic_or()
     {
         // 1. Create a staff user
@@ -236,6 +257,9 @@ class PrintApprovalTest extends TestCase
         $this->assertEquals('Staff User', $record->requested_by);
     }
 
+    /**
+     * Executes the test_dashboard_stats_total_issued_files_only_counts_issued_status operation.
+     */
     public function test_dashboard_stats_total_issued_files_only_counts_issued_status()
     {
         // 1. Create a staff user

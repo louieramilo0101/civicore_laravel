@@ -7,11 +7,13 @@ import {
 } from '@heroicons/react/24/outline';
 import { useData } from './DataContext.jsx';
 
+/** Presents the staff action queue and its selection controls. */
 const ActionCenter = () => {
     const { undoableTasks, clearUndoableTask, refreshAll } = useData();
     const [isOpen, setIsOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
 
+    /** Toggles one action item in the bulk-selection set. */
     const toggleSelect = (id) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
