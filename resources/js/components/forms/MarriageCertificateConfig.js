@@ -1,6 +1,5 @@
 import { NAIC_BARANGAYS, NAME_FIELDS } from './SharedConfig.js';
 
-/** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized marriage-certificate overlay regions. */
 export const MarriageTemplateOverlayFields = [
     // REGISTRY DETAILS
     { key: 'province', label: 'Province', x: 0.09, y: 0.076, w: 0.38, h: 0.014 },
@@ -65,7 +64,7 @@ export const MarriageTemplateOverlayFields = [
     { key: 'husband_consent_relationship', label: 'Husband Consent Relationship', x: 0.14, y: 0.540, w: 0.40, h: 0.018 },
     { key: 'wife_consent_relationship', label: 'Wife Consent Relationship', x: 0.57, y: 0.540, w: 0.40, h: 0.018 },
 
-    // ROW 14: CONSENT RESIDENCE
+    // ROW 14: RESIDENCE
     { key: 'husband_consent_residence', label: 'Husband Consent Residence', x: 0.14, y: 0.562, w: 0.40, h: 0.018 },
     { key: 'wife_consent_residence', label: 'Wife Consent Residence', x: 0.57, y: 0.562, w: 0.40, h: 0.018 },
 
@@ -77,14 +76,9 @@ export const MarriageTemplateOverlayFields = [
     { key: 'time_of_marriage', label: 'Time of Marriage', x: 0.62, y: 0.627, w: 0.34, h: 0.018 },
 
     // ROW 19: MARRIAGE LICENSE (in solemnizing officer section)
-    { key: 'marriage_license_no', label: 'Marriage License No.', x: 0.20, y: 0.720, w: 0.18, h: 0.016 },
-    { key: 'marriage_license_issued_on', label: 'Marriage License Issued On', x: 0.42, y: 0.720, w: 0.22, h: 0.016 },
-    { key: 'marriage_license_issued_at', label: 'Marriage License Issued At', x: 0.67, y: 0.720, w: 0.28, h: 0.016 },
+    { key: 'marriage_license_no', label: 'Marriage License No.', x: 0.20, y: 0.720, w: 0.30, h: 0.016 },
     { key: 'solemnizing_officer_name', label: 'Solemnizing Officer', x: 0.05, y: 0.775, w: 0.35, h: 0.016 },
-    { key: 'solemnizing_officer_title', label: 'Officer Position/Designation', x: 0.42, y: 0.775, w: 0.22, h: 0.016 },
-    { key: 'solemnizing_officer_religion_sect', label: 'Officer Religion/Religious Sect', x: 0.67, y: 0.770, w: 0.29, h: 0.014 },
-    { key: 'solemnizing_officer_registry_no', label: 'Officer Registry No.', x: 0.67, y: 0.784, w: 0.29, h: 0.014 },
-    { key: 'solemnizing_officer_expiry', label: 'Officer Expiration Date', x: 0.67, y: 0.798, w: 0.29, h: 0.014 },
+    { key: 'solemnizing_officer_title', label: 'Officer Title/Position', x: 0.42, y: 0.775, w: 0.22, h: 0.016 },
 
     // ROW 20a: WITNESSES
     { key: 'witness_1_name', label: 'Witness 1', x: 0.05, y: 0.820, w: 0.40, h: 0.016 },
@@ -100,7 +94,6 @@ export const MarriageTemplateOverlayFields = [
     { key: 'remarks', label: 'Remarks', x: 0.05, y: 0.918, w: 0.90, h: 0.040 },
 ];
 
-/** @type {Array<Object>} Marriage-certificate form field definitions and validation metadata. */
 export const MarriageConfig = [
     {
         section: 'Registry Details',
@@ -111,8 +104,8 @@ export const MarriageConfig = [
             { key: 'barangay', label: 'Barangay (For analytics)', type: 'select', options: NAIC_BARANGAYS, required: true, width: 'sm:col-span-1' },
         ]
     },
-    { 
-        section: "Husband's Profile", 
+    {
+        section: "Husband's Profile",
         fields: [
             ...NAME_FIELDS('husband_'),
             { key: 'husband_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
@@ -129,10 +122,10 @@ export const MarriageConfig = [
             { key: 'husband_consent_person', label: "12. Person Giving Consent/Advice", type: 'text', required: false },
             { key: 'husband_consent_relationship', label: "13. Relationship", type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'husband_consent_residence', label: "14. Residence", type: 'text', required: false },
-        ] 
+        ]
     },
-    { 
-        section: "Wife's Profile", 
+    {
+        section: "Wife's Profile",
         fields: [
             ...NAME_FIELDS('wife_'),
             { key: 'wife_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
@@ -149,28 +142,23 @@ export const MarriageConfig = [
             { key: 'wife_consent_person', label: "12. Person Giving Consent/Advice", type: 'text', required: false },
             { key: 'wife_consent_relationship', label: "13. Relationship", type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'wife_consent_residence', label: "14. Residence", type: 'text', required: false },
-        ] 
+        ]
     },
-    { 
-        section: 'Marriage Details', 
+    {
+        section: 'Marriage Details',
         fields: [
             { key: 'place_of_marriage', label: '15. Place of Marriage', type: 'text', required: false },
             { key: 'date_of_marriage', label: '16. Date of Marriage', type: 'date', required: false, width: 'sm:col-span-1' },
             { key: 'time_of_marriage', label: '17. Time of Marriage', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_license_no', label: '19a. Marriage License No.', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_license_issued_on', label: '19b. Issued On', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_license_issued_at', label: '19c. Issued At (City/Municipality/Province)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'solemnizing_officer_name', label: '18. Solemnizing Officer Name', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'solemnizing_officer_title', label: '18. Position / Title / Designation', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'solemnizing_officer_religion_sect', label: '18. Religion / Religious Sect', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'solemnizing_officer_registry_no', label: '18. Registry No. / License No.', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'solemnizing_officer_expiry', label: '18. Expiration Date', type: 'date', required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_license_no', label: 'Marriage License No.', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'solemnizing_officer_name', label: 'Solemnizing Officer Name', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'solemnizing_officer_title', label: 'Solemnizing Officer Title/Position', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'witness_1_name', label: '20a. Witness 1 Name', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'witness_2_name', label: '20a. Witness 2 Name', type: 'text', required: false, width: 'sm:col-span-1' },
         ]
     },
-    { 
-        section: 'Certification & Registration', 
+    {
+        section: 'Certification & Registration',
         fields: [
             { key: 'prepared_by_name', label: '21. Received By Name', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'prepared_by_date', label: '21. Received By Date', type: 'date', required: false, width: 'sm:col-span-1' },

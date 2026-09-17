@@ -20,6 +20,9 @@ class UserController extends Controller
     private function sessionUser(Request $request): ?User
     {
         $userId = $request->session()->get('user_id');
+        if (!$userId && auth()->check()) {
+            $userId = auth()->id();
+        }
         return $userId ? User::find($userId) : null;
     }
 
@@ -37,7 +40,7 @@ class UserController extends Controller
             return response()->json(['error' => 'Unauthenticated.'], 401);
         }
 
-        if ($actor->role !== 'SuperAdmin') {
+        if (strtolower($actor->role) !== 'superadmin') {
             // Non-admins only see themselves
             return response()->json([
                 'data' => [$this->formatUser($actor)],
@@ -47,14 +50,16 @@ class UserController extends Controller
 
         // Admin: paginated + searchable list
         $page    = max(1, (int) $request->query('page', 1));
-        $perPage = min((int) $request->query('per_page', 20), 100);
-        $search  = $request->query('search', '');
+        $perPage = min((int) $request->query('per_page', 500), 500);
+        $search  = trim($request->query('search', ''));
 
         $query = User::query()->orderByDesc('id');
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('middle_name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('role', 'like', "%{$search}%");
             });

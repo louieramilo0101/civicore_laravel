@@ -224,6 +224,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const isManualEntry = !file?.file_path || file?.name === 'Manual Entry' || file?.id === 'manual';
     const isEditMode = !isManualEntry && (file?.status === 'processed' || file?.status === 'extracted' || file?.source === 'issuance' || isViewOnly);
 
+    // Left visual preview tab state: 'picture' (A4 Picture Scan) | 'pdf' (Live Certificate PDF)
+    const [leftPreviewTab, setLeftPreviewTab] = useState('picture');
+
     // Optimized Reference Document Loading (Instant HTTP Browser Caching & Direct PDF rendering)
     const isPdf = useMemo(() => {
         const fn = (file?.name || file?.file_path || file?.original_filename || '').toLowerCase();
@@ -780,24 +783,63 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
                 <div className="flex-1 flex overflow-hidden">
                     {originalDocumentUrl && viewMode !== 'compare' && (
-                        <div className="w-[35%] border-r border-slate-100 bg-slate-50 p-4 flex flex-col">
-                            <div className="flex items-center justify-between mb-3 shrink-0">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Original Document</span>
-                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold uppercase">Reference Only</span>
+                        <div className="w-[45%] border-r border-slate-100 bg-slate-50 p-4 flex flex-col shrink-0">
+                            <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
+                                <div className="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => setLeftPreviewTab('picture')}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                            leftPreviewTab === 'picture' 
+                                                ? 'bg-white text-slate-900 shadow-sm font-black' 
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        📷 Uploaded Picture (A4)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLeftPreviewTab('pdf')}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                            leftPreviewTab === 'pdf' 
+                                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
+                                                : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                    >
+                                        📄 Live Certificate (PDF)
+                                    </button>
+                                </div>
+                                <a
+                                    href={leftPreviewTab === 'picture' ? `/api/documents/view-image/${activeDocId}` : `/api/documents/view/${activeDocId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg font-bold uppercase transition-colors shrink-0"
+                                >
+                                    Open Fullscreen ↗
+                                </a>
                             </div>
-                            <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex items-center justify-center">
-                                <img
-                                    src={`${originalDocumentUrl}&t=${new Date().getTime()}`}
-                                    className="w-full h-full object-contain"
-                                    alt="Original Scan"
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        const iframe = document.createElement('iframe');
-                                        iframe.src = e.target.src;
-                                        iframe.className = "w-full h-full border-0";
-                                        e.target.parentNode.appendChild(iframe);
-                                    }}
-                                />
+
+                            <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex items-center justify-center p-1 shadow-sm">
+                                {leftPreviewTab === 'picture' ? (
+                                    <img
+                                        src={`/api/documents/view-image/${activeDocId}?v=${file?.updated_at ? new Date(file.updated_at).getTime() : 1}`}
+                                        className="w-full h-full object-contain rounded-lg"
+                                        alt="Uploaded A4 Picture Scan"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            const iframe = document.createElement('iframe');
+                                            iframe.src = `/api/documents/view/${activeDocId}`;
+                                            iframe.className = "w-full h-full border-0 rounded-lg";
+                                            e.target.parentNode.appendChild(iframe);
+                                        }}
+                                    />
+                                ) : (
+                                    <iframe
+                                        src={`/api/documents/view/${activeDocId}?v=${file?.updated_at ? new Date(file.updated_at).getTime() : 1}`}
+                                        title="Live Certificate PDF Preview"
+                                        className="w-full h-full border-0 rounded-lg bg-white"
+                                    />
+                                )}
                             </div>
                         </div>
                     )}

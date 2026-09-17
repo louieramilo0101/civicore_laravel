@@ -37,12 +37,15 @@ Route::middleware('api')->group(function () {
     Route::get('/announcements',    [AnnouncementController::class, 'index']);
     Route::get('/templates',        [TemplateController::class, 'index']);
     Route::get('/templates/preview', [TemplateController::class, 'getPreview']);
-    Route::post('/documents/bulk-process', [DocumentController::class, 'bulkProcess']);
-    Route::post('/public/tickets',         [TicketController::class, 'store']);
     Route::get('/public/tickets/{token}',  [TicketController::class, 'showByToken']);
 
+    // Public ticket creation with IP rate limiting (10 req / min)
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/public/tickets', [TicketController::class, 'store']);
+        Route::post('/v1/tickets',     [TicketController::class, 'store']);
+    });
+
     // V1 Public API Routes
-    Route::post('/v1/tickets',             [TicketController::class, 'store']);
     Route::get('/v1/tickets/{token}',      [TicketController::class, 'showByToken']);
     Route::post('/v1/tickets/scan',        [TicketController::class, 'scanCheckIn']);
 });
@@ -84,6 +87,7 @@ Route::middleware('web')->group(function () {
         Route::post('/documents/{id}/toggle-ocr',   [DocumentController::class, 'toggleOcr']);
         Route::get('/documents/download/{id}',      [DocumentController::class, 'download']);
         Route::get('/documents/view/{id}',          [DocumentController::class, 'view']);
+        Route::get('/documents/view-image/{id}',    [DocumentController::class, 'viewImage']);
         Route::get('/documents/download-txt/{id}',  [DocumentController::class, 'downloadTxt']);
         Route::post('/documents/{id}/check-duplicate', [DocumentController::class, 'checkDuplicate']);
 

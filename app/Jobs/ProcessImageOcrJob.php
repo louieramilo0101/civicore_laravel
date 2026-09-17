@@ -71,15 +71,18 @@ class ProcessImageOcrJob implements ShouldQueue
         Log::info("ProcessImageOcrJob starting for doc {$this->documentId}, image: {$this->imagePath}");
 
         try {
-            // Calculate total tokens used so far
-            $tokensUsed = 0;
-            $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
-            foreach ($docMeta as $dMeta) {
-                $meta = json_decode($dMeta->metadata, true);
-                if (isset($meta['image_token_cost'])) {
-                    $tokensUsed += (int) $meta['image_token_cost'];
+            // Calculate total tokens used so far (cached to avoid full-table JSON scanning)
+            $tokensUsed = \Illuminate\Support\Facades\Cache::remember('total_gemini_tokens_used', 300, function () {
+                $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
+                $total = 0;
+                foreach ($docMeta as $dMeta) {
+                    $meta = json_decode($dMeta->metadata, true);
+                    if (isset($meta['image_token_cost'])) {
+                        $total += (int) $meta['image_token_cost'];
+                    }
                 }
-            }
+                return $total;
+            });
             $tokenBudget = (int) env('GEMINI_TOKEN_BUDGET', 1000000);
 
             $response = Http::timeout(120)->post('http://127.0.0.1:8080/ocr/gemini', [
@@ -96,6 +99,9 @@ class ProcessImageOcrJob implements ShouldQueue
             }
 
             $result = $response->json();
+            if (isset($result['image_token_cost'])) {
+                \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', (int)$result['image_token_cost']);
+            }
             $newText = $result['text'] ?? '';
             $detectedType = $result['detected_type'] ?? 'unknown';
             $newFields = $result['extracted_fields'] ?? [];

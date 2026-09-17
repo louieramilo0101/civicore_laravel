@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Document;
 use App\Jobs\ProcessDocumentOcr;
 
@@ -53,7 +54,7 @@ class DocumentController extends Controller
         $total = $totalResult[0]->total;
         
         // Get paginated results without loading binary content.
-        $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path,
+        $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
                          COALESCE(t.ticket_number, i.ticket_number, CONCAT('T-2026-', LPAD(d.id, 4, '0'))) as ticket_number
                   FROM documents d
                   LEFT JOIN tickets t ON t.document_id = d.id
@@ -303,9 +304,19 @@ class DocumentController extends Controller
         $size = number_format($file->getSize() / (1024 * 1024), 2) . ' MB';
 
         try {
-            // STEP 1: Save file to a non-public disk instantly
-            $filePath = $this->saveDocumentFile($file, $tempFilename);
-            \Log::info("File saved to disk instantly: {$filePath}");
+            // STEP 1: Process file into Dual A4 Storage (A4 PDF + A4 Picture)
+            $converter = new \App\Services\DocumentPdfConverterService();
+            $dualPaths = $converter->processUploadedFile($file);
+            $filePath  = $dualPaths['file_path'];
+            $imagePath = $dualPaths['image_path'];
+            \Log::info("Dual A4 Document saved: PDF={$filePath}, Image={$imagePath}");
+
+            $metadata = [
+                'originalName' => $originalName,
+                'originalExtension' => $extension,
+                'image_path' => $imagePath,
+                'is_dual_a4' => true,
+            ];
 
             // STEP 2: Save initial record to database as PENDING (No OCR wait!)
             $newId = DB::table('documents')->insertGetId([
@@ -317,6 +328,8 @@ class DocumentController extends Controller
                 'personName' => $personName,
                 'barangay' => $barangay,
                 'file_path' => $filePath, 
+                'image_path' => $imagePath,
+                'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
                 'encoded_by' => $encodedBy,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -334,6 +347,7 @@ class DocumentController extends Controller
                 'message' => 'Upload successful. Processing in background...',
                 'id' => $newId,
                 'filename' => basename($filePath),
+                'image_path' => $imagePath,
                 'originalName' => $originalName,
                 'size' => $size,
                 'status' => 'Pending'
@@ -415,88 +429,7 @@ class DocumentController extends Controller
         return $path;
     }
 
-    /**
-     * Send file to local OCR server and extract text + fields
-     * 
-     * Sends POST request to http://localhost:8000/process with file attachment
-     * Uses multipart/form-data for file transfer
-     * 
-     * Expected OCR server response format:
-     * {
-     *     "raw_text": "Full extracted OCR text",
-     *     "extracted_fields": {
-     *         "first_name": "...",
-     *         "last_name": "...",
-     *         "date_of_birth": "..."
-     *     },
-     *     "detected_type": "birth|death|marriage"
-     * }
-     * 
-     * @param string $filePath Path to file in storage
-     * @return array OCR result containing raw_text, extracted_fields, detected_type
-     */
-    private function processDocumentOcr($filePath)
-    {
-        try {
-            $fullPath = \Storage::disk('public')->path($filePath);
-            
-            if (!file_exists($fullPath)) {
-                throw new \Exception("File not found at: {$fullPath}");
-            }
 
-            \Log::info("Sending file to OCR server: {$fullPath}");
-
-            // Create multipart request with actual file
-            $fileHandle = fopen($fullPath, 'r');
-            
-            // Send file to OCR server using Http::attach() for multipart form data
-            $response = \Illuminate\Support\Facades\Http::retry(3, 1000)
-                ->timeout(300)
-                ->attach(
-                    'file',
-                    $fileHandle,
-                    basename($fullPath)
-                )
-                ->post('http://localhost:8080/process');
-
-            fclose($fileHandle);
-
-            if ($response->failed()) {
-                \Log::error("OCR server returned error: " . $response->status() . " - " . $response->body());
-                throw new \Exception("OCR server error: " . $response->status());
-            }
-
-            $ocrData = $response->json();
-
-            if (!isset($ocrData['raw_text'])) {
-                \Log::warning("OCR response missing raw_text: " . json_encode($ocrData));
-                // Return graceful fallback
-                return [
-                    'raw_text' => '',
-                    'extracted_fields' => $ocrData['extracted_fields'] ?? [],
-                    'detected_type' => $ocrData['detected_type'] ?? 'unknown',
-                ];
-            }
-
-            \Log::info("OCR processing successful, extracted " . strlen($ocrData['raw_text']) . " characters");
-
-            return [
-                'raw_text' => $ocrData['raw_text'] ?? '',
-                'extracted_fields' => $ocrData['extracted_fields'] ?? [],
-                'detected_type' => $ocrData['detected_type'] ?? 'unknown',
-            ];
-
-        } catch (\Exception $e) {
-            \Log::error("OCR processing error: " . $e->getMessage());
-            
-            // Return graceful fallback - don't fail the upload
-            return [
-                'raw_text' => '',
-                'extracted_fields' => [],
-                'detected_type' => 'unknown',
-            ];
-        }
-    }
 
     /**
      * Dynamically rename file based on OCR extracted data
@@ -814,7 +747,8 @@ class DocumentController extends Controller
                     }
                     
                     // Keep the original upload as the issuance source of truth.
-                    $issuanceFilePath = $doc[0]->file_path;
+                    $issuanceFilePath  = $doc[0]->file_path;
+                    $issuanceImagePath = $doc[0]->image_path ?? null;
 
                     $normCertType = 'birth';
                     if ($docType === 'death') {
@@ -837,6 +771,7 @@ class DocumentController extends Controller
                             'encoded_by' => $encodedBy,
                             'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
                             'file_path' => $issuanceFilePath,
+                            'image_path' => $issuanceImagePath,
                             'ticket_number' => $ticketNumber,
                             'updated_at' => now()
                         ];
@@ -854,42 +789,45 @@ class DocumentController extends Controller
 
                         DB::table('issuances')->where('document_id', $id)->update($updateData);
                     } else {
-                        // 3. INSERT new Master Record (Generate NEW certNumber)
-                        $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
-                        $year = date('Y');
-                        
-                        $results = DB::select("SELECT MAX(id) as max_id FROM issuances");
-                        $nextNum = 1;
-                        if (count($results) > 0 && $results[0]->max_id !== null) {
-                            $nextNum = intval($results[0]->max_id) + 1;
-                        }
-                        
-                        $certNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
-                        $issuanceDate = date('m/d/Y');
+                        // 3. INSERT new Master Record (Generate NEW certNumber with Atomic Concurrency Lock)
+                        Cache::lock('issuance_cert_number_lock', 10)->block(5, function () use ($docType, $normCertType, $personName, $barangay, $encodedBy, $id, $extractedFields, $issuanceFilePath, $issuanceImagePath, $ticketNumber) {
+                            $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
+                            $year = date('Y');
+                            
+                            $results = DB::select("SELECT MAX(id) as max_id FROM issuances");
+                            $nextNum = 1;
+                            if (count($results) > 0 && $results[0]->max_id !== null) {
+                                $nextNum = intval($results[0]->max_id) + 1;
+                            }
+                            
+                            $certNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                            $issuanceDate = date('m/d/Y');
 
-                        $insertData = [
-                            'certNumber' => $certNumber,
-                            'type' => $docType,
-                            'certificate_type' => $normCertType,
-                            'name' => $personName,
-                            'barangay' => $barangay,
-                            'issuanceDate' => $issuanceDate,
-                            'status' => 'Active',
-                            'encoded_by' => $encodedBy,
-                            'document_id' => $id,
-                            'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
-                            'file_path' => $issuanceFilePath,
-                            'ticket_number' => $ticketNumber,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ];
+                            $insertData = [
+                                'certNumber' => $certNumber,
+                                'type' => $docType,
+                                'certificate_type' => $normCertType,
+                                'name' => $personName,
+                                'barangay' => $barangay,
+                                'issuanceDate' => $issuanceDate,
+                                'status' => 'Active',
+                                'encoded_by' => $encodedBy,
+                                'document_id' => $id,
+                                'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                                'file_path' => $issuanceFilePath,
+                                'image_path' => $issuanceImagePath,
+                                'ticket_number' => $ticketNumber,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ];
 
-                        if ($ticketNumber) {
-                            $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                            $insertData['requested_by'] = $encodedBy;
-                        }
- 
-                        DB::table('issuances')->insert($insertData);
+                            if ($ticketNumber) {
+                                $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                                $insertData['requested_by'] = $encodedBy;
+                            }
+
+                            DB::table('issuances')->insert($insertData);
+                        });
                     }
                 }
             }
@@ -899,6 +837,8 @@ class DocumentController extends Controller
                 'barangay' => $barangay,
                 'type' => $detectedType
             ]);
+
+            Cache::forget('dashboard_stats_cache');
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -985,6 +925,31 @@ class DocumentController extends Controller
     public function view($id)
     {
         return $this->serveDocument($id, 'inline');
+    }
+
+    /**
+     * View the document's A4 picture scan (inline image)
+     */
+    public function viewImage($id)
+    {
+        $doc = DB::table('documents')->where('id', $id)->first();
+        if (!$doc) {
+            return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        $imagePath = $doc->image_path;
+        if (empty($imagePath) || !\Storage::disk('public')->exists($imagePath)) {
+            // Fall back to serveDocument if image_path is empty or missing
+            return $this->serveDocument($id, 'inline');
+        }
+
+        $fullPath = \Storage::disk('public')->path($imagePath);
+        $mimetype = \Illuminate\Support\Facades\File::mimeType($fullPath) ?: 'image/jpeg';
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mimetype,
+            'Content-Disposition' => 'inline; filename="' . basename($fullPath) . '"'
+        ]);
     }
 
     /**

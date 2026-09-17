@@ -496,7 +496,30 @@ class TicketController extends Controller
                 WHEN request_status = 'cancelled' THEN 7
                 ELSE 8
             END
-        ")->orderBy('created_at', 'asc')->get();
+        ")->orderBy('created_at', 'asc');
+
+        if ($request->has('page') || $request->has('per_page')) {
+            $perPage = min((int) $request->query('per_page', 20), 100);
+            $paginated = $query->paginate($perPage);
+            $paginated->getCollection()->transform(function ($ticket) {
+                $ticket->qr_code_url = $ticket->qr_code_path
+                    ? Storage::url($ticket->qr_code_path)
+                    : null;
+                $compatStatus = 'Pending';
+                if ($ticket->request_status === 'completed') {
+                    $compatStatus = 'Completed';
+                } elseif ($ticket->request_status === 'cancelled') {
+                    $compatStatus = 'Cancelled';
+                } elseif ($ticket->queue_status === 'serving') {
+                    $compatStatus = 'Serving';
+                }
+                $ticket->status = $compatStatus;
+                return $ticket;
+            });
+            return response()->json($paginated);
+        }
+
+        $tickets = $query->get();
 
         // Attach QR URL and legacy compatibility 'status'
         $tickets->transform(function ($ticket) {
@@ -1076,6 +1099,10 @@ class TicketController extends Controller
         $ticket = Ticket::withTrashed()->find($id);
         if (!$ticket) {
             return response()->json(['error' => 'Ticket not found'], 404);
+        }
+
+        if ($ticket->qr_code_path && Storage::disk('public')->exists($ticket->qr_code_path)) {
+            Storage::disk('public')->delete($ticket->qr_code_path);
         }
 
         if ($ticket->trashed()) {

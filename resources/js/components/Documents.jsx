@@ -16,19 +16,22 @@ import { useData } from './DataContext.jsx';
 import CameraModal from './CameraModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
+import useDebounce from '../hooks/useDebounce.js';
 
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
+// ── Document Preview Modal (via Portal) ──────────────────────────────────────
 /** Previews an uploaded or registered document without leaving the list. */
 const DocumentPreviewModal = ({ file, onClose }) => {
-    const viewUrl = `/api/documents/view/${file.id}`;
+    const [previewTab, setPreviewTab] = useState('picture'); // 'picture' | 'pdf'
+    const pdfViewUrl = `/api/documents/view/${file.id}`;
+    const imageViewUrl = `/api/documents/view-image/${file.id}`;
     const downloadUrl = `/api/documents/download/${file.id}`;
-    const isPdf = file.name?.toLowerCase().endsWith('.pdf');
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex flex-col bg-black/80 backdrop-blur-sm">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-700 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-700 shrink-0 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                         <DocumentIcon className="w-4 h-4 text-indigo-400" />
@@ -38,6 +41,33 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         <p className="text-xs text-slate-400 capitalize">{file.detected_type || file.type} certificate</p>
                     </div>
                 </div>
+
+                {/* Dual A4 Preview Tabs */}
+                <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                    <button
+                        type="button"
+                        onClick={() => setPreviewTab('picture')}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            previewTab === 'picture' 
+                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                        📷 Uploaded Picture (A4)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setPreviewTab('pdf')}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            previewTab === 'pdf' 
+                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                        📄 Standardized PDF (A4)
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                     {file.ocr_text && (
                         <a
@@ -56,7 +86,6 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         rel="noreferrer"
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700"
                     >
-                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
                         Download PDF
                     </a>
                     <button
@@ -70,20 +99,26 @@ const DocumentPreviewModal = ({ file, onClose }) => {
 
             {/* Preview content */}
             <div className="flex-1 overflow-hidden flex gap-4 p-4">
-                {/* Visual Document (Left/Main) */}
+                {/* Visual Document Container */}
                 <div className={`flex-1 flex items-center justify-center ${file.ocr_text ? 'w-2/3' : 'w-full'}`}>
-                    {isPdf ? (
-                        <iframe
-                            src={viewUrl}
-                            title={file.name}
-                            className="w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl"
-                        />
-                    ) : (
+                    {previewTab === 'picture' ? (
                         <img
-                            src={viewUrl}
+                            src={imageViewUrl}
                             alt={file.name}
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-700"
-                            onError={e => { e.target.src = 'https://placehold.co/600x800?text=Preview+Error'; }}
+                            onError={e => {
+                                e.target.style.display = 'none';
+                                const iframe = document.createElement('iframe');
+                                iframe.src = pdfViewUrl;
+                                iframe.className = "w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl";
+                                e.target.parentNode.appendChild(iframe);
+                            }}
+                        />
+                    ) : (
+                        <iframe
+                            src={pdfViewUrl}
+                            title={file.name}
+                            className="w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl"
                         />
                     )}
                 </div>
@@ -204,6 +239,8 @@ const Documents = () => {
     const [activeTab, setActiveTab] = useState('queue');
     const [queueSearch, setQueueSearch] = useState('');
     const [historySearch, setHistorySearch] = useState('');
+    const debouncedQueueSearch = useDebounce(queueSearch, 300);
+    const debouncedHistorySearch = useDebounce(historySearch, 300);
     const [historyFilters, setHistoryFilters] = useState({
         type: 'all',
         staff: 'all',
@@ -975,14 +1012,14 @@ const Documents = () => {
 
 
     const filteredQueue = queueFiles.filter(f =>
-        !queueSearch || f.name.toLowerCase().includes(queueSearch.toLowerCase())
+        !debouncedQueueSearch || f.name.toLowerCase().includes(debouncedQueueSearch.toLowerCase())
     );
 
     const filteredHistory = historyFiles.filter(f => {
         // Search filter
-        const matchesSearch = !historySearch ||
-            f.name.toLowerCase().includes(historySearch.toLowerCase()) ||
-            f.personName?.toLowerCase().includes(historySearch.toLowerCase());
+        const matchesSearch = !debouncedHistorySearch ||
+            f.name.toLowerCase().includes(debouncedHistorySearch.toLowerCase()) ||
+            f.personName?.toLowerCase().includes(debouncedHistorySearch.toLowerCase());
 
         if (!matchesSearch) return false;
 

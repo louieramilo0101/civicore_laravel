@@ -159,7 +159,7 @@ const Accounts = () => {
     const fetchUsers = async (showLoading = true) => {
         if (showLoading) setIsLoading(true);
         try {
-            const res = await fetch('/api/users', { credentials: 'include' });
+            const res = await fetch('/api/users?per_page=500', { credentials: 'include' });
             const data = await res.json();
             if (data.data) {
                 // Map the DB standard fields to the UI names
@@ -169,7 +169,13 @@ const Accounts = () => {
                     joined: new Date(u.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 }));
                 setUsers(updatedUsers);
-                sessionStorage.setItem('civicore_accounts_users', JSON.stringify(updatedUsers));
+                if (updatedUsers.length > 0) {
+                    setSelectedUser(prev => {
+                        if (!prev) return updatedUsers[0];
+                        const match = updatedUsers.find(u => u.id === prev.id);
+                        return match || updatedUsers[0];
+                    });
+                }
             }
         } catch (e) {
             console.error("Error fetching users:", e);
@@ -399,25 +405,9 @@ const Accounts = () => {
     };
 
     useEffect(() => {
-        const cachedUsers = sessionStorage.getItem('civicore_accounts_users');
-        if (cachedUsers) {
-            setUsers(JSON.parse(cachedUsers));
-            setIsLoading(false);
-        }
-        fetchUsers(!cachedUsers);
+        fetchUsers(true);
         fetchSettings();
     }, []);
-
-    // Set first user as default selection when data loads
-    useEffect(() => {
-        if (users.length > 0) {
-            const currentUserRole = JSON.parse(sessionStorage.getItem('user') || '{}').role;
-            // For non-admins, always force selection of themselves (the only user in the list)
-            if (currentUserRole !== 'SuperAdmin' || !selectedUser) {
-                setSelectedUser(users[0]);
-            }
-        }
-    }, [users]);
 
     // Initialize Chart
     useEffect(() => {
@@ -750,47 +740,7 @@ const Accounts = () => {
                         )}
                     </div>
 
-                    {/* Lower Section: Structure Distribution & Permissions */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        {/* Analytics Chart */}
-                        <div className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col">
-                            <div className="mb-4">
-                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Role Distribution</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">Categorized by systemic permission level</p>
-                            </div>
-                            <div className="flex-1 relative w-full min-h-[160px] flex items-center justify-center">
-                                {isLoading ? (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d4a574]"></div>
-                                    </div>
-                                ) : (
-                                    <canvas ref={canvasRef}></canvas>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Permissions Overview */}
-                        <div className="bg-gradient-to-br from-slate-800 to-[#0f172a] p-6 rounded-2xl shadow-sm border border-[#0f172a] flex flex-col relative overflow-hidden text-white">
-                            <div className="absolute right-[-10%] top-[-10%] w-32 h-32 bg-[#d4a574]/10 rounded-full blur-2xl"></div>
-
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2 relative z-10">
-                                <ShieldCheckIcon className="w-5 h-5 text-[#d4a574]" /> Matrix Overview
-                            </h3>
-
-                            <div className="space-y-4 relative z-10 flex-1 flex flex-col justify-center">
-                                <div className="border-l-2 border-[#d4a574] pl-3">
-                                    <h4 className="text-xs font-bold text-[#d4a574] uppercase tracking-widest mb-1">SuperAdmin</h4>
-                                    <p className="text-xs text-slate-300 leading-relaxed">Full access rights including mapping analytics, global deletions, and personnel overrides.</p>
-                                </div>
-                                <div className="border-l-2 border-slate-400 pl-3">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Admin</h4>
-                                    <p className="text-xs text-slate-300 leading-relaxed">Daily operations: processing document intake, OCR extraction, and physical issuances.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
+                    {/* End Right Panel */}
                 </motion.div>
             </div>
 

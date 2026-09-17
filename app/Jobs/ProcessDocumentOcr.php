@@ -144,15 +144,18 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 'updated_at' => now(),
             ]);
 
-            // Calculate total tokens used so far
-            $tokensUsed = 0;
-            $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
-            foreach ($docMeta as $dMeta) {
-                $meta = json_decode($dMeta->metadata, true);
-                if (isset($meta['image_token_cost'])) {
-                    $tokensUsed += (int) $meta['image_token_cost'];
+            // Calculate total tokens used so far (cached to avoid full-table JSON scanning)
+            $tokensUsed = \Illuminate\Support\Facades\Cache::remember('total_gemini_tokens_used', 300, function () {
+                $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
+                $total = 0;
+                foreach ($docMeta as $dMeta) {
+                    $meta = json_decode($dMeta->metadata, true);
+                    if (isset($meta['image_token_cost'])) {
+                        $total += (int) $meta['image_token_cost'];
+                    }
                 }
-            }
+                return $total;
+            });
             $tokenBudget = (int) env('GEMINI_TOKEN_BUDGET', 1000000);
 
             // 4. Execute OCR via Gemini API (runs synchronously inside this job)
@@ -253,7 +256,9 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             $metadata['processed_pages_count'] = 1;
             $metadata['has_duplicate'] = $hasDuplicate; // Save directly in metadata for instant client access
             if (isset($result['image_token_cost'])) {
-                $metadata['image_token_cost'] = $result['image_token_cost'];
+                $cost = (int) $result['image_token_cost'];
+                $metadata['image_token_cost'] = $cost;
+                \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', $cost);
             }
 
             // 6. Update database record with temporary checking status phase

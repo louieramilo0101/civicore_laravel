@@ -41,6 +41,17 @@ export default defineConfig({
             host: localIp
         }
     },
+    build: {
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom'],
+                    icons: ['@heroicons/react/24/outline'],
+                },
+            },
+        },
+    },
     plugins: [
         tailwindcss(),
         laravel({

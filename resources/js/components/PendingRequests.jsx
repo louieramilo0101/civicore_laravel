@@ -18,7 +18,9 @@ import {
     ExclamationTriangleIcon,
     ClockIcon,
     DocumentTextIcon,
-    ChevronDownIcon
+    ChevronDownIcon,
+    UserPlusIcon,
+    QrCodeIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import AttachDocumentModal from './AttachDocumentModal';
@@ -569,36 +571,48 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 {/* Left: Pending Tickets List */}
                 <div className="lg:col-span-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col h-full overflow-hidden">
                     {/* Header Title Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
-                        <h3 className="text-base font-black text-slate-800 flex items-center gap-2 shrink-0">
-                            <InboxIcon className="w-5 h-5 text-[#d4a574] shrink-0" />
-                            <span className="whitespace-nowrap">Digital Inbox</span>
-                            <span className="bg-[#d4a574]/20 text-[#c49a67] px-2 py-0.5 rounded-full text-xs font-bold leading-none shrink-0">
-                                {tickets.length}
-                            </span>
-                        </h3>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                                onClick={() => setIsWalkinModalOpen(true)}
-                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-all whitespace-nowrap active:scale-95 cursor-pointer"
-                            >
-                                Walk In
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsScannerOpen(true)}
-                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-all whitespace-nowrap active:scale-95 cursor-pointer"
-                            >
-                                Scan QR
-                            </button>
-                            <button
-                                onClick={() => fetchPendingTickets(false)}
-                                className="p-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all shrink-0 active:scale-95 cursor-pointer"
-                                title="Reload inbox"
-                            >
-                                <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                            </button>
+                    <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-150">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-[#d4a574]/15 border border-[#d4a574]/30 flex items-center justify-center shrink-0">
+                                <InboxIcon className="w-5 h-5 text-[#b88752]" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-base font-black text-slate-800 tracking-tight">Digital Inbox</h3>
+                                    <span className="bg-[#d4a574]/20 text-[#a37947] px-2.5 py-0.5 rounded-full text-xs font-black leading-none">
+                                        {tickets.length}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium">Pending online requests & check-ins</p>
+                            </div>
                         </div>
+                        
+                        <button
+                            onClick={() => fetchPendingTickets(false)}
+                            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 active:scale-95 cursor-pointer shadow-sm"
+                            title="Reload inbox"
+                        >
+                            <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+
+                    {/* Full-width Action Buttons Bar */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        <button
+                            onClick={() => setIsWalkinModalOpen(true)}
+                            className="py-2.5 px-3 bg-[#0f172a] text-[#d4a574] hover:bg-slate-800 rounded-xl text-xs font-black tracking-wider uppercase transition-all shadow-sm hover:shadow active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            <UserPlusIcon className="w-4 h-4 text-[#d4a574]" />
+                            <span>Walk In</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsScannerOpen(true)}
+                            className="py-2.5 px-3 bg-[#0f172a] text-[#d4a574] hover:bg-slate-800 rounded-xl text-xs font-black tracking-wider uppercase transition-all shadow-sm hover:shadow active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            <QrCodeIcon className="w-4 h-4 text-[#d4a574]" />
+                            <span>Scan QR</span>
+                        </button>
                     </div>
 
                     <div className="space-y-2 mb-4">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Represents the Dashboard Controller application component.
@@ -15,8 +16,9 @@ class DashboardController extends Controller
      */
     public function stats()
     {
-        $activeDocuments = DB::table('documents')->whereNull('deleted_at');
-        $activeIssuances = DB::table('issuances')->whereNull('deleted_at');
+        $cachedData = Cache::remember('dashboard_stats_cache', 120, function () {
+            $activeDocuments = DB::table('documents')->whereNull('deleted_at');
+            $activeIssuances = DB::table('issuances')->whereNull('deleted_at');
 
         // Master count of finalized/approved documents (issuances)
         $totalDocuments = DB::table('issuances')->whereNull('deleted_at')->count();
@@ -121,7 +123,7 @@ class DashboardController extends Controller
         }
         $tokenBudget = (int) env('GEMINI_TOKEN_BUDGET', 1000000);
 
-        return response()->json([
+        return [
             'stats' => [
                 'totalDocs' => (int) $totalDocuments,
                 'pendingDocs' => (int) $uploadPending,
@@ -151,6 +153,9 @@ class DashboardController extends Controller
                     'data' => $barangayRows->pluck('count')->map(fn($count) => (int) $count)->values()
                 ]
             ]
-        ]);
+        ];
+        });
+
+        return response()->json($cachedData);
     }
 }
