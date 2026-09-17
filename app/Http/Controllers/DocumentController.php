@@ -48,13 +48,16 @@ class DocumentController extends Controller
         }
         
         // Get total count
-        $countQuery = "SELECT COUNT(*) as total FROM documents" . $whereClause;
+        $countQuery = "SELECT COUNT(*) as total FROM documents d" . $whereClause;
         $totalResult = DB::select($countQuery, $params);
         $total = $totalResult[0]->total;
         
         // Get paginated results without loading binary content.
-        $query = "SELECT id, name, type, date, size, status, personName, barangay, metadata, ocr_text, extracted_fields, detected_type, created_at, updated_at, encoded_by, file_path 
-                  FROM documents" . $whereClause . " ORDER BY id DESC LIMIT ? OFFSET ?";
+        $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path,
+                         COALESCE(t.ticket_number, i.ticket_number, CONCAT('T-2026-', LPAD(d.id, 4, '0'))) as ticket_number
+                  FROM documents d
+                  LEFT JOIN tickets t ON t.document_id = d.id
+                  LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
         

@@ -56,7 +56,7 @@ export default function DigitalServices() {
                                 {service.icon}
                             </div>
                             <h3 className="text-2xl font-bold text-white mb-4">{service.title}</h3>
-                            <p className="text-slate-400 leading-relaxed text-sm">{service.desc}</p>
+                            <p className="text-slate-400 leading-relaxed text-base text-justify">{service.desc}</p>
                         </motion.div>
                     ))}
                 </div>

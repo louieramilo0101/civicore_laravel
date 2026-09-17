@@ -192,22 +192,6 @@ export default function ExportReportModal({ isOpen, onClose }) {
                             </select>
                         </div>
 
-                        {/* Status Filter */}
-                        <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                                <FunnelIcon className="w-4 h-4 text-slate-400" /> Record Status
-                            </label>
-                            <select
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                            >
-                                <option value="all">All Statuses</option>
-                                <option value="Processed">Processed / Registered</option>
-                                <option value="Issued">Issued / Completed</option>
-                                <option value="Pending">Pending / Draft</option>
-                            </select>
-                        </div>
 
                         {/* Date From */}
                         <div>
@@ -240,7 +224,7 @@ export default function ExportReportModal({ isOpen, onClose }) {
                     <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
                         <DocumentChartBarIcon className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
                         <div className="text-xs text-indigo-900 leading-relaxed">
-                            <span className="font-bold">Export Columns Included:</span> Registry No., Document Type, Full Name, Gender, Event Date, Barangay, Municipality, Father/Husband, Mother/Wife, Status, Encoder, and Registration Date.
+                            <span className="font-bold">Export Columns Included:</span> Ticket #, Registry No., Document Category, Full Name, Gender, Event Date, Barangay, Municipality, Father/Husband, Mother/Wife, and Registration Date.
                         </div>
                     </div>
 

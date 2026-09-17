@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -40,10 +40,21 @@ export default function AlertModal({
     type = 'info', 
     confirmText = 'OK',
     cancelText = 'Cancel',
-    showCancel = false
+    showCancel = false,
+    autoDismiss = true,
+    autoDismissDelay = 3000
 }) {
     const handleConfirm = onConfirm || onClose;
     const handleCancel = onCancel || onClose;
+
+    useEffect(() => {
+        if (isOpen && autoDismiss && !showCancel && handleConfirm) {
+            const timer = setTimeout(() => {
+                handleConfirm();
+            }, autoDismissDelay);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, autoDismiss, showCancel, handleConfirm, autoDismissDelay]);
 
     const modal = (
         <AnimatePresence>
@@ -71,8 +82,19 @@ export default function AlertModal({
                         }}
                         className={`relative w-full max-w-md overflow-hidden bg-gradient-to-br ${colors[type]} border backdrop-blur-2xl rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]`}
                     >
-                        {/* Decorative Top Bar */}
-                        <div className={`h-1.5 w-full bg-gradient-to-r ${type === 'error' ? 'from-rose-500 to-rose-400' : 'from-[#d4a574] to-[#b88c5d]'}`} />
+                        {/* Decorative Top Countdown Bar */}
+                        <div className="h-1.5 w-full bg-slate-800/40 overflow-hidden">
+                            {autoDismiss && !showCancel ? (
+                                <motion.div 
+                                    initial={{ width: '100%' }}
+                                    animate={{ width: '0%' }}
+                                    transition={{ duration: autoDismissDelay / 1000, ease: 'linear' }}
+                                    className={`h-full bg-gradient-to-r ${type === 'error' ? 'from-rose-500 to-rose-400' : 'from-[#d4a574] to-[#b88c5d]'}`}
+                                />
+                            ) : (
+                                <div className={`h-full w-full bg-gradient-to-r ${type === 'error' ? 'from-rose-500 to-rose-400' : 'from-[#d4a574] to-[#b88c5d]'}`} />
+                            )}
+                        </div>
 
                         <div className="p-8 flex flex-col items-center text-center">
                             {/* Icon Container */}
@@ -87,7 +109,7 @@ export default function AlertModal({
 
                             {/* Header */}
                             <div className="mb-6">
-                                <h3 className="text-xl font-black text-white tracking-tight uppercase italic mb-2">
+                                <h3 className="text-xl font-black text-white tracking-tight uppercase mb-2">
                                     {title}
                                 </h3>
                                 <p className="text-slate-300 text-sm font-medium leading-relaxed">

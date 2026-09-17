@@ -1081,14 +1081,13 @@ const Issuances = () => {
                         <button
                             type="button"
                             onClick={() => setIsAnalyticsCollapsed(prev => !prev)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-[#d4a574] text-xs font-black uppercase tracking-wider transition-all cursor-pointer border border-slate-800 shadow-md active:scale-95"
-                            title={isAnalyticsCollapsed ? "Expand Category Overview Analytics" : "Retract Category Overview Analytics"}
+                            className="p-2.5 rounded-xl bg-slate-900/10 hover:bg-slate-900 text-[#d4a574] hover:text-white transition-all cursor-pointer border border-[#d4a574]/30 hover:border-slate-900 shadow-sm active:scale-95 group/retract"
+                            title={isAnalyticsCollapsed ? "Expand Overview Analytics" : "Retract Overview Analytics"}
                         >
-                            <span>{isAnalyticsCollapsed ? "Show Overview" : "Retract Overview"}</span>
                             {isAnalyticsCollapsed ? (
-                                <ChevronDownIcon className="w-4 h-4 text-[#d4a574] animate-bounce" />
+                                <ChevronDownIcon className="w-5 h-5 text-[#d4a574] group-hover/retract:text-white transition-colors" />
                             ) : (
-                                <ChevronUpIcon className="w-4 h-4 text-[#d4a574]" />
+                                <ChevronUpIcon className="w-5 h-5 text-[#d4a574] group-hover/retract:text-white transition-colors" />
                             )}
                         </button>
                     </div>
@@ -1473,14 +1472,14 @@ const Issuances = () => {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Encoder</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Barangay</label>
                                     <select
-                                        value={selectedEncoder}
-                                        onChange={(e) => setSelectedEncoder(e.target.value)}
+                                        value={selectedBarangay}
+                                        onChange={(e) => setSelectedBarangay(e.target.value)}
                                         className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block p-2 cursor-pointer transition-all outline-none"
                                     >
-                                        <option value="all">All Encoders</option>
-                                        {uniqueEncoders.map(e => <option key={e} value={e}>{e}</option>)}
+                                        <option value="all">All Barangays</option>
+                                        {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
                                     </select>
                                 </div>
 
@@ -1506,16 +1505,14 @@ const Issuances = () => {
                                         <th className="p-4">Type</th>
                                         <th className="p-4">Recipient Name</th>
                                         <th className="p-4">Barangay</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4">Encoded By</th>
                                         <th className="p-4 pr-6 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {isLoading ? (
-                                        <tr><td colSpan="9"><SkeletonLoader type="table" rows={8} /></td></tr>
+                                        <tr><td colSpan="6"><SkeletonLoader type="table" rows={8} /></td></tr>
                                     ) : filteredCertificates.length === 0 ? (
-                                        <tr><td colSpan="9" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
+                                        <tr><td colSpan="6" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
                                     ) : (
                                         filteredCertificates.map((cert) => (
                                             <tr key={cert.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.includes(cert.id) ? 'bg-indigo-50/30' : ''}`}>
@@ -1528,30 +1525,35 @@ const Issuances = () => {
                                                     />
                                                 </td>
                                                 <td className="p-4"><span className="font-bold text-slate-800 text-sm tracking-tight">{cert.number}</span></td>
-                                                <td className="p-4"><span className="inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase bg-slate-100 text-slate-500 border border-slate-200">{cert.type}</span></td>
+                                                <td className="p-4">
+                                                    {(() => {
+                                                        const t = (cert.type || '').toLowerCase();
+                                                        const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                        return (
+                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                {cert.type}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
                                                 <td className="p-4 font-semibold text-slate-700 text-sm">{cert.name}</td>
                                                 <td className="p-4 text-slate-500 text-xs font-medium">{cert.barangay}</td>
-                                                <td className="p-4">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase border ${cert.status === 'Pending Approval' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                                            cert.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                                                cert.status === 'Issued' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' :
-                                                                    'bg-slate-100 text-slate-500 border-slate-200'
-                                                        }`}>{cert.status}</span>
-                                                </td>
-                                                <td className="p-4 text-slate-400 text-xs">{cert.encoded_by || 'System'}</td>
                                                 <td className="p-4 pr-6 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleAction('View', cert)} title="View Document" className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-100 cursor-pointer"><EyeIcon className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleEdit(cert)} title="Edit Record" className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-600 hover:text-white rounded-lg transition-all border border-amber-100 cursor-pointer"><PencilSquareIcon className="w-4 h-4" /></button>
-
-                                                        {cert.status === 'Issued' ? (
-                                                            <button onClick={() => handleAction('Print', cert)} title="Reprint" className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-100 cursor-pointer"><PrinterIcon className="w-4 h-4 animate-pulse" /></button>
-                                                        ) : (
-                                                            <button onClick={() => handleAction('Print', cert)} title="Print" className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-all border border-emerald-100 cursor-pointer"><PrinterIcon className="w-4 h-4" /></button>
-                                                        )}
-
-                                                        <button onClick={() => handleAction('Download', cert)} title="Download" className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-all border border-blue-100 cursor-pointer"><ArrowDownTrayIcon className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleDelete(cert)} title="Delete" className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-100 cursor-pointer"><TrashIcon className="w-4 h-4" /></button>
+                                                    <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handleAction('View', cert)}
+                                                            title="View Document"
+                                                            className="p-2 text-indigo-600 bg-indigo-50/80 hover:bg-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 hover:border-indigo-600 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                        >
+                                                            <EyeIcon className="w-4 h-4 text-indigo-600 group-hover/btn:text-white transition-colors" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(cert)}
+                                                            title="Delete Record"
+                                                            className="p-2 text-rose-600 bg-rose-50/80 hover:bg-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 hover:border-rose-600 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4 text-rose-600 group-hover/btn:text-white transition-colors" />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>

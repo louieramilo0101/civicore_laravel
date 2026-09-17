@@ -51,7 +51,7 @@ export default function Reports() {
         setIsLoading(true);
         try {
             const params = new URLSearchParams({
-                per_page: '15',
+                per_page: '1000',
                 type: docType === 'all' ? '' : docType,
                 search: searchQuery
             });
@@ -63,16 +63,13 @@ export default function Reports() {
                 if (barangay !== 'all') {
                     filtered = filtered.filter(d => d.barangay === barangay);
                 }
-                if (status !== 'all') {
-                    filtered = filtered.filter(d => (d.status || '').toLowerCase() === status.toLowerCase());
-                }
                 setPreviewRecords(filtered);
-                setTotalCount(data.total || filtered.length);
+                setTotalCount(filtered.length);
 
-                // Calculate summary counts
-                const bCount = data.data.filter(d => (d.type || '').toLowerCase() === 'birth').length;
-                const dCount = data.data.filter(d => (d.type || '').toLowerCase() === 'death').length;
-                const mCount = data.data.filter(d => (d.type || '').toLowerCase() === 'marriage').length;
+                // Calculate summary counts from fetched dataset
+                const bCount = filtered.filter(d => (d.type || '').toLowerCase() === 'birth').length;
+                const dCount = filtered.filter(d => (d.type || '').toLowerCase() === 'death').length;
+                const mCount = filtered.filter(d => (d.type || '').toLowerCase() === 'marriage').length;
                 setTypeCounts({ birth: bCount, death: dCount, marriage: mCount });
             }
         } catch (err) {
@@ -206,9 +203,21 @@ export default function Reports() {
 
             {/* Filter Configuration Card */}
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                    <h2 className="text-lg font-bold text-slate-900">Report Filter Settings</h2>
-                    <p className="text-xs text-slate-400">Configure report categories, date ranges, and barangays</p>
+                <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900">Report Filter Settings</h2>
+                        <p className="text-xs text-slate-400">Configure report categories, date ranges, and barangays</p>
+                    </div>
+                    <div className="relative w-full sm:w-72">
+                        <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search by name, registry no..."
+                            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                        />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -244,39 +253,6 @@ export default function Reports() {
                                 <option key={b} value={b}>{b}</option>
                             ))}
                         </select>
-                    </div>
-
-                    {/* Record Status Filter */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">
-                            Status Filter
-                        </label>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
-                        >
-                            <option value="all">All Record Statuses</option>
-                            <option value="Processed">Processed / Registered</option>
-                            <option value="Pending">Pending / Queue</option>
-                        </select>
-                    </div>
-
-                    {/* Quick Search */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">
-                            Search Query
-                        </label>
-                        <div className="relative">
-                            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search by name, registry no..."
-                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
-                            />
-                        </div>
                     </div>
 
                     {/* Date From */}
@@ -340,31 +316,38 @@ export default function Reports() {
                             <thead>
                                 <tr className="bg-slate-50/80 text-slate-400 text-[10px] uppercase tracking-widest border-b border-slate-100">
                                     <th className="px-6 py-3.5 font-black text-slate-500">ID / Reg No.</th>
+                                    <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
                                     <th className="px-4 py-3.5 font-black text-slate-500">Category</th>
                                     <th className="px-6 py-3.5 font-black text-slate-500">Person / Spouse Name</th>
                                     <th className="px-4 py-3.5 font-black text-slate-500">Event Date</th>
                                     <th className="px-4 py-3.5 font-black text-slate-500">Barangay</th>
-                                    <th className="px-4 py-3.5 font-black text-slate-500">Status</th>
-                                    <th className="px-6 py-3.5 font-black text-slate-500">Encoded By</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
                                 {previewRecords.map((doc) => {
                                     const ef = is_string(doc.extracted_fields) ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
                                     const regNo = ef.registry_number || ef.registry_no || doc.id;
+                                    const ticketNo = doc.ticket_number || `T-2026-${String(doc.id).padStart(4, '0')}`;
                                     return (
                                         <tr key={doc.id} className="hover:bg-slate-50/60 transition-colors">
                                             <td className="px-6 py-4 font-mono font-bold text-slate-900">
                                                 #{doc.id} <span className="text-[11px] text-slate-400 block font-sans font-normal">{regNo}</span>
                                             </td>
-                                            <td className="px-4 py-4">
-                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                    (doc.type || '').toLowerCase() === 'birth' ? 'bg-amber-100 text-amber-800' :
-                                                    (doc.type || '').toLowerCase() === 'death' ? 'bg-rose-100 text-rose-800' :
-                                                    'bg-indigo-100 text-indigo-800'
-                                                }`}>
-                                                    {doc.type || 'Birth'}
+                                            <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
+                                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                                    {ticketNo}
                                                 </span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                {(() => {
+                                                    const t = (doc.type || '').toLowerCase();
+                                                    const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                    return (
+                                                        <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                            {doc.type || 'Birth'}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4 font-bold text-slate-900">
                                                 {doc.personName || 'N/A'}
@@ -374,14 +357,6 @@ export default function Reports() {
                                             </td>
                                             <td className="px-4 py-4 text-slate-600">
                                                 {doc.barangay || 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    {doc.status || 'Processed'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500">
-                                                {doc.encoded_by || 'System Staff'}
                                             </td>
                                         </tr>
                                     );

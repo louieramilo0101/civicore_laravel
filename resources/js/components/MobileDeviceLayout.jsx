@@ -120,16 +120,8 @@ const MobileDeviceLayout = ({ children }) => {
                     </div>
                 </div>
 
-                {/* Right Side: QR Scanner & Pure Profile Picture Avatar */}
+                {/* Right Side: Pure Profile Picture Avatar */}
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setShowScanner(true)}
-                        className="p-2.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 rounded-xl active:scale-95 transition-all cursor-pointer flex items-center justify-center shadow-sm"
-                        title="Scan QR Ticket"
-                    >
-                        <QrCodeIcon className="w-5 h-5" />
-                    </button>
-
                     <button
                         onClick={() => setShowProfileModal(true)}
                         className="p-0.5 rounded-full active:scale-95 transition-all cursor-pointer focus:outline-none"

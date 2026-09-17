@@ -1193,7 +1193,6 @@ const Mapping = () => {
                                 <th className="p-4">Type</th>
                                 <th className="p-4">Subject Name</th>
                                 <th className="p-4">Barangay</th>
-                                <th className="p-4">Status</th>
                                 <th className="p-4">Encoded By</th>
                                 <th className="p-4 text-right pr-6">Actions</th>
                             </tr>
@@ -1201,13 +1200,13 @@ const Mapping = () => {
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan="7" className="p-0">
+                                    <td colSpan="6" className="p-0">
                                         <SkeletonLoader type="table" rows={4} />
                                     </td>
                                 </tr>
                             ) : filteredPrints.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="p-8 text-center text-slate-500">
+                                    <td colSpan="6" className="p-8 text-center text-slate-500">
                                         No tracking logs found.
                                     </td>
                                 </tr>
@@ -1226,27 +1225,18 @@ const Mapping = () => {
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
-                                                getNormalizedType(print) === 'birth' ? 'bg-[#d4a574]/10 text-[#d4a574] border-[#d4a574]/20' :
-                                                getNormalizedType(print) === 'death' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                'bg-indigo-50 text-indigo-600 border-indigo-100'
-                                            }`}>
-                                                {print.type}
-                                            </span>
+                                            {(() => {
+                                                const normType = getNormalizedType(print);
+                                                const colorClass = normType === 'birth' ? 'text-[#d4a574]' : normType === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                return (
+                                                    <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                        {print.type}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="p-4 font-semibold text-slate-700">{print.name}</td>
                                         <td className="p-4 text-slate-600 font-medium">{print.barangay}</td>
-                                        <td className="p-4">
-                                            {print.status === 'Printed' || print.status === 'Active' ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                                    <span className="w-1.2 h-1.2 rounded-full bg-emerald-500"></span> Issued
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-600 border border-amber-100">
-                                                    <span className="w-1.2 h-1.2 rounded-full bg-amber-500 animate-pulse"></span> Processing
-                                                </span>
-                                            )}
-                                        </td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <Avatar

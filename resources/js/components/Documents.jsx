@@ -6,7 +6,7 @@ import {
     CloudArrowUpIcon, DocumentIcon, TrashIcon, CheckCircleIcon,
     ExclamationTriangleIcon, MagnifyingGlassIcon, XMarkIcon,
     PencilSquareIcon, ShieldExclamationIcon, ShieldCheckIcon, DocumentCheckIcon,
-    EyeIcon, ArrowDownTrayIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
+    EyeIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
     UserIcon, DocumentTextIcon, UsersIcon
 } from '@heroicons/react/24/outline';
 import OcrFormPanel from './OcrFormPanel.jsx';
@@ -15,7 +15,6 @@ import { useModal } from './ModalContext.jsx';
 import { useData } from './DataContext.jsx';
 import CameraModal from './CameraModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
-import ExportReportModal from './ExportReportModal.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 
 
@@ -216,7 +215,6 @@ const Documents = () => {
 
     const [previewFile, setPreviewFile] = useState(null); // file to preview
     const [isCameraOpen, setIsCameraOpen] = useState(false);
-    const [showExportModal, setShowExportModal] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: null, title: '', message: '', type: 'info' });
 
     /** Toggles one document in the bulk-selection set. */
@@ -1039,11 +1037,6 @@ const Documents = () => {
                 )}
             </AnimatePresence>
 
-            <ExportReportModal
-                isOpen={showExportModal}
-                onClose={() => setShowExportModal(false)}
-            />
-
             <ActionConfirmModal
                 isOpen={confirmModal.isOpen}
                 title={confirmModal.title}
@@ -1211,14 +1204,7 @@ const Documents = () => {
                                 </button>
                             ))}
 
-                            <button
-                                onClick={() => setShowExportModal(true)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/15 transition-all active:scale-95 cursor-pointer ml-2"
-                                title="Export Civil Registry Reports"
-                            >
-                                <ArrowDownTrayIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">Export Report</span>
-                            </button>
+
                         </div>
 
                         {activeTab === 'queue' ? (
@@ -1325,34 +1311,40 @@ const Documents = () => {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-2 py-2.5">
-                                                                    <span className="text-[9.5px] font-black px-1.5 py-0.5 bg-slate-50 text-slate-400 border border-slate-100 rounded-md uppercase tracking-tighter">
-                                                                        {(file.detected_type && file.detected_type.toLowerCase() !== 'unknown') ? file.detected_type : (file.type && file.type.toLowerCase() !== 'unknown' ? file.type : 'birth')}
-                                                                    </span>
+                                                                    {(() => {
+                                                                        const rawType = ((file.detected_type && file.detected_type.toLowerCase() !== 'unknown') ? file.detected_type : (file.type && file.type.toLowerCase() !== 'unknown' ? file.type : 'birth')).toLowerCase();
+                                                                        const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                                        return (
+                                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                                {rawType}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
                                                                 </td>
                                                                 <td className="px-2 py-2.5 text-center">{statusBadge(file)}</td>
                                                                 <td className="px-3 py-2.5 text-right">
                                                                     <div className="flex items-center justify-end gap-1 px-1">
                                                                         {['pending', 'processing'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-sm active:scale-90 group border border-rose-100"
+                                                                                className="p-2.5 text-amber-600 bg-amber-50/80 hover:bg-amber-600 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                                 title="Stop Processing">
-                                                                                <StopIcon className="w-4 h-4" />
+                                                                                <StopIcon className="w-4 h-4 text-amber-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
                                                                         {['stopped', 'failed', 'uploaded'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-xl transition-all shadow-sm active:scale-90 group border border-indigo-100"
+                                                                                className="p-2.5 text-sky-600 bg-sky-50/80 hover:bg-sky-600 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                                 title="Resume / Retry Processing">
-                                                                                <PlayIcon className="w-4 h-4" />
+                                                                                <PlayIcon className="w-4 h-4 text-sky-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
                                                                         {['extracted', 'processed'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
-                                                                                className="p-2.5 text-slate-500 hover:text-[#d4a574] hover:bg-[#d4a574]/10 border border-slate-100 rounded-xl transition-all active:scale-95 group"
+                                                                                className="p-2.5 text-indigo-600 bg-indigo-50/80 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                                                 title={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
-                                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                                                <PencilSquareIcon className="w-4 h-4 text-indigo-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
@@ -1365,17 +1357,17 @@ const Documents = () => {
                                                                                 </button>
                                                                             ) : (
                                                                                 <button onClick={() => approveRecord(file.id)}
-                                                                                    className="p-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-100 active:scale-95 group"
+                                                                                    className="p-2.5 text-emerald-600 bg-emerald-50/80 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                                                     title="Direct Approve">
-                                                                                    <CheckCircleIcon className="w-4 h-4" />
+                                                                                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 group-hover/btn:text-white transition-colors" />
                                                                                 </button>
                                                                             )
                                                                         )}
 
                                                                         <button onClick={() => removeFile(file.id)}
-                                                                            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 rounded-xl transition-all shadow-sm shadow-rose-100 active:scale-90 group"
+                                                                            className="p-2.5 text-rose-600 bg-rose-50/80 hover:bg-rose-600 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                             title="Delete Document">
-                                                                            <TrashIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+                                                                            <TrashIcon className="w-4 h-4 text-rose-600 group-hover/btn:text-white transition-colors" />
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -1518,8 +1510,8 @@ const Documents = () => {
                                                             <td className="px-3 py-3">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 text-blue-500' :
-                                                                            file.type === 'death' ? 'bg-slate-100 text-slate-600' :
-                                                                                'bg-rose-50 text-rose-500'
+                                                                        file.type === 'death' ? 'bg-slate-100 text-slate-600' :
+                                                                            'bg-rose-50 text-rose-500'
                                                                         }`}>
                                                                         <DocumentIcon className="w-5 h-5" />
                                                                     </div>

@@ -252,7 +252,16 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         /** Whether the selected field represents a person's name. */
         const isName = field.includes('name') && !field.includes('place') && !field.includes('date');
         /** Value after applying name validation where appropriate. */
-        const cleanVal = isName ? sanitizeName(val) : val;
+        let cleanVal = isName ? sanitizeName(val) : val;
+
+        if (field.includes('date') && cleanVal) {
+            const parts = cleanVal.split('-');
+            if (parts[0] && parts[0].length > 4) {
+                parts[0] = parts[0].slice(0, 4);
+                cleanVal = parts.join('-');
+            }
+        }
+
         setWalkinDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
@@ -560,25 +569,33 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 {/* Left: Pending Tickets List */}
                 <div className="lg:col-span-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col h-full overflow-hidden">
                     {/* Header Title Row */}
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+                        <h3 className="text-base font-black text-slate-800 flex items-center gap-2 shrink-0">
                             <InboxIcon className="w-5 h-5 text-[#d4a574] shrink-0" />
-                            <span>Digital Inbox</span>
-                            <span className="bg-[#d4a574]/20 text-[#c49a67] px-2 py-0.5 rounded-full text-xs font-bold leading-none">
+                            <span className="whitespace-nowrap">Digital Inbox</span>
+                            <span className="bg-[#d4a574]/20 text-[#c49a67] px-2 py-0.5 rounded-full text-xs font-bold leading-none shrink-0">
                                 {tickets.length}
                             </span>
                         </h3>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-1.5 shrink-0">
                             <button
                                 onClick={() => setIsWalkinModalOpen(true)}
-                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
-                            >Walk in</button>
-                            <button type="button" onClick={() => setIsScannerOpen(true)}
-                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors">Scan QR</button>
+                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+                            >
+                                Walk In
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsScannerOpen(true)}
+                                className="px-3 py-1.5 bg-[#0f172a] text-[#d4a574] rounded-xl text-xs font-bold hover:bg-slate-800 transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+                            >
+                                Scan QR
+                            </button>
                             <button
                                 onClick={() => fetchPendingTickets(false)}
-                                className="p-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-650 transition-colors"
-                                title="Reload inbox">
+                                className="p-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all shrink-0 active:scale-95 cursor-pointer"
+                                title="Reload inbox"
+                            >
                                 <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
@@ -934,7 +951,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Birth</label>
-                                                <input type="date" value={walkinDetails.date_of_birth} onChange={e => handleWalkinDetailChange('date_of_birth', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_birth} onChange={e => handleWalkinDetailChange('date_of_birth', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Birth</label>
@@ -967,7 +984,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Death</label>
-                                                <input type="date" value={walkinDetails.date_of_death} onChange={e => handleWalkinDetailChange('date_of_death', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_death} onChange={e => handleWalkinDetailChange('date_of_death', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Death</label>
@@ -1008,7 +1025,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Marriage</label>
-                                                <input type="date" value={walkinDetails.date_of_marriage} onChange={e => handleWalkinDetailChange('date_of_marriage', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_marriage} onChange={e => handleWalkinDetailChange('date_of_marriage', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Marriage</label>
