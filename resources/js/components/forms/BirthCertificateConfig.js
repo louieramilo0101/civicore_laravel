@@ -1,4 +1,4 @@
-import { NAIC_BARANGAYS, NAME_FIELDS, SUFFIX_OPTIONS } from './SharedConfig.js';
+import { NAIC_BARANGAYS, NAME_FIELDS, SUFFIX_OPTIONS, MONTH_OPTIONS, COUNTRY_OPTIONS, PROVINCE_OPTIONS, MUNICIPALITY_OPTIONS, CITIZENSHIP_OPTIONS } from './SharedConfig.js';
 
 /** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized birth-certificate overlay regions. */
 export const BirthTemplateOverlayFields = [
@@ -112,8 +112,8 @@ export const BirthConfig = [
     {
         section: 'Registry Details',
         fields: [
-            { key: 'province', label: 'Province', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'city_municipality', label: 'City/Municipality', type: 'text', required: true, width: 'sm:col-span-1' },
+            { key: 'province', label: 'Province', type: 'select', options: PROVINCE_OPTIONS, required: true, width: 'sm:col-span-1' },
+            { key: 'city_municipality', label: 'City/Municipality', type: 'select', options: MUNICIPALITY_OPTIONS, required: true, width: 'sm:col-span-1' },
             { key: 'registry_number', label: 'Registry No.', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'barangay', label: 'Barangay (For analytics)', type: 'select', options: NAIC_BARANGAYS, required: true, width: 'sm:col-span-1' },
         ]
@@ -125,16 +125,16 @@ export const BirthConfig = [
             { key: 'middle_name', label: '1. Name (Middle)', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'last_name', label: '1. Name (Last)', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'sex', label: '2. Sex', type: 'select', options: ['Male', 'Female'], required: true, width: 'sm:col-span-1' },
-            { key: 'dob_day', label: '3. Date of Birth (Day)', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'dob_month', label: '3. Date of Birth (Month)', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'dob_year', label: '3. Date of Birth (Year)', type: 'text', required: true, width: 'sm:col-span-1' },
+            { key: 'dob_day', label: '3. Date of Birth (Day)', type: 'number', min: 1, max: 31, placeholder: 'Day (1-31)', required: true, width: 'sm:col-span-1' },
+            { key: 'dob_month', label: '3. Date of Birth (Month)', type: 'select', options: MONTH_OPTIONS, required: true, width: 'sm:col-span-1' },
+            { key: 'dob_year', label: '3. Date of Birth (Year)', type: 'number', min: 1900, max: 2100, placeholder: 'Year (YYYY)', required: true, width: 'sm:col-span-1' },
             { key: 'place_of_birth_hospital', label: '4. Place of Birth (Hospital/Clinic/Institution/House No., St., Barangay)', type: 'text', required: true, width: 'sm:col-span-2' },
-            { key: 'place_of_birth_city', label: 'Place of Birth (City/Municipality)', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'place_of_birth_province', label: 'Place of Birth (Province)', type: 'text', required: true, width: 'sm:col-span-1' },
+            { key: 'place_of_birth_city', label: 'Place of Birth (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: true, width: 'sm:col-span-1' },
+            { key: 'place_of_birth_province', label: 'Place of Birth (Province)', type: 'select', options: PROVINCE_OPTIONS, required: true, width: 'sm:col-span-1' },
             { key: 'type_of_birth', label: '5a. Type of Birth', type: 'select', options: ['Single', 'Twin', 'Triplet', 'Others'], required: false, width: 'sm:col-span-1' },
             { key: 'multiple_birth_order', label: '5b. If Multiple Birth, Child Was', type: 'select', options: ['First', 'Second', 'Third', 'Others'], required: false, width: 'sm:col-span-1' },
-            { key: 'birth_order', label: '5c. Birth Order', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'weight_at_birth', label: '6. Weight at Birth (grams)', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'birth_order', label: '5c. Birth Order', type: 'number', min: 1, required: false, width: 'sm:col-span-1' },
+            { key: 'weight_at_birth', label: '6. Weight at Birth (grams)', type: 'number', min: 0, required: false, width: 'sm:col-span-1' },
         ]
     },
     {
@@ -143,17 +143,17 @@ export const BirthConfig = [
             { key: 'mother_first_name', label: '7. Maiden Name (First)', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'mother_middle_name', label: '7. Maiden Name (Middle)', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'mother_last_name', label: '7. Maiden Name (Last)', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'mother_citizenship', label: '8. Citizenship', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'mother_citizenship', label: '8. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'mother_religion', label: '9. Religion/Religious Sect', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_children_total', label: '10a. Total children born alive', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_children_living', label: '10b. Children still living', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_children_dead', label: '10c. Children born alive but dead', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'mother_children_total', label: '10a. Total children born alive', type: 'number', min: 0, required: false, width: 'sm:col-span-1' },
+            { key: 'mother_children_living', label: '10b. Children still living', type: 'number', min: 0, required: false, width: 'sm:col-span-1' },
+            { key: 'mother_children_dead', label: '10c. Children born alive but dead', type: 'number', min: 0, required: false, width: 'sm:col-span-1' },
             { key: 'mother_occupation', label: '11. Occupation', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_age', label: '12. Age at birth', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'mother_age', label: '12. Age at birth', type: 'number', min: 10, max: 100, required: false, width: 'sm:col-span-1' },
             { key: 'mother_residence_house', label: '13. Residence (House No., St., Barangay)', type: 'text', required: false, width: 'sm:col-span-2' },
-            { key: 'mother_residence_city', label: '13. Residence (City/Municipality)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_residence_province', label: '13. Residence (Province)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'mother_residence_country', label: '13. Residence (Country)', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'mother_residence_city', label: '13. Residence (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'mother_residence_province', label: '13. Residence (Province)', type: 'select', options: PROVINCE_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'mother_residence_country', label: '13. Residence (Country)', type: 'select', options: COUNTRY_OPTIONS, required: false, width: 'sm:col-span-1' },
         ]
     },
     {
@@ -162,25 +162,25 @@ export const BirthConfig = [
             { key: 'father_first_name', label: '14. Name (First)', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'father_middle_name', label: '14. Name (Middle)', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'father_last_name', label: '14. Name (Last)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'father_citizenship', label: '15. Citizenship', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'father_citizenship', label: '15. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'father_religion', label: '16. Religion/Religious Sect', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'father_occupation', label: '17. Occupation', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'father_age', label: '18. Age at birth', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'father_age', label: '18. Age at birth', type: 'number', min: 10, max: 120, required: false, width: 'sm:col-span-1' },
             { key: 'father_residence_house', label: '19. Residence (House No., St., Barangay)', type: 'text', required: false, width: 'sm:col-span-2' },
-            { key: 'father_residence_city', label: '19. Residence (City/Municipality)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'father_residence_province', label: '19. Residence (Province)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'father_residence_country', label: '19. Residence (Country)', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'father_residence_city', label: '19. Residence (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'father_residence_province', label: '19. Residence (Province)', type: 'select', options: PROVINCE_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'father_residence_country', label: '19. Residence (Country)', type: 'select', options: COUNTRY_OPTIONS, required: false, width: 'sm:col-span-1' },
         ]
     },
     {
         section: 'Marriage of Parents',
         fields: [
-            { key: 'marriage_parents_day', label: '20a. Date (Day)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_month', label: '20a. Date (Month)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_year', label: '20a. Date (Year)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_place_city', label: '20b. Place (City/Municipality)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_place_province', label: '20b. Place (Province)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_place_country', label: '20b. Place (Country)', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_day', label: '20a. Date (Day)', type: 'number', min: 1, max: 31, placeholder: 'Day (1-31)', required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_month', label: '20a. Date (Month)', type: 'select', options: MONTH_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_year', label: '20a. Date (Year)', type: 'number', min: 1900, max: 2100, placeholder: 'Year (YYYY)', required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_place_city', label: '20b. Place (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_place_province', label: '20b. Place (Province)', type: 'select', options: PROVINCE_OPTIONS, required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_place_country', label: '20b. Place (Country)', type: 'select', options: COUNTRY_OPTIONS, required: false, width: 'sm:col-span-1' },
         ]
     },
     {

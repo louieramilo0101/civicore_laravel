@@ -39,5 +39,10 @@
         "react-dropzone": "^15.0.0",
         "react-leaflet": "^5.0.0",
         "react-router-dom": "^7.13.1"
+    },
+    "allowScripts": {
+        "unrs-resolver@1.12.2": true,
+        "esbuild@0.28.2": true,
+        "protobufjs@7.6.6": true
     }
 }

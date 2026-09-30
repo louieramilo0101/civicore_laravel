@@ -1,4 +1,4 @@
-import { NAIC_BARANGAYS, NAME_FIELDS } from './SharedConfig.js';
+import { NAIC_BARANGAYS, NAME_FIELDS, PROVINCE_OPTIONS, MUNICIPALITY_OPTIONS, CITIZENSHIP_OPTIONS } from './SharedConfig.js';
 
 /** @type {Array<{key: string, label: string, x: number, y: number, w: number, h: number}>} Normalized death-certificate overlay regions. */
 export const DeathTemplateOverlayFields = [
@@ -112,8 +112,8 @@ export const DeathConfig = [
     {
         section: 'Registry Details',
         fields: [
-            { key: 'province', label: 'Province', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'city_municipality', label: 'City/Municipality', type: 'text', required: true, width: 'sm:col-span-1' },
+            { key: 'province', label: 'Province', type: 'select', options: PROVINCE_OPTIONS, required: true, width: 'sm:col-span-1' },
+            { key: 'city_municipality', label: 'City/Municipality', type: 'select', options: MUNICIPALITY_OPTIONS, required: true, width: 'sm:col-span-1' },
             { key: 'registry_number', label: 'Registry No.', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'barangay', label: 'Barangay (For analytics)', type: 'select', options: NAIC_BARANGAYS, required: true, width: 'sm:col-span-1' },
         ]
@@ -125,15 +125,15 @@ export const DeathConfig = [
             { key: 'sex', label: '2. Sex', type: 'select', options: ['Male', 'Female'], required: true, width: 'sm:col-span-1' },
             { key: 'date_of_death', label: '3. Date of Death', type: 'date', required: true, width: 'sm:col-span-1' },
             { key: 'date_of_birth', label: '4. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'age_completed_years', label: '5a. Age – Completed Years (if 1yr+)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'age_months', label: '5b. Age – Months (if under 1 year)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'age_days', label: '5b. Age – Days', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'age_hours', label: '5c. Age – Hours (if under 24 hours)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'age_minutes', label: '5c. Age – Minutes', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'age_completed_years', label: '5a. Age – Completed Years (if 1yr+)', type: 'number', min: 0, max: 150, placeholder: 'Years', required: false, width: 'sm:col-span-1' },
+            { key: 'age_months', label: '5b. Age – Months (if under 1 year)', type: 'number', min: 0, max: 11, placeholder: 'Months (0-11)', required: false, width: 'sm:col-span-1' },
+            { key: 'age_days', label: '5b. Age – Days', type: 'number', min: 0, max: 30, placeholder: 'Days (0-30)', required: false, width: 'sm:col-span-1' },
+            { key: 'age_hours', label: '5c. Age – Hours (if under 24 hours)', type: 'number', min: 0, max: 23, placeholder: 'Hours (0-23)', required: false, width: 'sm:col-span-1' },
+            { key: 'age_minutes', label: '5c. Age – Minutes', type: 'number', min: 0, max: 59, placeholder: 'Mins (0-59)', required: false, width: 'sm:col-span-1' },
             { key: 'place_of_death', label: '6. Place of Death (Hospital/Clinic/House No., Brgy., City/Municipality, Province)', type: 'text', required: false },
             { key: 'civil_status', label: '7. Civil Status', type: 'select', options: ['Single', 'Married', 'Widowed', 'Annulled', 'Divorced'], required: false, width: 'sm:col-span-1' },
             { key: 'religion', label: '8. Religion/Religious Sect', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'citizenship', label: '9. Citizenship', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'citizenship', label: '9. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'residence', label: '10. Residence (House No., St., Brgy., Municipality, Province, Country)', type: 'text', required: false },
             { key: 'occupation', label: '11. Occupation', type: 'text', required: false, width: 'sm:col-span-1' },
         ]

@@ -219,33 +219,25 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             if ($dupType === 'marriage_license') {
                 $dupType = 'marriage';
             }
-            $dupQuery = DB::table('issuances')
-                ->where('type', $dupType)
-                ->whereNull('deleted_at');
+            $regNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? $extractedFields['certNumber'] ?? '');
+            if (!empty($regNo)) {
+                $dupQuery = DB::table('issuances')
+                    ->whereNull('deleted_at');
 
-            if ($dupType === 'birth' || $dupType === 'death') {
-                $firstName = trim($extractedFields['first_name'] ?? '');
-                $lastName = trim($extractedFields['last_name'] ?? '');
-                if (!empty($firstName) && !empty($lastName)) {
-                    $dupQuery->where('name', 'like', "%{$lastName}%")
-                             ->where('name', 'like', "%{$firstName}%");
-                    if ($dupQuery->exists()) {
-                        $hasDuplicate = true;
-                    }
+                if ($dupType === 'marriage') {
+                    $dupQuery->whereIn('type', ['marriage', 'marriage_license']);
+                } elseif (!empty($dupType)) {
+                    $dupQuery->where('type', $dupType);
                 }
-            } elseif ($dupType === 'marriage') {
-                $hLastName = trim($extractedFields['husband_last_name'] ?? '');
-                $wLastName = trim($extractedFields['wife_last_name'] ?? '');
-                if (!empty($hLastName) || !empty($wLastName)) {
-                    if (!empty($hLastName)) {
-                        $dupQuery->where('name', 'like', "%{$hLastName}%");
-                    }
-                    if (!empty($wLastName)) {
-                        $dupQuery->where('name', 'like', "%{$wLastName}%");
-                    }
-                    if ($dupQuery->exists()) {
-                        $hasDuplicate = true;
-                    }
+
+                $dupQuery->where(function ($q) use ($regNo) {
+                    $q->where('certNumber', $regNo)
+                      ->orWhere('extracted_data->registry_number', $regNo)
+                      ->orWhere('extracted_data->registry_no', $regNo);
+                });
+
+                if ($dupQuery->exists()) {
+                    $hasDuplicate = true;
                 }
             }
 

@@ -1,4 +1,4 @@
-import { NAIC_BARANGAYS, NAME_FIELDS } from './SharedConfig.js';
+import { NAIC_BARANGAYS, NAME_FIELDS, PROVINCE_OPTIONS, MUNICIPALITY_OPTIONS, CITIZENSHIP_OPTIONS } from './SharedConfig.js';
 
 export const MarriageTemplateOverlayFields = [
     // REGISTRY DETAILS
@@ -98,8 +98,8 @@ export const MarriageConfig = [
     {
         section: 'Registry Details',
         fields: [
-            { key: 'province', label: 'Province', type: 'text', required: true, width: 'sm:col-span-1' },
-            { key: 'city_municipality', label: 'City/Municipality', type: 'text', required: true, width: 'sm:col-span-1' },
+            { key: 'province', label: 'Province', type: 'select', options: PROVINCE_OPTIONS, required: true, width: 'sm:col-span-1' },
+            { key: 'city_municipality', label: 'City/Municipality', type: 'select', options: MUNICIPALITY_OPTIONS, required: true, width: 'sm:col-span-1' },
             { key: 'registry_number', label: 'Registry No.', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'barangay', label: 'Barangay (For analytics)', type: 'select', options: NAIC_BARANGAYS, required: true, width: 'sm:col-span-1' },
         ]
@@ -109,16 +109,16 @@ export const MarriageConfig = [
         fields: [
             ...NAME_FIELDS('husband_'),
             { key: 'husband_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'husband_age', label: '2b. Age', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'husband_age', label: '2b. Age', type: 'number', min: 18, max: 120, placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
             { key: 'husband_place_of_birth', label: '3. Place of Birth', type: 'text', required: false },
-            { key: 'husband_citizenship', label: '4b. Citizenship', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'husband_citizenship', label: '4b. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'husband_residence', label: '5. Residence', type: 'text', required: false },
             { key: 'husband_religion', label: '6. Religion', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'husband_civil_status', label: '7. Civil Status', type: 'select', options: ['Single', 'Widowed', 'Divorced', 'Annulled'], required: false, width: 'sm:col-span-1' },
             { key: 'husband_father_name', label: "8. Father's Full Name", type: 'text', required: false },
-            { key: 'husband_father_citizenship', label: "9. Father's Citizenship", type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'husband_father_citizenship', label: "9. Father's Citizenship", type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'husband_mother_maiden_name', label: "10. Mother's Maiden Name", type: 'text', required: false },
-            { key: 'husband_mother_citizenship', label: "11. Mother's Citizenship", type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'husband_mother_citizenship', label: "11. Mother's Citizenship", type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'husband_consent_person', label: "12. Person Giving Consent/Advice", type: 'text', required: false },
             { key: 'husband_consent_relationship', label: "13. Relationship", type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'husband_consent_residence', label: "14. Residence", type: 'text', required: false },
@@ -129,16 +129,16 @@ export const MarriageConfig = [
         fields: [
             ...NAME_FIELDS('wife_'),
             { key: 'wife_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'wife_age', label: '2b. Age', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'wife_age', label: '2b. Age', type: 'number', min: 18, max: 120, placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
             { key: 'wife_place_of_birth', label: '3. Place of Birth', type: 'text', required: false },
-            { key: 'wife_citizenship', label: '4b. Citizenship', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'wife_citizenship', label: '4b. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'wife_residence', label: '5. Residence', type: 'text', required: false },
             { key: 'wife_religion', label: '6. Religion', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'wife_civil_status', label: '7. Civil Status', type: 'select', options: ['Single', 'Widowed', 'Divorced', 'Annulled'], required: false, width: 'sm:col-span-1' },
             { key: 'wife_father_name', label: "8. Father's Full Name", type: 'text', required: false },
-            { key: 'wife_father_citizenship', label: "9. Father's Citizenship", type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'wife_father_citizenship', label: "9. Father's Citizenship", type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'wife_mother_maiden_name', label: "10. Mother's Maiden Name", type: 'text', required: false },
-            { key: 'wife_mother_citizenship', label: "11. Mother's Citizenship", type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'wife_mother_citizenship', label: "11. Mother's Citizenship", type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'wife_consent_person', label: "12. Person Giving Consent/Advice", type: 'text', required: false },
             { key: 'wife_consent_relationship', label: "13. Relationship", type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'wife_consent_residence', label: "14. Residence", type: 'text', required: false },

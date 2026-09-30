@@ -37,8 +37,11 @@ class DocumentController extends Controller
                 $params[] = $type;
             }
             if (!empty($search)) {
-                $conditions[] = "(name LIKE ? OR personName LIKE ? OR barangay LIKE ?)";
+                $conditions[] = "(name LIKE ? OR personName LIKE ? OR barangay LIKE ? OR extracted_fields LIKE ? OR raw_text LIKE ? OR ocr_text LIKE ?)";
                 $searchTerm = "%{$search}%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -55,7 +58,7 @@ class DocumentController extends Controller
         
         // Get paginated results without loading binary content.
         $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
-                         COALESCE(t.ticket_number, i.ticket_number, CONCAT('T-2026-', LPAD(d.id, 4, '0'))) as ticket_number
+                         COALESCE(t.ticket_number, i.ticket_number) as ticket_number
                   FROM documents d
                   LEFT JOIN tickets t ON t.document_id = d.id
                   LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
@@ -66,6 +69,9 @@ class DocumentController extends Controller
         
         // Enhance documents with real-time batch progress and duplicate detection
         foreach ($documents as $doc) {
+            if (empty($doc->ticket_number)) {
+                $doc->ticket_number = 'T-2026-' . str_pad($doc->id, 4, '0', STR_PAD_LEFT);
+            }
             $metadata = json_decode($doc->metadata, true) ?: [];
             $doc->has_duplicate = !empty($metadata['has_duplicate']);
             $status = strtolower($doc->status ?? '');
@@ -513,20 +519,133 @@ class DocumentController extends Controller
         $parentalConsent = $request->input('parental_consent', false);
         $detectedType    = $request->input('detectedType');
 
-        // Normalize date parts (day, year) to integers if they look numeric
+        // Backend validation and normalization of civil registry fields
         if (is_array($extractedFields)) {
-            foreach (['dob_day', 'dob_year', 'marriage_parents_day', 'marriage_parents_year', 'death_day', 'death_year'] as $dateKey) {
-                if (isset($extractedFields[$dateKey]) && is_string($extractedFields[$dateKey])) {
-                    $cleaned = preg_replace('/[^0-9]/', '', $extractedFields[$dateKey]);
-                    if ($cleaned !== '') {
-                        $extractedFields[$dateKey] = (int)$cleaned;
-                    }
-                }
+            $validationError = $this->validateExtractedFields($extractedFields, $detectedType ?: 'birth');
+            if ($validationError) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => $validationError,
+                ], 422);
             }
         }
 
         return $this->performSave($request, $id, $extractedFields, $ocrText, $personName, $barangay, $status, $parentalConsent, $detectedType);
     }
+
+    /**
+     * Validates and cleans extracted fields to ensure database integrity.
+     */
+    private function validateExtractedFields(array &$fields, string $type = 'birth'): ?string
+    {
+        $validMonths = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        // 1. Month validation & normalization
+        foreach (['dob_month', 'marriage_parents_month'] as $mKey) {
+            if (isset($fields[$mKey]) && $fields[$mKey] !== '' && $fields[$mKey] !== 'n/a') {
+                $rawM = trim((string)$fields[$mKey]);
+                $normalized = null;
+                if (is_numeric($rawM)) {
+                    $mNum = (int)$rawM;
+                    if ($mNum >= 1 && $mNum <= 12) {
+                        $normalized = $validMonths[$mNum - 1];
+                    }
+                } else {
+                    foreach ($validMonths as $vm) {
+                        if (str_starts_with(strtolower($rawM), strtolower(substr($vm, 0, 3)))) {
+                            $normalized = $vm;
+                            break;
+                        }
+                    }
+                }
+                if (!$normalized) {
+                    return "Invalid month '{$rawM}'. Please choose a valid month between January and December.";
+                }
+                $fields[$mKey] = $normalized;
+            }
+        }
+
+        // 2. Day validation
+        $dayKeys = [
+            'dob_day' => ['month' => 'dob_month', 'year' => 'dob_year'],
+            'marriage_parents_day' => ['month' => 'marriage_parents_month', 'year' => 'marriage_parents_year']
+        ];
+        foreach ($dayKeys as $dKey => $rel) {
+            if (isset($fields[$dKey]) && $fields[$dKey] !== '' && $fields[$dKey] !== 'n/a') {
+                $rawDay = preg_replace('/[^0-9]/', '', (string)$fields[$dKey]);
+                if ($rawDay === '') {
+                    return "Day must be a number between 1 and 31.";
+                }
+                $day = (int)$rawDay;
+                if ($day < 1 || $day > 31) {
+                    return "Day must be between 1 and 31. Received: {$day}.";
+                }
+                $mVal = $fields[$rel['month']] ?? null;
+                if ($mVal && in_array($mVal, $validMonths)) {
+                    $yVal = !empty($fields[$rel['year']]) ? (int)$fields[$rel['year']] : null;
+                    if ($mVal === 'February') {
+                        $isLeap = $yVal && (($yVal % 4 === 0 && $yVal % 100 !== 0) || ($yVal % 400 === 0));
+                        $maxFeb = $isLeap ? 29 : 28;
+                        if ($day > $maxFeb) {
+                            return "February has at most {$maxFeb} days" . ($isLeap ? " (leap year)." : ".");
+                        }
+                    } elseif (in_array($mVal, ['April', 'June', 'September', 'November'])) {
+                        if ($day > 30) {
+                            return "{$mVal} only has 30 days.";
+                        }
+                    }
+                }
+                $fields[$dKey] = $day;
+            }
+        }
+
+        // 3. Year validation
+        $currentYear = (int)date('Y');
+        foreach (['dob_year', 'marriage_parents_year'] as $yKey) {
+            if (isset($fields[$yKey]) && $fields[$yKey] !== '' && $fields[$yKey] !== 'n/a') {
+                $rawYear = preg_replace('/[^0-9]/', '', (string)$fields[$yKey]);
+                $year = (int)$rawYear;
+                if (strlen($rawYear) !== 4 || $year < 1850 || $year > $currentYear + 1) {
+                    return "Year must be a 4-digit number between 1850 and {$currentYear}.";
+                }
+                $fields[$yKey] = $year;
+            }
+        }
+
+        // 4. Date validation for Marriage & Death
+        $today = date('Y-m-d');
+        foreach (['date_of_birth', 'date_of_death', 'date_of_marriage', 'husband_dob', 'wife_dob', 'burial_permit_date_issued', 'transfer_permit_date_issued'] as $dKey) {
+            if (isset($fields[$dKey]) && $fields[$dKey] !== '' && $fields[$dKey] !== 'n/a') {
+                $dStr = trim((string)$fields[$dKey]);
+                $ts = strtotime($dStr);
+                if ($ts === false) {
+                    return "Invalid date format for '{$dKey}'. Please use YYYY-MM-DD.";
+                }
+                $formatted = date('Y-m-d', $ts);
+                if ($formatted > $today) {
+                    return "The date for '{$dKey}' cannot be in the future (today is {$today}).";
+                }
+                $fields[$dKey] = $formatted;
+            }
+        }
+
+        // 5. Age numeric sanity checks
+        foreach (['mother_age', 'father_age', 'husband_age', 'wife_age', 'age_completed_years', 'age_months', 'age_days'] as $aKey) {
+            if (isset($fields[$aKey]) && $fields[$aKey] !== '' && $fields[$aKey] !== 'n/a') {
+                $cleaned = preg_replace('/[^0-9]/', '', (string)$fields[$aKey]);
+                if ($cleaned === '') {
+                    return "Age must be a valid non-negative number.";
+                }
+                $fields[$aKey] = (int)$cleaned;
+            }
+        }
+
+        return null;
+    }
+
 
     /**
      * Fast-track approval of extracted data without the full modal
@@ -545,12 +664,13 @@ class DocumentController extends Controller
             $detectedType = 'marriage';
         }
 
-        // Two-factor duplicate check: name + date (skipped if staff forces through)
+        // Single-factor duplicate check: Registry Number scoped strictly by certificate type (skipped if staff forces through)
         if (!$force && $this->hasTrueDuplicate($detectedType, $fields, (int) $id)) {
+            $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
             return response()->json([
                 'success'   => false,
                 'duplicate' => true,
-                'error'     => 'A record with this name AND date already exists in the Master Registry. Confirm to override.',
+                'error'     => "A record with Registry No. \"{$regNo}\" already exists in the " . ucfirst($detectedType) . " Registry. Confirm to override.",
             ], 422);
         }
 
@@ -561,10 +681,9 @@ class DocumentController extends Controller
     }
 
     /**
-     * Two-factor duplicate detection: name + date.
-     * Same name alone is NOT enough — civil registry commonly has people with the same name.
-     * We match on both the person's name AND a date field (DOB, DOD, or date of marriage).
-     * Returns true only when BOTH match an existing issuance record.
+     * Single-factor duplicate detection: Registry Number scoped strictly by certificate type.
+     * In civil registry operations, each civil registry book maintains its own registry series.
+     * Registry Numbers are strictly unique within their respective certificate type.
      *
      * @param string $type         Normalized type: birth|death|marriage
      * @param array  $fields       Extracted fields from the current document
@@ -572,89 +691,31 @@ class DocumentController extends Controller
      */
     private function hasTrueDuplicate(string $type, array $fields, int $excludeDocId = 0): bool
     {
-        $base = DB::table('issuances')
-            ->where('type', $type)
+        $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
+        if (empty($regNo)) {
+            return false;
+        }
+
+        $normType = $type === 'marriage_license' ? 'marriage' : $type;
+
+        $query = DB::table('issuances')
             ->whereNull('deleted_at');
 
+        if ($normType === 'marriage') {
+            $query->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $query->where('type', $normType);
+        }
+
         if ($excludeDocId > 0) {
-            $base->where('document_id', '!=', $excludeDocId);
+            $query->where('document_id', '!=', $excludeDocId);
         }
 
-        if ($type === 'birth') {
-            $firstName = trim($fields['first_name'] ?? '');
-            $lastName  = trim($fields['last_name']  ?? '');
-            $dob       = trim($fields['date_of_birth'] ?? $fields['birth_date'] ?? '');
-
-            // Need at least name; date is the tiebreaker
-            if (empty($firstName) || empty($lastName)) return false;
-
-            $query = (clone $base)
-                ->where('name', 'like', "%{$lastName}%")
-                ->where('name', 'like', "%{$firstName}%");
-
-            if (!$query->exists()) return false; // No name match at all — definitely not a dup
-
-            // Name matched — now check date_of_birth in extracted_data JSON
-            if (!empty($dob)) {
-                return (clone $base)
-                    ->where('name', 'like', "%{$lastName}%")
-                    ->where('name', 'like', "%{$firstName}%")
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extracted_data, '$.date_of_birth')) = ?", [$dob])
-                    ->exists();
-            }
-
-            // If we have no DOB in the new document, fall back to name-only (conservative)
-            return true;
-
-        } elseif ($type === 'death') {
-            $firstName = trim($fields['first_name'] ?? '');
-            $lastName  = trim($fields['last_name']  ?? '');
-            $dod       = trim($fields['date_of_death'] ?? $fields['death_date'] ?? '');
-
-            if (empty($firstName) || empty($lastName)) return false;
-
-            $query = (clone $base)
-                ->where('name', 'like', "%{$lastName}%")
-                ->where('name', 'like', "%{$firstName}%");
-
-            if (!$query->exists()) return false;
-
-            if (!empty($dod)) {
-                return (clone $base)
-                    ->where('name', 'like', "%{$lastName}%")
-                    ->where('name', 'like', "%{$firstName}%")
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extracted_data, '$.date_of_death')) = ?", [$dod])
-                    ->exists();
-            }
-
-            return true;
-
-        } elseif ($type === 'marriage') {
-            $hLastName = trim($fields['husband_last_name'] ?? '');
-            $wLastName = trim($fields['wife_last_name']   ?? '');
-            $dom       = trim($fields['date_of_marriage'] ?? $fields['marriage_date'] ?? '');
-
-            if (empty($hLastName) && empty($wLastName)) return false;
-
-            $query = (clone $base);
-            if (!empty($hLastName)) $query->where('name', 'like', "%{$hLastName}%");
-            if (!empty($wLastName)) $query->where('name', 'like', "%{$wLastName}%");
-
-            if (!$query->exists()) return false;
-
-            if (!empty($dom)) {
-                $dateQuery = (clone $base);
-                if (!empty($hLastName)) $dateQuery->where('name', 'like', "%{$hLastName}%");
-                if (!empty($wLastName)) $dateQuery->where('name', 'like', "%{$wLastName}%");
-                return $dateQuery
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extracted_data, '$.date_of_marriage')) = ?", [$dom])
-                    ->exists();
-            }
-
-            return true;
-        }
-
-        return false;
+        return $query->where(function ($q) use ($regNo) {
+            $q->where('certNumber', $regNo)
+              ->orWhere('extracted_data->registry_number', $regNo)
+              ->orWhere('extracted_data->registry_no', $regNo);
+        })->exists();
     }
 
     /**
@@ -746,9 +807,19 @@ class DocumentController extends Controller
                         elseif (str_starts_with($p, 'ML') || str_starts_with($p, 'MC')) $docType = 'marriage';
                     }
                     
-                    // Keep the original upload as the issuance source of truth.
+                    // Keep the original upload as the issuance source of truth, or auto-generate official PDF
                     $issuanceFilePath  = $doc[0]->file_path;
                     $issuanceImagePath = $doc[0]->image_path ?? null;
+
+                    if (empty($issuanceFilePath) || !\Storage::disk('public')->exists($issuanceFilePath)) {
+                        try {
+                            $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
+                            $pdfService->generateForDocument($id);
+                            $issuanceFilePath = DB::table('documents')->where('id', $id)->value('file_path');
+                        } catch (\Throwable $e) {
+                            \Log::warning("Auto PDF generation in performSave for document {$id}: " . $e->getMessage());
+                        }
+                    }
 
                     $normCertType = 'birth';
                     if ($docType === 'death') {
@@ -761,7 +832,7 @@ class DocumentController extends Controller
                     $ticketNumber = $ticketRecord ? $ticketRecord->ticket_number : null;
 
                     if (count($existing) > 0) {
-                        // 2. UPDATE existing Master Record (Keep certNumber)
+                        // 2. UPDATE existing Master Record (Sync certNumber if registry_number provided)
                         $updateData = [
                             'type' => $docType,
                             'certificate_type' => $normCertType,
@@ -776,6 +847,11 @@ class DocumentController extends Controller
                             'updated_at' => now()
                         ];
 
+                        $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
+                        if (!empty($userRegNo)) {
+                            $updateData['certNumber'] = $userRegNo;
+                        }
+
                         // If a ticket is linked, set or_number and requested_by if they aren't already set
                         $existingRecord = DB::table('issuances')->where('document_id', $id)->first();
                         if ($existingRecord && $ticketNumber) {
@@ -789,7 +865,7 @@ class DocumentController extends Controller
 
                         DB::table('issuances')->where('document_id', $id)->update($updateData);
                     } else {
-                        // 3. INSERT new Master Record (Generate NEW certNumber with Atomic Concurrency Lock)
+                        // 3. INSERT new Master Record (Generate NEW certNumber with Atomic Concurrency Lock, preferring user registry_number)
                         Cache::lock('issuance_cert_number_lock', 10)->block(5, function () use ($docType, $normCertType, $personName, $barangay, $encodedBy, $id, $extractedFields, $issuanceFilePath, $issuanceImagePath, $ticketNumber) {
                             $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
                             $year = date('Y');
@@ -800,7 +876,9 @@ class DocumentController extends Controller
                                 $nextNum = intval($results[0]->max_id) + 1;
                             }
                             
-                            $certNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                            $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                            $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
+                            $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
                             $issuanceDate = date('m/d/Y');
 
                             $insertData = [
@@ -969,6 +1047,22 @@ class DocumentController extends Controller
         $status = strtolower($doc->status ?? 'pending');
 
         if (empty($doc->file_path) || !\Storage::disk('public')->exists($doc->file_path)) {
+            // Attempt to generate official standardized certificate PDF first
+            try {
+                $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
+                $generatedPath = $pdfService->generateForDocument((int)$id);
+                if ($generatedPath && file_exists($generatedPath)) {
+                    $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $doc->personName ?: 'Document');
+                    $filename = "{$cleanName}_doc_{$id}.pdf";
+                    return response()->file($generatedPath, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => $disposition . '; filename="' . addslashes($filename) . '"',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("Could not auto-generate PDF for document {$id}: " . $e->getMessage());
+            }
+
             $docTypeTitle = ucfirst($doc->type ?? 'Civil Registry') . ' Record';
             $personNameStr = htmlspecialchars($doc->personName ?? 'Manual Entry');
             $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800" fill="none">
@@ -1194,12 +1288,17 @@ class DocumentController extends Controller
 
     /**
      * POST /api/documents/{id}/check-duplicate
-     * Check if similar fields exist in the Master Registry (issuances table).
+     * Check if a record with the same Registry Number exists in the Master Registry (issuances table),
+     * scoped strictly to the certificate type (Birth, Death, Marriage).
      */
     public function checkDuplicate(Request $request, $id)
     {
         $type = $request->input('type');
         $fields = $request->input('fields', []);
+
+        if (is_string($fields)) {
+            $fields = json_decode($fields, true) ?: [];
+        }
 
         if (empty($fields)) {
             return response()->json([
@@ -1209,12 +1308,8 @@ class DocumentController extends Controller
             ]);
         }
 
-        // Extract all candidate name components regardless of current category
-        $firstName = trim($fields['first_name'] ?? $fields['husband_first_name'] ?? $fields['wife_first_name'] ?? $fields['deceased_first_name'] ?? '');
-        $lastName  = trim($fields['last_name']  ?? $fields['husband_last_name']  ?? $fields['wife_last_name']  ?? $fields['deceased_last_name']  ?? '');
-        $regNo     = trim($fields['registry_number'] ?? $fields['registry_no'] ?? '');
-
-        if (empty($firstName) && empty($lastName) && empty($regNo)) {
+        $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
+        if (empty($regNo)) {
             return response()->json([
                 'success' => true,
                 'duplicate' => false,
@@ -1228,43 +1323,24 @@ class DocumentController extends Controller
             $normType = 'marriage';
         }
 
-        // Function to build query for a given type filter (or all types if null)
-        $findCandidate = function ($typeFilter = null) use ($id, $firstName, $lastName, $regNo) {
-            $query = DB::table('issuances')
-                ->whereNull('deleted_at')
-                ->where('document_id', '!=', $id);
+        $query = DB::table('issuances')
+            ->whereNull('deleted_at');
 
-            if ($typeFilter) {
-                $query->where('type', $typeFilter);
-            }
-
-            $query->where(function ($q) use ($firstName, $lastName, $regNo) {
-                if (!empty($regNo)) {
-                    $q->orWhere('certNumber', 'like', "%{$regNo}%")
-                      ->orWhere('extracted_data', 'like', "%{$regNo}%");
-                }
-                if (!empty($lastName)) {
-                    if (!empty($firstName)) {
-                        $q->orWhere(function ($sub) use ($firstName, $lastName) {
-                            $sub->where('name', 'like', "%{$lastName}%")
-                                ->where('name', 'like', "%{$firstName}%");
-                        });
-                    } else {
-                        $q->orWhere('name', 'like', "%{$lastName}%");
-                    }
-                }
-            });
-
-            return $query->first();
-        };
-
-        // 1. Try matching with specific requested type
-        $candidate = $findCandidate($normType);
-
-        // 2. If no match found under current category, fallback to cross-category search
-        if (!$candidate) {
-            $candidate = $findCandidate(null);
+        if ($normType === 'marriage') {
+            $query->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $query->where('type', $normType);
         }
+
+        if (is_numeric($id) && (int)$id > 0) {
+            $query->where('document_id', '!=', (int)$id);
+        }
+
+        $candidate = $query->where(function ($q) use ($regNo) {
+            $q->where('certNumber', $regNo)
+              ->orWhere('extracted_data->registry_number', $regNo)
+              ->orWhere('extracted_data->registry_no', $regNo);
+        })->first();
 
         if ($candidate) {
             return response()->json([
@@ -1292,14 +1368,26 @@ class DocumentController extends Controller
 
     /**
      * POST /api/documents/manual
-     * Create a manual document record without any file upload.
+     * Create a manual document record (supports attached scanned file/picture or synthetic dummy mode).
      */
     public function storeManual(Request $request)
     {
+        $rawExtracted = $request->input('extracted_fields', []);
+        if (is_string($rawExtracted)) {
+            $decoded = json_decode($rawExtracted, true);
+            if (is_array($decoded)) {
+                $rawExtracted = $decoded;
+            }
+        }
+        $request->merge(['extracted_fields' => $rawExtracted]);
+
         $request->validate([
             'type' => 'required|string|in:birth,death,marriage,marriage_license',
             'extracted_fields' => 'required|array',
-            'parental_consent' => 'nullable|boolean'
+            'parental_consent' => 'nullable',
+            'is_dummy' => 'nullable',
+            'force' => 'nullable',
+            'file' => 'nullable|file|max:20480|mimes:pdf,png,jpg,jpeg,tiff,bmp,webp'
         ]);
 
         $userId = $request->session()->get('user_id');
@@ -1308,46 +1396,84 @@ class DocumentController extends Controller
 
         $docType = $request->input('type');
         $extractedFields = $request->input('extracted_fields', []);
-        $parentalConsent = $request->input('parental_consent', false);
+        $parentalConsent = filter_var($request->input('parental_consent', false), FILTER_VALIDATE_BOOLEAN);
+        $isDummy = filter_var($request->input('is_dummy', false), FILTER_VALIDATE_BOOLEAN);
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
         
         $normType = $docType;
         if ($docType === 'marriage_license') {
             $normType = 'marriage';
         }
 
-        // Two-factor duplicate check: name + date (skip if force=true)
-        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+        // Validate extracted fields before creating database records
+        $valError = $this->validateExtractedFields($extractedFields, $normType);
+        if ($valError) {
+            return response()->json([
+                'success' => false,
+                'error'   => $valError,
+            ], 422);
+        }
 
+        // Duplication check strictly on registry_number scoped by certificate type
         if (!$force && $this->hasTrueDuplicate($normType, $extractedFields)) {
+            $regNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
             return response()->json([
                 'success'   => false,
                 'duplicate' => true,
-                'error'     => 'A record with this name AND date already exists in the Master Registry. Confirm to override.',
+                'error'     => "A record with Registry No. \"{$regNo}\" already exists in the " . ucfirst($normType) . " Registry. Confirm to override.",
             ], 422);
         }
 
         // Build personName
         $personName = $this->buildFullName($extractedFields, $normType);
         $barangay = $extractedFields['barangay'] ?? '';
-        $name = 'Manual Entry - ' . date('m/d/Y H:i');
+
+        // Handle uploaded file (if provided and not dummy mode)
+        $uploadedFile = $request->file('file');
+        $filePath  = null;
+        $imagePath = null;
+        $size      = '0 KB';
+        $docName   = 'Manual Entry - ' . date('m/d/Y H:i');
+
+        if ($uploadedFile && $uploadedFile->isValid() && !$isDummy) {
+            $this->validateUploadedFile($uploadedFile);
+            $converter = new \App\Services\DocumentPdfConverterService();
+            $dualPaths = $converter->processUploadedFile($uploadedFile);
+            $filePath  = $dualPaths['file_path'];
+            $imagePath = $dualPaths['image_path'];
+            $size      = number_format($uploadedFile->getSize() / (1024 * 1024), 2) . ' MB';
+            $docName   = $uploadedFile->getClientOriginalName();
+        }
 
         // Create document record with Processed status directly (so it never appears in the queue)
         $newId = DB::table('documents')->insertGetId([
-            'name' => $name,
+            'name' => $docName,
             'type' => $docType,
             'date' => date('m/d/Y'),
-            'size' => '0 KB',
+            'size' => $size,
             'status' => 'Processed',
             'personName' => $personName,
             'barangay' => $barangay,
-            'file_path' => null, 
+            'file_path' => $filePath, 
+            'image_path' => $imagePath,
             'encoded_by' => $encodedBy,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         // This method does dynamic template compilation and handles Master registry insert
-        return $this->performSave($request, $newId, $extractedFields, '', $personName, $barangay, 'Processed', $parentalConsent, $docType);
+        $response = $this->performSave($request, $newId, $extractedFields, '', $personName, $barangay, 'Processed', $parentalConsent, $docType);
+
+        // If no document file was uploaded (e.g. Dummy Data Mode), generate synthetic certificate PDF
+        if (empty($filePath)) {
+            try {
+                app(\App\Services\CertificatePdfGeneratorService::class)->generateForDocument($newId);
+            } catch (\Throwable $e) {
+                \Log::error("Failed to generate PDF for manual document {$newId}: " . $e->getMessage());
+            }
+        }
+
+        return $response;
     }
 
     /**

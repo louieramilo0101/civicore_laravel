@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ExclamationTriangleIcon, InformationCircleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 /** Confirms a potentially destructive staff action before execution. */
-const ActionConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, type = 'info' }) => {
+const ActionConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, type = 'info', confirmText = 'Confirm', cancelText = 'Cancel' }) => {
     /** Maps the action type to the modal’s semantic color treatment. */
     const getColor = () => {
         switch (type) {
@@ -43,13 +43,13 @@ const ActionConfirmModal = ({ isOpen, onConfirm, onCancel, title, message, type 
                                 onClick={onCancel}
                                 className="flex-1 px-6 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-2xl transition-all active:scale-95 cursor-pointer"
                             >
-                                Cancel
+                                {cancelText}
                             </button>
                             <button 
                                 onClick={onConfirm}
                                 className={`flex-1 px-6 py-3.5 text-sm font-bold text-white bg-${color}-600 hover:bg-${color}-700 rounded-2xl shadow-lg shadow-${color}-200 transition-all active:scale-95 cursor-pointer`}
                             >
-                                Confirm
+                                {confirmText}
                             </button>
                         </div>
                     </motion.div>

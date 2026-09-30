@@ -165,33 +165,45 @@ class DocumentPdfConverterService
             margin: 0px;
             size: A4 portrait;
         }
-        body {
+        html, body {
             margin: 0px;
             padding: 0px;
-            background-color: #ffffff;
-            text-align: center;
-        }
-        .container {
             width: 100%;
-            height: 100vh;
-            display: table-cell;
+            height: 100%;
+            background-color: #ffffff;
+        }
+        table {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            margin: 0;
+            padding: 0;
+        }
+        td {
             vertical-align: middle;
             text-align: center;
+            margin: 0;
+            padding: 0;
         }
         img {
             max-width: 100%;
             max-height: 100%;
             width: auto;
             height: auto;
-            margin: auto;
+            margin: 0 auto;
             display: block;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="data:{$mime};base64,{$base64}" />
-    </div>
+    <table>
+        <tr>
+            <td>
+                <img src="data:{$mime};base64,{$base64}" alt="Document Image" />
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
 HTML;

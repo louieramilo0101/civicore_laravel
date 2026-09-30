@@ -589,55 +589,69 @@ const Documents = () => {
     };
 
     /** Persists an OCR-reviewed document and its extracted certificate fields. */
-    const saveRecord = ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false }) => {
+    const saveRecord = ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, duplicateData = null }) => {
         if (!activeOcr) return Promise.reject(new Error('No active OCR'));
         if (savingRecordRef.current) return Promise.reject(new Error('Save already in progress'));
 
         const file = activeOcr.file;
-        const isDuplicate = file.has_duplicate;
+        const isDuplicate = file.has_duplicate || !!duplicateData;
+        const dupCandidate = duplicateData || file.duplicate_candidate || null;
 
         return new Promise((resolve, reject) => {
-            const performActualSave = async () => {
+            const performActualSave = async (force = false) => {
                 if (savingRecordRef.current) return;
                 savingRecordRef.current = true;
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 setIsOcrSaving(true);
                 try {
-                    const result = await executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested });
+                    const result = await executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested, manualFile, isDummy, force });
                     savingRecordRef.current = false;
                     resolve(result);
                 } catch (err) {
                     savingRecordRef.current = false;
                     setIsOcrSaving(false);
+                    if (err?.duplicate && !force) {
+                        const regNo = fields.registry_number || fields.registry_no || 'N/A';
+                        setConfirmModal({
+                            isOpen: true,
+                            title: 'Duplicate Registry Number Detected',
+                            message: err.message || `A record with Registry No. "${regNo}" already exists in the Master Registry. Do you want to override and save?`,
+                            type: 'warning',
+                            confirmText: 'Override & Save',
+                            cancelText: 'Cancel & Edit',
+                            onConfirm: () => performActualSave(true),
+                            onCancel: () => {
+                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                reject(new Error('duplicate_cancelled'));
+                            }
+                        });
+                        return;
+                    }
                     reject(err);
                 }
             };
 
             if (isDuplicate) {
+                const regNo = fields.registry_number || fields.registry_no || dupCandidate?.certNumber || 'N/A';
+                const conflictMsg = dupCandidate
+                    ? `Registry No. "${regNo}" is already registered in the ${(detectedType || '').toUpperCase()} records for ${dupCandidate.name || 'another record'}${dupCandidate.issuanceDate ? ` issued on ${dupCandidate.issuanceDate}` : ''}. Are you sure you want to proceed and save this record anyway?`
+                    : `A record with Registry No. "${regNo}" already exists in the Master Registry. Are you sure you want to proceed and save this duplicate record?`;
+
                 setConfirmModal({
                     isOpen: true,
-                    title: 'Confirm Duplicate Entry',
-                    message: 'A potential duplicate of this record exists in the Master Registry. Are you sure you want to save and approve this duplicate?',
+                    title: 'Duplicate Registry Number Detected',
+                    message: conflictMsg,
                     type: 'warning',
-                    onConfirm: performActualSave,
+                    confirmText: 'Override & Save',
+                    cancelText: 'Cancel & Edit',
+                    onConfirm: () => performActualSave(true),
                     onCancel: () => {
                         setConfirmModal(prev => ({ ...prev, isOpen: false }));
                         reject(new Error('duplicate_cancelled'));
                     }
                 });
             } else {
-                savingRecordRef.current = true;
-                setIsOcrSaving(true);
-                executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested })
-                    .then((res) => {
-                        savingRecordRef.current = false;
-                        resolve(res);
-                    })
-                    .catch((err) => {
-                        savingRecordRef.current = false;
-                        setIsOcrSaving(false);
-                        reject(err);
-                    });
+                performActualSave(false);
             }
         });
     };
@@ -671,20 +685,13 @@ const Documents = () => {
         return (nameParts || fields.personName || '').toUpperCase();
     };
 
-    const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false }) => {
+    const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, force = false }) => {
         if (!activeOcr) return;
         const file = activeOcr.file;
         const fileId = file.id;
         const computedName = buildPersonName(fields, detectedType);
         const personName = computedName || file.personName || file.name || 'Document Data';
         const barangay = fields.barangay || file.barangay || '';
-
-        if (minimizeRequested) {
-            setActiveOcr(null);
-        } else {
-            // Keep modal open long enough to see the "Securing" state, then close
-            setTimeout(() => setActiveOcr(null), 800);
-        }
 
         // Immediate local status update in the main table
         if (fileId !== 'manual') {
@@ -693,25 +700,80 @@ const Documents = () => {
 
         return runBackgroundTask(`Saving: ${personName}`, async () => {
             try {
-                const url = fileId === 'manual' ? '/api/documents/manual' : `/api/documents/${fileId}`;
-                const method = fileId === 'manual' ? 'POST' : 'PUT';
-                const res = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        type: detectedType,
-                        extracted_fields: fields,
-                        ocr_text: ocr_text,
-                        personName,
-                        barangay,
-                        status: 'Processed',
-                        parental_consent: parentalConsent,
-                        detectedType
-                    }),
-                });
+                let res;
+                if (fileId === 'manual') {
+                    if (manualFile && !isDummy) {
+                        const formData = new FormData();
+                        formData.append('file', manualFile);
+                        formData.append('type', detectedType || 'birth');
+                        formData.append('personName', personName);
+                        formData.append('barangay', barangay);
+                        formData.append('status', 'Processed');
+                        formData.append('ocr_text', ocr_text || '');
+                        formData.append('parental_consent', parentalConsent ? '1' : '0');
+                        formData.append('is_dummy', '0');
+                        if (force) {
+                            formData.append('force', '1');
+                        }
+                        formData.append('extracted_fields', JSON.stringify(fields));
+
+                        res = await fetch('/api/documents/manual', {
+                            method: 'POST',
+                            headers: { Accept: 'application/json' },
+                            credentials: 'include',
+                            body: formData,
+                        });
+                    } else {
+                        res = await fetch('/api/documents/manual', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                type: detectedType,
+                                extracted_fields: fields,
+                                ocr_text: ocr_text,
+                                personName,
+                                barangay,
+                                status: 'Processed',
+                                parental_consent: parentalConsent,
+                                is_dummy: isDummy,
+                                force: force
+                            }),
+                        });
+                    }
+                } else {
+                    res = await fetch(`/api/documents/${fileId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            type: detectedType,
+                            extracted_fields: fields,
+                            ocr_text: ocr_text,
+                            personName,
+                            barangay,
+                            status: 'Processed',
+                            parental_consent: parentalConsent,
+                            detectedType,
+                            force: force
+                        }),
+                    });
+                }
+
                 const data = await res.json();
+                if ((res.status === 422 || !res.ok) && data.duplicate) {
+                    const dupErr = new Error(data.error || 'Duplicate record detected');
+                    dupErr.duplicate = true;
+                    throw dupErr;
+                }
+
                 if (data.success) {
+                    if (minimizeRequested) {
+                        setActiveOcr(null);
+                    } else {
+                        setTimeout(() => setActiveOcr(null), 400);
+                    }
+
                     // Clear the sessionStorage cache for this file
                     try {
                         sessionStorage.removeItem(`civicore_ocr_draft_${fileId}`);
@@ -743,7 +805,7 @@ const Documents = () => {
                     refreshAll();
                     return { success: true, message: `Data for ${personName} has been secured.` };
                 }
-                throw new Error(data.message || 'Save failed');
+                throw new Error(data.message || data.error || 'Save failed');
             } catch (err) {
                 refreshDocuments(true);
                 throw err;
@@ -1079,6 +1141,8 @@ const Documents = () => {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 type={confirmModal.type}
+                confirmText={confirmModal.confirmText}
+                cancelText={confirmModal.cancelText}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={confirmModal.onCancel}
             />

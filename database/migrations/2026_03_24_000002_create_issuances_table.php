@@ -18,7 +18,7 @@ return new class extends Migration
             Schema::create('issuances', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('document_id')->nullable()->unique('unique_document_registry');
-                $table->string('certNumber')->unique();
+                $table->string('certNumber')->index();
                 $table->string('type');
                 $table->string('name');
                 $table->string('barangay')->nullable();
