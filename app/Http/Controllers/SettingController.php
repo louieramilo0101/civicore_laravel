@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Setting;
 use App\Models\User;
 
@@ -82,6 +83,8 @@ class SettingController extends Controller
                 ['value' => $request->input('ticket_limits_enabled') ? '1' : '0']
             );
         }
+
+        Cache::forget('public_config');
 
         return response()->json(['success' => true, 'message' => 'Portal configuration updated successfully.']);
     }

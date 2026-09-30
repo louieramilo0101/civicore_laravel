@@ -19,26 +19,24 @@ class PublicController extends Controller
     public function config()
     {
         try {
-            $data = Cache::remember('public_config', 60, function () {
-                $settings = Setting::whereIn('key', ['opening_hours'])
-                    ->get()
-                    ->pluck('value', 'key');
-                
-                $announcements = Announcement::where('is_active', true)->orderBy('created_at', 'desc')->get();
+            $settings = Setting::whereIn('key', ['opening_hours'])
+                ->get()
+                ->pluck('value', 'key');
+            
+            $announcements = Announcement::where('is_active', true)
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-                return [
-                    'opening_hours' => $settings->get('opening_hours', 'Monday — Friday: 8:00 AM - 5:00 PM'),
-                    'announcements' => $announcements
-                ];
-            });
-
-            return response()->json($data)->header('Cache-Control', 'public, max-age=30');
+            return response()->json([
+                'opening_hours' => $settings->get('opening_hours', 'Monday — Friday: 8:00 AM - 5:00 PM'),
+                'announcements' => $announcements
+            ])->header('Cache-Control', 'no-cache, no-store, must-revalidate');
         } catch (\Exception $e) {
             \Log::error('Public config failure: ' . $e->getMessage());
             return response()->json([
                 'opening_hours' => 'Monday — Friday: 8:00 AM - 5:00 PM',
                 'announcements' => []
-            ], 200);
+            ], 200)->header('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
     }
 
