@@ -41,6 +41,7 @@ class TicketConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: config('mail.from.address') ?: 'no-reply@civicore.local',
             subject: '[CiviCORE] Your Queue Ticket – ' . $this->ticket->ticket_number,
         );
     }

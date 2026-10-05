@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 /** Provides the shared shell for unauthenticated portal pages. */
 export default function PublicLayout({ children }) {
@@ -44,19 +45,39 @@ export default function PublicLayout({ children }) {
                     </div>
                 </Link>
 
-                <nav className="hidden lg:flex items-center gap-10 text-sm font-semibold text-slate-300">
-                    {navLinks.map((link) => (
-                        <Link
-                            key={link.path}
-                            to={link.path}
-                            className={`transition-colors relative after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-[#d4a574] after:transition-all after:duration-300 
-                                ${location.pathname === link.path ? 'text-white after:w-full' : 'hover:text-white after:w-0 hover:after:w-full'}
-                            `}
-                        >
-                            {link.name}
-                        </Link>
-                    ))}
-                </nav>
+                <div className="flex items-center gap-3 sm:gap-6 lg:gap-8">
+                    {/* Mobile About shortcut */}
+                    <Link
+                        to="/about"
+                        className={`md:hidden text-xs font-semibold tracking-wider uppercase transition-colors ${
+                            location.pathname === '/about' ? 'text-[#d4a574]' : 'text-slate-300 hover:text-white'
+                        }`}
+                    >
+                        About
+                    </Link>
+
+                    <nav className="hidden md:flex items-center gap-6 lg:gap-10 text-sm font-semibold text-slate-300">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.path}
+                                to={link.path}
+                                className={`transition-colors relative after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-[#d4a574] after:transition-all after:duration-300 
+                                    ${location.pathname === link.path ? 'text-white after:w-full' : 'hover:text-white after:w-0 hover:after:w-full'}
+                                `}
+                            >
+                                {link.name}
+                            </Link>
+                        ))}
+                    </nav>
+
+                    <Link
+                        to="/login"
+                        className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-[#d4a574]/40 bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] text-[#d4a574] font-bold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-2 shadow-sm cursor-pointer group"
+                    >
+                        <span>Login</span>
+                        <ArrowRightOnRectangleIcon className="w-4 h-4 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                    </Link>
+                </div>
             </motion.header>
 
             {/* Main Content */}

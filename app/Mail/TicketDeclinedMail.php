@@ -37,6 +37,7 @@ class TicketDeclinedMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: config('mail.from.address') ?: 'no-reply@civicore.local',
             subject: 'Your Request Has Been Declined - Ticket ' . $this->ticket->ticket_number,
         );
     }

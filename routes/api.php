@@ -75,6 +75,7 @@ Route::middleware('web')->group(function () {
         Route::post('/verification/verify', [VerificationController::class, 'verify']);
 
         // Documents
+        Route::get('/documents/available-months',   [DocumentController::class, 'availableMonths']);
         Route::get('/documents/export',             [DocumentController::class, 'exportReport']);
         Route::get('/documents',                    [DocumentController::class, 'index']);
         Route::get('/documents/history',            [DocumentController::class, 'history']);

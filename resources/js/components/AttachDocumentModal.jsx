@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,57 +14,84 @@ import {
     ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import useDebounce from '../hooks/useDebounce.js';
 
 /** Lets staff attach an existing registry document to a pending request. */
 export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach }) {
     const [ocrQuery, setOcrQuery] = useState('');
+    const debouncedQuery = useDebounce(ocrQuery, 250);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchingOcr, setIsSearchingOcr] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
     const [printRemarks, setPrintRemarks] = useState('');
     const [isLinking, setIsLinking] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    const abortControllerRef = useRef(null);
 
-    // Initialize suggested search query from ticket details
+    const performSearch = useCallback(async (queryText, purposeType) => {
+        const term = queryText !== undefined ? queryText : ocrQuery;
+        const type = purposeType || ticket?.purpose;
+
+        // Abort previous in-flight search
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setIsSearchingOcr(true);
+        try {
+            const params = {
+                per_page: 30,
+            };
+            if (type) {
+                params.type = type === 'marriage' ? 'marriage' : type;
+            }
+            if (term && term.trim()) {
+                params.search = term.trim();
+            }
+
+            const res = await axios.get('/api/documents', {
+                params,
+                signal: controller.signal
+            });
+            const data = res.data.data || res.data.documents || (Array.isArray(res.data) ? res.data : []);
+            setSearchResults(data);
+        } catch (err) {
+            if (!axios.isCancel(err) && err.name !== 'CanceledError') {
+                console.error('OCR record search failed:', err);
+            }
+        } finally {
+            if (abortControllerRef.current === controller) {
+                setIsSearchingOcr(false);
+            }
+        }
+    }, [ocrQuery, ticket?.purpose]);
+
+    // Initialize suggested search query from ticket details when modal opens
     useEffect(() => {
         if (isOpen && ticket) {
-            let suggestedQuery = ticket.client_name;
+            let suggestedQuery = ticket.client_name || '';
             if (ticket.purpose === 'birth' && ticket.details?.last_name) {
-                suggestedQuery = `${ticket.details.first_name} ${ticket.details.last_name}`;
+                suggestedQuery = `${ticket.details.first_name || ''} ${ticket.details.last_name || ''}`.trim();
             } else if (ticket.purpose === 'death' && ticket.details?.deceased_last_name) {
-                suggestedQuery = `${ticket.details.deceased_first_name} ${ticket.details.deceased_last_name}`;
+                suggestedQuery = `${ticket.details.deceased_first_name || ''} ${ticket.details.deceased_last_name || ''}`.trim();
             } else if (ticket.purpose === 'marriage' && ticket.details?.husband_last_name) {
-                suggestedQuery = `${ticket.details.husband_last_name}`;
+                suggestedQuery = `${ticket.details.husband_last_name || ''}`.trim();
             }
             setOcrQuery(suggestedQuery);
             setSelectedDoc(null);
             setPrintRemarks('');
-            setSearchResults([]);
             setIsMinimized(false);
-            handleOcrSearch(suggestedQuery, ticket.purpose);
+            performSearch(suggestedQuery, ticket.purpose);
         }
-    }, [isOpen, ticket]);
+    }, [isOpen, ticket?.id]);
 
-    const handleOcrSearch = async (queryText, purposeType) => {
-        const term = queryText !== undefined ? queryText : ocrQuery;
-        const type = purposeType || ticket?.purpose;
-        if (!term.trim()) return;
-
-        setIsSearchingOcr(true);
-        try {
-            const res = await axios.get('/api/documents', {
-                params: {
-                    search: term,
-                    type: type === 'marriage' ? 'marriage' : type
-                }
-            });
-            setSearchResults(res.data.data || res.data.documents || (Array.isArray(res.data) ? res.data : []));
-        } catch (err) {
-            console.error('OCR record search failed:', err);
-        } finally {
-            setIsSearchingOcr(false);
-        }
-    };
+    // Dynamically search in real-time as the user types
+    useEffect(() => {
+        if (!isOpen || !ticket) return;
+        performSearch(debouncedQuery, ticket.purpose);
+    }, [debouncedQuery, isOpen, ticket?.purpose, performSearch]);
 
     const handleConfirmAttach = async () => {
         if (!ticket || !selectedDoc) return;
@@ -158,32 +185,90 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                         </div>
                     </div>
 
-                        {/* Search Area */}
-                        <div className="flex gap-3 mb-6 shrink-0">
-                            <div className="relative flex-1">
-                                <DocumentMagnifyingGlassIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
-                                <input
-                                    type="text"
-                                    placeholder="Search extracted civil registry records..."
-                                    value={ocrQuery}
-                                    onChange={e => setOcrQuery(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleOcrSearch()}
-                                    className="w-full pl-11 pr-4 py-3.5 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-semibold"
-                                />
+                        {/* Modern Real-time Search Area */}
+                        <div className="flex flex-col gap-2 mb-4 shrink-0">
+                            <div className="flex gap-3 items-center">
+                                <div className="relative flex-1 group">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                                        {isSearchingOcr || ocrQuery !== debouncedQuery ? (
+                                            <ArrowPathIcon className="w-5 h-5 text-indigo-500 animate-spin" />
+                                        ) : (
+                                            <DocumentMagnifyingGlassIcon className="w-5 h-5 text-indigo-500 group-focus-within:text-indigo-600 transition-colors" />
+                                        )}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Type name, registry number, or barangay to search in real time..."
+                                        value={ocrQuery}
+                                        onChange={e => setOcrQuery(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                performSearch(ocrQuery, ticket?.purpose);
+                                            }
+                                        }}
+                                        className="w-full pl-11 pr-24 py-3.5 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold bg-slate-50/50 focus:bg-white transition-all shadow-sm"
+                                        autoFocus
+                                    />
+                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                        {ocrQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setOcrQuery('');
+                                                    performSearch('', ticket?.purpose);
+                                                }}
+                                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                                                title="Clear search"
+                                            >
+                                                <XMarkIcon className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full select-none">
+                                            Live
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => performSearch(ocrQuery, ticket?.purpose)}
+                                    disabled={isSearchingOcr}
+                                    className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0 shadow-sm"
+                                    title="Refresh search"
+                                >
+                                    {isSearchingOcr ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Search'}
+                                </button>
                             </div>
-                            <button
-                                onClick={() => handleOcrSearch()}
-                                disabled={isSearchingOcr}
-                                className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                            >
-                                {isSearchingOcr ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Search Database'}
-                            </button>
+
+                            {/* Live Result Count Bar */}
+                            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-slate-400">
+                                <span>
+                                    {isSearchingOcr || ocrQuery !== debouncedQuery ? (
+                                        <span className="text-indigo-600 font-semibold flex items-center gap-1.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping inline-block" />
+                                            Searching registry database...
+                                        </span>
+                                    ) : ocrQuery.trim() ? (
+                                        <span>
+                                            Found <strong className="text-slate-700 font-black">{searchResults.length}</strong> record{searchResults.length === 1 ? '' : 's'} matching "{ocrQuery}"
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            Showing <strong className="text-slate-700 font-black">{searchResults.length}</strong> recent {ticket?.purpose || 'registry'} records
+                                        </span>
+                                    )}
+                                </span>
+                                {selectedDoc && (
+                                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                                        <CheckCircleIcon className="w-3.5 h-3.5 inline" /> Selected: {selectedDoc.certNumber || selectedDoc.name}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
 
                         {/* Results Body */}
                         <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar mb-5">
-                            {isSearchingOcr ? (
+                            {isSearchingOcr && searchResults.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-24 text-slate-400">
                                     <ArrowPathIcon className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
                                     <p className="text-xs font-bold text-slate-600">Scanning registry tables...</p>
@@ -194,11 +279,11 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                     <DocumentMagnifyingGlassIcon className="w-12 h-12 mx-auto mb-3 opacity-20 text-indigo-500" />
                                     <p className="text-sm font-black text-slate-700">No matching records found</p>
                                     <p className="text-xs text-slate-400 mt-1.5 max-w-xs mx-auto">
-                                        No files matched "{ocrQuery}". Try typing in a birth date or a registry number.
+                                        No files matched "{ocrQuery}". Try typing in a name, date, or registry number.
                                     </p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col gap-4">
+                                <div className={`flex flex-col gap-4 transition-opacity duration-200 ${isSearchingOcr || ocrQuery !== debouncedQuery ? 'opacity-60' : 'opacity-100'}`}>
                                     {searchResults.map(doc => {
                                         const isDocSelected = selectedDoc?.id === doc.id;
                                         return (

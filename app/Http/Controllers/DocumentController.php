@@ -33,8 +33,15 @@ class DocumentController extends Controller
         if (!empty($type) || !empty($search)) {
             $conditions = [];
             if (!empty($type)) {
-                $conditions[] = "type = ?";
-                $params[] = $type;
+                $types = is_array($type) ? $type : explode(',', $type);
+                $types = array_filter(array_map('trim', array_map('strtolower', $types)));
+                if (!empty($types) && !in_array('all', $types)) {
+                    $placeholders = implode(',', array_fill(0, count($types), '?'));
+                    $conditions[] = "LOWER(type) IN ($placeholders)";
+                    foreach ($types as $t) {
+                        $params[] = $t;
+                    }
+                }
             }
             if (!empty($search)) {
                 $conditions[] = "(name LIKE ? OR personName LIKE ? OR barangay LIKE ? OR extracted_fields LIKE ? OR raw_text LIKE ? OR ocr_text LIKE ?)";
@@ -1477,151 +1484,289 @@ class DocumentController extends Controller
     }
 
     /**
+     * Get list of months that have document records with record counts.
+     */
+    public function availableMonths(Request $request)
+    {
+        $source = $request->query('source', 'internal');
+        
+        if ($source === 'procured') {
+            $rows = DB::table('issuances')
+                ->whereNull('deleted_at')
+                ->selectRaw("SUBSTRING(created_at, 1, 7) as year_month, COUNT(*) as count")
+                ->groupBy('year_month')
+                ->orderBy('year_month', 'desc')
+                ->get();
+        } elseif ($source === 'all') {
+            $docRows = DB::table('documents')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $issRows = DB::table('issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($issRows)));
+            rsort($allKeys);
+            $monthCounts = [];
+            foreach ($allKeys as $k) {
+                if (!empty($k)) {
+                    $monthCounts[$k] = (int) (($docRows[$k] ?? 0) + ($issRows[$k] ?? 0));
+                }
+            }
+            return response()->json(['success' => true, 'months' => $monthCounts]);
+        } else {
+            $rows = DB::table('documents')
+                ->whereNull('deleted_at')
+                ->selectRaw("SUBSTRING(created_at, 1, 7) as year_month, COUNT(*) as count")
+                ->groupBy('year_month')
+                ->orderBy('year_month', 'desc')
+                ->get();
+        }
+
+        $monthCounts = [];
+        foreach ($rows as $row) {
+            if (!empty($row->year_month)) {
+                $monthCounts[$row->year_month] = (int) $row->count;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'months'  => $monthCounts
+        ]);
+    }
+
+    /**
      * Export Civil Registry Documents Report in CSV or Excel format
      */
     public function exportReport(Request $request)
     {
-        $type = strtolower(trim($request->query('type', 'all')));
+        $rawType = $request->query('type', 'all');
+        $types = is_array($rawType) ? $rawType : explode(',', $rawType);
+        $types = array_filter(array_map('trim', array_map('strtolower', $types)));
+
         $format = strtolower(trim($request->query('format', 'csv')));
+        $source = strtolower(trim($request->query('source', 'internal'))); // 'internal', 'procured', or 'all'
         $barangay = trim($request->query('barangay', 'all'));
         $status = trim($request->query('status', 'all'));
         $dateFrom = $request->query('date_from', '');
         $dateTo = $request->query('date_to', '');
 
-        $conditions = ["deleted_at IS NULL"];
-        $params = [];
+        // If exporting procured client documents from issuances table
+        if ($source === 'procured') {
+            $conditions = ["i.deleted_at IS NULL"];
+            $params = [];
 
-        if (!empty($type) && $type !== 'all') {
-            $conditions[] = "LOWER(type) = ?";
-            $params[] = $type;
-        }
-
-        if (!empty($barangay) && $barangay !== 'all') {
-            $conditions[] = "barangay = ?";
-            $params[] = $barangay;
-        }
-
-        if (!empty($status) && $status !== 'all') {
-            $s = strtolower($status);
-            if ($s === 'processed' || $s === 'registered') {
-                $conditions[] = "LOWER(status) IN ('processed', 'issued', 'active')";
-            } elseif ($s === 'pending' || $s === 'draft') {
-                $conditions[] = "LOWER(status) IN ('pending', 'extracted', 'draft')";
-            } elseif ($s === 'issued' || $s === 'completed') {
-                $conditions[] = "LOWER(status) IN ('issued', 'completed')";
-            } else {
-                $conditions[] = "LOWER(status) = ?";
-                $params[] = $s;
-            }
-        }
-
-        if (!empty($dateFrom)) {
-            $conditions[] = "DATE(created_at) >= ?";
-            $params[] = $dateFrom;
-        }
-
-        if (!empty($dateTo)) {
-            $conditions[] = "DATE(created_at) <= ?";
-            $params[] = $dateTo;
-        }
-
-        $whereClause = " WHERE " . implode(" AND ", $conditions);
-
-        $query = "SELECT id, name, type, date, status, personName, barangay, extracted_fields, encoded_by, created_at
-                  FROM documents" . $whereClause . " ORDER BY id DESC LIMIT 5000";
-
-        $records = DB::select($query, $params);
-
-        // Standard Report Headers
-        $headers = [
-            'ID',
-            'Registry Number',
-            'Document Type',
-            'Person Name / Spouse Names',
-            'Sex / Gender',
-            'Event Date',
-            'Barangay',
-            'City / Municipality',
-            'Province',
-            'Status',
-            'Father / Husband Name',
-            'Mother / Wife Name',
-            'Encoded By',
-            'Date Registered'
-        ];
-
-        $rows = [];
-
-        foreach ($records as $doc) {
-            $ef = [];
-            if (!empty($doc->extracted_fields)) {
-                $ef = is_string($doc->extracted_fields) ? json_decode($doc->extracted_fields, true) : (array) $doc->extracted_fields;
-            }
-
-            $docType = ucfirst($doc->type ?? 'Birth');
-            $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? 'N/A';
-            $personName = !empty($doc->personName) ? $doc->personName : 'N/A';
-            $sex = $ef['sex'] ?? 'N/A';
-
-            // Event Date
-            $eventDate = $doc->date ?? 'N/A';
-            if (strtolower($docType) === 'marriage') {
-                $eventDate = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
-            } elseif (strtolower($docType) === 'death') {
-                $eventDate = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
-            } else {
-                $dobDay = $ef['dob_day'] ?? '';
-                $dobMonth = $ef['dob_month'] ?? '';
-                $dobYear = $ef['dob_year'] ?? '';
-                if ($dobDay || $dobMonth || $dobYear) {
-                    $eventDate = trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ");
+            if (!empty($types) && !in_array('all', $types)) {
+                $placeholders = implode(',', array_fill(0, count($types), '?'));
+                $conditions[] = "LOWER(i.type) IN ($placeholders)";
+                foreach ($types as $t) {
+                    $params[] = $t;
                 }
             }
 
-            $brgy = $doc->barangay ?? $ef['barangay'] ?? 'N/A';
-            $city = $ef['city_municipality'] ?? $ef['place_of_birth_city'] ?? 'Naic';
-            $province = $ef['province'] ?? 'Cavite';
-            $statusVal = ucfirst($doc->status ?? 'Processed');
-
-            // Relative / Spouse fields
-            $fatherOrHusband = 'N/A';
-            $motherOrWife = 'N/A';
-
-            if (strtolower($docType) === 'marriage') {
-                $hFirst = $ef['husband_first_name'] ?? '';
-                $hLast = $ef['husband_last_name'] ?? '';
-                $wFirst = $ef['wife_first_name'] ?? '';
-                $wLast = $ef['wife_last_name'] ?? '';
-                $fatherOrHusband = trim("{$hFirst} {$hLast}");
-                $motherOrWife = trim("{$wFirst} {$wLast}");
-            } else {
-                $fFirst = $ef['father_first_name'] ?? '';
-                $fLast = $ef['father_last_name'] ?? '';
-                $mFirst = $ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '';
-                $mLast = $ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '';
-                $fatherOrHusband = trim("{$fFirst} {$fLast}");
-                $motherOrWife = trim("{$mFirst} {$mLast}");
+            if (!empty($barangay) && $barangay !== 'all') {
+                $conditions[] = "i.barangay = ?";
+                $params[] = $barangay;
             }
 
-            $encodedBy = $doc->encoded_by ?? 'System Staff';
-            $registeredAt = date('Y-m-d H:i', strtotime($doc->created_at));
+            if (!empty($status) && $status !== 'all') {
+                $conditions[] = "LOWER(i.status) = ?";
+                $params[] = strtolower($status);
+            }
 
-            $rows[] = [
-                $doc->id,
-                $regNo,
-                $docType,
-                $personName,
-                $sex,
-                $eventDate,
-                $brgy,
-                $city,
-                $province,
-                $statusVal,
-                $fatherOrHusband ?: 'N/A',
-                $motherOrWife ?: 'N/A',
-                $encodedBy,
-                $registeredAt
+            if (!empty($dateFrom)) {
+                $conditions[] = "DATE(i.created_at) >= ?";
+                $params[] = $dateFrom;
+            }
+
+            if (!empty($dateTo)) {
+                $conditions[] = "DATE(i.created_at) <= ?";
+                $params[] = $dateTo;
+            }
+
+            $whereClause = " WHERE " . implode(" AND ", $conditions);
+
+            $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
+                             i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
+                             i.ticket_number, i.created_at
+                      FROM issuances i" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
+
+            $records = DB::select($query, $params);
+
+            $headers = [
+                'ID',
+                'Registry / Cert Number',
+                'Record Source',
+                'Ticket Number',
+                'Document Type',
+                'Client / Person Name',
+                'Barangay',
+                'Status',
+                'Requested By',
+                'Approved By',
+                'Encoded By',
+                'Remarks',
+                'Issuance Date',
+                'Date Requested'
             ];
+
+            $rows = [];
+            foreach ($records as $doc) {
+                $rows[] = [
+                    $doc->id,
+                    $doc->certNumber ?: 'N/A',
+                    'Client Procured Document',
+                    $doc->ticket_number ?: 'N/A',
+                    ucfirst($doc->type ?? 'Birth'),
+                    $doc->name ?: 'N/A',
+                    $doc->barangay ?: 'N/A',
+                    ucfirst($doc->status ?? 'Active'),
+                    $doc->requested_by ?: 'N/A',
+                    $doc->approved_by ?: 'N/A',
+                    $doc->encoded_by ?: 'System Staff',
+                    $doc->print_remarks ?: '',
+                    $doc->issuanceDate ?: 'N/A',
+                    date('Y-m-d H:i', strtotime($doc->created_at))
+                ];
+            }
+        } else {
+            // Internal Master Registry records (from documents table)
+            $conditions = ["deleted_at IS NULL"];
+            $params = [];
+
+            if (!empty($types) && !in_array('all', $types)) {
+                $placeholders = implode(',', array_fill(0, count($types), '?'));
+                $conditions[] = "LOWER(type) IN ($placeholders)";
+                foreach ($types as $t) {
+                    $params[] = $t;
+                }
+            }
+
+            if (!empty($barangay) && $barangay !== 'all') {
+                $conditions[] = "barangay = ?";
+                $params[] = $barangay;
+            }
+
+            if (!empty($status) && $status !== 'all') {
+                $s = strtolower($status);
+                if ($s === 'processed' || $s === 'registered') {
+                    $conditions[] = "LOWER(status) IN ('processed', 'issued', 'active')";
+                } elseif ($s === 'pending' || $s === 'draft') {
+                    $conditions[] = "LOWER(status) IN ('pending', 'extracted', 'draft')";
+                } elseif ($s === 'issued' || $s === 'completed') {
+                    $conditions[] = "LOWER(status) IN ('issued', 'completed')";
+                } else {
+                    $conditions[] = "LOWER(status) = ?";
+                    $params[] = $s;
+                }
+            }
+
+            if (!empty($dateFrom)) {
+                $conditions[] = "DATE(created_at) >= ?";
+                $params[] = $dateFrom;
+            }
+
+            if (!empty($dateTo)) {
+                $conditions[] = "DATE(created_at) <= ?";
+                $params[] = $dateTo;
+            }
+
+            $whereClause = " WHERE " . implode(" AND ", $conditions);
+
+            $query = "SELECT id, name, type, date, status, personName, barangay, extracted_fields, encoded_by, created_at
+                      FROM documents" . $whereClause . " ORDER BY id DESC LIMIT 5000";
+
+            $records = DB::select($query, $params);
+
+            // Standard Report Headers
+            $headers = [
+                'ID',
+                'Registry Number',
+                'Record Source',
+                'Document Type',
+                'Person Name / Spouse Names',
+                'Sex / Gender',
+                'Event Date',
+                'Barangay',
+                'City / Municipality',
+                'Province',
+                'Status',
+                'Father / Husband Name',
+                'Mother / Wife Name',
+                'Encoded By',
+                'Date Registered'
+            ];
+
+            $rows = [];
+
+            foreach ($records as $doc) {
+                $ef = [];
+                if (!empty($doc->extracted_fields)) {
+                    $ef = is_string($doc->extracted_fields) ? json_decode($doc->extracted_fields, true) : (array) $doc->extracted_fields;
+                }
+
+                $docType = ucfirst($doc->type ?? 'Birth');
+                $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? 'N/A';
+                $personName = !empty($doc->personName) ? $doc->personName : 'N/A';
+                $sex = $ef['sex'] ?? 'N/A';
+
+                // Event Date
+                $eventDate = $doc->date ?? 'N/A';
+                if (strtolower($docType) === 'marriage') {
+                    $eventDate = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
+                } elseif (strtolower($docType) === 'death') {
+                    $eventDate = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
+                } else {
+                    $dobDay = $ef['dob_day'] ?? '';
+                    $dobMonth = $ef['dob_month'] ?? '';
+                    $dobYear = $ef['dob_year'] ?? '';
+                    if ($dobDay || $dobMonth || $dobYear) {
+                        $eventDate = trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ");
+                    }
+                }
+
+                $brgy = $doc->barangay ?? $ef['barangay'] ?? 'N/A';
+                $city = $ef['city_municipality'] ?? $ef['place_of_birth_city'] ?? 'Naic';
+                $province = $ef['province'] ?? 'Cavite';
+                $statusVal = ucfirst($doc->status ?? 'Processed');
+
+                // Relative / Spouse fields
+                $fatherOrHusband = 'N/A';
+                $motherOrWife = 'N/A';
+
+                if (strtolower($docType) === 'marriage') {
+                    $hFirst = $ef['husband_first_name'] ?? '';
+                    $hLast = $ef['husband_last_name'] ?? '';
+                    $wFirst = $ef['wife_first_name'] ?? '';
+                    $wLast = $ef['wife_last_name'] ?? '';
+                    $fatherOrHusband = trim("{$hFirst} {$hLast}");
+                    $motherOrWife = trim("{$wFirst} {$wLast}");
+                } else {
+                    $fFirst = $ef['father_first_name'] ?? '';
+                    $fLast = $ef['father_last_name'] ?? '';
+                    $mFirst = $ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '';
+                    $mLast = $ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '';
+                    $fatherOrHusband = trim("{$fFirst} {$fLast}");
+                    $motherOrWife = trim("{$mFirst} {$mLast}");
+                }
+
+                $encodedBy = $doc->encoded_by ?? 'System Staff';
+                $registeredAt = date('Y-m-d H:i', strtotime($doc->created_at));
+
+                $rows[] = [
+                    $doc->id,
+                    $regNo,
+                    'Uploaded Documents',
+                    $docType,
+                    $personName,
+                    $sex,
+                    $eventDate,
+                    $brgy,
+                    $city,
+                    $province,
+                    $statusVal,
+                    $fatherOrHusband ?: 'N/A',
+                    $motherOrWife ?: 'N/A',
+                    $encodedBy,
+                    $registeredAt
+                ];
+            }
         }
 
         $filename = "civil_registry_report_" . date('Y_m_d_His') . ($format === 'excel' ? '.xls' : '.csv');

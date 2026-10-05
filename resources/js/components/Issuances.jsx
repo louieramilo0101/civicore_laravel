@@ -37,11 +37,26 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
         ? `/api/issuances/view/${cert.realId}`
         : `/api/documents/view/${cert.realId}`;
 
-    const isPendingApproval = cert.status === 'Pending Approval';
-    const isApproved = cert.status === 'Approved';
+    // Keyboard listeners to prevent print/save shortcuts and allow ESC to close
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (e.key === 'Escape') {
+                onClose?.();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300">
+        <div 
+            className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300 select-none"
+            onContextMenu={(e) => e.preventDefault()}
+        >
             {/* Premium Header */}
             <div className="flex items-center justify-between px-8 py-5 bg-slate-900/50 border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-4">
@@ -57,34 +72,10 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {isApproved || cert.status === 'Issued' ? (
-                        <button
-                            onClick={onPrint}
-                            className="flex items-center gap-2.5 px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-500 rounded-xl transition-all border border-emerald-500/30 active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/5"
-                        >
-                            <PrinterIcon className="w-4 h-4" />
-                            {cert.status === 'Issued' ? 'Reprint Record' : 'Print Record'}
-                        </button>
-                    ) : (
-                        <button
-                            onClick={onPrint}
-                            className="flex items-center gap-2.5 px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-500 rounded-xl transition-all border border-emerald-500/30 active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/5"
-                        >
-                            <PrinterIcon className="w-4 h-4" />
-                            Print Record
-                        </button>
-                    )}
-                    <button
-                        onClick={onDownload}
-                        className="flex items-center gap-2.5 px-6 py-2.5 text-[11px] font-black uppercase tracking-widest text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-500 rounded-xl transition-all border border-blue-500/30 active:scale-95 cursor-pointer shadow-lg shadow-blue-500/5"
-                    >
-                        <ArrowDownTrayIcon className="w-4 h-4" />
-                        Download
-                    </button>
-                    <div className="w-px h-8 bg-white/10 mx-3" />
                     <button
                         onClick={onClose}
                         className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+                        title="Close Viewer"
                     >
                         <XMarkIcon className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
                     </button>
@@ -95,7 +86,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
             <div className="flex-1 overflow-hidden p-8 flex justify-center bg-gradient-to-b from-slate-900 to-slate-950">
                 <div className="w-full max-w-5xl h-full bg-white rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group">
                     <iframe
-                        src={viewUrl}
+                        src={`${viewUrl}#toolbar=0&navpanes=0`}
                         title={cert.name}
                         className="w-full h-full border-none relative z-10"
                     />
@@ -475,15 +466,7 @@ const Issuances = () => {
     };
 
     const handleEdit = (cert) => {
-        setPasswordModal({
-            isOpen: true,
-            title: 'Authorize Edit',
-            message: `Enter password to edit ${cert.type} record for ${cert.name}.`,
-            onConfirm: () => {
-                setEditingCert(cert);
-                setPasswordModal(prev => ({ ...prev, isOpen: false }));
-            }
-        });
+        setEditingCert(cert);
     };
 
     const buildPersonName = (fields, type) => {

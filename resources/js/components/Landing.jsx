@@ -61,8 +61,8 @@ export default function Landing() {
             <div className="absolute top-[20%] right-[10%] w-[35%] h-[40%] bg-indigo-500/10 blur-[130px] rounded-full pointer-events-none" />
 
             {/* Hero Section */}
-            <main className="min-h-[65vh] sm:min-h-[75vh] flex items-center pt-2 sm:pt-4 md:pt-6 pb-6 px-5 sm:px-8 md:px-12 lg:px-24 z-10 relative">
-                <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 xl:gap-16 items-center">
+            <main className="min-h-[70vh] flex items-center pt-2 sm:pt-4 md:pt-6 pb-8 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
+                <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
                     
                     {/* Left Column: Hero Title, Subtitle, and CTAs */}
                     <motion.div
@@ -84,7 +84,7 @@ export default function Landing() {
                         {/* Main Headline with Dynamic Flip Animated Word */}
                         <motion.h1
                             variants={itemVars}
-                            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] tracking-tight mb-4 sm:mb-6"
+                            className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-black text-white leading-[1.05] tracking-tight mb-4 sm:mb-6"
                         >
                             RECORDING.<br />
                             <div className="relative block overflow-hidden h-[1.1em] my-0.5 leading-none drop-shadow-md">
@@ -113,25 +113,17 @@ export default function Landing() {
                                 <motion.button
                                     whileHover={{ scale: 1.02, translateY: -2 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => navigate('/login')}
-                                    className="bg-gradient-to-r from-[#d4a574] to-[#c49a67] text-[#0f172a] px-8 py-4 rounded-2xl font-black shadow-xl shadow-[#d4a574]/20 transition-all uppercase tracking-[0.15em] text-xs sm:text-sm flex items-center justify-center gap-2.5 group cursor-pointer"
-                                >
-                                    <span className="leading-none">Enter Portal</span>
-                                    <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform stroke-[2.5] shrink-0" />
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.05)" }}
-                                    whileTap={{ scale: 0.98 }}
                                     onClick={() => navigate('/ticket-request')}
-                                    className="bg-transparent border border-slate-600 text-white px-8 py-4 rounded-2xl font-bold hover:border-[#d4a574]/50 hover:text-[#d4a574] transition-all uppercase tracking-[0.15em] text-xs sm:text-sm flex items-center justify-center cursor-pointer"
+                                    className="bg-gradient-to-r from-[#d4a574] to-[#c49a67] hover:from-[#dfb17e] hover:to-[#ce9f6b] text-[#0f172a] px-8 py-4 rounded-2xl font-black shadow-xl shadow-[#d4a574]/20 transition-all uppercase tracking-[0.15em] text-xs sm:text-sm flex items-center justify-center gap-2.5 group cursor-pointer"
                                 >
                                     <span className="leading-none">Online Request</span>
+                                    <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform stroke-[2.5] shrink-0" />
                                 </motion.button>
                             </div>
                         </motion.div>
                     </motion.div>
 
-                    {/* Right Column: Ambient Colors + Moved Operating Hours & Announcements */}
+                    {/* Right Column: Dynamic Ambient Colors + Operating Hours & Announcements */}
                     <motion.div
                         variants={containerVars}
                         initial="hidden"
@@ -146,7 +138,7 @@ export default function Landing() {
                         {/* Content Container */}
                         <div className="relative z-10 space-y-4 max-w-md w-full ml-auto lg:mr-0 mr-auto">
                             
-                            {/* Announcements & Alerts */}
+                            {/* Announcements & Alerts (Top) - Translucent Rose Glass */}
                             {config === null ? (
                                 <div className="space-y-3 animate-pulse">
                                     <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl">
@@ -174,7 +166,7 @@ export default function Landing() {
                                 </motion.div>
                             ) : null}
 
-                            {/* Operating Hours Card */}
+                            {/* Operating Hours Card (Below) - Translucent Gold Glass */}
                             {config === null ? (
                                 <div className="animate-pulse">
                                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 backdrop-blur-xl">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -51,6 +51,33 @@ export default function Ticketing({ mode = 'portal' }) {
     const [phone, setPhone] = useState('');
     const [purpose, setPurpose] = useState('birth');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // ── Portal Window helper (after 5 PM → ticket scheduled for tomorrow) ─────────
+    const getPortalState = useCallback(() => {
+        const now = new Date();
+        const hours = now.getHours();
+        const totalMinutes = hours * 60 + now.getMinutes();
+        const closeAt = 17 * 60; // 5:00 PM
+        const isAfterCutoff = totalMinutes >= closeAt;
+
+        // Today's date string for max attribute on date inputs
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        return { isAfterCutoff, todayStr };
+    }, []);
+
+    const [portalState, setPortalState] = useState(getPortalState);
+
+    useEffect(() => {
+        // Refresh portal state every minute
+        const interval = setInterval(() => setPortalState(getPortalState()), 60000);
+        return () => clearInterval(interval);
+    }, [getPortalState]);
+
+    const { isAfterCutoff, todayStr: todayDateStr } = portalState;
     const [details, setDetails] = useState({
         // Birth Certificate details
         first_name: '',
@@ -99,6 +126,7 @@ export default function Ticketing({ mode = 'portal' }) {
 
     const handlePortalSubmit = async (e) => {
         e.preventDefault();
+
         if (!clientName.trim()) {
             showAlert({ title: 'Validation Error', message: 'Please enter your name.', type: 'danger' });
             return;
@@ -347,6 +375,26 @@ export default function Ticketing({ mode = 'portal' }) {
                     </Link>
                 </div>
 
+                {/* ── After-5PM Info Banner ─────────────────────────────── */}
+                {isAfterCutoff && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm"
+                    >
+                        <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <ClockIcon className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="font-black text-blue-900 text-sm">Late Submission — Ticket Will Be Scheduled for Tomorrow</p>
+                            <p className="text-blue-700 text-xs mt-1 font-medium">
+                                It’s past 5:00 PM. You can still submit your request, but it will be
+                                processed <strong>tomorrow</strong>. You cannot submit another request for tomorrow after this.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -475,7 +523,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-800">Date of Birth</label>
-                                        <input type="date" required max="2099-12-31" value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
                                         <label className="text-xs font-bold text-slate-800">Place of Birth (City/Hospital)</label>
@@ -508,7 +556,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-800">Date of Death</label>
-                                        <input type="date" required max="2099-12-31" value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
                                         <label className="text-xs font-bold text-slate-800">Place of Death</label>
@@ -535,7 +583,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-800">Date of Marriage</label>
-                                        <input type="date" required max="2099-12-31" value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-800">Place of Marriage</label>
@@ -546,12 +594,17 @@ export default function Ticketing({ mode = 'portal' }) {
                         </div>
 
                         <div className="pt-6">
+                            {isAfterCutoff && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+                                    <p className="text-blue-700 text-xs font-bold">📅 Submitting after 5:00 PM — your ticket will be scheduled for <strong>tomorrow</strong>.</p>
+                                </div>
+                            )}
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
                                 className="w-full py-4 bg-gradient-to-r from-[#d4a574] to-[#c49a67] text-[#0f172a] rounded-2xl font-black shadow-xl shadow-[#d4a574]/15 hover:shadow-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
-                                {isSubmitting ? 'Queueing request...' : 'Get Queue Ticket'}
+                                {isSubmitting ? 'Queueing request...' : isAfterCutoff ? 'Get Queue Ticket (Tomorrow)' : 'Get Queue Ticket'}
                             </button>
                         </div>
                     </form>

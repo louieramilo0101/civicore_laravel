@@ -24,7 +24,7 @@ import useDebounce from '../hooks/useDebounce.js';
 /** Previews an uploaded or registered document without leaving the list. */
 const DocumentPreviewModal = ({ file, onClose }) => {
     const [previewTab, setPreviewTab] = useState('picture'); // 'picture' | 'pdf'
-    const pdfViewUrl = `/api/documents/view/${file.id}`;
+    const pdfViewUrl = `/api/documents/view/${file.id}#toolbar=0&navpanes=0`;
     const imageViewUrl = `/api/documents/view-image/${file.id}`;
     const downloadUrl = `/api/documents/download/${file.id}`;
 

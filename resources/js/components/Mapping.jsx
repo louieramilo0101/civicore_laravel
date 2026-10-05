@@ -469,25 +469,6 @@ const Mapping = () => {
 
 
 
-    /** Calculates transaction throughput for the selected timeframe. */
-    const getTransactionVelocity = () => {
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-        const dailyCount = apiData.filter(i => {
-            const date = new Date(i.issuanceDate || i.created_at);
-            return date >= oneDayAgo;
-        }).length;
-
-        const weeklyCount = apiData.filter(i => {
-            const date = new Date(i.issuanceDate || i.created_at);
-            return date >= oneWeekAgo;
-        }).length;
-
-        return { dailyCount, weeklyCount };
-    };
-
     /** Produces ranked barangay summaries for the analytics panel. */
     const getBarangayRankings = () => {
         const brgyCountsLocal = {};
@@ -942,7 +923,7 @@ const Mapping = () => {
                     <div id="mapContainer" className="w-full h-full rounded-xl bg-slate-100 z-0"></div>
                 </motion.div>
 
-                {/* Right Panel Segment - Charts or Demographics & Velocity */}
+                {/* Right Panel Segment - Charts or Barangay Distribution */}
                 <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-5 flex flex-col h-[450px]">
                     {/* Tab Switcher */}
                     <div className="flex bg-slate-100/60 p-1 gap-1 rounded-xl mb-4">
@@ -951,12 +932,6 @@ const Mapping = () => {
                             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'charts' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             Monthly
-                        </button>
-                        <button
-                            onClick={() => setRightPanelTab('demographics')}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'demographics' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Velocity
                         </button>
                         <button
                             onClick={() => setRightPanelTab('barangay')}
@@ -985,7 +960,7 @@ const Mapping = () => {
                                 )}
                             </div>
                         </>
-                    ) : rightPanelTab === 'barangay' ? (
+                    ) : (
                         <div className="flex flex-col flex-1 overflow-hidden">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
@@ -1067,87 +1042,6 @@ const Mapping = () => {
                                     </div>
                                 );
                             })()}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col flex-1 overflow-hidden">
-                            {/* Velocities Header */}
-                            <div className="mb-4">
-                                <h3 className="text-sm font-black text-slate-800">Transaction Velocities</h3>
-                                <p className="text-[10px] text-slate-500 font-medium mb-2.5">Finalized record print rates</p>
-                                
-                                {isLoading ? (
-                                    <div className="h-10 bg-slate-100 rounded-lg animate-pulse"></div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-2.5">
-                                        <div className="bg-emerald-50/50 border border-emerald-100/50 p-2 rounded-xl flex flex-col justify-center">
-                                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wide">Daily Velocity</span>
-                                            <span className="text-lg font-black text-slate-800 font-mono tabular-nums leading-none mt-1">
-                                                {getTransactionVelocity().dailyCount} <span className="text-[10px] font-bold text-slate-400">/day</span>
-                                            </span>
-                                        </div>
-                                        <div className="bg-indigo-50/50 border border-indigo-100/50 p-2 rounded-xl flex flex-col justify-center">
-                                            <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wide">Weekly Velocity</span>
-                                            <span className="text-lg font-black text-slate-800 font-mono tabular-nums leading-none mt-1">
-                                                {getTransactionVelocity().weeklyCount} <span className="text-[10px] font-bold text-slate-400">/wk</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Demographics Rankings */}
-                            <div className="flex-1 flex flex-col overflow-hidden">
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Barangay Rankings</span>
-                                    <span className="text-[9px] font-bold text-slate-500">Sorted by Volume</span>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
-                                    {isLoading ? (
-                                        <div className="space-y-1">
-                                            <div className="h-8 bg-slate-100 rounded animate-pulse"></div>
-                                            <div className="h-8 bg-slate-100 rounded animate-pulse"></div>
-                                            <div className="h-8 bg-slate-100 rounded animate-pulse"></div>
-                                        </div>
-                                    ) : getBarangayRankings().length === 0 ? (
-                                        <div className="text-center py-8 text-xs text-slate-400 font-medium">
-                                            No vital events registered yet.
-                                        </div>
-                                    ) : (
-                                        getBarangayRankings().map((brgy, idx) => (
-                                            <div 
-                                                key={brgy.name}
-                                                className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors group/item"
-                                            >
-                                                <div className="min-w-0 flex-1">
-                                                    <button 
-                                                        onClick={() => locateBarangay(brgy.name)}
-                                                        className="text-xs font-bold text-slate-700 hover:text-[#d4a574] text-left truncate max-w-full cursor-pointer"
-                                                    >
-                                                        {idx + 1}. {brgy.name}
-                                                    </button>
-                                                    <div className="text-[9.5px] text-slate-400 font-medium mt-0.5">
-                                                        B: {brgy.births} · D: {brgy.deaths} · M: {brgy.marriages}
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                                                        {brgy.total}
-                                                    </span>
-                                                    <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded ${
-                                                        brgy.ratio > 1.2 ? 'bg-emerald-50 text-emerald-600' :
-                                                        brgy.ratio < 0.8 ? 'bg-rose-50 text-rose-600' :
-                                                        'bg-indigo-50 text-indigo-600'
-                                                    }`}>
-                                                        R: {brgy.ratio.toFixed(1)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
                         </div>
                     )}
                 </motion.div>
