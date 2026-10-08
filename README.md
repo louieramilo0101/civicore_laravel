@@ -12,7 +12,7 @@
 
 ---
 
-## Executive Overview
+## Overview
 
 **CiviCORE** is an enterprise-grade Civic Document Management and Civil Registry Information System tailored for Local Government Units (LGUs), specifically engineered for the Municipality of Naic, Cavite.
 
