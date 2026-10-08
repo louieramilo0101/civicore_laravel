@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import {
     InboxIcon,
     MagnifyingGlassIcon,
@@ -20,7 +20,10 @@ import {
     DocumentTextIcon,
     ChevronDownIcon,
     UserPlusIcon,
-    QrCodeIcon
+    QrCodeIcon,
+    ArrowLeftIcon,
+    CameraIcon,
+    PhotoIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import AttachDocumentModal from './AttachDocumentModal';
@@ -86,6 +89,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [stats, setStats] = useState({ pending_inbox: 0, attached_today: 0, completed_today: 0 });
     /** @type {[Ticket|null, import('react').Dispatch<import('react').SetStateAction<Ticket|null>>]} */
     const [selectedTicket, setSelectedTicket] = useState(null);
+    const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail'
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [searchQuery, setSearchQuery] = useState('');
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
@@ -132,6 +136,12 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [declinePreset, setDeclinePreset] = useState('');
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [scannerError, setScannerError] = useState('');
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
+    const [isDecodingPhoto, setIsDecodingPhoto] = useState(false);
+    /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
+    const [manualTicketInput, setManualTicketInput] = useState('');
+    const nativeCameraInputRef = React.useRef(null);
+    const galleryInputRef = React.useRef(null);
 
     /** Stores the identifier of the ticket currently being declined. */
     /** @type {[number|string|null, import('react').Dispatch<import('react').SetStateAction<number|string|null>>]} */
@@ -163,79 +173,99 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     });
 
     /**
-     * Starts the original live QR scanner when its modal opens and guarantees
-     * that the scanner and camera are released when the modal closes.
+     * Handles ticket check-in for a scanned token, URL, or ticket number.
+     * @param {string} rawInput Scanned QR token or staff-typed ticket number.
+     * @returns {Promise<void>}
      */
-    useEffect(() => {
-        if (!isScannerOpen) return;
+    const handleCheckInToken = async (rawInput) => {
+        if (!rawInput) return;
+        try {
+            setIsLoading(true);
+            setScannerError('');
 
-        /** Active html5-qrcode scanner instance for this effect lifecycle. */
-        let scanner = null;
-        /** Animation-frame handle used to wait for the portal reader element. */
-        let frameId = null;
+            let tokenOrNum = rawInput.trim();
+            if (tokenOrNum.includes('/')) {
+                tokenOrNum = tokenOrNum.split('/').filter(Boolean).pop();
+            }
+            if (/^\d{1,4}$/.test(tokenOrNum)) {
+                const year = new Date().getFullYear();
+                tokenOrNum = `T-${year}-${tokenOrNum.padStart(4, '0')}`;
+            }
+
+            const response = await axios.post('/api/v1/tickets/scan', {
+                qr_code_token: tokenOrNum,
+            });
+
+            const ticketRecord = response.data.ticket || response.data;
+            setIsScannerOpen(false);
+            setManualTicketInput('');
+            setScannedData(ticketRecord);
+            setSelectedTicket(ticketRecord);
+            setIsPopupOpen(true);
+            fetchPendingTickets(false);
+        } catch (error) {
+            console.error('Ticket scan failed:', error);
+            setScannerError(error.response?.data?.error || 'Invalid or unrecognized ticket / QR code.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Decodes a QR code client-side from an image captured by native camera or file upload.
+     * @param {React.ChangeEvent<HTMLInputElement>} e
+     */
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsDecodingPhoto(true);
         setScannerError('');
 
-        /**
-         * Handles a decoded QR value by checking the ticket into the queue.
-         * @param {string} decodedText Raw text returned by html5-qrcode.
-         * @returns {Promise<void>} Resolves after the lookup attempt completes.
-         */
-        const onScanSuccess = async (decodedText) => {
-            await scanner?.clear().catch(() => {});
-            scanner = null;
-            setIsScannerOpen(false);
+        try {
+            let decodedText = null;
 
-            try {
-                /** Extract the final token when the QR value is a full URL. */
-                const ticketToken = decodedText.includes('/')
-                    ? decodedText.split('/').filter(Boolean).pop()
-                    : decodedText;
-                /** Ask Laravel to validate and check in the scanned ticket. */
-                /** Response returned by the ticket check-in endpoint. */
-                const response = await axios.post('/api/v1/tickets/scan', {
-                    qr_code_token: ticketToken,
-                });
-                /** Normalize both wrapped and legacy API response formats. */
-                const ticketRecord = response.data.ticket || response.data;
-                setScannedData(ticketRecord);
-                setSelectedTicket(ticketRecord);
-                setIsPopupOpen(true);
-                fetchPendingTickets(false);
-            } catch (error) {
-                console.error('Ticket scan failed:', error);
-                alert(error.response?.data?.error || 'Ticket scan failed.');
-            }
-        };
-
-        /** Creates the scanner after the portal has mounted its reader element. */
-        const initializeScanner = () => {
-            /** Portal-mounted DOM node consumed by html5-qrcode. */
-            const reader = document.getElementById('reader');
-            if (!reader) {
-                setScannerError('The scanner could not initialize. Please close this window and try again.');
-                return;
+            // 1. Try BarcodeDetector if natively supported by browser
+            if ('BarcodeDetector' in window) {
+                try {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    await new Promise((res, rej) => {
+                        img.onload = res;
+                        img.onerror = rej;
+                    });
+                    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+                    const barcodes = await detector.detect(img);
+                    if (barcodes.length > 0 && barcodes[0].rawValue) {
+                        decodedText = barcodes[0].rawValue;
+                    }
+                } catch (_) {}
             }
 
-            try {
-                scanner = new Html5QrcodeScanner('reader', {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                });
-                scanner.render(onScanSuccess, () => {});
-            } catch (error) {
-                console.error('QR scanner initialization failed:', error);
-                setScannerError('The QR scanner could not start. Check browser camera permission and try again.');
+            // 2. Decode using Html5Qrcode client-side scanner engine (offline)
+            if (!decodedText) {
+                const html5QrCode = new Html5Qrcode('qr-hidden-decoder-host');
+                try {
+                    decodedText = await html5QrCode.scanFile(file, false);
+                } finally {
+                    html5QrCode.clear();
+                }
             }
-        };
 
-        frameId = requestAnimationFrame(initializeScanner);
-
-        return () => {
-            if (frameId) cancelAnimationFrame(frameId);
-            scanner?.clear().catch(() => {});
-            scanner = null;
-        };
-    }, [isScannerOpen]);
+            if (decodedText) {
+                await handleCheckInToken(decodedText);
+            } else {
+                setScannerError('Could not detect a clear QR code in this photo. Please retake the photo with good lighting or enter the ticket number below.');
+            }
+        } catch (err) {
+            console.warn('QR decode failed:', err);
+            setScannerError('Could not detect a clear QR code in this photo. Please ensure the QR code is centered and in focus, or type the ticket number below.');
+        } finally {
+            setIsDecodingPhoto(false);
+            if (nativeCameraInputRef.current) nativeCameraInputRef.current.value = '';
+            if (galleryInputRef.current) galleryInputRef.current.value = '';
+        }
+    };
 
     /**
      * Removes unsupported characters from staff-entered names.
@@ -433,6 +463,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             if (res.data.success) {
                 setTickets(prev => prev.filter(t => t.id !== selectedTicket.id));
                 setSelectedTicket(null);
+                setMobileView('list');
                 fetchPendingTickets(false);
                 if (refreshCounter) refreshCounter();
                 showAlert({ title: 'Request Declined', message: `Ticket ${selectedTicket.ticket_number} has been declined and moved to the archive.`, type: 'success' });
@@ -471,6 +502,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     type: 'success'
                 });
                 setIsVerifyOpen(false);
+                setSelectedTicket(null);
+                setMobileView('list');
                 fetchPendingTickets(false);
                 if (refreshCounter) refreshCounter();
             }
@@ -539,6 +572,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     husband_first_name: '', husband_middle_name: '', husband_last_name: '',
                     wife_first_name: '', wife_middle_name: '', wife_last_name: '', date_of_marriage: '', place_of_marriage: ''
                 });
+                if (res.data.ticket) {
+                    setSelectedTicket(res.data.ticket);
+                    setMobileView('detail');
+                }
                 fetchPendingTickets(false);
                 if (refreshCounter) refreshCounter();
             }
@@ -569,7 +606,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
                 {/* Left: Pending Tickets List */}
-                <div className="lg:col-span-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-sm flex flex-col h-full overflow-hidden">
+                <div className={`lg:col-span-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-sm flex-col h-full overflow-hidden ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
                     {/* Header Title Row */}
                     <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-150">
                         <div className="flex items-center gap-2.5">
@@ -686,7 +723,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <motion.div
                                         key={t.id}
                                         layoutId={`ticket-${t.id}`}
-                                        onClick={() => setSelectedTicket(t)}
+                                        onClick={() => {
+                                            setSelectedTicket(t);
+                                            setMobileView('detail');
+                                        }}
                                         className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                                             isSelected
                                                 ? 'border-[#d4a574] bg-[#d4a574]/5 shadow-sm ring-1 ring-[#d4a574]/30'
@@ -707,6 +747,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setSelectedTicket(t);
+                                                            setMobileView('detail');
                                                             setIsDeclineOpen(true);
                                                         }}
                                                         className="p-1 border border-rose-200 rounded hover:bg-rose-600 text-rose-500 hover:text-white transition-all cursor-pointer"
@@ -733,7 +774,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 </div>
 
                 {/* Right: Selected Ticket Details (Spacious and Revamped layout) */}
-                <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
+                <div className={`lg:col-span-2 flex-col h-full overflow-hidden ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
                     {!selectedTicket ? (
                         <div className="flex-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 text-center shadow-sm">
                             <SparklesIcon className="w-12 h-12 text-[#d4a574] opacity-20 mb-3" />
@@ -742,6 +783,20 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                         </div>
                     ) : (
                         <div className="flex-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
+                            {/* Mobile Back to List Navigation Bar */}
+                            <div className="lg:hidden flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileView('list')}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                                >
+                                    <ArrowLeftIcon className="w-4 h-4" />
+                                    <span>Back to Requests</span>
+                                </button>
+                                <span className="text-[11px] font-mono font-black text-[#c49a67] bg-[#d4a574]/10 px-2.5 py-1 rounded-lg">
+                                    {selectedTicket.ticket_number}
+                                </span>
+                            </div>
                             {/* Title Block */}
                             <div className="border-b border-slate-100 pb-3 mb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3 shrink-0">
                                 <div>
@@ -1157,6 +1212,27 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             {isScannerOpen && (
                 createPortal(
                     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4">
+                        {/* Hidden DOM element required by Html5Qrcode file scan engine */}
+                        <div id="qr-hidden-decoder-host" className="hidden" />
+
+                        {/* Hidden native camera capture trigger */}
+                        <input
+                            type="file"
+                            ref={nativeCameraInputRef}
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                        />
+                        {/* Hidden gallery / file upload trigger */}
+                        <input
+                            type="file"
+                            ref={galleryInputRef}
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                        />
+
                         <motion.div
                             initial={{ opacity: 0, scale: 0.96, y: 12 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1165,13 +1241,20 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                         >
                             <div className="bg-[#0f172a] px-6 py-5 text-white">
                                 <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4a574]">CiviCORE Check-in</p>
-                                        <h3 className="text-xl font-black tracking-tight mt-1">Scan Ticket QR Code</h3>
-                                        <p className="text-xs text-slate-400 mt-1">Point the camera at the citizen's queue ticket.</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-[#d4a574]/20 border border-[#d4a574]/40 flex items-center justify-center text-[#d4a574]">
+                                            <QrCodeIcon className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4a574]">CiviCORE Check-in</p>
+                                            <h3 className="text-xl font-black tracking-tight">Scan Ticket QR</h3>
+                                        </div>
                                     </div>
                                     <button
-                                        onClick={() => setIsScannerOpen(false)}
+                                        onClick={() => {
+                                            setIsScannerOpen(false);
+                                            setScannerError('');
+                                        }}
                                         className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
                                         aria-label="Close scanner"
                                     >
@@ -1179,18 +1262,93 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     </button>
                                 </div>
                             </div>
-                            <div className="p-5 bg-slate-50">
-                                {scannerError ? (
-                                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-center">
-                                        <ExclamationTriangleIcon className="w-8 h-8 mx-auto text-rose-500 mb-2" />
+
+                            <div className="p-6 space-y-5 bg-slate-50">
+                                <p className="text-xs text-slate-600 leading-relaxed text-center font-medium">
+                                    Snap a photo of the queue ticket using your camera, select a saved image, or enter the ticket number below.
+                                </p>
+
+                                {/* Native Camera & Photo Upload Buttons */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        disabled={isDecodingPhoto}
+                                        onClick={() => nativeCameraInputRef.current?.click()}
+                                        className="p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex flex-col items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50"
+                                    >
+                                        <CameraIcon className="w-7 h-7" />
+                                        <div className="text-center">
+                                            <span className="block text-xs font-black">Native Camera</span>
+                                            <span className="block text-[10px] text-indigo-200 font-medium">Snap photo of ticket</span>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        disabled={isDecodingPhoto}
+                                        onClick={() => galleryInputRef.current?.click()}
+                                        className="p-4 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold flex flex-col items-center justify-center gap-2 shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+                                    >
+                                        <PhotoIcon className="w-7 h-7 text-slate-600" />
+                                        <div className="text-center">
+                                            <span className="block text-xs font-black">Upload Photo</span>
+                                            <span className="block text-[10px] text-slate-400 font-medium">Choose image file</span>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {/* Decoding Spinner */}
+                                {isDecodingPhoto && (
+                                    <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center gap-3 text-indigo-700">
+                                        <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                                        <span className="text-xs font-bold">Scanning image for QR code...</span>
+                                    </div>
+                                )}
+
+                                {/* Error Alert */}
+                                {scannerError && (
+                                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center">
+                                        <ExclamationTriangleIcon className="w-6 h-6 mx-auto text-rose-500 mb-1.5" />
                                         <p className="text-xs font-bold text-rose-700">{scannerError}</p>
                                     </div>
-                                ) : (
-                                    <>
-                                        <div id="reader" className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white" />
-                                        <p className="text-[11px] text-slate-500 text-center mt-4">A successful scan checks the ticket into the waiting queue.</p>
-                                    </>
                                 )}
+
+                                {/* Divider */}
+                                <div className="relative flex items-center justify-center my-1">
+                                    <div className="border-t border-slate-200 w-full" />
+                                    <span className="bg-slate-50 px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 absolute">
+                                        Or Type / Barcode Gun
+                                    </span>
+                                </div>
+
+                                {/* USB Scanner or Manual Entry Field */}
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleCheckInToken(manualTicketInput);
+                                    }}
+                                    className="space-y-2.5"
+                                >
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={manualTicketInput}
+                                            onChange={(e) => setManualTicketInput(e.target.value)}
+                                            placeholder="e.g. T-2026-0001 or scan barcode gun"
+                                            className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!manualTicketInput.trim()}
+                                            className="px-4 py-2.5 bg-[#0f172a] text-[#d4a574] hover:bg-slate-800 disabled:opacity-40 rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer"
+                                        >
+                                            Check In
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 text-center font-medium">
+                                        Tip: USB barcode scanners automatically input the code and press Enter.
+                                    </p>
+                                </form>
                             </div>
                         </motion.div>
                     </div>,
@@ -1258,6 +1416,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <button
                                         onClick={() => {
                                             setSelectedTicket(scannedData);
+                                            setMobileView('detail');
                                             setIsPopupOpen(false);
                                             setIsAttachOpen(true);
                                         }}

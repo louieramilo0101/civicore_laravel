@@ -5,6 +5,9 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+.agent
+.agents
+/storage/app/backups/*
 /.fleet
 /.idea
 /.nova

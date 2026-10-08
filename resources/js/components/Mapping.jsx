@@ -6,7 +6,7 @@ import {
     MapPinIcon,
     DocumentChartBarIcon,
     ArrowPathIcon,
-    ArrowDownTrayIcon,
+    ChevronDownIcon,
     TableCellsIcon,
     EyeIcon,
     MagnifyingGlassIcon,
@@ -105,6 +105,7 @@ const Mapping = () => {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isStatsCollapsed, setIsStatsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
     /** Determines whether a transaction falls within the active date filter. */
     const isWithinTimeframe = (dateStr) => {
@@ -174,6 +175,16 @@ const Mapping = () => {
             }
         };
     }, []);
+
+    // Ensure Leaflet recalculates dimensions when statistics panel expands/collapses
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (mapRef.current) {
+                mapRef.current.invalidateSize();
+            }
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [isStatsCollapsed]);
 
     // Initialize Map and Chart after loading
     useEffect(() => {
@@ -417,32 +428,6 @@ const Mapping = () => {
         }
     }, [isLoading, apiData, docsData, showHeatmap, showRatioMode, quickFilter, dateFrom, dateTo]);
 
-    /** Exports the filtered map transactions as a CSV download. */
-    const exportToCSV = () => {
-        const headers = ["Certificate No.", "Type", "Subject Name", "Barangay", "Print Date", "Status", "Encoded By"];
-        const rows = filteredPrints.map(p => [
-            p.number,
-            p.type,
-            p.name,
-            p.barangay,
-            p.date,
-            p.status,
-            p.encoded_by || 'System'
-        ]);
-
-        let csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `civicore_export_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
     /** Centers the map on a named barangay when coordinates are available. */
     const locateBarangay = (brgyName) => {
         const marker = markersRef.current[brgyName];
@@ -524,43 +509,38 @@ const Mapping = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="space-y-6 max-w-7xl mx-auto"
+            className="space-y-4 sm:space-y-6 max-w-7xl mx-auto"
         >
             {/* Header */}
-            <motion.div variants={itemVariants} className="flex flex-col gap-4 mb-2">
+            <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:gap-4 mb-1 sm:mb-2">
                 {/* Title Row */}
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                            <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#d4a574] to-[#c49060] flex items-center justify-center shadow-lg shadow-[#d4a574]/20">
-                                <MapPinIcon className="w-5 h-5 text-white" />
-                            </span>
-                            Geospatial Analytics
-                        </h2>
-                        <p className="text-slate-500 font-medium text-sm mt-1 ml-[52px]">Live distribution of civil records across Naic barangays.</p>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                        <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#d4a574] to-[#c49060] flex items-center justify-center shadow-md shadow-[#d4a574]/20 shrink-0">
+                            <MapPinIcon className="w-5 h-5 text-white" />
+                        </span>
+                        <div>
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight">
+                                Geospatial Analytics
+                            </h2>
+                            <p className="text-slate-500 font-medium text-xs sm:text-sm hidden sm:block">Live distribution of civil records across Naic barangays.</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2.5">
-                        <button
-                            onClick={exportToCSV}
-                            disabled={isLoading || filteredPrints.length === 0}
-                            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            <ArrowDownTrayIcon className="w-4 h-4 text-emerald-500" />
-                            Export CSV
-                        </button>
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => fetchData()}
-                            className="flex items-center gap-2 bg-[#0f172a] text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-800/20 hover:bg-slate-800 transition-all cursor-pointer active:scale-95"
+                            className="flex items-center gap-2 bg-[#0f172a] text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shrink-0"
                         >
                             <ArrowPathIcon className={`w-4 h-4 transition-transform duration-500 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                            Refresh
+                            <span>Refresh</span>
                         </button>
                     </div>
                 </div>
+                <p className="text-slate-500 font-medium text-xs sm:hidden -mt-1 ml-1">Live distribution of civil records across Naic barangays.</p>
 
                 {/* Filter Bar */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-3 flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-widest mr-1">
+                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-2.5 sm:p-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mr-1">
                         <CalendarDaysIcon className="w-3.5 h-3.5 text-[#d4a574]" />
                         Period
                     </div>
@@ -577,9 +557,9 @@ const Mapping = () => {
                             <button
                                 key={key}
                                 onClick={() => { setQuickFilter(key); setShowDatePicker(false); }}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                                     quickFilter === key
-                                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-md shadow-slate-800/15'
+                                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-sm shadow-slate-800/15'
                                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                                 }`}
                             >
@@ -588,14 +568,14 @@ const Mapping = () => {
                         ))}
 
                         {/* Divider */}
-                        <div className="w-px h-5 bg-slate-200 mx-1" />
+                        <div className="w-px h-5 bg-slate-200 mx-1 hidden sm:block" />
 
                         {/* Custom Range Toggle */}
                         <button
                             onClick={() => { setShowDatePicker(!showDatePicker); }}
-                            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                                 quickFilter === 'custom'
-                                    ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-md shadow-[#d4a574]/20'
+                                    ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-sm shadow-[#d4a574]/20'
                                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
                             }`}
                         >
@@ -671,132 +651,161 @@ const Mapping = () => {
 
             {/* Top Stat Cards – Tabbed Panel */}
             <motion.div variants={itemVariants} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden">
-                {/* Tab switcher */}
-                <div className="flex items-center border-b border-slate-100 px-4 pt-3">
-                    {[
-                        { key: 'records', label: 'Records Overview', icon: <ChartBarIcon className="w-4 h-4" /> },
-                        { key: 'issued', label: 'Issued Per Category', icon: <ClipboardDocumentCheckIcon className="w-4 h-4" /> },
-                    ].map(tab => (
+                {/* Tab switcher & Collapse Toggle */}
+                <div className="flex items-center justify-between border-b border-slate-100 px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-0 gap-2 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-1">
+                        {[
+                            { key: 'records', label: 'Records Overview', shortLabel: 'Overview', icon: <ChartBarIcon className="w-4 h-4" /> },
+                            { key: 'issued', label: 'Issued Per Category', shortLabel: 'Categories', icon: <ClipboardDocumentCheckIcon className="w-4 h-4" /> },
+                        ].map(tab => (
+                            <button
+                                key={tab.key}
+                                onClick={() => {
+                                    setStatsMode(tab.key);
+                                    if (isStatsCollapsed) setIsStatsCollapsed(false);
+                                }}
+                                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest border-b-2 transition-all cursor-pointer ${
+                                    statsMode === tab.key
+                                        ? 'border-[#d4a574] text-[#d4a574]'
+                                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                                }`}
+                            >
+                                <span>{tab.icon}</span>
+                                <span className="hidden sm:inline">{tab.label}</span>
+                                <span className="sm:hidden">{tab.shortLabel}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:flex items-center gap-1.5">
+                            {quickFilter !== 'all' ? `Filtered · ${filteredApiData.length} records` : `All Time · ${filteredApiData.length} records`}
+                            {unmappedCount > 0 && (
+                                <span className="text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    {unmappedCount} Unmapped
+                                </span>
+                            )}
+                        </span>
                         <button
-                            key={tab.key}
-                            onClick={() => setStatsMode(tab.key)}
-                            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest border-b-2 transition-all cursor-pointer mr-1 ${
-                                statsMode === tab.key
-                                    ? 'border-[#d4a574] text-[#d4a574]'
-                                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                            }`}
+                            onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title={isStatsCollapsed ? 'Show statistics' : 'Hide statistics'}
                         >
-                            <span>{tab.icon}</span>
-                            {tab.label}
+                            <span className="text-[11px] text-slate-500 font-semibold">{isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}</span>
+                            <ChevronDownIcon className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isStatsCollapsed ? '' : 'rotate-180'}`} />
                         </button>
-                    ))}
-                    <span className="ml-auto text-[9px] text-slate-400 font-bold uppercase tracking-widest pr-2 pb-2 flex items-center gap-2">
-                        {quickFilter !== 'all' ? `Filtered · ${filteredApiData.length} records` : `All Time · ${filteredApiData.length} records`}
-                        {unmappedCount > 0 && (
-                            <span className="text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                                {unmappedCount} Unmapped
-                            </span>
-                        )}
-                    </span>
+                    </div>
                 </div>
 
-                <div className="p-4">
-                    {isLoading ? (
-                        <SkeletonLoader type="cards" rows={1} />
-                    ) : statsMode === 'records' ? (
-                        /* ── Tab 1: Records Overview ── */
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                <p className="text-emerald-600 text-[10px] font-black uppercase tracking-wider mb-1">Uploaded Docs</p>
-                                <h3 className="text-3xl font-black text-emerald-600">{stats.totalDocs}</h3>
-                                <p className="text-[9px] text-emerald-400 font-bold mt-1">Total in database</p>
-                            </div>
-                            <div className="bg-[#d4a574]/10 border border-[#d4a574]/20 p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                <p className="text-[#c49060] text-[10px] font-black uppercase tracking-wider mb-1">Birth Certs</p>
-                                <h3 className="text-3xl font-black text-[#d4a574]">{stats.birthCount}</h3>
-                                <p className="text-[9px] text-[#d4a574]/60 font-bold mt-1">Live birth records</p>
-                            </div>
-                            <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                <p className="text-rose-500 text-[10px] font-black uppercase tracking-wider mb-1">Death Certs</p>
-                                <h3 className="text-3xl font-black text-rose-500">{stats.deathCount}</h3>
-                                <p className="text-[9px] text-rose-300 font-bold mt-1">Death certificates</p>
-                            </div>
-                            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                <p className="text-indigo-500 text-[10px] font-black uppercase tracking-wider mb-1">Marriage Certs</p>
-                                <h3 className="text-3xl font-black text-indigo-500">{stats.marriageCount}</h3>
-                                <p className="text-[9px] text-indigo-300 font-bold mt-1">Marriage records</p>
-                            </div>
-                            <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 p-4 rounded-2xl shadow-lg flex flex-col justify-center relative overflow-hidden hover:scale-[1.02] transition-transform">
-                                <div className="absolute right-[-10%] top-[-10%] w-24 h-24 bg-[#d4a574]/10 rounded-full blur-xl"></div>
-                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Top Barangay</p>
-                                <h3 className="text-lg font-black text-white truncate">{stats.mostActiveBrgy}</h3>
-                                <p className="text-[9px] text-slate-500 font-bold mt-1">
-                                    {stats.mostActiveBrgy !== 'N/A' ? `${stats.maxTotal} issued` : '0 issued'}
-                                </p>
-                            </div>
-                        </div>
-                    ) : (() => {
-                        /* ── Tab 2: Issued Per Category ── */
-                        const issuedBirth    = filteredApiData.filter(i => getNormalizedType(i) === 'birth').length;
-                        const issuedDeath    = filteredApiData.filter(i => getNormalizedType(i) === 'death').length;
-                        const issuedMarriage = filteredApiData.filter(i => getNormalizedType(i) === 'marriage').length;
-                        const totalIssued    = filteredApiData.length;
-                        const maxCount       = Math.max(issuedBirth, issuedDeath, issuedMarriage, 1);
-
-                        // Most issued barangay (from issuances only)
-                        const brgyIssuedCounts = {};
-                        filteredApiData.forEach(i => {
-                            const brgyName = i.barangay || 'Ibayo Silangan';
-                            brgyIssuedCounts[brgyName] = (brgyIssuedCounts[brgyName] || 0) + 1;
-                        });
-                        const mostIssuedBrgy = Object.entries(brgyIssuedCounts).sort((a,b) => b[1]-a[1])[0];
-
-                        const categories = [
-                            { label: 'Birth Issued',    count: issuedBirth,    color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]',     bg: 'bg-[#d4a574]/10  border-[#d4a574]/20',  emoji: <UserIcon className="w-6 h-6 text-[#d4a574]" /> },
-                            { label: 'Death Issued',    count: issuedDeath,    color: 'text-rose-500',  barColor: 'bg-rose-500',       bg: 'bg-rose-50 border-rose-100',            emoji: <DocumentTextIcon className="w-6 h-6 text-rose-500" /> },
-                            { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500', barColor: 'bg-indigo-500',    bg: 'bg-indigo-50 border-indigo-100',         emoji: <UsersIcon className="w-6 h-6 text-indigo-500" /> },
-                        ];
-
-                        return (
-                            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4 items-stretch">
-                                {/* Category cards with mini bars */}
-                                {categories.map(cat => (
-                                    <div key={cat.label} className={`border p-4 rounded-2xl flex flex-col gap-2 hover:scale-[1.02] transition-transform ${cat.bg}`}>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{cat.label}</span>
-                                            <span className="text-lg">{cat.emoji}</span>
+                <AnimatePresence initial={false}>
+                    {!isStatsCollapsed && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="p-3 sm:p-4">
+                                {isLoading ? (
+                                    <SkeletonLoader type="cards" rows={1} />
+                                ) : statsMode === 'records' ? (
+                                    /* ── Tab 1: Records Overview ── */
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 sm:gap-3">
+                                        <div className="bg-emerald-50 border border-emerald-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-emerald-600 text-[10px] font-black uppercase tracking-wider mb-1">Uploaded Docs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600">{stats.totalDocs}</h3>
+                                            <p className="text-[9px] text-emerald-400 font-bold mt-1">Total in database</p>
                                         </div>
-                                        <h3 className={`text-4xl font-black tracking-tighter ${cat.color}`}>{cat.count}</h3>
-                                        {/* Progress bar relative to highest category */}
-                                        <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mt-auto">
-                                            <div
-                                                className={`h-full ${cat.barColor} rounded-full transition-all duration-700`}
-                                                style={{ width: `${(cat.count / maxCount) * 100}%` }}
-                                            />
+                                        <div className="bg-[#d4a574]/10 border border-[#d4a574]/20 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-[#c49060] text-[10px] font-black uppercase tracking-wider mb-1">Birth Certs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-[#d4a574]">{stats.birthCount}</h3>
+                                            <p className="text-[9px] text-[#d4a574]/60 font-bold mt-1">Live birth records</p>
                                         </div>
-                                        <p className="text-[9px] font-bold text-slate-400">
-                                            {totalIssued > 0 ? Math.round((cat.count / totalIssued) * 100) : 0}% of total issued
-                                        </p>
+                                        <div className="bg-rose-50 border border-rose-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-rose-500 text-[10px] font-black uppercase tracking-wider mb-1">Death Certs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-rose-500">{stats.deathCount}</h3>
+                                            <p className="text-[9px] text-rose-300 font-bold mt-1">Death certificates</p>
+                                        </div>
+                                        <div className="bg-indigo-50 border border-indigo-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-indigo-500 text-[10px] font-black uppercase tracking-wider mb-1">Marriage Certs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-indigo-500">{stats.marriageCount}</h3>
+                                            <p className="text-[9px] text-indigo-300 font-bold mt-1">Marriage records</p>
+                                        </div>
+                                        <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col justify-center relative overflow-hidden hover:scale-[1.02] transition-transform">
+                                            <div className="absolute right-[-10%] top-[-10%] w-24 h-24 bg-[#d4a574]/10 rounded-full blur-xl"></div>
+                                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Top Barangay</p>
+                                            <h3 className="text-base sm:text-lg font-black text-white truncate">{stats.mostActiveBrgy}</h3>
+                                            <p className="text-[9px] text-slate-500 font-bold mt-1">
+                                                {stats.mostActiveBrgy !== 'N/A' ? `${stats.maxTotal} issued` : '0 issued'}
+                                            </p>
+                                        </div>
                                     </div>
-                                ))}
+                                ) : (() => {
+                                    /* ── Tab 2: Issued Per Category ── */
+                                    const issuedBirth    = filteredApiData.filter(i => getNormalizedType(i) === 'birth').length;
+                                    const issuedDeath    = filteredApiData.filter(i => getNormalizedType(i) === 'death').length;
+                                    const issuedMarriage = filteredApiData.filter(i => getNormalizedType(i) === 'marriage').length;
+                                    const totalIssued    = filteredApiData.length;
+                                    const maxCount       = Math.max(issuedBirth, issuedDeath, issuedMarriage, 1);
 
-                                {/* Total + Most Issued Barangay */}
-                                <div className="flex flex-col gap-3">
-                                    <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 p-4 rounded-2xl flex flex-col justify-center relative overflow-hidden flex-1 hover:scale-[1.02] transition-transform">
-                                        <div className="absolute right-[-10%] top-[-10%] w-16 h-16 bg-[#d4a574]/10 rounded-full blur-xl"></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Total Issued</p>
-                                        <h3 className="text-3xl font-black text-white">{totalIssued}</h3>
-                                    </div>
-                                    <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-center flex-1 hover:scale-[1.02] transition-transform">
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Top Barangay</p>
-                                        <p className="text-sm font-black text-slate-800 truncate">{mostIssuedBrgy ? mostIssuedBrgy[0] : 'N/A'}</p>
-                                        {mostIssuedBrgy && <p className="text-[9px] text-slate-400 font-bold">{mostIssuedBrgy[1]} issued</p>}
-                                    </div>
-                                </div>
+                                    // Most issued barangay (from issuances only)
+                                    const brgyIssuedCounts = {};
+                                    filteredApiData.forEach(i => {
+                                        const brgyName = i.barangay || 'Ibayo Silangan';
+                                        brgyIssuedCounts[brgyName] = (brgyIssuedCounts[brgyName] || 0) + 1;
+                                    });
+                                    const mostIssuedBrgy = Object.entries(brgyIssuedCounts).sort((a,b) => b[1]-a[1])[0];
+
+                                    const categories = [
+                                        { label: 'Birth Issued',    count: issuedBirth,    color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]',     bg: 'bg-[#d4a574]/10  border-[#d4a574]/20',  emoji: <UserIcon className="w-5 sm:w-6 h-5 sm:h-6 text-[#d4a574]" /> },
+                                        { label: 'Death Issued',    count: issuedDeath,    color: 'text-rose-500',  barColor: 'bg-rose-500',       bg: 'bg-rose-50 border-rose-100',            emoji: <DocumentTextIcon className="w-5 sm:w-6 h-5 sm:h-6 text-rose-500" /> },
+                                        { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500', barColor: 'bg-indigo-500',    bg: 'bg-indigo-50 border-indigo-100',         emoji: <UsersIcon className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-500" /> },
+                                    ];
+
+                                    return (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 sm:gap-4 items-stretch">
+                                            {/* Category cards with mini bars */}
+                                            {categories.map(cat => (
+                                                <div key={cat.label} className={`border p-3 sm:p-4 rounded-2xl flex flex-col gap-2 hover:scale-[1.02] transition-transform ${cat.bg}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{cat.label}</span>
+                                                        <span className="text-base sm:text-lg">{cat.emoji}</span>
+                                                    </div>
+                                                    <h3 className={`text-3xl sm:text-4xl font-black tracking-tighter ${cat.color}`}>{cat.count}</h3>
+                                                    {/* Progress bar relative to highest category */}
+                                                    <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mt-auto">
+                                                        <div
+                                                            className={`h-full ${cat.barColor} rounded-full transition-all duration-700`}
+                                                            style={{ width: `${(cat.count / maxCount) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-[9px] font-bold text-slate-400">
+                                                        {totalIssued > 0 ? Math.round((cat.count / totalIssued) * 100) : 0}% of total issued
+                                                    </p>
+                                                </div>
+                                            ))}
+
+                                            {/* Total + Most Issued Barangay */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-1 gap-2.5 sm:gap-3 col-span-1 sm:col-span-2 md:col-span-1">
+                                                <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col justify-center relative overflow-hidden flex-1 hover:scale-[1.02] transition-transform">
+                                                    <div className="absolute right-[-10%] top-[-10%] w-16 h-16 bg-[#d4a574]/10 rounded-full blur-xl"></div>
+                                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Total Issued</p>
+                                                    <h3 className="text-2xl sm:text-3xl font-black text-white">{totalIssued}</h3>
+                                                </div>
+                                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-center flex-1 hover:scale-[1.02] transition-transform">
+                                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Top Barangay</p>
+                                                    <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{mostIssuedBrgy ? mostIssuedBrgy[0] : 'N/A'}</p>
+                                                    {mostIssuedBrgy && <p className="text-[9px] text-slate-400 font-bold">{mostIssuedBrgy[1]} issued</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
-                        );
-                    })()}
-                </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             {/* Active Filter Summary Badge */}
@@ -837,83 +846,83 @@ const Mapping = () => {
             </AnimatePresence>
 
             {/* Map and Charts Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
                 {/* Map Section - 2 columns */}
-                <motion.div variants={itemVariants} className="lg:col-span-2 relative bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-1 flex flex-col overflow-hidden h-[450px]">
+                <motion.div variants={itemVariants} className="lg:col-span-2 relative bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-1 flex flex-col overflow-hidden h-[400px] sm:h-[450px] lg:h-[480px]">
                     {/* Floating Map Controls */}
-                    <div className="absolute top-4 right-4 z-[1001] flex flex-col gap-2">
+                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[1001] flex flex-col gap-1.5 sm:gap-2">
                         <button
                             onClick={() => {
                                 setShowRatioMode(!showRatioMode);
                                 if (showHeatmap) setShowHeatmap(false);
                             }}
-                            className={`p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showRatioMode ? 'bg-[#d4a574] text-white border-[#d4a574]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showRatioMode ? 'bg-[#d4a574] text-white border-[#d4a574]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
                             title={showRatioMode ? "Switch to Standard View" : "Switch to Demographic Ratio Mode"}
                         >
-                            <DocumentChartBarIcon className="w-5 h-5" />
+                            <DocumentChartBarIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         </button>
                         <button
                             onClick={() => {
                                 setShowHeatmap(!showHeatmap);
                                 if (showRatioMode) setShowRatioMode(false);
                             }}
-                            className={`p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showHeatmap ? 'bg-rose-500 text-white border-rose-400' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showHeatmap ? 'bg-rose-500 text-white border-rose-400' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
                             title={showHeatmap ? "Switch to Pin View" : "Switch to Heatmap View"}
                         >
-                            <FireIcon className="w-5 h-5" />
+                            <FireIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         </button>
                         <button
                             onClick={resetMapView}
-                            className="bg-white p-2.5 rounded-xl text-slate-600 shadow-lg border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
+                            className="bg-white p-2 sm:p-2.5 rounded-xl text-slate-600 shadow-lg border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
                             title="Reset Map View"
                         >
-                            <ArrowsPointingOutIcon className="w-5 h-5" />
+                            <ArrowsPointingOutIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         </button>
                     </div>
 
                     {/* Legend Overlay */}
-                    <div className="absolute bottom-4 left-4 z-[1001] bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-lg border border-white/60 min-w-[145px]">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[1001] bg-white/95 backdrop-blur-md p-2.5 sm:p-3 rounded-xl shadow-lg border border-white/60 min-w-[130px] sm:min-w-[145px]">
+                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">
                             {showRatioMode ? 'Demographic Ratio' : 'Legend'}
                         </p>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1 sm:space-y-1.5">
                             {showRatioMode ? (
                                 <>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">High Growth (&gt;1.2)</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#10b981]"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">High Growth (&gt;1.2)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#6366f1]"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">Balanced (0.8-1.2)</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#6366f1]"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Balanced (0.8-1.2)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">High Mortality (&lt;0.8)</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-rose-500"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">High Mortality (&lt;0.8)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">No Records</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">No Records</span>
                                     </div>
                                 </>
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#d4a574]"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">Births</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#d4a574]"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Births</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">Deaths</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-rose-500"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Deaths</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">Marriages</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-indigo-500"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Marriages</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
-                                        <span className="text-[10px] font-bold text-slate-700">No Records</span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">No Records</span>
                                     </div>
                                 </>
                             )}
@@ -924,7 +933,7 @@ const Mapping = () => {
                 </motion.div>
 
                 {/* Right Panel Segment - Charts or Barangay Distribution */}
-                <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-5 flex flex-col h-[450px]">
+                <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-3.5 sm:p-5 flex flex-col h-[400px] sm:h-[450px] lg:h-[480px]">
                     {/* Tab Switcher */}
                     <div className="flex bg-slate-100/60 p-1 gap-1 rounded-xl mb-4">
                         <button
@@ -1049,10 +1058,10 @@ const Mapping = () => {
 
             {/* Print Records Table */}
             <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800">Recent Document Prints</h3>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800">Recent Document Prints</h3>
+                        <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
                             Track physical issuance logs
                             {quickFilter !== 'all' && (
                                 <span className="ml-1.5 text-[#d4a574] font-bold">
@@ -1063,12 +1072,12 @@ const Mapping = () => {
                     </div>
 
                     {/* Filter Pills */}
-                    <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+                    <div className="flex bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto overflow-x-auto max-w-full">
                         {['all', 'birth', 'death', 'marriage'].map(type => (
                             <button
                                 key={type}
                                 onClick={() => setActiveFilter(type)}
-                                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeFilter === type
+                                className={`px-3 sm:px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${activeFilter === type
                                         ? 'bg-white text-slate-800 shadow-sm'
                                         : 'text-slate-500 hover:text-slate-700'
                                     }`}
@@ -1079,7 +1088,78 @@ const Mapping = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Mobile Card List (md:hidden) — No horizontal side-scrolling */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {isLoading ? (
+                        <div className="p-4">
+                            <SkeletonLoader type="table" rows={3} />
+                        </div>
+                    ) : filteredPrints.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500 text-xs font-medium">
+                            No tracking logs found.
+                        </div>
+                    ) : (
+                        filteredPrints.map((print, index) => {
+                            const normType = getNormalizedType(print);
+                            const colorClass = normType === 'birth' ? 'text-[#d4a574] bg-[#d4a574]/10 border-[#d4a574]/20' : normType === 'death' ? 'text-rose-500 bg-rose-50 border-rose-100' : 'text-indigo-500 bg-indigo-50 border-indigo-100';
+
+                            return (
+                                <div key={index} className="p-4 space-y-2.5 bg-white/40 hover:bg-slate-50/60 transition-colors">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <span className="font-bold text-slate-800 text-xs">{print.number}</span>
+                                            <div className="text-[10px] text-slate-400 font-medium">{print.date}</div>
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${colorClass}`}>
+                                            {print.type}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="font-semibold text-slate-700">{print.name}</span>
+                                        <span className="text-slate-500 font-medium flex items-center gap-1 text-[11px]">
+                                            <MapPinIcon className="w-3.5 h-3.5 text-[#d4a574]" />
+                                            {print.barangay}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-1 border-t border-slate-100/60">
+                                        <div className="flex items-center gap-1.5">
+                                            <Avatar
+                                                size={18}
+                                                name={print.encoded_by || 'System'}
+                                                variant="beam"
+                                                colors={['#0f172a', '#d4a574', '#6366f1', '#f43f5e', '#10b981']}
+                                            />
+                                            <span className="text-[11px] font-medium text-slate-500">{print.encoded_by || 'System'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => locateBarangay(print.barangay)}
+                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-[#d4a574]/10 text-slate-600 hover:text-[#d4a574] rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                title="Locate on Map"
+                                            >
+                                                <MagnifyingGlassIcon className="w-3.5 h-3.5" />
+                                                <span>Locate</span>
+                                            </button>
+                                            <a
+                                                href={`/api/documents/view/${print.document_id || print.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                title="View Full Document"
+                                            >
+                                                <EyeIcon className="w-3.5 h-3.5" />
+                                                <span>View</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Desktop Table View (hidden md:block) */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
@@ -1143,7 +1223,7 @@ const Mapping = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-2 opacity-90 sm:opacity-0 sm:group-hover/row:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => locateBarangay(print.barangay)}
                                                     className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-[#d4a574] transition-all cursor-pointer"

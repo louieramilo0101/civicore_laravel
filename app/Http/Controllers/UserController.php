@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 
 /**
@@ -301,11 +302,55 @@ class UserController extends Controller
         ]);
     }
 
-    // ─── Delete ───────────────────────────────────────────────────────────────
+    // ─── Status & Disable (Replaces Hard Deletion) ──────────────────────────
+
+    /**
+     * POST /api/users/{id}/toggle-status
+     * SuperAdmin only - disables or re-enables an account
+     */
+    public function toggleStatus(Request $request, $id)
+    {
+        $actor = $this->sessionUser($request);
+        if (!$actor) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
+        if ($actor->role !== 'SuperAdmin') {
+            return response()->json(['error' => 'Only SuperAdmins can change account status.'], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['error' => 'User not found.'], 404);
+        }
+
+        if ($actor->id == $user->id) {
+            return response()->json(['error' => 'You cannot disable your own administrative account.'], 400);
+        }
+
+        $newStatus = $request->has('is_active') ? (bool) $request->input('is_active') : !$user->is_active;
+        $user->is_active = $newStatus;
+        $user->save();
+
+        if (!$newStatus) {
+            try {
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+            } catch (\Throwable $e) {}
+        }
+
+        $statusText = $newStatus ? 'enabled' : 'disabled';
+
+        return response()->json([
+            'success'   => true,
+            'message'   => "Account has been {$statusText} successfully.",
+            'is_active' => $user->is_active,
+            'user'      => $this->formatUser($user)
+        ]);
+    }
 
     /**
      * DELETE /api/users/{id}
-     * Admin → any user | Staff/User → only self
+     * Admin → disable user (Preserves all historical logs, issuances, and documents)
      */
     public function destroy(Request $request, $id)
     {
@@ -323,9 +368,21 @@ class UserController extends Controller
             return response()->json(['error' => 'User not found.'], 404);
         }
 
-        $user->delete();
+        if ($actor->id == $user->id) {
+            return response()->json(['error' => 'You cannot disable your own administrative account.'], 400);
+        }
 
-        return response()->json(['success' => true, 'message' => 'Account deleted.']);
+        $user->is_active = false;
+        $user->save();
+
+        try {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Account has been disabled. Historical records remain intact.'
+        ]);
     }
 
     // ─── Format ───────────────────────────────────────────────────────────────
@@ -343,6 +400,8 @@ class UserController extends Controller
             'last_name'   => $user->last_name,
             'email'       => $user->email,
             'role'        => $user->role,
+            'is_active'   => (bool) ($user->is_active ?? true),
+            'status'      => ($user->is_active ?? true) ? 'Active' : 'Disabled',
             'avatar'      => $user->avatar ? 'data:image/png;base64,' . base64_encode($user->avatar) : null,
             'permissions' => $user->permissions ?? [],
             'created_at'  => $user->created_at,

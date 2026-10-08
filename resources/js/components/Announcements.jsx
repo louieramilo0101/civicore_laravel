@@ -266,15 +266,38 @@ export default function Announcements() {
 
                             <form onSubmit={handleSaveSettings} className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Detailed Operating Hours</label>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                                        <label className="block text-sm font-bold text-slate-700">Detailed Operating Hours</label>
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Click preset to quick-fill:</span>
+                                    </div>
+
+                                    {/* Quick Preset Buttons */}
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
+                                        {[
+                                            'Monday — Friday: 8:00 AM - 5:00 PM',
+                                            'Mon — Fri: 8:00 AM - 5:00 PM (Cut-off 4:30 PM)',
+                                            'Mon — Fri: 8:00 AM - 5:00 PM | Sat: 8:00 AM - 12:00 PM',
+                                            'Mon — Fri: 8:00 AM - 12:00 PM (Half-Day)'
+                                        ].map((preset) => (
+                                            <button
+                                                key={preset}
+                                                type="button"
+                                                onClick={() => setSettings({ ...settings, opening_hours: preset })}
+                                                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 border border-slate-200 transition-colors text-slate-600 cursor-pointer"
+                                            >
+                                                + {preset}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <input 
                                         type="text" 
                                         value={settings.opening_hours} 
                                         onChange={e => setSettings({...settings, opening_hours: e.target.value})}
                                         placeholder="e.g. Monday — Friday: 8:00 AM - 5:00 PM"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-colors text-slate-800 text-sm"
                                     />
-                                    <p className="text-xs text-slate-500 mt-2">This displays directly on the public Homeland and Contact Directories.</p>
+                                    <p className="text-xs text-slate-500 mt-2">This displays directly on the public Homepage and Contact Directories. You can pick a preset above or type any custom schedule.</p>
                                 </div>
 
                                 <div className="flex items-center gap-4">

@@ -20,6 +20,7 @@ import {
     CircleStackIcon
 } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader.jsx';
+import Pagination from './Pagination.jsx';
 
 const BARANGAY_LIST = [
     'Gomez-Zamora (Pob.)', 'Capt. C. Nazareno (Pob.)', 'Ibayo Silangan', 'Ibayo Estacion', 'Kanluran',
@@ -75,6 +76,9 @@ export default function Reports() {
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [downloadSuccess, setDownloadSuccess] = useState(false);
+    const [isStatsCollapsed, setIsStatsCollapsed] = useState(() => {
+        return typeof window !== 'undefined' && window.innerWidth < 768;
+    });
 
     // Fetch months that contain records for the selected data source
     useEffect(() => {
@@ -226,6 +230,22 @@ export default function Reports() {
         fetchPreviewData();
     }, [fetchPreviewData]);
 
+    // Pagination States
+    const [reportsPage, setReportsPage] = useState(1);
+    const [reportsPageSize, setReportsPageSize] = useState(10);
+
+    // Reset pagination when data source, filters, or date range changes
+    useEffect(() => {
+        setReportsPage(1);
+    }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, searchQuery]);
+
+    const totalReportsPages = Math.max(1, Math.ceil(previewRecords.length / reportsPageSize));
+    const safeReportsPage = Math.min(reportsPage, totalReportsPages);
+    const paginatedReports = previewRecords.slice(
+        (safeReportsPage - 1) * reportsPageSize,
+        safeReportsPage * reportsPageSize
+    );
+
     // Multi-type checklist toggle
     const toggleDocType = (typeKey) => {
         setSelectedDocTypes(prev => {
@@ -296,144 +316,201 @@ export default function Reports() {
     };
 
     return (
-        <div className="p-4 sm:p-8 space-y-8 max-w-[1400px] mx-auto pb-16">
+        <div className="p-3 sm:p-8 space-y-4 sm:space-y-8 max-w-[1400px] mx-auto pb-16">
             
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-widest mb-1">
                         <TableCellsIcon className="w-4 h-4" /> Data Analytics & Export Center
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
                         Civil Registry Reports & Data Export
                     </h1>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
                         Export official Master Registry records and Client Procured Issuances to CSV or Excel spreadsheets.
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button
                         onClick={fetchPreviewData}
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+                        className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95"
                     >
-                        <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh Preview
+                        <ArrowPathIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">Refresh Preview</span>
+                        <span className="sm:hidden">Refresh</span>
                     </button>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                             onClick={() => handleExport('csv')}
                             disabled={isExporting || totalCount === 0}
-                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <ArrowDownTrayIcon className={`w-4 h-4 ${isExporting && format === 'csv' ? 'animate-bounce' : ''}`} />
+                            <ArrowDownTrayIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isExporting && format === 'csv' ? 'animate-bounce' : ''}`} />
                             <span>Export CSV</span>
                         </button>
 
                         <button
                             onClick={() => handleExport('excel')}
                             disabled={isExporting || totalCount === 0}
-                            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-600/20 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <ArrowDownTrayIcon className={`w-4 h-4 ${isExporting && format === 'excel' ? 'animate-bounce' : ''}`} />
-                            <span>Export Excel (.xls)</span>
+                            <ArrowDownTrayIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isExporting && format === 'excel' ? 'animate-bounce' : ''}`} />
+                            <span>Export Excel</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Data Source Selector Tabs */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-1.5 border border-slate-200/80 shadow-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 w-full">
+            {/* Data Source Selector Tabs - 3 column responsive layout */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 border border-slate-200/80 shadow-xs">
+                <div className="grid grid-cols-3 gap-1 sm:gap-1.5 w-full">
                     <button
                         type="button"
                         onClick={() => setDataSource('internal')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'internal'
                                 ? 'bg-[#1a2f4a] text-white shadow-md shadow-slate-900/10'
                                 : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                     >
-                        <ArchiveBoxIcon className="w-4 h-4" />
-                        <span>Uploaded Documents</span>
+                        <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span className="hidden sm:inline">Uploaded Documents</span>
+                        <span className="sm:hidden truncate">Uploaded</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={() => setDataSource('procured')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'procured'
                                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                                 : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                     >
-                        <TicketIcon className="w-4 h-4" />
-                        <span>Client Procured Documents</span>
+                        <TicketIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span className="hidden sm:inline">Client Procured</span>
+                        <span className="sm:hidden truncate">Procured</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={() => setDataSource('all')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'all'
                                 ? 'bg-slate-900 text-white shadow-md'
                                 : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                     >
-                        <CircleStackIcon className="w-4 h-4" />
-                        <span>All Records (Combined)</span>
+                        <CircleStackIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span className="hidden sm:inline">All Records (Combined)</span>
+                        <span className="sm:hidden truncate">All Combined</span>
                     </button>
                 </div>
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                        <TableCellsIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-black text-slate-900">{totalCount}</div>
-                        <div className="text-xs font-semibold text-slate-500">
-                            {dataSource === 'procured' ? 'Procured Documents' : dataSource === 'internal' ? 'Uploaded Documents' : 'Total Records'}
+            {/* Quick Metrics Bar - Collapsible to preserve mobile space */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all">
+                {/* Header / Toggle Row */}
+                <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50/90 to-white border-b border-slate-100 gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                            <TableCellsIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs sm:text-sm font-black text-slate-800 tracking-tight truncate">
+                                Data Summary & Statistics
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+                                {totalCount} Records
+                            </span>
                         </div>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setIsStatsCollapsed(prev => !prev)}
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 text-xs font-bold"
+                        title={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
+                        aria-label={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
+                    >
+                        <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+                            {isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}
+                        </span>
+                        {isStatsCollapsed ? (
+                            <ChevronDownIcon className="w-4 h-4 text-slate-500" />
+                        ) : (
+                            <ChevronUpIcon className="w-4 h-4 text-slate-500" />
+                        )}
+                    </button>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-[#d4a574]">
-                        <UserIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-black text-slate-900">{typeCounts.birth}</div>
-                        <div className="text-xs font-semibold text-slate-500">Birth Certificates</div>
-                    </div>
-                </div>
+                {/* Collapsible Metrics Grid: 2 columns on mobile instead of 1 */}
+                <AnimatePresence initial={false}>
+                    {!isStatsCollapsed && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+                            <div className="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-slate-50/30">
+                                {/* Total Card */}
+                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                                        <TableCellsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{totalCount}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">
+                                            {dataSource === 'procured' ? 'Procured' : dataSource === 'internal' ? 'Uploaded' : 'Total'}
+                                        </div>
+                                    </div>
+                                </div>
 
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500">
-                        <DocumentTextIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-black text-slate-900">{typeCounts.death}</div>
-                        <div className="text-xs font-semibold text-slate-500">Death Certificates</div>
-                    </div>
-                </div>
+                                {/* Birth Card */}
+                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-[#d4a574] shrink-0">
+                                        <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.birth}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Birth Certs</div>
+                                    </div>
+                                </div>
 
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
-                        <UsersIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-black text-slate-900">{typeCounts.marriage}</div>
-                        <div className="text-xs font-semibold text-slate-500">Marriage Contracts</div>
-                    </div>
-                </div>
+                                {/* Death Card */}
+                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                                        <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.death}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Death Certs</div>
+                                    </div>
+                                </div>
+
+                                {/* Marriage Card */}
+                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                                        <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.marriage}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Marriage</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Main Report Configuration Card */}
-            <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6">
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-4 sm:space-y-6">
                 
                 {/* Top Quick Settings: Period Dropdown + Document Types Checklist */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100">
@@ -802,77 +879,92 @@ export default function Reports() {
                         <p className="text-xs text-slate-400 mt-1">Try selecting other months or adjust your document categories above</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/80 text-slate-400 text-[10px] uppercase tracking-widest border-b border-slate-100">
-                                    {dataSource === 'all' && (
-                                        <th className="px-4 py-3.5 font-black text-slate-500">Record Scope</th>
-                                    )}
-                                    <th className="px-6 py-3.5 font-black text-slate-500">ID / Reg No.</th>
-                                    <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
-                                    <th className="px-4 py-3.5 font-black text-slate-500">Category</th>
-                                    <th className="px-6 py-3.5 font-black text-slate-500">Person / Client Name</th>
-                                    <th className="px-4 py-3.5 font-black text-slate-500">
-                                        {dataSource === 'procured' ? 'Issuance Date' : 'Event Date'}
-                                    </th>
-                                    <th className="px-4 py-3.5 font-black text-slate-500">Barangay</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
-                                {previewRecords.map((doc) => {
-                                    const ef = typeof doc.extracted_fields === 'string' ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
-                                    const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
-                                    const ticketNo = doc.ticket_number || `T-2026-${String(doc.id).padStart(4, '0')}`;
-                                    const isProcured = doc._source === 'procured';
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/80 text-slate-400 text-[10px] uppercase tracking-widest border-b border-slate-100">
+                                        {dataSource === 'all' && (
+                                            <th className="px-4 py-3.5 font-black text-slate-500">Record Scope</th>
+                                        )}
+                                        <th className="px-6 py-3.5 font-black text-slate-500">ID / Reg No.</th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500">Category</th>
+                                        <th className="px-6 py-3.5 font-black text-slate-500">Person / Client Name</th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500">
+                                            {dataSource === 'procured' ? 'Issuance Date' : 'Event Date'}
+                                        </th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500">Barangay</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                                    {paginatedReports.map((doc) => {
+                                        const ef = typeof doc.extracted_fields === 'string' ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
+                                        const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
+                                        const ticketNo = doc.ticket_number || `T-2026-${String(doc.id).padStart(4, '0')}`;
+                                        const isProcured = doc._source === 'procured';
 
-                                    return (
-                                        <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 transition-colors">
-                                            {dataSource === 'all' && (
-                                                <td className="px-4 py-4">
-                                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                                                        isProcured
-                                                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                                                    }`}>
-                                                        {isProcured ? 'Procured' : 'Uploaded'}
+                                        return (
+                                            <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 transition-colors">
+                                                {dataSource === 'all' && (
+                                                    <td className="px-4 py-4">
+                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                                                            isProcured
+                                                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                                        }`}>
+                                                            {isProcured ? 'Procured' : 'Uploaded'}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                <td className="px-6 py-4 font-mono font-bold text-slate-900">
+                                                    #{doc.id} <span className="text-[11px] text-slate-400 block font-sans font-normal">{regNo}</span>
+                                                </td>
+                                                <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
+                                                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                                        {ticketNo}
                                                     </span>
                                                 </td>
-                                            )}
-                                            <td className="px-6 py-4 font-mono font-bold text-slate-900">
-                                                #{doc.id} <span className="text-[11px] text-slate-400 block font-sans font-normal">{regNo}</span>
-                                            </td>
-                                            <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
-                                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
-                                                    {ticketNo}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                {(() => {
-                                                    const t = (doc.type || '').toLowerCase();
-                                                    const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
-                                                    return (
-                                                        <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
-                                                            {doc.type || 'Birth'}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </td>
-                                            <td className="px-6 py-4 font-bold text-slate-900">
-                                                {doc.personName || doc.name || 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-4 text-slate-600">
-                                                {doc.issuanceDate || doc.date || 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-4 text-slate-600">
-                                                {doc.barangay || 'N/A'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                                <td className="px-4 py-4">
+                                                    {(() => {
+                                                        const t = (doc.type || '').toLowerCase();
+                                                        const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                        return (
+                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                {doc.type || 'Birth'}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="px-6 py-4 font-bold text-slate-900">
+                                                    {doc.personName || doc.name || 'N/A'}
+                                                </td>
+                                                <td className="px-4 py-4 text-slate-600">
+                                                    {doc.issuanceDate || doc.date || 'N/A'}
+                                                </td>
+                                                <td className="px-4 py-4 text-slate-600">
+                                                    {doc.barangay || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Report Records Pagination */}
+                        <Pagination
+                            currentPage={safeReportsPage}
+                            totalItems={previewRecords.length}
+                            pageSize={reportsPageSize}
+                            onPageChange={(p) => setReportsPage(p)}
+                            onPageSizeChange={(s) => {
+                                setReportsPageSize(s);
+                                setReportsPage(1);
+                            }}
+                            itemLabel="records"
+                        />
+                    </>
                 )}
             </div>
 

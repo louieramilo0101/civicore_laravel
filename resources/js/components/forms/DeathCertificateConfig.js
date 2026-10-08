@@ -188,8 +188,8 @@ export const DeathConfig = [
                 width: 'sm:col-span-1' 
             },
             { key: 'attendant_other', label: '21a. If Others, Specify', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'attendant_duration_from', label: '21b. Duration – From (mm/dd/yy)', type: 'text', required: false, width: 'sm:col-span-1' },
-            { key: 'attendant_duration_to', label: '21b. Duration – To (mm/dd/yy)', type: 'text', required: false, width: 'sm:col-span-1' },
+            { key: 'attendant_duration_from', label: '21b. Duration – From', type: 'date', required: false, width: 'sm:col-span-1' },
+            { key: 'attendant_duration_to', label: '21b. Duration – To', type: 'date', required: false, width: 'sm:col-span-1' },
         ]
     },
     { 

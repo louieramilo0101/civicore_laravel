@@ -20,8 +20,13 @@ class RequireSessionAuth
     public function handle(Request $request, Closure $next): Response
     {
         $userId = $request->session()->get('user_id');
-        
-        if (!$userId || !User::find($userId)) {
+        $user = $userId ? User::find($userId) : null;
+        if (!$userId || !$user || !$user->is_active) {
+            if ($user && !$user->is_active) {
+                $request->session()->forget('user_id');
+                $request->session()->invalidate();
+                return response()->json(['error' => 'This account has been disabled.'], 403);
+            }
             return response()->json(['error' => 'Unauthenticated.'], 401);
         }
 

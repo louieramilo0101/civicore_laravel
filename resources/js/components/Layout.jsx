@@ -10,7 +10,8 @@ import {
     MegaphoneIcon,
     TableCellsIcon,
     TicketIcon,
-    TrashIcon
+    TrashIcon,
+    CircleStackIcon
 } from '@heroicons/react/24/outline';
 import { useData } from './DataContext.jsx';
 import SaveToasts from './SaveToasts.jsx';
@@ -56,11 +57,12 @@ const Layout = ({ children }) => {
         { path: '/tickets', icon: TicketIcon, label: 'Tickets Queue', roles: ['SuperAdmin', 'Admin'] },
         { path: '/documents', icon: ArrowUpTrayIcon, label: 'Upload Document', roles: ['SuperAdmin', 'Admin'] },
         { path: '/reports', icon: TableCellsIcon, label: 'Export Reports', roles: ['SuperAdmin', 'Admin'] },
-        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Issuance', roles: ['SuperAdmin', 'Admin'] },
+        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
         { path: '/archive', icon: TrashIcon, label: 'Archive Manager', roles: ['SuperAdmin', 'Admin'] },
         { path: '/mapping', icon: MapPinIcon, label: 'Mapping', roles: ['SuperAdmin'] },
         { path: '/announcements', icon: MegaphoneIcon, label: 'Announcements', roles: ['SuperAdmin', 'Admin'] },
         { path: '/accounts', icon: UsersIcon, label: 'Account Management', roles: ['SuperAdmin', 'Admin'] },
+        { path: '/backups', icon: CircleStackIcon, label: 'Backup & Recovery', roles: ['SuperAdmin'] },
     ];
 
     const menuItems = allMenuItems.filter(item => item.roles.includes(user.role));

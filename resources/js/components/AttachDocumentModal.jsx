@@ -207,11 +207,11 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                 performSearch(ocrQuery, ticket?.purpose);
                                             }
                                         }}
-                                        className="w-full pl-11 pr-24 py-3.5 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold bg-slate-50/50 focus:bg-white transition-all shadow-sm"
+                                        className="w-full pl-11 pr-11 py-3.5 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold bg-slate-50/50 focus:bg-white transition-all shadow-sm"
                                         autoFocus
                                     />
-                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                        {ocrQuery && (
+                                    {ocrQuery && (
+                                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -223,11 +223,8 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                             >
                                                 <XMarkIcon className="w-4 h-4" />
                                             </button>
-                                        )}
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full select-none">
-                                            Live
-                                        </span>
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <button
                                     onClick={() => performSearch(ocrQuery, ticket?.purpose)}
@@ -239,15 +236,10 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                 </button>
                             </div>
 
-                            {/* Live Result Count Bar */}
-                            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-slate-400">
+                            {/* Result Count Bar */}
+                            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-slate-400 min-h-[16px]">
                                 <span>
-                                    {isSearchingOcr || ocrQuery !== debouncedQuery ? (
-                                        <span className="text-indigo-600 font-semibold flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping inline-block" />
-                                            Searching registry database...
-                                        </span>
-                                    ) : ocrQuery.trim() ? (
+                                    {isSearchingOcr || ocrQuery !== debouncedQuery ? null : ocrQuery.trim() ? (
                                         <span>
                                             Found <strong className="text-slate-700 font-black">{searchResults.length}</strong> record{searchResults.length === 1 ? '' : 's'} matching "{ocrQuery}"
                                         </span>

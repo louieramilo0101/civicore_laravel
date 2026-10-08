@@ -15,6 +15,7 @@ import { useModal } from './ModalContext.jsx';
 import { useData } from './DataContext.jsx';
 import CameraModal from './CameraModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
+import Pagination from './Pagination.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 import useDebounce from '../hooks/useDebounce.js';
 
@@ -1120,6 +1121,35 @@ const Documents = () => {
         return true;
     });
 
+    // Pagination States
+    const [queuePage, setQueuePage] = useState(1);
+    const [queuePageSize, setQueuePageSize] = useState(10);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPageSize, setHistoryPageSize] = useState(10);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setQueuePage(1);
+    }, [debouncedQueueSearch]);
+
+    useEffect(() => {
+        setHistoryPage(1);
+    }, [debouncedHistorySearch, historyFilters]);
+
+    const totalQueuePages = Math.max(1, Math.ceil(filteredQueue.length / queuePageSize));
+    const safeQueuePage = Math.min(queuePage, totalQueuePages);
+    const paginatedQueue = filteredQueue.slice(
+        (safeQueuePage - 1) * queuePageSize,
+        safeQueuePage * queuePageSize
+    );
+
+    const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / historyPageSize));
+    const safeHistoryPage = Math.min(historyPage, totalHistoryPages);
+    const paginatedHistory = filteredHistory.slice(
+        (safeHistoryPage - 1) * historyPageSize,
+        safeHistoryPage * historyPageSize
+    );
+
     // Extract unique staff and barangays for filters
     const staffList = [...new Set(historyFiles.map(f => f.encoded_by).filter(Boolean))];
     const barangayList = [...new Set(historyFiles.map(f => f.barangay).filter(Boolean))];
@@ -1359,7 +1389,8 @@ const Documents = () => {
                                         <p className="text-xs mt-1 max-w-[200px]">{queueSearch ? 'Adjust your search query' : 'Upload documents to begin processing'}</p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
+                                    <>
+                                        <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
                                         <table className="w-full text-left border-collapse table-auto">
                                             <thead>
                                                 <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
@@ -1378,7 +1409,7 @@ const Documents = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredQueue.map(file => (
+                                                {paginatedQueue.map(file => (
                                                     <tr key={file.id} className="hover:bg-slate-50/60 transition-colors">
                                                         {file.isDeleted ? (
                                                             <td colSpan="6" className="p-4 text-center">
@@ -1479,6 +1510,18 @@ const Documents = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                        <Pagination
+                                            currentPage={safeQueuePage}
+                                            totalItems={filteredQueue.length}
+                                            pageSize={queuePageSize}
+                                            onPageChange={(p) => setQueuePage(p)}
+                                            onPageSizeChange={(s) => {
+                                                setQueuePageSize(s);
+                                                setQueuePage(1);
+                                            }}
+                                            itemLabel="queue items"
+                                        />
+                                    </>
                                 )}
                             </>
                         ) : activeTab === 'history' ? (
@@ -1592,7 +1635,8 @@ const Documents = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto flex-1">
+                                    <>
+                                        <div className="overflow-x-auto flex-1">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
@@ -1604,7 +1648,7 @@ const Documents = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredHistory.map(file => {
+                                                {paginatedHistory.map(file => {
                                                     const dateObj = new Date(file.created_at);
                                                     return (
                                                         <tr key={file.id} className="hover:bg-slate-50/60 transition-colors group">
@@ -1683,6 +1727,18 @@ const Documents = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                        <Pagination
+                                            currentPage={safeHistoryPage}
+                                            totalItems={filteredHistory.length}
+                                            pageSize={historyPageSize}
+                                            onPageChange={(p) => setHistoryPage(p)}
+                                            onPageSizeChange={(s) => {
+                                                setHistoryPageSize(s);
+                                                setHistoryPage(1);
+                                            }}
+                                            itemLabel="processed records"
+                                        />
+                                    </>
                                 )}
                             </>
                         ) : null}

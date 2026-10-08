@@ -12,6 +12,7 @@ import {
     PhotoIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { Html5Qrcode } from 'html5-qrcode';
 
 /** Scans a ticket QR code and returns the selected request to the caller. */
 export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) {
@@ -69,17 +70,34 @@ export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) 
                 img.onerror = reject;
             });
 
+            let decodedResult = null;
+
             if ('BarcodeDetector' in window) {
                 try {
                     const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
                     const barcodes = await detector.detect(img);
-                    if (barcodes.length > 0) {
-                        await handleTicketLookup(barcodes[0].rawValue);
-                        return;
+                    if (barcodes.length > 0 && barcodes[0].rawValue) {
+                        decodedResult = barcodes[0].rawValue;
                     }
                 } catch (e) {
                     console.warn('BarcodeDetector error:', e);
                 }
+            }
+
+            // High-reliability offline QR decode using Html5Qrcode
+            if (!decodedResult) {
+                try {
+                    const html5QrCode = new Html5Qrcode('ticket-scanner-qr-hidden-host');
+                    decodedResult = await html5QrCode.scanFile(file, false);
+                    await html5QrCode.clear();
+                } catch (qrErr) {
+                    console.warn('Html5Qrcode scanFile error:', qrErr);
+                }
+            }
+
+            if (decodedResult) {
+                await handleTicketLookup(decodedResult);
+                return;
             }
 
             // Fallback lookup by filename regex (e.g. T-2026-0001) or regex pattern
@@ -168,6 +186,9 @@ export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) 
 
     return (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 text-slate-900">
+            {/* Hidden DOM element required by Html5Qrcode file scan engine */}
+            <div id="ticket-scanner-qr-hidden-host" className="hidden" />
+
             {/* Native device camera trigger (works offline without WebRTC/HTTPS) */}
             <input
                 type="file"

@@ -18,6 +18,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\BackupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -167,7 +168,13 @@ Route::middleware('web')->group(function () {
                 Route::post('/users',                       [UserController::class, 'store']);
                 Route::post('/create-account',              [UserController::class, 'createAccount']);
                 Route::put('/users/{id}',                   [UserController::class, 'update']);
+                Route::post('/users/{id}/toggle-status',     [UserController::class, 'toggleStatus']);
                 Route::delete('/users/{id}',                [UserController::class, 'destroy']);
+
+                // System Backup & Disaster Recovery (SuperAdmin Only - No download endpoints)
+                Route::get('/backups',                      [BackupController::class, 'index']);
+                Route::post('/backups',                     [BackupController::class, 'store']);
+                Route::post('/backups/restore',             [BackupController::class, 'restore']);
 
             });
         });

@@ -18,6 +18,7 @@ import OcrFormPanel from './OcrFormPanel.jsx';
 import PasswordConfirmModal from './PasswordConfirmModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
 import CameraModal from './CameraModal.jsx';
+import Pagination from './Pagination.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 import axios from 'axios';
 
@@ -142,6 +143,7 @@ const Issuances = () => {
     const [historyUserFilter, setHistoryUserFilter] = useState('all');
     const [historyStartDate, setHistoryStartDate] = useState('');
     const [historyEndDate, setHistoryEndDate] = useState('');
+    const [showAdvancedLogsFilter, setShowAdvancedLogsFilter] = useState(false);
 
     // Confirmation State
     const [confirmAction, setConfirmAction] = useState({
@@ -746,18 +748,48 @@ const Issuances = () => {
         return matchesSearch && matchesAction && matchesUser && matchesDate;
     });
 
+    // Pagination States
+    const [databasePage, setDatabasePage] = useState(1);
+    const [databasePageSize, setDatabasePageSize] = useState(10);
+    const [logsPage, setLogsPage] = useState(1);
+    const [logsPageSize, setLogsPageSize] = useState(10);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setDatabasePage(1);
+    }, [selectedType, selectedBarangay, selectedEncoder, searchTerm]);
+
+    useEffect(() => {
+        setLogsPage(1);
+    }, [historySearch, historyActionFilter, historyUserFilter, historyStartDate, historyEndDate]);
+
+    const totalDatabasePages = Math.max(1, Math.ceil(filteredCertificates.length / databasePageSize));
+    const safeDatabasePage = Math.min(databasePage, totalDatabasePages);
+    const paginatedCertificates = filteredCertificates.slice(
+        (safeDatabasePage - 1) * databasePageSize,
+        safeDatabasePage * databasePageSize
+    );
+
+    const totalLogsPages = Math.max(1, Math.ceil(filteredLogs.length / logsPageSize));
+    const safeLogsPage = Math.min(logsPage, totalLogsPages);
+    const paginatedLogs = filteredLogs.slice(
+        (safeLogsPage - 1) * logsPageSize,
+        safeLogsPage * logsPageSize
+    );
+
     const resetFilters = () => {
         setSelectedType('all');
         setSelectedBarangay('all');
         setSelectedEncoder('all');
         setSearchTerm('');
+        setDatabasePage(1);
     };
 
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
     return (
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6 max-w-7xl mx-auto">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3.5 sm:space-y-6 max-w-7xl mx-auto">
             {/* Confirmation Modals */}
             <PasswordConfirmModal
                 isOpen={passwordModal.isOpen}
@@ -1029,17 +1061,17 @@ const Issuances = () => {
             {/* ── Issuance Dashboard Panel (Overview / Per Category / Top Issued) ────────────────── */}
             <motion.div variants={itemVariants} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80 overflow-hidden">
                 {/* Dashboard Tab Header */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-100 flex-wrap gap-3 bg-gradient-to-r from-slate-50/80 to-white">
-                    <div className="flex items-center gap-4 flex-wrap">
-                        <div className="flex items-center gap-2 pr-4 border-r border-slate-200/80 hidden sm:flex">
+                <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white gap-2">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 pr-3 border-r border-slate-200/80 hidden md:flex shrink-0">
                             <ChartBarIcon className="w-5 h-5 text-[#d4a574]" />
                             <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Analytics & Stats</span>
                         </div>
-                        <div className="flex space-x-1 overflow-x-auto">
+                        <div className="grid grid-cols-3 gap-1 w-full sm:flex sm:w-auto">
                             {[
                                 { key: 'overview', label: 'Overview', Icon: ChartBarIcon },
-                                { key: 'categories', label: 'Per Category', Icon: PresentationChartLineIcon },
-                                { key: 'top', label: 'Top Issued', Icon: TrophyIcon },
+                                { key: 'categories', label: 'Categories', Icon: PresentationChartLineIcon },
+                                { key: 'top', label: 'Top Records', Icon: TrophyIcon },
                             ].map(tab => (
                                 <button
                                     key={tab.key}
@@ -1047,48 +1079,40 @@ const Issuances = () => {
                                         setDashboardTab(tab.key);
                                         if (isAnalyticsCollapsed) setIsAnalyticsCollapsed(false);
                                     }}
-                                    className={`flex items-center gap-2 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${
+                                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${
                                         dashboardTab === tab.key && !isAnalyticsCollapsed
-                                            ? 'bg-slate-900 text-[#d4a574] shadow-sm'
+                                            ? 'bg-slate-900 text-[#d4a574] shadow-xs'
                                             : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                                     }`}
                                 >
-                                    <tab.Icon className="w-4 h-4" />
-                                    {tab.label}
+                                    <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 hidden sm:inline-block" />
+                                    <span className="truncate">{tab.label}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center shrink-0">
                         <button
                             type="button"
                             onClick={() => setIsAnalyticsCollapsed(prev => !prev)}
-                            className="p-2.5 rounded-xl bg-slate-900/10 hover:bg-slate-900 text-[#d4a574] hover:text-white transition-all cursor-pointer border border-[#d4a574]/30 hover:border-slate-900 shadow-sm active:scale-95 group/retract"
-                            title={isAnalyticsCollapsed ? "Expand Overview Analytics" : "Retract Overview Analytics"}
+                            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                            title={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
+                            aria-label={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
                         >
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">
+                                {isAnalyticsCollapsed ? 'Show Stats' : 'Hide Stats'}
+                            </span>
                             {isAnalyticsCollapsed ? (
-                                <ChevronDownIcon className="w-5 h-5 text-[#d4a574] group-hover/retract:text-white transition-colors" />
+                                <ChevronDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
                             ) : (
-                                <ChevronUpIcon className="w-5 h-5 text-[#d4a574] group-hover/retract:text-white transition-colors" />
+                                <ChevronUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
                             )}
                         </button>
                     </div>
                 </div>
 
                 <AnimatePresence initial={false}>
-                    {isAnalyticsCollapsed && (
-                        <div
-                            onClick={() => setIsAnalyticsCollapsed(false)}
-                            className="px-6 py-3 bg-amber-50/60 border-b border-amber-100 text-amber-800 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100/60 transition-colors"
-                        >
-                            <span className="flex items-center gap-2">
-                                <ChartBarIcon className="w-4 h-4 text-amber-600" />
-                                Category & Issuance Overview is retracted.
-                            </span>
-                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 underline">Click to Expand Stats & Overview</span>
-                        </div>
-                    )}
                     {!isAnalyticsCollapsed && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
@@ -1110,7 +1134,7 @@ const Issuances = () => {
                                     <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-white/5 rounded-full" />
                                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Master Database</p>
                                     <h3 className="text-4xl font-black text-white tracking-tighter">{certificates.length}</h3>
-                                    <p className="text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Issuances</p>
+                                    <p className="text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
                                     <div className="absolute bottom-4 right-4 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
                                         <DocumentMinusIcon className="w-5 h-5 text-slate-400" />
                                     </div>
@@ -1304,7 +1328,7 @@ const Issuances = () => {
                         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Left: Top 5 Barangays */}
                             <div>
-                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Top 5 Barangays by Issuances</h4>
+                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
                                 {top5.length === 0 ? (
                                     <div className="text-center text-slate-400 py-8">
                                         <p className="text-sm font-semibold">No barangay data available</p>
@@ -1396,20 +1420,20 @@ const Issuances = () => {
             </motion.div>
 
             {/* ── Main Section Tab Bar ──────────────────────────────────────────────── */}
-            <motion.div variants={itemVariants} className="flex space-x-1 bg-slate-100 p-1.5 rounded-xl w-fit">
-                <button onClick={() => setActiveTab('database')} className={`px-6 py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer ${activeTab === 'database' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Master Database</button>
-                <button onClick={() => setActiveTab('history')} className={`px-6 py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Activity Log History</button>
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-1 bg-slate-100 p-1.5 rounded-xl w-full sm:w-fit sm:flex sm:space-x-1">
+                <button onClick={() => setActiveTab('database')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'database' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Master Database</button>
+                <button onClick={() => setActiveTab('history')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'history' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Activity Log History</button>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden min-h-[500px]">
+            <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden">
                 {activeTab === 'database' ? (
                     <>
-                        <div className="p-6 border-b border-slate-100 bg-slate-50/30 space-y-4">
-                            <div className="flex flex-col lg:flex-row justify-between gap-4">
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 bg-slate-50/30 space-y-3 sm:space-y-4">
+                            <div className="flex flex-col lg:flex-row justify-between gap-3 sm:gap-4">
                                 <div className="relative max-w-md w-full flex items-center gap-2">
                                     <div className="relative flex-1">
-                                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                        <input type="text" placeholder="Search by Cert No, Name or Barangay..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] sm:text-sm transition-all shadow-sm" />
+                                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <input type="text" placeholder="Search by Cert No, Name or Barangay..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] text-xs sm:text-sm transition-all shadow-xs" />
                                     </div>
                                     <button
                                         onClick={() => {
@@ -1417,62 +1441,65 @@ const Issuances = () => {
                                             setIsScanSearchOpen(true);
                                         }}
                                         title="Scan Document to Search (Camera/OCR)"
-                                        className="p-2.5 bg-slate-100 hover:bg-[#d4a574]/20 text-slate-600 hover:text-[#d4a574] border border-slate-200 rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                                        className="p-2 bg-slate-100 hover:bg-[#d4a574]/20 text-slate-600 hover:text-[#d4a574] border border-slate-200 rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs flex items-center justify-center shrink-0"
                                     >
-                                        <CameraIcon className="w-5 h-5" />
+                                        <CameraIcon className="w-4 h-4" />
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     {(selectedType !== 'all' || selectedBarangay !== 'all' || selectedEncoder !== 'all' || searchTerm !== '') && (
                                         <button
                                             onClick={resetFilters}
-                                            className="px-4 py-2 text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 border border-rose-100 rounded-xl transition-all cursor-pointer flex items-center gap-2 group"
+                                            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 border border-rose-100 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 group shrink-0"
                                         >
-                                            <XMarkIcon className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+                                            <XMarkIcon className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
                                             Reset Filters
                                         </button>
                                     )}
-                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                    <div className="grid grid-cols-4 sm:flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
                                         {['all', 'birth', 'death', 'marriage'].map(type => (
-                                            <button key={type} onClick={() => setSelectedType(type)} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${selectedType === type ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{type}</button>
+                                            <button key={type} onClick={() => setSelectedType(type)} className={`px-2 sm:px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${selectedType === type ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{type}</button>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-slate-100/50">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Barangay</label>
-                                    <select
-                                        value={selectedBarangay}
-                                        onChange={(e) => setSelectedBarangay(e.target.value)}
-                                        className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block p-2 cursor-pointer transition-all outline-none"
-                                    >
-                                        <option value="all">All Barangays</option>
-                                        {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
-                                    </select>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-slate-100/60">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline">Barangay</label>
+                                        <select
+                                            value={selectedBarangay}
+                                            onChange={(e) => setSelectedBarangay(e.target.value)}
+                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                        >
+                                            <option value="all">All Barangays</option>
+                                            {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline">Encoder</label>
+                                        <select
+                                            value={selectedEncoder}
+                                            onChange={(e) => setSelectedEncoder(e.target.value)}
+                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                        >
+                                            <option value="all">All Encoders</option>
+                                            {uniqueEncoders.map(enc => <option key={enc} value={enc}>{enc}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Barangay</label>
-                                    <select
-                                        value={selectedBarangay}
-                                        onChange={(e) => setSelectedBarangay(e.target.value)}
-                                        className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block p-2 cursor-pointer transition-all outline-none"
-                                    >
-                                        <option value="all">All Barangays</option>
-                                        {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="ml-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                     Showing {filteredCertificates.length} of {certificates.length} Records
                                 </div>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* Desktop View: Full Table (Hidden on small mobile screens) */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-200">
@@ -1497,7 +1524,7 @@ const Issuances = () => {
                                     ) : filteredCertificates.length === 0 ? (
                                         <tr><td colSpan="6" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
                                     ) : (
-                                        filteredCertificates.map((cert) => (
+                                        paginatedCertificates.map((cert) => (
                                             <tr key={cert.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.includes(cert.id) ? 'bg-indigo-50/30' : ''}`}>
                                                 <td className="p-4 pl-6">
                                                     <input
@@ -1545,67 +1572,145 @@ const Issuances = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Mobile View: Clean Card List (Zero side-scrolling, 100% width) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {isLoading ? (
+                                <div className="p-4"><SkeletonLoader type="table" rows={4} /></div>
+                            ) : filteredCertificates.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400">
+                                    <DocumentMinusIcon className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                                    <p className="font-semibold text-xs">No records found in database</p>
+                                </div>
+                            ) : (
+                                paginatedCertificates.map((cert) => {
+                                    const t = (cert.type || '').toLowerCase();
+                                    const colorClass = t === 'birth' 
+                                        ? 'bg-[#d4a574]/10 text-[#d4a574] border-[#d4a574]/30' 
+                                        : t === 'death' 
+                                            ? 'bg-rose-50 text-rose-600 border-rose-200' 
+                                            : 'bg-indigo-50 text-indigo-600 border-indigo-200';
+
+                                    return (
+                                        <div
+                                            key={cert.id}
+                                            className={`p-3 sm:p-4 transition-colors space-y-1.5 sm:space-y-2 ${selectedIds.includes(cert.id) ? 'bg-indigo-50/40' : 'bg-white hover:bg-slate-50/60'}`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                                        checked={selectedIds.includes(cert.id)}
+                                                        onChange={() => toggleSelect(cert.id)}
+                                                    />
+                                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${colorClass}`}>
+                                                        {cert.type}
+                                                    </span>
+                                                    <span className="font-mono font-bold text-xs text-slate-800 truncate">
+                                                        {cert.number}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        onClick={() => handleAction('View', cert)}
+                                                        title="View Document"
+                                                        className="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-200 cursor-pointer shadow-xs active:scale-95"
+                                                    >
+                                                        <EyeIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(cert)}
+                                                        title="Delete Record"
+                                                        className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-200 cursor-pointer shadow-xs active:scale-95"
+                                                    >
+                                                        <TrashIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="pl-5.5 flex flex-col gap-0.5">
+                                                <p className="font-bold text-xs sm:text-sm text-slate-800 leading-tight">{cert.name}</p>
+                                                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                    <span>📍</span>
+                                                    <span>{cert.barangay}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Database Pagination */}
+                        <Pagination
+                            currentPage={safeDatabasePage}
+                            totalItems={filteredCertificates.length}
+                            pageSize={databasePageSize}
+                            onPageChange={(p) => setDatabasePage(p)}
+                            onPageSizeChange={(s) => {
+                                setDatabasePageSize(s);
+                                setDatabasePage(1);
+                            }}
+                            itemLabel="certificates"
+                        />
                     </>
                 ) : (
                     <div className="p-0">
-                        <div className="p-6 border-b border-slate-100 bg-slate-50/10">
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 bg-slate-50/10">
                             {/* Top Row: Title & Action */}
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                <div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shadow-sm">
-                                            <ClockIcon className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-slate-800 tracking-tight leading-none">Activity & Audit Trail</h3>
-                                            <p className="text-[11px] text-slate-400 mt-1 font-bold uppercase tracking-wider">Tracking all system events and modifications</p>
-                                        </div>
+                            <div className="flex justify-between items-center gap-3 mb-3 sm:mb-6">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shadow-xs shrink-0">
+                                        <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 tracking-tight leading-tight truncate">Activity & Audit Trail</h3>
+                                        <p className="hidden sm:block text-[11px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Tracking all system events and modifications</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-slate-100/50 px-3 py-1.5 rounded-xl border border-slate-200/50">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tabular-nums italic">
-                                            {filteredLogs.length} of {activityLogs.length} Entries
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className="bg-slate-100/60 px-2.5 py-1 rounded-lg border border-slate-200/50">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tabular-nums">
+                                            {filteredLogs.length} Entries
                                         </span>
                                     </div>
                                     <button
                                         onClick={fetchActivityLogs}
                                         disabled={logsLoading}
-                                        className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 px-4 py-2 bg-white hover:bg-indigo-50 rounded-xl border border-slate-200 hover:border-indigo-100 transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap group"
+                                        className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5"
+                                        title="Refresh Log"
                                     >
-                                        <ArrowPathIcon className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${logsLoading ? 'animate-spin' : ''}`} />
-                                        Refresh Log
+                                        <ArrowPathIcon className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
+                                        <span className="hidden sm:inline">Refresh</span>
                                     </button>
                                 </div>
                             </div>
 
                             {/* Filter Row: Search & Dropdowns */}
-                            <div className="space-y-4 pt-6 border-t border-slate-200/50">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
-                                    {/* Search Field */}
-                                    <div className="lg:col-span-4 space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Search Details</label>
-                                        <div className="relative">
-                                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="Recipient name, action, or comment..."
-                                                value={historySearch}
-                                                onChange={(e) => setHistorySearch(e.target.value)}
-                                                className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none"
-                                            />
-                                        </div>
+                            <div className="space-y-2.5 sm:space-y-3 pt-3 sm:pt-4 border-t border-slate-200/50">
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3 items-center">
+                                    {/* Search Field (Always visible) */}
+                                    <div className="sm:col-span-6 lg:col-span-5 relative">
+                                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Recipient name, action, or details..."
+                                            value={historySearch}
+                                            onChange={(e) => setHistorySearch(e.target.value)}
+                                            className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
                                     </div>
 
-                                    {/* Action Type */}
-                                    <div className="lg:col-span-2 space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Action Type</label>
+                                    {/* Action Type & Advanced Filter Toggle */}
+                                    <div className="sm:col-span-6 lg:col-span-7 flex items-center gap-2">
                                         <select
                                             value={historyActionFilter}
                                             onChange={(e) => setHistoryActionFilter(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 block p-2.5 cursor-pointer transition-all outline-none"
+                                            className="flex-1 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-2 px-2.5 cursor-pointer transition-all outline-none"
                                         >
-                                            <option value="all">Any Action</option>
+                                            <option value="all">All Actions</option>
                                             <option value="Printed">Printed</option>
                                             <option value="Downloaded">Downloaded</option>
                                             <option value="Edited">Edited</option>
@@ -1615,47 +1720,81 @@ const Issuances = () => {
                                             <option value="Deleted (Bulk)">Deleted (Bulk)</option>
                                             <option value="Issued (Bulk)">Issued (Bulk)</option>
                                         </select>
-                                    </div>
 
-                                    {/* Staff Selection */}
-                                    <div className="lg:col-span-2 space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Encoder / Staff</label>
-                                        <select
-                                            value={historyUserFilter}
-                                            onChange={(e) => setHistoryUserFilter(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 block p-2.5 cursor-pointer transition-all outline-none"
+                                        {/* Advanced Filters Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdvancedLogsFilter(prev => !prev)}
+                                            className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                                                showAdvancedLogsFilter || historyUserFilter !== 'all' || historyStartDate || historyEndDate
+                                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-extrabold'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                            title="Toggle advanced filters (Staff, Date Range)"
                                         >
-                                            <option value="all">Any Staff member</option>
-                                            {uniqueEncoders.map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-
-                                    {/* Date Range Fields */}
-                                    <div className="lg:col-span-4 grid grid-cols-2 gap-2 space-y-0">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">From Date</label>
-                                            <input
-                                                type="date"
-                                                value={historyStartDate}
-                                                onChange={(e) => setHistoryStartDate(e.target.value)}
-                                                className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl p-2.5 outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">To Date</label>
-                                            <input
-                                                type="date"
-                                                value={historyEndDate}
-                                                onChange={(e) => setHistoryEndDate(e.target.value)}
-                                                className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl p-2.5 outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                            />
-                                        </div>
+                                            <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
+                                            <span className="text-[11px]">Advanced</span>
+                                            <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedLogsFilter ? 'rotate-180' : ''}`} />
+                                            {(historyUserFilter !== 'all' || historyStartDate || historyEndDate) && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0"></span>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
 
+                                {/* Collapsible Advanced Filters Section: Staff & Date Range */}
+                                <AnimatePresence initial={false}>
+                                    {showAdvancedLogsFilter && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden pt-1"
+                                        >
+                                            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                                                {/* Staff Selection */}
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">Encoder / Staff</label>
+                                                    <select
+                                                        value={historyUserFilter}
+                                                        onChange={(e) => setHistoryUserFilter(e.target.value)}
+                                                        className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none"
+                                                    >
+                                                        <option value="all">Any Staff member</option>
+                                                        {uniqueEncoders.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                {/* Date Range Fields */}
+                                                <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">From Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={historyStartDate}
+                                                            onChange={(e) => setHistoryStartDate(e.target.value)}
+                                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">To Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={historyEndDate}
+                                                            onChange={(e) => setHistoryEndDate(e.target.value)}
+                                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
                                 {/* Active Filters & Clear */}
                                 {(historySearch || historyActionFilter !== 'all' || historyUserFilter !== 'all' || historyStartDate || historyEndDate) && (
-                                    <div className="flex items-center justify-between bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50 animate-in fade-in slide-in-from-top-1">
+                                    <div className="flex items-center justify-between bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50 animate-in fade-in">
                                         <p className="text-[10px] font-bold text-indigo-600 pl-2">Filtering results...</p>
                                         <button
                                             onClick={() => {
@@ -1665,7 +1804,7 @@ const Issuances = () => {
                                                 setHistoryStartDate('');
                                                 setHistoryEndDate('');
                                             }}
-                                            className="text-[10px] font-black text-rose-500 hover:text-white hover:bg-rose-500 px-3 py-1.5 rounded-lg border border-rose-200 hover:border-rose-500 uppercase tracking-widest transition-all glass-effect cursor-pointer"
+                                            className="text-[10px] font-black text-rose-500 hover:text-white hover:bg-rose-500 px-2.5 py-1 rounded-lg border border-rose-200 hover:border-rose-500 uppercase tracking-widest transition-all cursor-pointer"
                                         >
                                             Clear All Filters
                                         </button>
@@ -1683,54 +1822,105 @@ const Issuances = () => {
                                 <p className="text-xs mt-1">Actions like Print, Download, and Edit will appear here.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-100">
-                                            <th className="p-4 pl-8">Timestamp</th>
-                                            <th className="p-4">Encoder</th>
-                                            <th className="p-4">Action</th>
-                                            <th className="p-4">Record Info</th>
-                                            <th className="p-4 pr-8">Log Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {filteredLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
-                                                <td className="p-4 pl-8 font-bold text-slate-400 text-[10px] tabular-nums tracking-tighter">
-                                                    {new Date(log.created_at).toLocaleString()}
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="text-xs font-black text-slate-700 uppercase tracking-tight bg-slate-100 px-2 py-0.5 rounded">
-                                                        {log.user_name}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${log.action?.includes('Edit') ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                        log.action?.includes('Delete') ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                            log.action?.includes('Print') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                'bg-indigo-50 text-indigo-600 border-indigo-100'
-                                                        }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${log.action?.includes('Edit') ? 'bg-amber-500' :
-                                                            log.action?.includes('Delete') ? 'bg-rose-500' :
-                                                                log.action?.includes('Print') ? 'bg-emerald-500' : 'bg-indigo-500'
-                                                            }`}></span>
-                                                        {log.action}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="text-[10px] font-bold text-slate-500 font-mono">
-                                                        {log.record_type} #{log.record_id}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 pr-8 text-xs font-medium text-slate-600 italic">
-                                                    {log.details}
-                                                </td>
+                            <>
+                                {/* Desktop Table View */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-100">
+                                                <th className="p-4 pl-8">Timestamp</th>
+                                                <th className="p-4">Encoder</th>
+                                                <th className="p-4">Action</th>
+                                                <th className="p-4">Record Info</th>
+                                                <th className="p-4 pr-8">Log Details</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {paginatedLogs.map((log) => (
+                                                <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
+                                                    <td className="p-4 pl-8 font-bold text-slate-400 text-[10px] tabular-nums tracking-tighter">
+                                                        {new Date(log.created_at).toLocaleString()}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="text-xs font-black text-slate-700 uppercase tracking-tight bg-slate-100 px-2 py-0.5 rounded">
+                                                            {log.user_name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${log.action?.includes('Edit') ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                            log.action?.includes('Delete') ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                                                log.action?.includes('Print') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                    'bg-indigo-50 text-indigo-600 border-indigo-100'
+                                                            }`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${log.action?.includes('Edit') ? 'bg-amber-500' :
+                                                                log.action?.includes('Delete') ? 'bg-rose-500' :
+                                                                    log.action?.includes('Print') ? 'bg-emerald-500' : 'bg-indigo-500'
+                                                                }`}></span>
+                                                            {log.action}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="text-[10px] font-bold text-slate-500 font-mono">
+                                                            {log.record_type} #{log.record_id}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 pr-8 text-xs font-medium text-slate-600 italic">
+                                                        {log.details}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Card View */}
+                                <div className="md:hidden divide-y divide-slate-100">
+                                    {paginatedLogs.map((log) => (
+                                        <div key={log.id} className="p-4 space-y-2 bg-white">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${log.action?.includes('Edit') ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                    log.action?.includes('Delete') ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                                        log.action?.includes('Print') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                            'bg-indigo-50 text-indigo-600 border-indigo-100'
+                                                    }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${log.action?.includes('Edit') ? 'bg-amber-500' :
+                                                        log.action?.includes('Delete') ? 'bg-rose-500' :
+                                                            log.action?.includes('Print') ? 'bg-emerald-500' : 'bg-indigo-500'
+                                                        }`}></span>
+                                                    {log.action}
+                                                </span>
+                                                <span className="font-bold text-slate-400 text-[10px] tabular-nums">
+                                                    {new Date(log.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                                    {log.user_name}
+                                                </span>
+                                                <span className="font-mono text-slate-500 text-[11px]">
+                                                    {log.record_type} #{log.record_id}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 font-medium italic">
+                                                {log.details}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Audit Logs Pagination */}
+                                <Pagination
+                                    currentPage={safeLogsPage}
+                                    totalItems={filteredLogs.length}
+                                    pageSize={logsPageSize}
+                                    onPageChange={(p) => setLogsPage(p)}
+                                    onPageSizeChange={(s) => {
+                                        setLogsPageSize(s);
+                                        setLogsPage(1);
+                                    }}
+                                    itemLabel="audit logs"
+                                />
+                            </>
                         )}
                     </div>
                 )}

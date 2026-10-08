@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    DocumentCheckIcon, XMarkIcon,
+    DocumentCheckIcon, XMarkIcon, CheckCircleIcon,
     ExclamationTriangleIcon, ShieldExclamationIcon,
     CloudArrowUpIcon, SparklesIcon, ArrowPathIcon,
     PencilSquareIcon, DocumentPlusIcon, DocumentTextIcon,
     PhotoIcon, CameraIcon, TrashIcon, ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 import CameraModal from './CameraModal.jsx';
+import ImagePostFxModal from './ImagePostFxModal.jsx';
 import { useData } from './DataContext.jsx';
 import SignaturePad from './SignaturePad.jsx';
 
@@ -164,6 +165,41 @@ const FIELD_CONFIG = {
 };
 
 
+/** Standardizes dates to YYYY-MM-DD using local calendar date methods (avoids timezone date shifts). */
+const normalizeDateToYMD = (val) => {
+    if (!val || typeof val !== 'string' && typeof val !== 'number') return '';
+    const str = String(val).trim();
+    if (!str || str.toLowerCase() === 'n/a' || str.toLowerCase() === 'not applicable' || str === 'Select...') return '';
+    
+    // Direct match: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    
+    // Starts with YYYY-MM-DD (e.g. ISO or SQL timestamp)
+    const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoMatch) return isoMatch[1];
+
+    // Format: MM/DD/YYYY or M/D/YYYY
+    const slashMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (slashMatch) {
+        const m = String(slashMatch[1]).padStart(2, '0');
+        const d = String(slashMatch[2]).padStart(2, '0');
+        const y = slashMatch[3];
+        return `${y}-${m}-${d}`;
+    }
+
+    // Try Date parsing, using local getters
+    const parsed = new Date(str.replace(/,/g, ' '));
+    if (!isNaN(parsed.getTime())) {
+        const y = parsed.getFullYear();
+        if (y >= 1900 && y <= 2100) {
+            const m = String(parsed.getMonth() + 1).padStart(2, '0');
+            const d = String(parsed.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+    }
+    return '';
+};
+
 /** Merges OCR output and file metadata into editable form state. */
 const getInitialFormData = (type, ocrFields, fileObj) => {
     let ef = ocrFields || {};
@@ -178,16 +214,7 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
         section.fields.forEach(f => {
             let val = ef[f.key] === undefined || ef[f.key] === null ? '' : String(ef[f.key]).trim();
             if (f.type === 'date') {
-                if (val && val.toLowerCase() !== 'n/a' && val.toLowerCase() !== 'not applicable') {
-                    const d = new Date(val.replace(/[^0-9a-zA-Z/-]/g, ' '));
-                    if (!isNaN(d.getTime())) {
-                        val = d.toISOString().split('T')[0];
-                    } else {
-                        val = '';
-                    }
-                } else {
-                    val = '';
-                }
+                val = normalizeDateToYMD(val);
             } else if (f.key === 'barangay' && val) {
                 // Fuzzy match barangay to the exact options available
                 val = findClosestBarangay(val);
@@ -248,6 +275,72 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
         }
     }
 
+    // Auto-compose date_of_birth from dob_day, dob_month, dob_year if not directly set
+    const monthMap = { 'January':'01','February':'02','March':'03','April':'04','May':'05','June':'06','July':'07','August':'08','September':'09','October':'10','November':'11','December':'12' };
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    if (!init.date_of_birth && (init.dob_year || ef.dob_year)) {
+        const yr = init.dob_year || ef.dob_year;
+        const mo = init.dob_month || ef.dob_month;
+        const dy = init.dob_day || ef.dob_day;
+        if (yr && mo && dy && monthMap[mo]) {
+            init.date_of_birth = `${yr}-${monthMap[mo]}-${String(dy).padStart(2, '0')}`;
+        }
+    } else if (init.date_of_birth && (!init.dob_day || !init.dob_month || !init.dob_year)) {
+        const parts = String(init.date_of_birth).split('-');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const mIdx = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            if (MONTH_NAMES[mIdx]) {
+                init.dob_day = d;
+                init.dob_month = MONTH_NAMES[mIdx];
+                init.dob_year = y;
+            }
+        }
+    }
+
+    // Auto-compose marriage_parents_date from marriage_parents_day, marriage_parents_month, marriage_parents_year if not directly set
+    if (!init.marriage_parents_date && (init.marriage_parents_year || ef.marriage_parents_year)) {
+        const yr = init.marriage_parents_year || ef.marriage_parents_year;
+        const mo = init.marriage_parents_month || ef.marriage_parents_month;
+        const dy = init.marriage_parents_day || ef.marriage_parents_day;
+        if (yr && mo && dy && monthMap[mo]) {
+            init.marriage_parents_date = `${yr}-${monthMap[mo]}-${String(dy).padStart(2, '0')}`;
+        }
+    } else if (init.marriage_parents_date && (!init.marriage_parents_day || !init.marriage_parents_month || !init.marriage_parents_year)) {
+        const parts = String(init.marriage_parents_date).split('-');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const mIdx = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            if (MONTH_NAMES[mIdx]) {
+                init.marriage_parents_day = d;
+                init.marriage_parents_month = MONTH_NAMES[mIdx];
+                init.marriage_parents_year = y;
+            }
+        }
+    }
+
+    // Marriage: auto-calculate husband and wife ages if DOB is known and age is blank
+    if (init.husband_dob && (!init.husband_age || init.husband_age === 'n/a')) {
+        const hY = parseInt(String(init.husband_dob).split('-')[0], 10);
+        const cY = new Date().getFullYear();
+        if (cY - hY >= 0) init.husband_age = cY - hY;
+    }
+    if (init.wife_dob && (!init.wife_age || init.wife_age === 'n/a')) {
+        const wY = parseInt(String(init.wife_dob).split('-')[0], 10);
+        const cY = new Date().getFullYear();
+        if (cY - wY >= 0) init.wife_age = cY - wY;
+    }
+
+    // Death: auto-calculate completed years if date_of_birth and date_of_death are known
+    if (init.date_of_death && init.date_of_birth && (!init.age_completed_years || init.age_completed_years === 'n/a')) {
+        const dY = parseInt(String(init.date_of_death).split('-')[0], 10);
+        const bY = parseInt(String(init.date_of_birth).split('-')[0], 10);
+        if (dY - bY >= 0) init.age_completed_years = dY - bY;
+    }
+
     try {
         const prefillStr = sessionStorage.getItem('civicore_ticket_prefill');
         if (prefillStr) {
@@ -274,7 +367,7 @@ const getFieldMaxLength = (field) => {
     if (k.includes('name') || k.includes('officer') || k.includes('father') || k.includes('mother') || k.includes('informant') || k.includes('person') || k.includes('client')) return 50;
     if (k.includes('place') || k.includes('residence') || k.includes('address') || k.includes('cemetery') || k.includes('hospital')) return 255;
     if (k.includes('no') || k.includes('number') || k.includes('registry') || k.includes('code') || k.includes('permit')) return 30;
-    if (k.includes('age') || k.includes('day') || k.includes('month') || k.includes('year') || k.includes('duration') || k.includes('weight') || k.includes('total') || k.includes('living') || k.includes('dead') || k.includes('order')) return 20;
+    if (/(^|_)age($|_)/i.test(k) || k.includes('day') || k.includes('month') || k.includes('year') || k.includes('duration') || k.includes('weight') || k.includes('total') || k.includes('living') || k.includes('dead') || k.includes('order')) return 20;
     if (k.includes('phone')) return 15;
     if (k.includes('email')) return 100;
     if (k.includes('remark') || k.includes('note') || k.includes('condition')) return 1000;
@@ -312,6 +405,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const [isDraggingManual, setIsDraggingManual] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const fileInputRef = useRef(null);
+    const [mobileTab, setMobileTab] = useState('form'); // 'form' | 'scan'
 
     const [errors, setErrors] = useState({});
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -330,14 +424,42 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         setHasAttemptedSubmit(false);
     };
 
-    const handleFileSelect = (selectedFile) => {
-        if (!selectedFile) return;
-        setManualFile(selectedFile);
+    const [postFxModalOpen, setPostFxModalOpen] = useState(false);
+    const [pendingPostFxFile, setPendingPostFxFile] = useState(null);
+
+    const applySelectedFile = (finalFile) => {
+        setManualFile(finalFile);
         if (manualFilePreview) {
             URL.revokeObjectURL(manualFilePreview);
         }
-        setManualFilePreview(URL.createObjectURL(selectedFile));
+        setManualFilePreview(URL.createObjectURL(finalFile));
         clearError('_file');
+    };
+
+    const handleFileSelect = (selectedFile) => {
+        if (!selectedFile) return;
+        const isImage = selectedFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(selectedFile.name || '');
+        if (isImage) {
+            // Automatically launch Post-FX editor for crop, rotate, and B&W filtering
+            setPendingPostFxFile(selectedFile);
+            setPostFxModalOpen(true);
+            clearError('_file');
+            return;
+        }
+        // Non-image documents (like PDFs) attach directly
+        applySelectedFile(selectedFile);
+    };
+
+    const handlePostFxApply = (processedFile) => {
+        applySelectedFile(processedFile);
+        setPostFxModalOpen(false);
+        setPendingPostFxFile(null);
+    };
+
+    const handleReopenPostFx = () => {
+        if (!manualFile) return;
+        setPendingPostFxFile(manualFile);
+        setPostFxModalOpen(true);
     };
 
     useEffect(() => {
@@ -676,7 +798,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             newErrors[f.key] = 'Date cannot be in the future';
                             if (!firstErrorField) firstErrorField = f.label;
                         }
-                    } else if (f.type === 'number' || f.key.includes('age')) {
+                    } else if (f.type === 'number' || /(^|_)age($|_)/i.test(f.key)) {
                         const n = Number(strVal);
                         if (isNaN(n) || n < 0) {
                             newErrors[f.key] = 'Must be a valid positive number';
@@ -692,6 +814,35 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                 }
             });
         });
+
+        // Logical cross-field date sanity checks
+        if (effectiveType === 'death' && formData.date_of_birth && formData.date_of_death) {
+            const b = new Date(formData.date_of_birth);
+            const d = new Date(formData.date_of_death);
+            if (!isNaN(b.getTime()) && !isNaN(d.getTime()) && d < b) {
+                newErrors.date_of_death = 'Date of death cannot be earlier than date of birth';
+                if (!firstErrorField) firstErrorField = '3. Date of Death';
+            }
+        }
+        if (effectiveType === 'marriage' && formData.date_of_marriage) {
+            const m = new Date(formData.date_of_marriage);
+            if (!isNaN(m.getTime())) {
+                if (formData.husband_dob) {
+                    const h = new Date(formData.husband_dob);
+                    if (!isNaN(h.getTime()) && m < h) {
+                        newErrors.date_of_marriage = 'Marriage date cannot be earlier than husband birth date';
+                        if (!firstErrorField) firstErrorField = '16. Date of Marriage';
+                    }
+                }
+                if (formData.wife_dob) {
+                    const w = new Date(formData.wife_dob);
+                    if (!isNaN(w.getTime()) && m < w) {
+                        newErrors.date_of_marriage = 'Marriage date cannot be earlier than wife birth date';
+                        if (!firstErrorField) firstErrorField = '16. Date of Marriage';
+                    }
+                }
+            }
+        }
 
         // Mandatory Barangay Check for Geospatial Analytics Mapping
         const brgyVal = formData.barangay ? String(formData.barangay).trim() : '';
@@ -723,6 +874,39 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
         // Sanitize: ALL empty/null/undefined optional fields → 'n/a' before saving
         const sanitizedFields = { ...formData };
+
+        // Synchronize dob_day, dob_month, dob_year if date_of_birth is present
+        if (sanitizedFields.date_of_birth && sanitizedFields.date_of_birth !== 'n/a') {
+            const parts = String(sanitizedFields.date_of_birth).split('-');
+            if (parts.length === 3) {
+                const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                const y = parseInt(parts[0], 10);
+                const mIdx = parseInt(parts[1], 10) - 1;
+                const d = parseInt(parts[2], 10);
+                if (MONTH_NAMES[mIdx]) {
+                    sanitizedFields.dob_day = d;
+                    sanitizedFields.dob_month = MONTH_NAMES[mIdx];
+                    sanitizedFields.dob_year = y;
+                }
+            }
+        }
+
+        // Synchronize marriage_parents_day, marriage_parents_month, marriage_parents_year if marriage_parents_date is present
+        if (sanitizedFields.marriage_parents_date && sanitizedFields.marriage_parents_date !== 'n/a') {
+            const parts = String(sanitizedFields.marriage_parents_date).split('-');
+            if (parts.length === 3) {
+                const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                const y = parseInt(parts[0], 10);
+                const mIdx = parseInt(parts[1], 10) - 1;
+                const d = parseInt(parts[2], 10);
+                if (MONTH_NAMES[mIdx]) {
+                    sanitizedFields.marriage_parents_day = d;
+                    sanitizedFields.marriage_parents_month = MONTH_NAMES[mIdx];
+                    sanitizedFields.marriage_parents_year = y;
+                }
+            }
+        }
+
         configSections.forEach(section => {
             section.fields.forEach(f => {
                 const val = sanitizedFields[f.key];
@@ -804,7 +988,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col relative"
+                className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col relative"
             >
                 {/* Saving Overlay */}
                 <AnimatePresence>
@@ -832,106 +1016,103 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     )}
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${
-                            isManualEntry 
-                                ? 'bg-[#d4a574]/15 border border-[#d4a574]/30 text-[#d4a574]'
-                                : isEditMode
-                                    ? 'bg-indigo-50 border border-indigo-100 text-indigo-600'
-                                    : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
-                        }`}>
-                            {isManualEntry || isEditMode ? (
-                                <PencilSquareIcon className="w-6 h-6" />
-                            ) : (
-                                <DocumentCheckIcon className="w-6 h-6" />
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-none">
-                                {isManualEntry 
-                                    ? 'Manual Civil Registry Encoding' 
-                                    : isEditMode 
-                                        ? 'Modify Civil Registry Record' 
-                                        : 'Extracted Document Data'}
-                            </h3>
-                            <p className="text-xs font-semibold text-slate-400 mt-1.5 flex items-center gap-1.5 backdrop-blur-sm flex-wrap">
-                                {isManualEntry ? (
-                                    <span>Direct manual entry for Birth, Death, or Marriage certificate registration</span>
-                                ) : isEditMode ? (
-                                    <>
-                                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-wider">
-                                            Doc #{file?.id}
-                                        </span>
-                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                        <span className="font-bold text-slate-700">{file?.personName || file?.name}</span>
-                                    </>
+                <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-8 py-3.5 sm:py-5 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md gap-3 shrink-0">
+                    <div className="flex items-center justify-between w-full md:w-auto">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+                                isManualEntry 
+                                    ? 'bg-[#d4a574]/15 border border-[#d4a574]/30 text-[#d4a574]'
+                                    : isEditMode
+                                        ? 'bg-indigo-50 border border-indigo-100 text-indigo-600'
+                                        : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
+                            }`}>
+                                {isManualEntry || isEditMode ? (
+                                    <PencilSquareIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                                 ) : (
-                                    <>
-                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                        <span className="truncate max-w-[250px]">{file?.name}</span>
-                                        {(file?.metadata?.image_token_cost || ocrResult?.image_token_cost) && (
-                                            <>
-                                                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[10px] font-black text-indigo-600 uppercase tracking-wide">
-                                                    Token Cost: {formatNumber(currentCost)} tokens
-                                                </span>
-                                            </>
-                                        )}
-                                    </>
+                                    <DocumentCheckIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                                 )}
-                            </p>
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight truncate sm:whitespace-normal">
+                                    {isManualEntry 
+                                        ? 'Manual Civil Registry Encoding' 
+                                        : isEditMode 
+                                            ? 'Modify Civil Registry Record' 
+                                            : 'Extracted Document Data'}
+                                </h3>
+                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-0.5 line-clamp-1">
+                                    {isManualEntry ? (
+                                        <span>Direct manual entry for registration</span>
+                                    ) : isEditMode ? (
+                                        <span>Doc #{file?.id} • {file?.personName || file?.name}</span>
+                                    ) : (
+                                        <span>{file?.name}</span>
+                                    )}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Mobile Close Button */}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="md:hidden text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition-all cursor-pointer shrink-0"
+                            aria-label="Close"
+                        >
+                            <XMarkIcon className="w-6 h-6" />
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        {isManualEntry && !isViewOnly && (
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={isDummyMode}
-                                onClick={() => {
-                                    setIsDummyMode(prev => !prev);
-                                    clearError('_file');
-                                }}
-                                className={`flex items-center gap-3 px-3.5 py-1.5 rounded-full border transition-all cursor-pointer select-none group shadow-xs ${
-                                    isDummyMode
-                                        ? 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100/70'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
-                                title={isDummyMode ? "Click to switch to Upload Scan" : "Click to switch to Dummy Data Mode"}
-                            >
-                                <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-tight">
-                                    {isDummyMode ? (
-                                        <>
-                                            <SparklesIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                            <span>Dummy Data Mode</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <PhotoIcon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                                            <span>Upload Scan</span>
-                                            {manualFile && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="File attached" />}
-                                        </>
-                                    )}
-                                </span>
-
-                                <div
-                                    className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                                        isDummyMode ? 'bg-amber-500' : 'bg-slate-300 group-hover:bg-slate-400'
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between md:justify-end gap-2.5 sm:gap-3 w-full md:w-auto">
+                        <div className="flex items-center justify-between sm:justify-start gap-2">
+                            {isManualEntry && !isViewOnly && (
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={isDummyMode}
+                                    onClick={() => {
+                                        setIsDummyMode(prev => !prev);
+                                        clearError('_file');
+                                    }}
+                                    className={`flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none group shadow-xs ${
+                                        isDummyMode
+                                            ? 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100/70'
+                                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                                     }`}
+                                    title={isDummyMode ? "Click to switch to Upload Scan" : "Click to switch to Dummy Data Mode"}
                                 >
+                                    <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-tight">
+                                        {isDummyMode ? (
+                                            <>
+                                                <SparklesIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                <span>Dummy Data</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <PhotoIcon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                                <span>Upload Scan</span>
+                                                {manualFile && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="File attached" />}
+                                            </>
+                                        )}
+                                    </span>
+
                                     <div
-                                        className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
-                                            isDummyMode ? 'translate-x-4' : 'translate-x-0'
+                                        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center p-0.5 ${
+                                            isDummyMode ? 'bg-amber-500' : 'bg-slate-300 group-hover:bg-slate-400'
                                         }`}
-                                    />
-                                </div>
-                            </button>
-                        )}
+                                    >
+                                        <div
+                                            className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                                                isDummyMode ? 'translate-x-3.5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </div>
+                                </button>
+                            )}
+                        </div>
 
                         {(isManualEntry || isEditMode) && !isViewOnly && (
-                            <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl">
+                            <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl w-full sm:w-auto">
                                 {['birth', 'death', 'marriage'].map(t => (
                                     <button
                                         key={t}
@@ -942,7 +1123,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                             setFormData(getInitialFormData(t, {}, file));
                                             clearError('_type');
                                         }}
-                                        className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                                        className={`px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${
                                             effectiveType === t
                                                 ? 'bg-[#0f172a] text-[#d4a574] shadow-md'
                                                 : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
@@ -958,12 +1139,16 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             <button
                                 onClick={handleReset}
                                 title="Reset to Original"
-                                className="text-slate-400 hover:text-amber-600 p-2 rounded-xl hover:bg-amber-50 transition-all cursor-pointer"
+                                className="hidden md:block text-slate-400 hover:text-amber-600 p-2 rounded-xl hover:bg-amber-50 transition-all cursor-pointer"
                             >
                                 <ArrowPathIcon className="w-6 h-6" />
                             </button>
                         )}
-                        <button onClick={onClose} className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-all cursor-pointer group">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="hidden md:block text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-all cursor-pointer group"
+                        >
                             <XMarkIcon className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
                         </button>
                     </div>
@@ -1008,11 +1193,48 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     </div>
                 )}
 
-                <div className="flex-1 flex overflow-hidden">
+                {/* ── Mobile Tab Navigation (Only shown when there's an attached scan / upload dropzone) ── */}
+                {viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode)) && (
+                    <div className="lg:hidden flex items-center bg-slate-100/90 border-b border-slate-200 px-4 py-2 shrink-0">
+                        <div className="grid grid-cols-2 gap-1.5 w-full bg-slate-200/80 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => setMobileTab('form')}
+                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                    mobileTab === 'form'
+                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                <PencilSquareIcon className="w-4 h-4 text-indigo-600" />
+                                <span>Registry Form</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMobileTab('scan')}
+                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer relative ${
+                                    mobileTab === 'scan'
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                <PhotoIcon className={`w-4 h-4 ${mobileTab === 'scan' ? 'text-white' : 'text-indigo-600'}`} />
+                                <span>Attached Scan</span>
+                                {manualFile && (
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
                     {/* ── Left Pane: Reference Scan or Manual Upload Dropzone ── */}
                     {viewMode !== 'compare' && (
                         originalDocumentUrl ? (
-                            <div className="w-[45%] border-r border-slate-100 bg-slate-50 p-4 flex flex-col shrink-0">
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50 p-3 sm:p-4 flex-col shrink-0 ${
+                                mobileTab === 'scan' ? 'flex flex-1 overflow-hidden' : 'hidden lg:flex'
+                            }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
                                     <div className="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl">
                                         <button
@@ -1070,9 +1292,22 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         />
                                     )}
                                 </div>
+
+                                <div className="mt-3 lg:hidden shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMobileTab('form')}
+                                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98"
+                                    >
+                                        <span>Back to Registry Form</span>
+                                        <span>→</span>
+                                    </button>
+                                </div>
                             </div>
                         ) : isManualEntry && !isDummyMode ? (
-                            <div className="w-[45%] border-r border-slate-100 bg-slate-50/70 p-4 flex flex-col shrink-0">
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/70 p-3 sm:p-4 flex-col shrink-0 ${
+                                viewMode === 'template' ? 'hidden' : (mobileTab === 'scan' ? 'flex flex-1 overflow-y-auto' : 'hidden lg:flex')
+                            }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs">
@@ -1085,6 +1320,17 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     </div>
                                     {manualFile && (
                                         <div className="flex items-center gap-1.5">
+                                            {(manualFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(manualFile.name || '')) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleReopenPostFx}
+                                                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                                                    title="Open Post-FX Editor (Crop, Rotate, B&W)"
+                                                >
+                                                    <SparklesIcon className="w-3.5 h-3.5" />
+                                                    <span>Post FX</span>
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
@@ -1108,7 +1354,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     )}
                                 </div>
 
-                                <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center p-3 shadow-xs">
+                                <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center p-3 shadow-xs min-h-[300px]">
                                     {manualFile && manualFilePreview ? (
                                         <div className="w-full h-full flex flex-col">
                                             <div className="flex-1 rounded-lg overflow-hidden bg-slate-100 relative flex items-center justify-center">
@@ -1198,36 +1444,79 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         </div>
                                     )}
                                 </div>
+
+                                <div className="mt-3 lg:hidden shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMobileTab('form')}
+                                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98"
+                                    >
+                                        <span>Continue to Registry Form</span>
+                                        <span>→</span>
+                                    </button>
+                                </div>
                             </div>
                         ) : null
                     )}
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                        <div className="flex p-1 bg-slate-100 rounded-xl w-fit gap-1 flex-wrap">
+                    <div className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 ${
+                        mobileTab === 'form' || !(viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode))) 
+                            ? 'flex flex-col' 
+                            : 'hidden lg:flex lg:flex-col'
+                    }`}>
+                        {/* Mobile Quick Banner for Attached Scan */}
+                        {viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode)) && (
+                            <div className="lg:hidden flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 border border-indigo-100">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 shrink-0">
+                                        <PhotoIcon className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 truncate">
+                                            {manualFile ? manualFile.name : (originalDocumentUrl ? 'Original scan attached' : 'No scan attached')}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500">
+                                            {manualFile ? `${(manualFile.size / 1024).toFixed(0)} KB • Click to inspect` : 'Optional: attach image or PDF scan'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileTab('scan')}
+                                    className="px-3 py-1.5 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-extrabold shrink-0 transition-colors shadow-xs"
+                                >
+                                    {manualFile || originalDocumentUrl ? 'View Scan' : 'Attach Scan'}
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex p-1 bg-slate-100 rounded-xl w-full sm:w-fit gap-1 flex-wrap">
                             {!isManualEntry && (
                                 <button
                                     onClick={() => setViewMode('text')}
-                                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'text' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'text' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Full Extracted Text
                                 </button>
                             )}
                             <button
                                 onClick={() => setViewMode('fields')}
-                                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'fields' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'fields' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                                 {isManualEntry ? 'Structured Form Entry' : isEditMode ? 'Edit Form Fields' : 'Structured Fields'}
                             </button>
                             <button
                                 onClick={() => setViewMode('template')}
-                                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'template' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'template' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                {isManualEntry || isEditMode ? 'Live Certificate Preview' : 'Template Preview'}
+                                {isManualEntry && !isDummyMode
+                                    ? 'Live Certificate View'
+                                    : (isManualEntry || isEditMode ? 'Live Certificate Preview' : 'Template Preview')}
                             </button>
                             {duplicateData && (
                                 <button
                                     onClick={() => setViewMode('compare')}
-                                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'compare' ? 'bg-amber-600 text-white shadow-sm font-black' : 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse flex items-center gap-1.5'}`}
+                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'compare' ? 'bg-amber-600 text-white shadow-sm font-black' : 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse flex items-center justify-center gap-1.5'}`}
                                 >
                                     <ExclamationTriangleIcon className="w-4 h-4 text-amber-700 shrink-0" />
                                     Compare Side-by-Side
@@ -1421,32 +1710,121 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                             <div className="relative">
                                                                 <input
                                                                     type={field.type === 'date' ? 'date' : 'text'}
-                                                                    inputMode={field.type === 'number' || field.key.endsWith('_day') || field.key.endsWith('_year') || field.key.includes('age') ? 'numeric' : undefined}
+                                                                    inputMode={field.type === 'number' || field.key.endsWith('_day') || field.key.endsWith('_year') || /(^|_)age($|_)/i.test(field.key) ? 'numeric' : undefined}
                                                                     min={field.type === 'date' ? '1900-01-01' : field.min}
                                                                     max={field.type === 'date' ? new Date().toISOString().split('T')[0] : field.max}
-                                                                    value={formData[field.key] || ''}
+                                                                    value={field.type === 'date' ? normalizeDateToYMD(formData[field.key]) : (formData[field.key] || '')}
                                                                     maxLength={
                                                                         field.type === 'date' ? undefined :
                                                                         field.key.endsWith('_day') ? 2 :
                                                                         field.key.endsWith('_year') ? 4 :
-                                                                        field.key.includes('age') ? 3 :
+                                                                        /(^|_)age($|_)/i.test(field.key) ? 3 :
                                                                         getFieldMaxLength(field)
                                                                     }
                                                                     onChange={e => {
                                                                         isDirtyRef.current = true;
                                                                         let val = e.target.value;
-                                                                        const isNumeric = field.type === 'number' || field.key.endsWith('_day') || field.key.endsWith('_year') || field.key.includes('age') || field.key.includes('children_') || field.key.includes('order') || field.key.includes('weight');
+                                                                        const isNumeric = field.type === 'number' || field.key.endsWith('_day') || field.key.endsWith('_year') || /(^|_)age($|_)/i.test(field.key) || field.key.includes('children_') || field.key.includes('order') || field.key.includes('weight');
                                                                         if (isNumeric) {
                                                                             val = val.replace(/\D/g, '');
                                                                             if (field.key.endsWith('_day')) {
                                                                                 val = val.slice(0, 2);
                                                                             } else if (field.key.endsWith('_year')) {
                                                                                 val = val.slice(0, 4);
-                                                                            } else if (field.key.includes('age')) {
+                                                                            } else if (/(^|_)age($|_)/i.test(field.key)) {
                                                                                 val = val.slice(0, 3);
                                                                             }
                                                                         } else if (field.type === 'date') {
                                                                             val = e.target.value;
+                                                                            if (field.key === 'date_of_birth' && val) {
+                                                                                const parts = val.split('-');
+                                                                                if (parts.length === 3) {
+                                                                                    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                                                                                    const y = parseInt(parts[0], 10);
+                                                                                    const mIdx = parseInt(parts[1], 10) - 1;
+                                                                                    const d = parseInt(parts[2], 10);
+                                                                                    if (MONTH_NAMES[mIdx]) {
+                                                                                        setFormData(p => {
+                                                                                            const next = {
+                                                                                                ...p,
+                                                                                                date_of_birth: val,
+                                                                                                dob_day: d,
+                                                                                                dob_month: MONTH_NAMES[mIdx],
+                                                                                                dob_year: y
+                                                                                            };
+                                                                                            if (p.date_of_death) {
+                                                                                                const dY = parseInt(String(p.date_of_death).split('-')[0], 10);
+                                                                                                const diff = dY - y;
+                                                                                                if (diff >= 0 && (!p.age_completed_years || p.age_completed_years === 'n/a')) {
+                                                                                                    next.age_completed_years = diff;
+                                                                                                }
+                                                                                            }
+                                                                                            return next;
+                                                                                        });
+                                                                                        clearError(field.key);
+                                                                                        clearError('dob_day');
+                                                                                        clearError('dob_month');
+                                                                                        clearError('dob_year');
+                                                                                        return;
+                                                                                    }
+                                                                                }
+                                                                            } else if (field.key === 'husband_dob' && val) {
+                                                                                const hY = parseInt(val.split('-')[0], 10);
+                                                                                const cY = new Date().getFullYear();
+                                                                                const calcAge = cY - hY;
+                                                                                setFormData(p => ({
+                                                                                    ...p,
+                                                                                    husband_dob: val,
+                                                                                    husband_age: (!p.husband_age || p.husband_age === 'n/a') && calcAge >= 0 ? calcAge : p.husband_age
+                                                                                }));
+                                                                                clearError(field.key);
+                                                                                clearError('husband_age');
+                                                                                return;
+                                                                            } else if (field.key === 'wife_dob' && val) {
+                                                                                const wY = parseInt(val.split('-')[0], 10);
+                                                                                const cY = new Date().getFullYear();
+                                                                                const calcAge = cY - wY;
+                                                                                setFormData(p => ({
+                                                                                    ...p,
+                                                                                    wife_dob: val,
+                                                                                    wife_age: (!p.wife_age || p.wife_age === 'n/a') && calcAge >= 0 ? calcAge : p.wife_age
+                                                                                }));
+                                                                                clearError(field.key);
+                                                                                clearError('wife_age');
+                                                                                return;
+                                                                            } else if (field.key === 'date_of_death' && val) {
+                                                                                setFormData(p => {
+                                                                                    const next = { ...p, date_of_death: val };
+                                                                                    if (p.date_of_birth) {
+                                                                                        const dY = parseInt(val.split('-')[0], 10);
+                                                                                        const bY = parseInt(String(p.date_of_birth).split('-')[0], 10);
+                                                                                        const diff = dY - bY;
+                                                                                        if (diff >= 0 && (!p.age_completed_years || p.age_completed_years === 'n/a')) {
+                                                                                            next.age_completed_years = diff;
+                                                                                        }
+                                                                                    }
+                                                                                    return next;
+                                                                                });
+                                                                                clearError(field.key);
+                                                                                return;
+                                                                            } else if (field.key === 'marriage_parents_date' && val) {
+                                                                                const parts = val.split('-');
+                                                                                if (parts.length === 3) {
+                                                                                    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                                                                                    const y = parseInt(parts[0], 10);
+                                                                                    const mIdx = parseInt(parts[1], 10) - 1;
+                                                                                    const d = parseInt(parts[2], 10);
+                                                                                    setFormData(p => ({
+                                                                                        ...p,
+                                                                                        marriage_parents_date: val,
+                                                                                        marriage_parents_day: d,
+                                                                                        marriage_parents_month: MONTH_NAMES[mIdx] || '',
+                                                                                        marriage_parents_year: y
+                                                                                    }));
+                                                                                    clearError(field.key);
+                                                                                    return;
+                                                                                }
+                                                                            }
                                                                         } else {
                                                                             const maxLen = getFieldMaxLength(field);
                                                                             val = val.slice(0, maxLen);
@@ -1487,98 +1865,208 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         </div>
 
                         <div className={viewMode === 'template' ? 'block space-y-4' : 'hidden'}>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-black uppercase tracking-wider text-slate-600">
-                                        Template Overlay Preview
-                                    </p>
-                                    <p className="text-[11px] text-slate-500 mt-1">
-                                        Professional layout using calibrated clean templates.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-3 bg-slate-100 p-1 rounded-xl">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDiagnosticBoxes(false)}
-                                        className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                    >
-                                        Clean View
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDiagnosticBoxes(true)}
-                                        className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                    >
-                                        Diagnostic Grid
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-inner">
-                                <div className="relative w-full overflow-hidden" style={{ minHeight: '600px' }}>
-                                    <img
-                                        src={`/api/templates/preview?file=${matchedTemplate?.file_path || effectiveType}&type=${effectiveType}`}
-                                        className="w-full h-auto block"
-                                        alt="Professional Template Background"
-                                        onError={(e) => {
-                                            // Fallback to type background preview if direct file fails
-                                            if (!e.target.dataset.triedFallback) {
-                                                e.target.dataset.triedFallback = "true";
-                                                e.target.src = `/api/templates/preview?type=${effectiveType}`;
-                                            }
-                                        }}
-                                    />
-
-                                    {(matchedTemplate?.config?.fields && matchedTemplate.config.fields.length > 0 
-                                        ? matchedTemplate.config.fields 
-                                        : effectiveType === 'marriage' 
-                                            ? MarriageTemplateOverlayFields 
-                                            : effectiveType === 'death' 
-                                                ? DeathTemplateOverlayFields 
-                                                : BirthTemplateOverlayFields
-                                    )?.map((item) => {
-                                        const value = formData[item.key] || '';
-                                        const label = item.label || item.key;
-                                        return (
-                                            <div
-                                                key={item.key}
-                                                className={`absolute flex flex-col justify-center px-0.5 rounded-px shadow-sm transition-all ${!showDiagnosticBoxes ? '' : 'border border-emerald-400/50 bg-emerald-50/30 shadow-sm backdrop-blur-[0.5px]'}`}
-                                                style={{
-                                                    left: `${(item.x || 0) * 100}%`,
-                                                    top: `${(item.y || 0) * 100}%`,
-                                                    width: `${(item.w || 0) * 100}%`,
-                                                    height: `${(item.h || 0) * 80}%`,
-                                                }}
-                                                title={`${label}`}
-                                            >
-                                                {showDiagnosticBoxes && (
-                                                    <div className="text-[5.5px] md:text-[6.5px] font-black text-emerald-800/80 uppercase tracking-tighter absolute -top-1.5 left-0 whitespace-nowrap bg-white/90 px-0.5 rounded-px shadow-xs z-10 leading-none py-0.2">
-                                                        {label}
-                                                    </div>
+                            {isManualEntry && !isDummyMode ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                                Uploaded Document Preview
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                                Live view of the scanned physical document attached to this registry record.
+                                            </p>
+                                        </div>
+                                        {manualFile && (
+                                            <div className="flex items-center gap-2">
+                                                {(manualFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(manualFile.name || '')) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleReopenPostFx}
+                                                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                                                        title="Open Post-FX Editor (Crop, Rotate, B&W)"
+                                                    >
+                                                        <SparklesIcon className="w-4 h-4 text-indigo-500" />
+                                                        <span>Adjust Post-FX</span>
+                                                    </button>
                                                 )}
-                                                <div className={`font-black text-slate-950 tracking-tight truncate px-0.5 leading-none ${!showDiagnosticBoxes ? 'text-[10px] md:text-[12px]' : 'text-[8.5px] md:text-[10px]'}`}>
-                                                    {value || (!showDiagnosticBoxes ? '' : '—')}
-                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                                >
+                                                    Change Scan
+                                                </button>
+                                                {manualFilePreview && (
+                                                    <a
+                                                        href={manualFilePreview}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-xl font-bold uppercase transition-colors shrink-0"
+                                                    >
+                                                        Open Fullscreen ↗
+                                                    </a>
+                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                        )}
+                                    </div>
 
-                            {ocrResult?.field_confidence && (
-                                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                    <p className="text-xs font-bold text-slate-700 mb-2">Extraction Confidence</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {Object.entries(ocrResult.field_confidence).map(([key, meta]) => (
-                                            <div key={key} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-center justify-between gap-2">
-                                                <span className="font-semibold text-slate-700">{fieldLabelMap[key] || key}</span>
-                                                <span className={`font-bold ${meta?.validation_passed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                    {Math.round(Number(meta?.confidence || 0) * 100)}%
+                                    {manualFile && manualFilePreview ? (
+                                        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-inner flex flex-col p-3">
+                                            <div className="flex-1 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-[500px]">
+                                                {manualFile.type === 'application/pdf' || manualFile.name?.toLowerCase().endsWith('.pdf') ? (
+                                                    <iframe
+                                                        src={manualFilePreview}
+                                                        title="Uploaded Document Scan PDF"
+                                                        className="w-full h-[620px] border-0 rounded-xl bg-white"
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={manualFilePreview}
+                                                        alt="Uploaded Scanned Document"
+                                                        className="w-full h-auto max-h-[720px] object-contain rounded-xl"
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                                                <span className="font-bold text-slate-700 truncate max-w-sm flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                                    📄 {manualFile.name}
+                                                </span>
+                                                <span className="font-mono text-[11px] bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg text-slate-600 font-bold">
+                                                    {(manualFile.size / 1024).toFixed(0)} KB
                                                 </span>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            onDragOver={(e) => { e.preventDefault(); setIsDraggingManual(true); }}
+                                            onDragLeave={() => setIsDraggingManual(false)}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                setIsDraggingManual(false);
+                                                const dropped = e.dataTransfer.files?.[0];
+                                                if (dropped) handleFileSelect(dropped);
+                                            }}
+                                            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[420px] ${
+                                                isDraggingManual
+                                                    ? 'border-indigo-500 bg-indigo-50/60'
+                                                    : 'border-slate-300 bg-slate-50 hover:bg-slate-100/70 hover:border-slate-400'
+                                            }`}
+                                        >
+                                            <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4 shadow-xs">
+                                                <PhotoIcon className="w-8 h-8" />
+                                            </div>
+                                            <p className="text-sm font-bold text-slate-700">No Document Scan Attached Yet</p>
+                                            <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                                                In Upload Scan mode, click or drop a certificate picture or PDF scan to preview your uploaded document here.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                                                className="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+                                            >
+                                                Select Scanned Document
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+                                                Template Overlay Preview
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 mt-1">
+                                                Professional layout using calibrated clean templates.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 bg-slate-100 p-1 rounded-xl">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDiagnosticBoxes(false)}
+                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                Clean View
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDiagnosticBoxes(true)}
+                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            >
+                                                Diagnostic Grid
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-inner">
+                                        <div className="relative w-full overflow-hidden" style={{ minHeight: '600px' }}>
+                                            <img
+                                                src={`/api/templates/preview?file=${matchedTemplate?.file_path || effectiveType}&type=${effectiveType}`}
+                                                className="w-full h-auto block"
+                                                alt="Professional Template Background"
+                                                onError={(e) => {
+                                                    // Fallback to type background preview if direct file fails
+                                                    if (!e.target.dataset.triedFallback) {
+                                                        e.target.dataset.triedFallback = "true";
+                                                        e.target.src = `/api/templates/preview?type=${effectiveType}`;
+                                                    }
+                                                }}
+                                            />
+
+                                            {(matchedTemplate?.config?.fields && matchedTemplate.config.fields.length > 0 
+                                                ? matchedTemplate.config.fields 
+                                                : effectiveType === 'marriage' 
+                                                    ? MarriageTemplateOverlayFields 
+                                                    : effectiveType === 'death' 
+                                                        ? DeathTemplateOverlayFields 
+                                                        : BirthTemplateOverlayFields
+                                            )?.map((item) => {
+                                                const value = formData[item.key] || '';
+                                                const label = item.label || item.key;
+                                                return (
+                                                    <div
+                                                        key={item.key}
+                                                        className={`absolute flex flex-col justify-center px-0.5 rounded-px shadow-sm transition-all ${!showDiagnosticBoxes ? '' : 'border border-emerald-400/50 bg-emerald-50/30 shadow-sm backdrop-blur-[0.5px]'}`}
+                                                        style={{
+                                                            left: `${(item.x || 0) * 100}%`,
+                                                            top: `${(item.y || 0) * 100}%`,
+                                                            width: `${(item.w || 0) * 100}%`,
+                                                            height: `${(item.h || 0) * 80}%`,
+                                                        }}
+                                                        title={`${label}`}
+                                                    >
+                                                        {showDiagnosticBoxes && (
+                                                            <div className="text-[5.5px] md:text-[6.5px] font-black text-emerald-800/80 uppercase tracking-tighter absolute -top-1.5 left-0 whitespace-nowrap bg-white/90 px-0.5 rounded-px shadow-xs z-10 leading-none py-0.2">
+                                                                {label}
+                                                            </div>
+                                                        )}
+                                                        <div className={`font-black text-slate-950 tracking-tight truncate px-0.5 leading-none ${!showDiagnosticBoxes ? 'text-[10px] md:text-[12px]' : 'text-[8.5px] md:text-[10px]'}`}>
+                                                            {value || (!showDiagnosticBoxes ? '' : '—')}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {ocrResult?.field_confidence && (
+                                        <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                            <p className="text-xs font-bold text-slate-700 mb-2">Extraction Confidence</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {Object.entries(ocrResult.field_confidence).map(([key, meta]) => (
+                                                    <div key={key} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-center justify-between gap-2">
+                                                        <span className="font-semibold text-slate-700">{fieldLabelMap[key] || key}</span>
+                                                        <span className={`font-bold ${meta?.validation_passed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {Math.round(Number(meta?.confidence || 0) * 100)}%
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
@@ -1692,6 +2180,16 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     handleFileSelect(capturedFile);
                     setIsCameraOpen(false);
                 }}
+            />
+
+            <ImagePostFxModal
+                isOpen={postFxModalOpen}
+                file={pendingPostFxFile}
+                onClose={() => {
+                    setPostFxModalOpen(false);
+                    setPendingPostFxFile(null);
+                }}
+                onApply={handlePostFxApply}
             />
         </div>,
         document.body

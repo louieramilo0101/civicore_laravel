@@ -125,9 +125,7 @@ export const BirthConfig = [
             { key: 'middle_name', label: '1. Name (Middle)', type: 'text', required: false, width: 'sm:col-span-1' },
             { key: 'last_name', label: '1. Name (Last)', type: 'text', required: true, width: 'sm:col-span-1' },
             { key: 'sex', label: '2. Sex', type: 'select', options: ['Male', 'Female'], required: true, width: 'sm:col-span-1' },
-            { key: 'dob_day', label: '3. Date of Birth (Day)', type: 'number', min: 1, max: 31, placeholder: 'Day (1-31)', required: true, width: 'sm:col-span-1' },
-            { key: 'dob_month', label: '3. Date of Birth (Month)', type: 'select', options: MONTH_OPTIONS, required: true, width: 'sm:col-span-1' },
-            { key: 'dob_year', label: '3. Date of Birth (Year)', type: 'number', min: 1900, max: 2100, placeholder: 'Year (YYYY)', required: true, width: 'sm:col-span-1' },
+            { key: 'date_of_birth', label: '3. Date of Birth', type: 'date', required: true, width: 'sm:col-span-1' },
             { key: 'place_of_birth_hospital', label: '4. Place of Birth (Hospital/Clinic/Institution/House No., St., Barangay)', type: 'text', required: true, width: 'sm:col-span-2' },
             { key: 'place_of_birth_city', label: 'Place of Birth (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: true, width: 'sm:col-span-1' },
             { key: 'place_of_birth_province', label: 'Place of Birth (Province)', type: 'select', options: PROVINCE_OPTIONS, required: true, width: 'sm:col-span-1' },
@@ -175,9 +173,7 @@ export const BirthConfig = [
     {
         section: 'Marriage of Parents',
         fields: [
-            { key: 'marriage_parents_day', label: '20a. Date (Day)', type: 'number', min: 1, max: 31, placeholder: 'Day (1-31)', required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_month', label: '20a. Date (Month)', type: 'select', options: MONTH_OPTIONS, required: false, width: 'sm:col-span-1' },
-            { key: 'marriage_parents_year', label: '20a. Date (Year)', type: 'number', min: 1900, max: 2100, placeholder: 'Year (YYYY)', required: false, width: 'sm:col-span-1' },
+            { key: 'marriage_parents_date', label: '20a. Date of Marriage', type: 'date', required: false, width: 'sm:col-span-1' },
             { key: 'marriage_parents_place_city', label: '20b. Place (City/Municipality)', type: 'select', options: MUNICIPALITY_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'marriage_parents_place_province', label: '20b. Place (Province)', type: 'select', options: PROVINCE_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'marriage_parents_place_country', label: '20b. Place (Country)', type: 'select', options: COUNTRY_OPTIONS, required: false, width: 'sm:col-span-1' },

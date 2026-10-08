@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClockIcon, MegaphoneIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { 
+    ClockIcon, 
+    MegaphoneIcon, 
+    ArrowRightIcon,
+    DocumentTextIcon,
+    HeartIcon,
+    DocumentCheckIcon
+} from '@heroicons/react/24/outline';
 
 const DYNAMIC_WORDS = [
     'PRESERVING.',
@@ -54,14 +61,19 @@ export default function Landing() {
         }
     };
 
+    // Sanitize opening hours to remove raw em-dashes
+    const sanitizedHours = config?.opening_hours 
+        ? config.opening_hours.replace(/[\u2014\u2013]/g, '-') 
+        : 'Monday - Friday: 8:00 AM - 5:00 PM';
+
     return (
-        <div className="relative overflow-visible pb-12 sm:pb-16">
+        <div className="relative overflow-visible pb-12 sm:pb-16 text-slate-100">
             {/* Ambient Background Lighting FX */}
             <div className="absolute top-0 right-[-5%] w-[55%] h-[65%] bg-[#d4a574]/10 blur-[150px] rounded-full pointer-events-none" />
             <div className="absolute top-[20%] right-[10%] w-[35%] h-[40%] bg-indigo-500/10 blur-[130px] rounded-full pointer-events-none" />
 
             {/* Hero Section */}
-            <main className="min-h-[70vh] flex items-center pt-2 sm:pt-4 md:pt-6 pb-8 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
+            <section className="pt-2 sm:pt-4 md:pt-6 pb-12 sm:pb-16 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
                 <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
                     
                     {/* Left Column: Hero Title, Subtitle, and CTAs */}
@@ -105,8 +117,8 @@ export default function Landing() {
                         </motion.h1>
 
                         <motion.div variants={itemVars} className="space-y-4 sm:space-y-6">
-                            <p className="text-slate-300 text-base md:text-lg max-w-2xl leading-relaxed font-light border-l-2 border-[#d4a574]/30 pl-4 sm:pl-5">
-                                The centralized hub for authenticating and managing civil events—Births, Marriages, and Deaths—for the Municipality of Naic.
+                            <p className="text-slate-300 text-base md:text-lg max-w-2xl leading-relaxed font-light">
+                                The centralized hub for authenticating and managing civil events - Births, Marriages, and Deaths - for the Municipality of Naic.
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-1 sm:pt-2">
@@ -130,7 +142,7 @@ export default function Landing() {
                         animate="visible"
                         className="lg:col-span-5 xl:col-span-5 w-full flex flex-col justify-center relative mt-8 lg:mt-0"
                     >
-                        {/* Dynamic Ambient Color Orbs complimenting the dark theme */}
+                        {/* Dynamic Ambient Color Orbs */}
                         <div className="absolute -top-16 -right-8 w-72 h-72 bg-[#d4a574]/20 rounded-full blur-[100px] pointer-events-none" />
                         <div className="absolute top-1/2 -left-12 w-64 h-64 bg-indigo-500/15 rounded-full blur-[110px] pointer-events-none" />
                         <div className="absolute -bottom-10 right-10 w-60 h-60 bg-amber-500/10 rounded-full blur-[90px] pointer-events-none" />
@@ -193,7 +205,7 @@ export default function Landing() {
                                                 Operating Hours
                                             </div>
                                             <div className="text-white font-semibold text-sm sm:text-base leading-snug">
-                                                {config.opening_hours}
+                                                {sanitizedHours}
                                             </div>
                                             <div className="text-slate-400 text-xs mt-1 font-normal">
                                                 Municipal Civil Registrar • Naic Hall
@@ -207,7 +219,236 @@ export default function Landing() {
                     </motion.div>
 
                 </div>
-            </main>
+            </section>
+
+            {/* Section 2: Citizen Request Pathway (Aligned with Original Design System) */}
+            <section className="pt-12 pb-20 sm:pt-16 sm:pb-24 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10">
+                <div className="absolute top-1/2 -right-12 w-64 h-64 bg-[#d4a574]/10 rounded-full blur-[120px] pointer-events-none" />
+                <div className="w-full space-y-10 relative">
+                    
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.25, margin: "0px 0px -40px 0px" }}
+                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                        className="space-y-2"
+                    >
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4a574]/10 border border-[#d4a574]/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#d4a574]"></span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4a574]">
+                                Citizen Guide
+                            </span>
+                        </div>
+                        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                            Citizen Request Pathway
+                        </h2>
+                        <p className="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed">
+                            How civic records are requested, verified, and officially released.
+                        </p>
+                    </motion.div>
+
+                    {/* Step Cards with Scroll Reveal */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                            className="bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/30 rounded-2xl p-6 sm:p-7 space-y-3 backdrop-blur-xl shadow-xl transition-all cursor-default"
+                        >
+                            <span className="text-xs font-mono font-bold text-[#d4a574] px-2.5 py-1 rounded-lg bg-[#d4a574]/10 border border-[#d4a574]/20 inline-block">
+                                01
+                            </span>
+                            <h3 className="text-lg font-bold text-white tracking-tight">
+                                Submit Online Request
+                            </h3>
+                            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                                Select certificate type, enter registrant details, and receive an instant digital reference ticket with tracking QR code.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                            className="bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/30 rounded-2xl p-6 sm:p-7 space-y-3 backdrop-blur-xl shadow-xl transition-all cursor-default"
+                        >
+                            <span className="text-xs font-mono font-bold text-[#d4a574] px-2.5 py-1 rounded-lg bg-[#d4a574]/10 border border-[#d4a574]/20 inline-block">
+                                02
+                            </span>
+                            <h3 className="text-lg font-bold text-white tracking-tight">
+                                Registry Verification
+                            </h3>
+                            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                                Municipal staff examine civil registry books, authenticate document entries, and prepare official certifications.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                            className="bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/30 rounded-2xl p-6 sm:p-7 space-y-3 backdrop-blur-xl shadow-xl transition-all cursor-default"
+                        >
+                            <span className="text-xs font-mono font-bold text-[#d4a574] px-2.5 py-1 rounded-lg bg-[#d4a574]/10 border border-[#d4a574]/20 inline-block">
+                                03
+                            </span>
+                            <h3 className="text-lg font-bold text-white tracking-tight">
+                                In-Person Issuance
+                            </h3>
+                            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                                Present ticket code at the Municipal Civil Registrar counter for fee settlement and release of the certified document.
+                            </p>
+                        </motion.div>
+
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 3: Civil Registry Documents (Aligned with Original Design System) */}
+            <section className="pt-20 pb-28 sm:pt-28 sm:pb-36 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10">
+                <div className="w-full space-y-10 relative">
+                    
+                    {/* Section Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.25, margin: "0px 0px -40px 0px" }}
+                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                        className="space-y-2"
+                    >
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4a574]/10 border border-[#d4a574]/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#d4a574]"></span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4a574]">
+                                Registry Services
+                            </span>
+                        </div>
+                        <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                            Civil Registry Documents
+                        </h2>
+                        <p className="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed">
+                            Official statutory civil documents recorded and issued pursuant to Act No. 3753.
+                        </p>
+                    </motion.div>
+
+                    {/* Asymmetric Bento Grid matching original translucent glass cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+                        
+                        {/* Birth Certificate (Featured Wide Tile: 7 cols) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                            className="lg:col-span-7 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl shadow-xl group cursor-default"
+                        >
+                            <div className="space-y-4">
+                                <div className="w-12 h-12 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/25 flex items-center justify-center text-[#d4a574] group-hover:scale-105 transition-transform">
+                                    <DocumentTextIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block mb-1">
+                                        LCR Form 102
+                                    </span>
+                                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                                        Certificate of Live Birth
+                                    </h3>
+                                </div>
+                                <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
+                                    Official documentation of vital birth events within municipal jurisdiction. Supports regular registration, certified true copies, legitimation, and supplemental reports.
+                                </p>
+                            </div>
+                            <div className="pt-6">
+                                <button
+                                    onClick={() => navigate('/ticket-request')}
+                                    className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#d4a574] hover:text-[#e4be95] group-hover:translate-x-1 transition-all cursor-pointer"
+                                >
+                                    <span>Request Birth Record</span>
+                                    <ArrowRightIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </motion.div>
+
+                        {/* Marriage Certificate (Compact Tile: 5 cols) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                            className="lg:col-span-5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl shadow-xl group cursor-default"
+                        >
+                            <div className="space-y-4">
+                                <div className="w-12 h-12 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/25 flex items-center justify-center text-[#d4a574] group-hover:scale-105 transition-transform">
+                                    <HeartIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block mb-1">
+                                        LCR Form 101
+                                    </span>
+                                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                                        Certificate of Marriage
+                                    </h3>
+                                </div>
+                                <p className="text-slate-300 text-sm leading-relaxed">
+                                    Certified records of marriage solemnized in Naic, marriage license endorsements, and legal civil registry transcriptions.
+                                </p>
+                            </div>
+                            <div className="pt-6">
+                                <button
+                                    onClick={() => navigate('/ticket-request')}
+                                    className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#d4a574] hover:text-[#e4be95] group-hover:translate-x-1 transition-all cursor-pointer"
+                                >
+                                    <span>Request Marriage Record</span>
+                                    <ArrowRightIcon className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </motion.div>
+
+                        {/* Death Certificate (Full Width Tile: 12 cols) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 35 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.2 }}
+                            transition={{ duration: 0.65, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                            className="lg:col-span-12 bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-[#d4a574]/30 rounded-2xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all backdrop-blur-xl shadow-xl cursor-default"
+                        >
+                            <div className="flex items-start gap-4">
+                                <div className="w-11 h-11 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/20 flex items-center justify-center text-[#d4a574] shrink-0">
+                                    <DocumentCheckIcon className="w-5 h-5" />
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block">
+                                        LCR Form 103 • Certificate of Death
+                                    </span>
+                                    <h4 className="text-lg font-bold text-white tracking-tight">
+                                        Vital Death Registry and Burial Endorsements
+                                    </h4>
+                                    <p className="text-slate-400 text-xs sm:text-sm leading-relaxed max-w-2xl">
+                                        Immediate processing for death records, permits for transfer of cadaver, and legal archival certification.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => navigate('/ticket-request')}
+                                className="px-5 py-2.5 rounded-xl border border-[#d4a574]/40 hover:bg-[#d4a574]/10 text-[#d4a574] text-xs font-bold uppercase tracking-wider transition-all self-start md:self-center shrink-0 cursor-pointer"
+                            >
+                                Request Death Record
+                            </button>
+                        </motion.div>
+
+                    </div>
+                </div>
+            </section>
+
         </div>
     );
 }

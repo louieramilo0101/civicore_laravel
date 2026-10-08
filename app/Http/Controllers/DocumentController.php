@@ -37,14 +37,14 @@ class DocumentController extends Controller
                 $types = array_filter(array_map('trim', array_map('strtolower', $types)));
                 if (!empty($types) && !in_array('all', $types)) {
                     $placeholders = implode(',', array_fill(0, count($types), '?'));
-                    $conditions[] = "LOWER(type) IN ($placeholders)";
+                    $conditions[] = "LOWER(d.type) IN ($placeholders)";
                     foreach ($types as $t) {
                         $params[] = $t;
                     }
                 }
             }
             if (!empty($search)) {
-                $conditions[] = "(name LIKE ? OR personName LIKE ? OR barangay LIKE ? OR extracted_fields LIKE ? OR raw_text LIKE ? OR ocr_text LIKE ?)";
+                $conditions[] = "(d.name LIKE ? OR d.personName LIKE ? OR d.barangay LIKE ? OR d.extracted_fields LIKE ? OR d.raw_text LIKE ? OR d.ocr_text LIKE ?)";
                 $searchTerm = "%{$search}%";
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -53,9 +53,9 @@ class DocumentController extends Controller
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
             }
-            $whereClause = " WHERE " . implode(" AND ", $conditions) . " AND deleted_at IS NULL";
+            $whereClause = " WHERE " . implode(" AND ", $conditions) . " AND d.deleted_at IS NULL";
         } else {
-            $whereClause = " WHERE deleted_at IS NULL";
+            $whereClause = " WHERE d.deleted_at IS NULL";
         }
         
         // Get total count

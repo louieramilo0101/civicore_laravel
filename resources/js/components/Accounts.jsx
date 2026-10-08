@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import {
     UserIcon, ShieldCheckIcon, AdjustmentsHorizontalIcon,
     AtSymbolIcon, TagIcon, PlusIcon, KeyIcon, TrashIcon, CheckCircleIcon,
-    ExclamationTriangleIcon, EyeIcon, EyeSlashIcon, XMarkIcon, CameraIcon, EnvelopeIcon
+    ExclamationTriangleIcon, EyeIcon, EyeSlashIcon, XMarkIcon, CameraIcon, EnvelopeIcon,
+    NoSymbolIcon, UserGroupIcon, ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { useModal } from './ModalContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
@@ -17,6 +18,8 @@ const Accounts = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'details'
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled'
     const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(true);
     const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
 
@@ -151,10 +154,15 @@ const Accounts = () => {
         );
     };
 
-    const filteredUsers = users.filter(user =>
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              user.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
+        const userActive = user.is_active !== false;
+        if (statusFilter === 'active') return matchesSearch && userActive;
+        if (statusFilter === 'disabled') return matchesSearch && !userActive;
+        return matchesSearch;
+    });
 
     const fetchUsers = async (showLoading = true) => {
         if (showLoading) setIsLoading(true);
@@ -165,7 +173,8 @@ const Accounts = () => {
                 // Map the DB standard fields to the UI names
                 const updatedUsers = data.data.map(u => ({
                     ...u,
-                    status: 'Active',
+                    is_active: u.is_active !== false,
+                    status: u.is_active !== false ? 'Active' : 'Disabled',
                     joined: new Date(u.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 }));
                 setUsers(updatedUsers);
@@ -370,26 +379,33 @@ const Accounts = () => {
                 return;
             }
 
-            // 2. Delete user
-            const delRes = await fetch(`/api/users/${selectedUser.id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            const delData = await delRes.json();
+            // 2. Toggle user active status (Disable / Enable)
+            const isCurrentlyActive = selectedUser.is_active !== false;
+            const targetStatus = !isCurrentlyActive;
 
-            if (delData.success) {
+            const toggleRes = await fetch(`/api/users/${selectedUser.id}/toggle-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ is_active: targetStatus })
+            });
+            const toggleData = await toggleRes.json();
+
+            if (toggleData.success) {
                 await fetchUsers(true); // Refresh and invalidate cache
                 setIsDeleteUserModalOpen(false);
                 setDeleteUserPassword('');
                 showAlert({
-                    title: 'Account Deleted',
-                    message: "Account successfully deleted.",
+                    title: targetStatus ? 'Account Re-enabled' : 'Account Disabled',
+                    message: targetStatus 
+                        ? `${selectedUser.name}'s account has been re-enabled. Login access is restored.`
+                        : `${selectedUser.name}'s account has been disabled. Login access is revoked and all historical records remain safe.`,
                     type: 'success'
                 });
             } else {
                 showAlert({
-                    title: 'Deletion Failed',
-                    message: "Failed to delete account.",
+                    title: 'Action Failed',
+                    message: toggleData.error || toggleData.message || "Failed to update account status.",
                     type: 'error'
                 });
             }
@@ -524,12 +540,12 @@ const Accounts = () => {
                     </p>
                 </div>
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                         {/* Testing Mode Rate Limit Toggle */}
-                        <div className="flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
                             <div className="flex flex-col">
                                 <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                                    ⚡ Rate Limits (Testing Mode)
+                                    Rate Limits (Testing Mode)
                                 </span>
                                 <span className="text-[10px] text-slate-500 font-medium">
                                     {ticketLimitsEnabled ? '1/day & 3/week ENFORCED' : 'Limits OFF (Testing Mode)'}
@@ -550,7 +566,7 @@ const Accounts = () => {
 
                         <button
                             onClick={() => setIsAddUserModalOpen(true)}
-                            className="flex items-center gap-2 bg-[#0f172a] text-white hover:bg-slate-800 transition-colors px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
+                            className="flex items-center justify-center gap-2 bg-[#0f172a] text-white hover:bg-slate-800 transition-colors px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm"
                         >
                             <PlusIcon className="w-4 h-4" /> New Account
                         </button>
@@ -558,13 +574,48 @@ const Accounts = () => {
                 )}
             </motion.div>
 
+            {/* Mobile Navigation Tabs (SuperAdmin only, < lg) */}
+            {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
+                <div className="flex lg:hidden items-center p-1 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner">
+                    <button
+                        type="button"
+                        onClick={() => setMobileTab('list')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                            mobileTab === 'list'
+                                ? 'bg-white text-slate-800 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <UserGroupIcon className="w-4 h-4" />
+                        Directory ({users.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMobileTab('details')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                            mobileTab === 'details'
+                                ? 'bg-white text-slate-800 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <UserIcon className="w-4 h-4" />
+                        {selectedUser ? selectedUser.name.split(' ')[0] : 'Account Details'}
+                    </button>
+                </div>
+            )}
+
             {/* Layout Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                 {/* Left Sidebar: User List Segment - ONLY for Superadmin */}
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
-                    <motion.div variants={itemVariants} className="lg:col-span-4 bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col h-[600px]">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <motion.div
+                        variants={itemVariants}
+                        className={`lg:col-span-4 bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col h-[520px] sm:h-[560px] lg:h-[600px] ${
+                            mobileTab === 'details' ? 'hidden lg:flex' : 'flex'
+                        }`}
+                    >
+                        <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50/50 space-y-2.5">
                             <div className="relative w-full">
                                 <input
                                     type="text"
@@ -573,6 +624,41 @@ const Accounts = () => {
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="block w-full pl-4 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] sm:text-sm transition-all"
                                 />
+                            </div>
+                            <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('all')}
+                                    className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all ${
+                                        statusFilter === 'all'
+                                            ? 'bg-white text-slate-800 shadow-sm'
+                                             : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    All ({users.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('active')}
+                                    className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all ${
+                                        statusFilter === 'active'
+                                            ? 'bg-white text-emerald-700 shadow-sm'
+                                            : 'text-slate-500 hover:text-emerald-600'
+                                    }`}
+                                >
+                                    Active ({users.filter(u => u.is_active !== false).length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('disabled')}
+                                    className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all ${
+                                        statusFilter === 'disabled'
+                                            ? 'bg-white text-rose-700 shadow-sm'
+                                            : 'text-slate-500 hover:text-rose-600'
+                                    }`}
+                                >
+                                    Disabled ({users.filter(u => u.is_active === false).length})
+                                </button>
                             </div>
                         </div>
 
@@ -583,18 +669,26 @@ const Accounts = () => {
                                 filteredUsers.map((user) => (
                                     <div
                                         key={user.id}
-                                        onClick={() => setSelectedUser(user)}
+                                        onClick={() => {
+                                            setSelectedUser(user);
+                                            setMobileTab('details');
+                                        }}
                                         className={`group flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all border ${selectedUser?.id === user.id
                                                 ? 'border-slate-200 bg-slate-50 shadow-sm'
                                                 : 'border-transparent hover:bg-slate-50/50'
-                                            }`}
+                                            } ${user.is_active === false ? 'opacity-75 bg-slate-50/70' : ''}`}
                                     >
                                         <div className="relative">
                                             <Avatar name={user.name} src={user.avatar} size="12" />
-                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${user.is_active !== false ? 'bg-emerald-500' : 'bg-rose-400'}`} title={user.is_active !== false ? 'Active' : 'Disabled'}></div>
                                         </div>
                                         <div className="flex-1 overflow-hidden">
-                                            <h4 className="font-bold text-slate-800 text-sm truncate">{user.name}</h4>
+                                            <div className="flex items-center justify-between gap-1">
+                                                <h4 className="font-bold text-slate-800 text-sm truncate">{user.name}</h4>
+                                                {user.is_active === false && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0">Disabled</span>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{user.role}</p>
                                         </div>
                                     </div>
@@ -609,29 +703,56 @@ const Accounts = () => {
                 )}
 
                 {/* Right Panel: Account Details & Charts - Full width if not Superadmin */}
-                <motion.div variants={itemVariants} className={`${JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6`}>
+                <motion.div
+                    variants={itemVariants}
+                    className={`${
+                        JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin'
+                            ? 'lg:col-span-8'
+                            : 'lg:col-span-12'
+                    } space-y-6 ${
+                        JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && mobileTab === 'list'
+                            ? 'hidden lg:block'
+                            : 'block'
+                    }`}
+                >
 
                     {/* Selected User Details Card */}
                     <div className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden relative">
+                        {/* Mobile Top Back Button bar (SuperAdmin only on phone) */}
+                        {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
+                            <div className="lg:hidden px-3.5 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white">
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileTab('list')}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-slate-200 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all active:scale-95 cursor-pointer"
+                                >
+                                    <ArrowLeftIcon className="w-3.5 h-3.5" /> Back to Directory
+                                </button>
+                                <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider">
+                                    {selectedUser ? selectedUser.role : ''}
+                                </span>
+                            </div>
+                        )}
+
                         {/* Decorative Top Banner */}
-                        <div className="h-24 bg-gradient-to-r from-[#0f172a] via-slate-800 to-[#1e293b] w-full relative">
+                        <div className="h-20 sm:h-24 bg-gradient-to-r from-[#0f172a] via-slate-800 to-[#1e293b] w-full relative">
                             {/* SVG pattern overlay */}
                             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0z' fill='none'/%3E%3Ccircle cx='10' cy='10' r='1' fill='%23fff'/%3E%3C/svg%3E")` }}></div>
                         </div>
 
                         {isLoading ? (
-                            <div className="p-8">
+                            <div className="p-5 sm:p-8">
                                 <SkeletonLoader type="default" />
                             </div>
                         ) : selectedUser ? (
-                            <div className="px-8 pb-8">
+                            <div className="px-4 sm:px-8 pb-6 sm:pb-8">
                                 {/* Profile Avatar popping up over banner */}
-                                <div className="flex justify-between items-end -mt-10 mb-6 relative z-10">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end -mt-8 sm:-mt-10 mb-6 gap-4 relative z-10">
                                     <div className="relative group">
-                                        <Avatar name={selectedUser.name} src={selectedUser.avatar} size="24" className="shadow-lg border-2 border-white" />
+                                        <Avatar name={selectedUser.name} src={selectedUser.avatar} size="20" className="sm:w-24 sm:h-24 shadow-lg border-2 border-white" />
                                         <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 w-full sm:w-auto">
                                         <button
                                             onClick={() => {
                                                 setEditProfileFormData({
@@ -646,7 +767,7 @@ const Accounts = () => {
                                                 setEditProfileAvatarPreview(selectedUser.avatar);
                                                 setIsEditProfileModalOpen(true);
                                             }}
-                                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2 text-sm"
+                                            className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2 text-sm"
                                         >
                                             <AdjustmentsHorizontalIcon className="w-4 h-4 text-slate-400" /> Edit Profile
                                         </button>
@@ -658,13 +779,13 @@ const Accounts = () => {
                                     <div>
                                         <h3 className="text-2xl font-black text-slate-800 mb-1">{selectedUser.name}</h3>
                                         <div className="flex items-center gap-2 mb-6 text-sm">
-                                            {selectedUser.status === 'Active' ? (
+                                            {selectedUser.is_active !== false ? (
                                                 <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-100 text-[10px] uppercase tracking-wider">
                                                     <CheckCircleIcon className="w-3.5 h-3.5" /> Active Account
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200 text-[10px] uppercase tracking-wider">
-                                                    Inactivated
+                                                <span className="flex items-center gap-1 text-rose-600 font-bold bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200 text-[10px] uppercase tracking-wider">
+                                                    <NoSymbolIcon className="w-3.5 h-3.5" /> Account Disabled
                                                 </span>
                                             )}
                                         </div>
@@ -700,14 +821,23 @@ const Accounts = () => {
                                             </span>
                                             <span className="text-slate-300 group-hover:text-slate-500">→</span>
                                         </button>
-                                        {/* Only SuperAdmin can delete other accounts. SuperAdmin cannot delete themselves here. */}
+                                        {/* Only SuperAdmin can disable other accounts. SuperAdmin cannot disable themselves. */}
                                         {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && selectedUser?.id !== JSON.parse(sessionStorage.getItem('user') || '{}').id && (
-                                            <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-rose-100 rounded-xl hover:border-rose-300 transition-all group cursor-pointer">
-                                                <span className="flex items-center gap-3 text-sm font-semibold text-rose-600">
-                                                    <TrashIcon className="w-5 h-5 text-rose-400 group-hover:text-rose-600 transition-colors" /> Delete Account
-                                                </span>
-                                                <span className="text-rose-300 group-hover:text-rose-500">→</span>
-                                            </button>
+                                            selectedUser.is_active !== false ? (
+                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-red-200 rounded-xl hover:border-red-300 hover:bg-red-50/40 transition-all group cursor-pointer">
+                                                    <span className="flex items-center gap-3 text-sm font-semibold text-red-700">
+                                                        <NoSymbolIcon className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" /> Disable Account
+                                                    </span>
+                                                    <span className="text-red-300 group-hover:text-red-500">→</span>
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-emerald-200 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/30 transition-all group cursor-pointer">
+                                                    <span className="flex items-center gap-3 text-sm font-semibold text-emerald-700">
+                                                        <CheckCircleIcon className="w-5 h-5 text-emerald-500 group-hover:text-emerald-600 transition-colors" /> Re-enable Account
+                                                    </span>
+                                                    <span className="text-emerald-300 group-hover:text-emerald-500">→</span>
+                                                </button>
+                                            )
                                         )}
                                     </div>
                                 </div>
@@ -1078,31 +1208,58 @@ const Accounts = () => {
                 </div>
             )}
 
-            {/* Delete Account Modal */}
+            {/* Disable / Re-enable Account Modal */}
             {isDeleteUserModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-rose-100"
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-100"
                     >
-                        <div className="h-20 bg-gradient-to-r from-rose-900 to-rose-700 p-6 flex items-center justify-between border-b border-rose-800">
+                        <div className={`h-20 p-6 flex items-center justify-between border-b ${
+                            selectedUser?.is_active !== false 
+                                ? 'bg-gradient-to-r from-red-600 to-rose-700 border-red-800' 
+                                : 'bg-gradient-to-r from-emerald-800 to-teal-800 border-emerald-900'
+                        }`}>
                             <h3 className="text-xl font-black text-white flex items-center gap-2">
-                                <TrashIcon className="w-6 h-6" /> Delete Account
+                                {selectedUser?.is_active !== false ? (
+                                    <>
+                                        <NoSymbolIcon className="w-6 h-6" /> Disable Account
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircleIcon className="w-6 h-6" /> Re-enable Account
+                                    </>
+                                )}
                             </h3>
-                            <button onClick={() => setIsDeleteUserModalOpen(false)} className="text-rose-200 hover:text-white transition-colors">
+                            <button onClick={() => setIsDeleteUserModalOpen(false)} className="text-white/70 hover:text-white transition-colors">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                         <form onSubmit={handleDeleteUserSubmit} className="p-6 space-y-4">
-                            <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl mb-4">
-                                <p className="text-sm font-semibold text-rose-800">
-                                    You are about to permanently delete <strong>{selectedUser?.name}</strong>. This action cannot be undone. Enter your administrative password to confirm.
-                                </p>
+                            <div className={`p-4 rounded-xl mb-4 border ${
+                                selectedUser?.is_active !== false 
+                                    ? 'bg-red-50 border-red-200 text-red-900' 
+                                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                            }`}>
+                                {selectedUser?.is_active !== false ? (
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold">
+                                            You are about to disable <strong>{selectedUser?.name}</strong>. Their login session will be ended and access revoked.
+                                        </p>
+                                        <p className="text-xs text-red-800/90 font-medium">
+                                            <strong>Zero Data Loss:</strong> All past documents, issued certificates, and audit logs handled by this user remain fully preserved.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm font-semibold">
+                                        You are about to re-enable <strong>{selectedUser?.name}</strong>. Their administrative and staff access will be restored immediately.
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                    Your Password <span className="text-rose-500 text-lg leading-none">*</span>
+                                    Your Admin Password <span className="text-rose-500 text-lg leading-none">*</span>
                                 </label>
                                 <div className="relative">
                                     <input
@@ -1110,33 +1267,34 @@ const Accounts = () => {
                                         type={showDeleteUserPassword ? "text" : "password"}
                                         value={deleteUserPassword}
                                         onChange={e => setDeleteUserPassword(e.target.value)}
-                                        className={`w-full px-4 py-2.5 border ${deleteUserPassword && deleteUserPassword.length < 7 ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10`}
+                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10"
                                         placeholder="••••••••"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowDeleteUserPassword(!showDeleteUserPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-300 hover:text-rose-500 transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                     >
                                         {showDeleteUserPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                                     </button>
                                 </div>
-                                {deleteUserPassword && deleteUserPassword.length < 7 && (
-                                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mt-1.5 ml-1">Password must be at least 7 characters</p>
-                                )}
                             </div>
-                            <div className="pt-6 flex gap-3">
+                            <div className="pt-4 flex gap-3">
                                 <button type="button" disabled={isDeletingUser} onClick={() => setIsDeleteUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
-                                <button type="submit" disabled={isDeletingUser} className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-700 transition-colors text-sm shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                                <button type="submit" disabled={isDeletingUser} className={`flex-1 py-3 text-white font-black rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${
+                                    selectedUser?.is_active !== false 
+                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' 
+                                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                                }`}>
                                     {isDeletingUser ? (
                                         <>
                                             <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            DELETING...
+                                            PROCESSING...
                                         </>
-                                    ) : 'Confirm Deletion'}
+                                    ) : (selectedUser?.is_active !== false ? 'Confirm Disable' : 'Confirm Re-enable')}
                                 </button>
                             </div>
                         </form>
