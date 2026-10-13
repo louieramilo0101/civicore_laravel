@@ -21,7 +21,7 @@ class ProcessImageOcrJob implements ShouldQueue
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /** Stores the timeout value used by this component. */
-    public $timeout = 300;
+    public $timeout = 900;
     /** Stores the tries value used by this component. */
     public $tries = 3;
 
@@ -87,7 +87,8 @@ class ProcessImageOcrJob implements ShouldQueue
             $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
             $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
 
-            $response = Http::timeout(300)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 300;
+            $response = Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $this->imagePath,
                 'doc_type' => $this->docType,
                 'ocr_engine' => $ocrEngine,

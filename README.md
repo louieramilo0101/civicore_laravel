@@ -144,8 +144,11 @@ DB_DATABASE=civicore_laravel
 DB_USERNAME=root
 DB_PASSWORD=
 
-# Google Gemini AI OCR Engine Key (Optional if using Local Ollama)
+# Google Gemini AI OCR Engine Key & Model (Optional if using Local Ollama)
 GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
+# Optional: Multiple keys separated by commas for automated rotation & rate-limit prevention
+# GEMINI_API_KEYS=key1,key2,key3
 
 # Local Ollama URL (Default: http://127.0.0.1:11434)
 OLLAMA_URL=http://127.0.0.1:11434
@@ -227,7 +230,7 @@ Access the platform in your browser at:
 
 ### 1. Dual-Engine OCR Pipeline: Google Gemini AI & Local Ollama (Qwen2.5-VL)
 - **Engine Selection Architecture**:
-  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed cloud multimodal extraction with multi-key round-robin rotation and automated cooldown tracking (`GEMINI_API_KEYS`).
+  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed cloud multimodal extraction with multi-key round-robin rotation and automated cooldown tracking (`GEMINI_API_KEYS`). Supports custom model selection via `GEMINI_MODEL` (defaults to `gemini-2.5-flash` with graceful fallback to `gemini-flash-latest`). Legacy endpoints (`gemini-1.5-flash`, `gemini-2.0-flash`) have been deprecated by Google and upgraded to `gemini-2.5-flash`.
   - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline, privacy-first vision processing. Sensitive civil records containing citizen personal identifiable information (PII) stay strictly inside municipal infrastructure.
 - **Python Vision Bridge (`ocr_server.py`)**:
   - Persistent FastAPI daemon coordinating OCR execution, signature extraction, and validation.

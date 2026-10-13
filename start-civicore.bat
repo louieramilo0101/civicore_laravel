@@ -74,21 +74,9 @@ start "Ollama Server" cmd /k "title Ollama Server && echo Starting Ollama on por
 echo [2/5] Launching Laravel Server on http://0.0.0.0:8000...
 start "Laravel Server" cmd /k "title Laravel Server && php artisan serve --host 0.0.0.0"
 
-:: 3. Start Laravel Queue Workers (Queue-Specific)
-echo [3/5] Launching dedicated queue workers (high, low, default)...
-echo      Profile: %RAM_PROFILE% ^| CPU cores detected: %CPU_CORES%
-
-for /L %%i in (1,1,%HIGH_WORKERS%) do (
-    start "Queue High %%i" cmd /k "title Queue High %%i && php artisan queue:work --queue=high --tries=3 --sleep=%HIGH_SLEEP% --timeout=%HIGH_TIMEOUT%"
-)
-
-for /L %%i in (1,1,%LOW_WORKERS%) do (
-    start "Queue Low %%i" cmd /k "title Queue Low %%i && php artisan queue:work --queue=low --tries=3 --sleep=%LOW_SLEEP% --timeout=%LOW_TIMEOUT%"
-)
-
-for /L %%i in (1,1,%DEFAULT_WORKERS%) do (
-    start "Queue Default %%i" cmd /k "title Queue Default %%i && php artisan queue:work --queue=default --tries=3 --sleep=%DEFAULT_SLEEP% --timeout=%DEFAULT_TIMEOUT%"
-)
+:: 3. Start Unified Laravel Queue Worker
+echo [3/5] Launching Unified Laravel Queue Worker (high, default, low)...
+start "CiviCORE Queue Worker" cmd /k "title CiviCORE Queue Worker && echo Running CiviCORE Queue Worker (queues: high, default, low)... && php artisan queue:work --queue=high,default,low --tries=3 --sleep=1 --timeout=1200"
 
 :: 4. Start Persistent OCR Server
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
@@ -141,6 +129,7 @@ echo [*] Stopping Persistent OCR Server...
 taskkill /FI "WINDOWTITLE eq OCR Server*" /T /F >nul 2>&1
 
 echo [*] Stopping Laravel Queue Workers...
+taskkill /FI "WINDOWTITLE eq CiviCORE Queue Worker*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue High*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Low*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Default*" /T /F >nul 2>&1

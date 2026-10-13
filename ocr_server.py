@@ -156,6 +156,7 @@ def status():
 @app.post('/split')
 @serialize_processing
 def split_pdf(data: SplitRequest):
+    split_start = time.perf_counter()
     file_path = data.file_path
     ext = _validate_input_file(file_path, expected_extensions=['.pdf'])
 
@@ -178,7 +179,7 @@ def split_pdf(data: SplitRequest):
             image_format = data.image_format.lower()
             image_quality = max(1, min(data.image_quality, 100))
             output_ext = "jpg" if image_format == "jpeg" else "webp"
-            output_format = "JPEG" if image_format == "jpeg" else "WEBP"
+            output_format = "JPEG" if image_format == "WEBP" else "JPEG"
 
             print(
                 "split_pdf settings: "
@@ -217,11 +218,21 @@ def split_pdf(data: SplitRequest):
                     f"at {grayscale_image.width}x{grayscale_image.height}"
                 )
 
-            return {"success": True, "pages": image_paths, "total": len(image_paths)}
+            split_elapsed = time.perf_counter() - split_start
+            print(f" [SPLIT COMPLETED] Processed {len(image_paths)} page(s) in {split_elapsed:.2f}s\n")
+            return {"success": True, "pages": image_paths, "total": len(image_paths), "elapsed_seconds": round(split_elapsed, 2)}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+def format_duration(seconds: float) -> str:
+    """Format duration into readable minutes and seconds string."""
+    if seconds >= 60:
+        mins = int(seconds // 60)
+        secs = seconds % 60
+        return f"{mins}m {secs:.2f}s"
+    return f"{seconds:.2f}s"
 
 key_cooldowns = {}
 current_key_index = 0
@@ -231,6 +242,9 @@ current_key_index = 0
 def process_ocr_gemini(data: dict):
     """Process a document with Gemini Vision OCR and return structured JSON."""
     global current_key_index, key_cooldowns
+    t_start = time.perf_counter()
+    start_clock = time.strftime('%H:%M:%S')
+    
     file_path = data.get('file_path')
     doc_type = data.get('doc_type', 'birth')
     
@@ -239,24 +253,33 @@ def process_ocr_gemini(data: dict):
         
     ocr_engine = str(data.get('ocr_engine', 'gemini')).lower().strip()
     ollama_model = str(data.get('ollama_model', 'qwen2.5vl:3b')).strip()
+    engine_label = f"Local Ollama ({ollama_model})" if ocr_engine in ('ollama', 'local') else "Google Gemini Cloud Vision"
     
-    print(f"Processing OCR for: {file_path} using engine: {ocr_engine} (model: {ollama_model if ocr_engine in ('ollama', 'local') else 'gemini'})")
+    print("\n" + "=" * 70)
+    print(f" [OCR PROCESS INITIATED] Time: {start_clock}")
+    print(f" Target File : {file_path}")
+    print(f" Doc Type    : {doc_type}")
+    print(f" Engine      : {engine_label}")
+    print("=" * 70)
     
     api_keys = []
+    configured_model = os.environ.get("GEMINI_MODEL")
     if ocr_engine == 'gemini':
         # Read API keys
         keys_str = os.environ.get("GEMINI_API_KEYS")
         
-        if not keys_str:
-            env_path = Path(__file__).resolve().parent / '.env'
-            if env_path.exists():
-                with open(env_path, 'r') as f:
-                    for line in f:
-                        if line.startswith('GEMINI_API_KEYS='):
-                            keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
-                            break
-                        elif line.startswith('GEMINI_API_KEY='):
-                            keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
+        env_path = Path(__file__).resolve().parent / '.env'
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line_s = line.strip()
+                    if not keys_str:
+                        if line_s.startswith('GEMINI_API_KEYS='):
+                            keys_str = line_s.split('=', 1)[1].strip().strip('"').strip("'")
+                        elif line_s.startswith('GEMINI_API_KEY='):
+                            keys_str = line_s.split('=', 1)[1].strip().strip('"').strip("'")
+                    if not configured_model and line_s.startswith('GEMINI_MODEL='):
+                        configured_model = line_s.split('=', 1)[1].strip().strip('"').strip("'")
                             
         if keys_str:
             api_keys = [k.strip() for k in keys_str.split(',') if k.strip()]
@@ -270,6 +293,7 @@ def process_ocr_gemini(data: dict):
             
         print(f"Found {len(api_keys)} API keys for rotation.")
     
+    t_prep_start = time.perf_counter()
     ext = Path(file_path).suffix.lower()
     img = None
     if ext == '.pdf':
@@ -279,21 +303,29 @@ def process_ocr_gemini(data: dict):
             pix = page.get_pixmap()
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         except Exception as e:
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] PDF conversion failed after {t_fail:.2f}s: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
     else:
         try:
             img = Image.open(file_path)
         except Exception as e:
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] Image loading failed after {t_fail:.2f}s: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to open image: {str(e)}")
             
-    # Resize image to optimize memory and speed (768px for local CPU Ollama, 1024px for Gemini Cloud)
+    # Resize image to optimize memory and speed (640px for local CPU/GPU Ollama, 1024px for Gemini Cloud)
     if img:
-        max_size = 768 if ocr_engine in ('ollama', 'local') else 1024
+        max_size = 640 if ocr_engine in ('ollama', 'local') else 1024
         if max(img.size) > max_size:
             orig_w, orig_h = img.size
             resample_filter = getattr(Image, "Resampling", Image).LANCZOS
             img.thumbnail((max_size, max_size), resample_filter)
             print(f"Optimized image: resized from {orig_w}x{orig_h} to {img.size[0]}x{img.size[1]} for {ocr_engine}")
+    
+    t_prep_duration = time.perf_counter() - t_prep_start
+    img_res = f"{img.size[0]}x{img.size[1]}" if img else "N/A"
+    print(f" [*] Stage 1/3 - Preprocessing: Completed in {t_prep_duration:.2f}s (Resolution: {img_res})")
             
     doc_type_clean = str(doc_type).lower().strip()
     
@@ -468,9 +500,10 @@ def process_ocr_gemini(data: dict):
     
     clean_text = None
     engine_used = None
+    t_infer_start = time.perf_counter()
 
     if ocr_engine in ('ollama', 'local'):
-        print(f"Executing Local Ollama OCR with model: {ollama_model}")
+        print(f" [*] Stage 2/3 - Inference: Executing Local Ollama OCR with model '{ollama_model}'...")
         import io
         import urllib.request
         import urllib.error
@@ -480,14 +513,28 @@ def process_ocr_gemini(data: dict):
         img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+
+        # Extract the schema block from prompt to avoid prompt bloat on local CPU/hardware
+        schema_match = re.search(r'(\{[\s\S]*\})', prompt)
+        schema_json = schema_match.group(1).strip() if schema_match else "{}"
+        prompt_for_ollama = (
+            f"You are an expert OCR system for Philippine Civil Registry {doc_type_clean} documents.\n"
+            "If the image is NOT a civil registry document, set \"is_valid_document\": false and \"document_validation_error\": \"Reason\".\n"
+            "Extract all visible fields from the image into this exact JSON schema (use null for empty or unreadable fields):\n"
+            f"{schema_json}\n\n"
+            "CRITICAL: Respond ONLY with a valid JSON object matching the requested schema. No markdown formatting, no code blocks, no conversational text."
+        )
+
         payload = {
             "model": ollama_model,
-            "prompt": prompt + "\n\nCRITICAL: Respond ONLY with a valid JSON object matching the requested schema. No markdown formatting, no code blocks, no conversational text.",
+            "prompt": prompt_for_ollama,
             "images": [img_b64],
             "stream": False,
             "format": "json",
             "options": {
-                "temperature": 0.1
+                "temperature": 0.1,
+                "num_ctx": 4096,
+                "num_predict": 1024
             }
         }
 
@@ -497,27 +544,34 @@ def process_ocr_gemini(data: dict):
                 data=json.dumps(payload).encode('utf-8'),
                 headers={"Content-Type": "application/json"}
             )
-            # 300 second timeout to allow local model loading and CPU inference
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            # 900 second (15 minute) timeout to accommodate local model loading and CPU inference
+            with urllib.request.urlopen(req, timeout=900) as resp:
                 res_dict = json.loads(resp.read().decode('utf-8'))
                 clean_text = res_dict.get("response", "").strip()
                 engine_used = f"ollama-{ollama_model}"
+            t_infer_duration = time.perf_counter() - t_infer_start
+            print(f" [*] Stage 2/3 - Inference: Local Ollama completed in {t_infer_duration:.2f}s ({format_duration(t_infer_duration)})")
         except urllib.error.URLError as e:
             err_msg = str(e.reason if hasattr(e, 'reason') else e)
-            print(f"Local Ollama connection failed: {err_msg}")
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] Local Ollama connection failed after {t_fail:.2f}s: {err_msg}")
+            print("=" * 70 + "\n")
             raise HTTPException(
                 status_code=503,
                 detail=f"Local Ollama server is unreachable on {ollama_url}. Please ensure Ollama is running or switch to Gemini in SuperAdmin settings. Error: {err_msg}"
             )
         except Exception as e:
             err_msg = str(e)
-            print(f"Ollama execution error: {err_msg}")
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] Local Ollama execution failed after {t_fail:.2f}s: {err_msg}")
+            print("=" * 70 + "\n")
             raise HTTPException(
                 status_code=500,
                 detail=f"Local Ollama execution failed: {err_msg}"
             )
     else:
         # Gemini Cloud Vision Pipeline
+        print(f" [*] Stage 2/3 - Inference: Sending request to Google Gemini Cloud...")
         now = time.time()
         # Filter active keys (cooldown expired) vs cooling keys
         active_keys = [(idx, k) for idx, k in enumerate(api_keys) if key_cooldowns.get(idx, 0) <= now]
@@ -537,7 +591,9 @@ def process_ocr_gemini(data: dict):
         for attempt, (key_idx, key) in enumerate(keys_to_try):
             print(f"Using API Key index {key_idx} (Attempt {attempt+1}/{len(keys_to_try)})")
             success = False
-            models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+            primary_model = configured_model or "gemini-2.5-flash"
+            candidates = [primary_model, "gemini-2.5-flash", "gemini-flash-latest"]
+            models_to_try = list(dict.fromkeys(candidates))
             
             try:
                 for model_name in models_to_try:
@@ -574,15 +630,28 @@ def process_ocr_gemini(data: dict):
                     if attempt < len(keys_to_try) - 1:
                         print("Immediately switching to next available API key...")
                         continue
+                t_fail = time.perf_counter() - t_start
+                print(f" [OCR FAILED] Gemini API error after {t_fail:.2f}s: {err_str}")
+                print("=" * 70 + "\n")
                 raise HTTPException(status_code=500, detail=f"Gemini API error after {attempt+1} attempts: {err_str}")
                 
         if not response:
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] Gemini failed to return response after {t_fail:.2f}s")
+            print("=" * 70 + "\n")
             raise HTTPException(status_code=500, detail="Gemini API failed to return a response.")
             
         clean_text = response.text.strip()
+        t_infer_duration = time.perf_counter() - t_infer_start
+        print(f" [*] Stage 2/3 - Inference: Gemini Vision completed in {t_infer_duration:.2f}s ({format_duration(t_infer_duration)}) using {engine_used}")
 
     if not clean_text:
+        t_fail = time.perf_counter() - t_start
+        print(f" [OCR FAILED] Engine returned empty response after {t_fail:.2f}s")
+        print("=" * 70 + "\n")
         raise HTTPException(status_code=500, detail="OCR engine returned an empty response.")
+
+    t_post_start = time.perf_counter()
 
     if clean_text.startswith("```json"):
         clean_text = clean_text[7:]
@@ -606,25 +675,47 @@ def process_ocr_gemini(data: dict):
     
     if extracted_data.get("is_valid_document") is False:
         err_msg = extracted_data.get("document_validation_error") or "The uploaded image does not appear to be an official Civil Registry document."
-        print(f"Document Validation Failed: {err_msg}")
+        t_total_duration = time.perf_counter() - t_start
+        print("-" * 70)
+        print(f" [OCR VALIDATION REJECTED] in {t_total_duration:.2f}s ({format_duration(t_total_duration)}): {err_msg}")
+        print("=" * 70 + "\n")
         return {
             "success": False,
             "error": "Invalid Document Uploaded",
             "detail": err_msg,
             "is_valid_document": False,
             "extracted_fields": {},
-            "image_token_cost": 0 if ocr_engine in ('ollama', 'local') else 258
+            "image_token_cost": 0 if ocr_engine in ('ollama', 'local') else 258,
+            "processing_time_seconds": round(t_total_duration, 2),
+            "timings": {
+                "total": round(t_total_duration, 2),
+                "preprocessing": round(t_prep_duration, 2),
+                "inference": round(t_infer_duration, 2)
+            }
         }
 
     signatures = crop_and_binarize_signatures(file_path, doc_type)
     for k, v in signatures.items():
         extracted_data[k] = v
 
+    t_post_duration = time.perf_counter() - t_post_start
+    print(f" [*] Stage 3/3 - Postprocessing: Parsed fields & signatures in {t_post_duration:.2f}s")
+
     img_w, img_h = img.size if img else (1024, 1024)
     tiles = math.ceil(img_w / 768) * math.ceil(img_h / 768)
     image_token_cost = 0 if ocr_engine in ('ollama', 'local') else (tiles * 258)
 
     text_summary = json.dumps(extracted_data, ensure_ascii=False)
+
+    t_total_duration = time.perf_counter() - t_start
+    formatted_total = format_duration(t_total_duration)
+
+    print("-" * 70)
+    print(f" [OCR SUCCESS] Definitive Process Time: {formatted_total} ({t_total_duration:.2f} seconds)")
+    print(f"   ├─ Image Preprocessing        : {t_prep_duration:.2f}s")
+    print(f"   ├─ AI Inference ({engine_used or ocr_engine}) : {t_infer_duration:.2f}s")
+    print(f"   └─ Postprocessing & Signatures: {t_post_duration:.2f}s")
+    print("=" * 70 + "\n")
 
     return {
         "success": True,
@@ -633,7 +724,14 @@ def process_ocr_gemini(data: dict):
         "extracted_fields": extracted_data,
         "engine_used": engine_used or ("gemini" if ocr_engine == 'gemini' else f"ollama-{ollama_model}"),
         "quick_fill_used": True,
-        "image_token_cost": image_token_cost
+        "image_token_cost": image_token_cost,
+        "processing_time_seconds": round(t_total_duration, 2),
+        "timings": {
+            "total": round(t_total_duration, 2),
+            "preprocessing": round(t_prep_duration, 2),
+            "inference": round(t_infer_duration, 2),
+            "postprocessing": round(t_post_duration, 2)
+        }
     }
 
 if __name__ == '__main__':

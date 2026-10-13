@@ -16,6 +16,7 @@ echo [*] Stopping Persistent OCR Server...
 taskkill /FI "WINDOWTITLE eq OCR Server*" /T /F >nul 2>&1
 
 echo [*] Stopping Laravel Queue Workers...
+taskkill /FI "WINDOWTITLE eq CiviCORE Queue Worker*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue High*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Low*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Default*" /T /F >nul 2>&1

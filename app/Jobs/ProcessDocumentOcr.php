@@ -163,7 +163,8 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
 
             // 4. Execute OCR via selected engine (Gemini or Local Ollama)
             Log::info("Executing OCR for Document ID {$this->documentId} using engine: {$ocrEngine} ({$ollamaModel}) on image: {$imagePath}");
-            $response = Http::timeout(300)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 300;
+            $response = Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $imagePath,
                 'doc_type' => $this->docType,
                 'ocr_engine' => $ocrEngine,
@@ -258,6 +259,13 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', $cost);
             }
 
+            if (isset($result['processing_time_seconds'])) {
+                $metadata['ocr_processing_time'] = $result['processing_time_seconds'];
+                if (isset($result['timings'])) {
+                    $metadata['ocr_timings'] = $result['timings'];
+                }
+            }
+
             // 6. Update database record with temporary checking status phase
             DB::table('documents')->where('id', $this->documentId)->update([
                 'status' => 'checking',
@@ -277,7 +285,8 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 'updated_at' => now(),
             ]);
 
-            Log::info("ProcessDocumentOcr finished successfully for Document ID: " . $this->documentId);
+            $elapsedLog = isset($result['processing_time_seconds']) ? " in {$result['processing_time_seconds']}s" : "";
+            Log::info("ProcessDocumentOcr finished successfully for Document ID: " . $this->documentId . $elapsedLog);
 
         } catch (\Throwable $e) {
             Log::error("ProcessDocumentOcr failed for Document ID {$this->documentId}: " . $e->getMessage());

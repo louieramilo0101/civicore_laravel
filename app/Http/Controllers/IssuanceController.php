@@ -535,7 +535,8 @@ class IssuanceController extends Controller
             $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
 
             // Call Python OCR server running on port 8080 using selected AI engine
-            $response = \Illuminate\Support\Facades\Http::timeout(180)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 180;
+            $response = \Illuminate\Support\Facades\Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $absolutePath,
                 'doc_type' => 'birth',
                 'ocr_engine' => $ocrEngine,
