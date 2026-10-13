@@ -34,11 +34,11 @@ export const BirthTemplateOverlayFields = [
     { key: 'mother_citizenship', label: 'Mother Citizenship', x: 0.19, y: 0.28, w: 0.15, h: 0.015 },
     { key: 'mother_religion', label: 'Mother Religion', x: 0.53, y: 0.28, w: 0.20, h: 0.015 },
 
-    { key: 'mother_children_total', label: 'Total Born Alive', x: 0.18, y: 0.31, w: 0.09, h: 0.015 },
-    { key: 'mother_children_living', label: 'Still Living', x: 0.31, y: 0.31, w: 0.09, h: 0.015 },
-    { key: 'mother_children_dead', label: 'Now Dead', x: 0.43, y: 0.31, w: 0.09, h: 0.015 },
-    { key: 'mother_occupation', label: 'Mother Occupation', x: 0.55, y: 0.31, w: 0.15, h: 0.015 },
-    { key: 'mother_age', label: 'Mother Age', x: 0.76, y: 0.31, w: 0.10, h: 0.015 },
+    { key: 'mother_children_total', label: 'Total Born Alive', x: 0.20, y: 0.32, w: 0.09, h: 0.015 },
+    { key: 'mother_children_living', label: 'Still Living', x: 0.32, y: 0.32, w: 0.09, h: 0.015 },
+    { key: 'mother_children_dead', label: 'Now Dead', x: 0.44, y: 0.32, w: 0.09, h: 0.015 },
+    { key: 'mother_occupation', label: 'Mother Occupation', x: 0.55, y: 0.32, w: 0.15, h: 0.015 },
+    { key: 'mother_age', label: 'Mother Age', x: 0.76, y: 0.32, w: 0.10, h: 0.015 },
 
     { key: 'mother_residence_house', label: 'House/Street/Brgy', x: 0.28, y: 0.34, w: 0.13, h: 0.015 },
     { key: 'mother_residence_city', label: 'City/Municipality', x: 0.45, y: 0.34, w: 0.13, h: 0.015 },
@@ -50,7 +50,7 @@ export const BirthTemplateOverlayFields = [
     { key: 'father_middle_name', label: 'Father Middle Name', x: 0.45, y: 0.37, w: 0.15, h: 0.015 },
     { key: 'father_last_name', label: 'Father Last Name', x: 0.68, y: 0.37, w: 0.15, h: 0.015 },
 
-    { key: 'father_citizenship', label: 'Father Citizenship', x: 0.18, y: 0.40, w: 0.15, h: 0.015 },
+    { key: 'father_citizenship', label: 'Father Citizenship', x: 0.19, y: 0.40, w: 0.15, h: 0.015 },
     { key: 'father_religion', label: 'Father Religion', x: 0.37, y: 0.40, w: 0.15, h: 0.015 },
     { key: 'father_occupation', label: 'Father Occupation', x: 0.57, y: 0.40, w: 0.15, h: 0.015 },
     { key: 'father_age', label: 'Father Age', x: 0.77, y: 0.40, w: 0.08, h: 0.015 },
@@ -68,36 +68,41 @@ export const BirthTemplateOverlayFields = [
     { key: 'marriage_parents_place_province', label: 'Province', x: 0.64, y: 0.48, w: 0.10, h: 0.015 },
     { key: 'marriage_parents_place_country', label: 'Country', x: 0.75, y: 0.48, w: 0.10, h: 0.015 },
 
-    // ATTENDANT
-    { key: 'attendant_type', label: 'Attendant Type', x: 0.17, y: 0.51, w: 0.15, h: 0.015 },
-    { key: 'attendant_time', label: 'Time of Birth', x: 0.65, y: 0.51, w: 0.15, h: 0.015 },
-    { key: 'attendant_signature', label: 'Attendant Signature', x: 0.22, y: 0.55, w: 0.25, h: 0.015 },
+    // ATTENDANT (21a Checklist & 21b Certification)
+    { key: 'attendant_check_physician', label: '21a. Attendant: Physician', x: 0.176, y: 0.505, w: 0.03, h: 0.015 },
+    { key: 'attendant_check_nurse', label: '21a. Attendant: Nurse', x: 0.281, y: 0.505, w: 0.03, h: 0.015 },
+    { key: 'attendant_check_midwife', label: '21a. Attendant: Midwife', x: 0.379, y: 0.505, w: 0.03, h: 0.015 },
+    { key: 'attendant_check_hilot', label: '21a. Attendant: Hilot', x: 0.491, y: 0.505, w: 0.03, h: 0.015 },
+    { key: 'attendant_check_others', label: '21a. Attendant: Others', x: 0.721, y: 0.505, w: 0.03, h: 0.015 },
+    { key: 'attendant_others_specify', label: '21a. Others (Specify)', x: 0.81, y: 0.505, w: 0.12, h: 0.015 },
+    { key: 'attendant_time', label: 'Time of Birth', x: 0.60, y: 0.535, w: 0.12, h: 0.015 },
+    { key: 'attendant_signature', label: 'Attendant Signature', x: 0.22, y: 0.54, w: 0.25, h: 0.030 },
     { key: 'attendant_name', label: 'Attendant Name', x: 0.25, y: 0.57, w: 0.25, h: 0.015 },
     { key: 'attendant_title', label: 'Title or Position', x: 0.25, y: 0.585, w: 0.25, h: 0.015 },
     { key: 'attendant_address', label: 'Attendant Address', x: 0.57, y: 0.56, w: 0.20, h: 0.015 },
     { key: 'attendant_date', label: 'Attendant Date', x: 0.55, y: 0.585, w: 0.20, h: 0.015 },
 
     // INFORMANT
-    { key: 'informant_signature', label: 'Informant Signature', x: 0.23, y: 0.634, w: 0.25, h: 0.015 },
+    { key: 'informant_signature', label: 'Informant Signature', x: 0.23, y: 0.622, w: 0.25, h: 0.030 },
     { key: 'informant_name', label: 'Informant Name', x: 0.25, y: 0.65, w: 0.25, h: 0.015 },
     { key: 'informant_relationship', label: 'Relationship', x: 0.29, y: 0.667, w: 0.21, h: 0.015 },
     { key: 'informant_address', label: 'Informant Address', x: 0.22, y: 0.684, w: 0.28, h: 0.015 },
     { key: 'informant_date', label: 'Informant Date', x: 0.21, y: 0.70, w: 0.20, h: 0.015 },
 
     // PREPARED BY
-    { key: 'prepared_by_signature', label: 'Prepared By Signature', x: 0.58, y: 0.637, w: 0.25, h: 0.015 },
+    { key: 'prepared_by_signature', label: 'Prepared By Signature', x: 0.58, y: 0.625, w: 0.25, h: 0.030 },
     { key: 'prepared_by_name', label: 'Prepared By Name', x: 0.60, y: 0.656, w: 0.25, h: 0.015 },
     { key: 'prepared_by_title', label: 'Prepared By Title', x: 0.61, y: 0.675, w: 0.25, h: 0.015 },
     { key: 'prepared_by_date', label: 'Prepared Date', x: 0.56, y: 0.69, w: 0.25, h: 0.015 },
 
     // RECEIVED BY
-    { key: 'received_by_signature', label: 'Received By Signature', x: 0.23, y: 0.728, w: 0.25, h: 0.015 },
+    { key: 'received_by_signature', label: 'Received By Signature', x: 0.23, y: 0.716, w: 0.25, h: 0.030 },
     { key: 'received_by_name', label: 'Received By Name', x: 0.24, y: 0.743, w: 0.25, h: 0.015 },
     { key: 'received_by_title', label: 'Received By Title', x: 0.25, y: 0.758, w: 0.25, h: 0.015 },
     { key: 'received_by_date', label: 'Received Date', x: 0.23, y: 0.773, w: 0.25, h: 0.015 },
 
     // REGISTERED BY
-    { key: 'registered_by_signature', label: 'Registered By Signature', x: 0.58, y: 0.728, w: 0.25, h: 0.015 },
+    { key: 'registered_by_signature', label: 'Registered By Signature', x: 0.58, y: 0.716, w: 0.25, h: 0.030 },
     { key: 'registered_by_name', label: 'Registered By Name', x: 0.60, y: 0.743, w: 0.25, h: 0.015 },
     { key: 'registered_by_title', label: 'Registered By Title', x: 0.61, y: 0.758, w: 0.25, h: 0.015 },
     { key: 'registered_by_date', label: 'Registered Date', x: 0.56, y: 0.773, w: 0.25, h: 0.015 },

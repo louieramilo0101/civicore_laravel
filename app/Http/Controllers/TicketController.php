@@ -668,6 +668,16 @@ class TicketController extends Controller
 
         $this->syncIssuanceWithTicket($ticket, $request->document_id);
 
+        DB::table('activity_logs')->insert([
+            'user_name' => $this->currentUserName($request),
+            'action' => 'Document Attached',
+            'record_type' => 'Document',
+            'record_id' => $request->document_id,
+            'details' => "Document #{$request->document_id} attached to ticket {$ticket->ticket_number} ({$ticket->client_name})",
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
         return response()->json(['success' => true, 'ticket' => $ticket]);
     }
 
@@ -708,9 +718,9 @@ class TicketController extends Controller
         DB::table('activity_logs')->insert([
             'user_name' => $this->currentUserName($request),
             'action' => 'Document Attached',
-            'record_type' => 'Ticket',
-            'record_id' => $ticket->id,
-            'details' => "Document ID {$request->document_id} attached to ticket {$ticket->ticket_number}. Ticket ready for printing.",
+            'record_type' => 'Document',
+            'record_id' => $request->document_id,
+            'details' => "Document #{$request->document_id} attached to ticket {$ticket->ticket_number} ({$ticket->client_name}). Ticket ready for printing.",
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ]);

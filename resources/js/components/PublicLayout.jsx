@@ -149,9 +149,18 @@ export default function PublicLayout({ children }) {
             {/* Footer */}
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">
                 <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain opacity-50" />
                         <span className="text-white font-black tracking-widest uppercase text-sm opacity-50">CiviCORE</span>
+                        <span className="text-slate-600">•</span>
+                        <a
+                            href="https://www.facebook.com/gloria.bago.184"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-400 hover:text-[#d4a574] transition-colors flex items-center gap-1.5"
+                        >
+                            <span>Facebook</span>
+                        </a>
                     </div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em]">
                         &copy; {new Date().getFullYear()} Municipality of Naic. Digital Governance Initiative.

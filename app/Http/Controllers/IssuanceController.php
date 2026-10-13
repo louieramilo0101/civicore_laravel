@@ -152,6 +152,28 @@ class IssuanceController extends Controller
                     'updated_at' => now(),
                 ]);
             }
+
+            // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
+            $recentlyLogged = DB::table('activity_logs')
+                ->where('record_type', 'Issuance')
+                ->where('record_id', $id)
+                ->where('action', 'like', '%Delet%')
+                ->where('created_at', '>=', now()->subSeconds(5))
+                ->exists();
+
+            if (!$recentlyLogged) {
+                $userName = request()->session()->get('user_name') 
+                    ?: (auth()->user()?->name ?? ($issuance->encoded_by ?? 'System Staff'));
+                DB::table('activity_logs')->insert([
+                    'user_name' => $userName,
+                    'action' => 'Deleted',
+                    'record_type' => 'Issuance',
+                    'record_id' => $id,
+                    'details' => "Deleted issuance #{$id}" . (!empty($issuance->name) ? " for {$issuance->name}" : ""),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         });
         
         return response()->json(['success' => true]);

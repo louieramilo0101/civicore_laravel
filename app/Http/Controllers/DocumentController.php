@@ -951,7 +951,7 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'error' => 'Document not found'], 404);
         }
 
-        DB::transaction(function () use ($id) {
+        DB::transaction(function () use ($id, $document) {
             $this->logHistory($id, 'Deleted');
 
             DB::table('documents')->where('id', $id)->update([
@@ -963,6 +963,28 @@ class DocumentController extends Controller
                 'deleted_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
+            $recentlyLogged = DB::table('activity_logs')
+                ->where('record_type', 'Document')
+                ->where('record_id', $id)
+                ->where('action', 'like', '%Delet%')
+                ->where('created_at', '>=', now()->subSeconds(5))
+                ->exists();
+
+            if (!$recentlyLogged) {
+                $userName = request()->session()->get('user_name') 
+                    ?: (auth()->user()?->name ?? ($document->encoded_by ?? 'System Staff'));
+                DB::table('activity_logs')->insert([
+                    'user_name' => $userName,
+                    'action' => 'Deleted',
+                    'record_type' => 'Document',
+                    'record_id' => $id,
+                    'details' => "Deleted document #{$id}" . (!empty($document->name) ? " ({$document->name})" : ""),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         });
 
         return response()->json(['success' => true]);
