@@ -38,6 +38,13 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (!$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This account has been disabled. Please contact your system administrator.',
+            ], 403);
+        }
+
         // Store user in session
         $request->session()->put('user_id', $user->id);
 
@@ -63,6 +70,12 @@ class AuthController extends Controller
         if (!$user) {
             $request->session()->forget('user_id');
             return response()->json(['success' => false, 'message' => 'User not found.'], 401);
+        }
+
+        if (!$user->is_active) {
+            $request->session()->forget('user_id');
+            $request->session()->invalidate();
+            return response()->json(['success' => false, 'message' => 'This account has been disabled.'], 403);
         }
 
         return response()->json([
@@ -165,6 +178,7 @@ class AuthController extends Controller
             'last_name'   => $user->last_name,
             'email'       => $user->email,
             'role'        => $user->role,
+            'is_active'   => (bool) ($user->is_active ?? true),
             'avatar'      => $user->avatar ? 'data:image/png;base64,' . base64_encode($user->avatar) : null,
             'permissions' => $user->permissions ?? [],
             'created_at'  => $user->created_at,

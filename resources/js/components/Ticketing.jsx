@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
@@ -51,6 +51,33 @@ export default function Ticketing({ mode = 'portal' }) {
     const [phone, setPhone] = useState('');
     const [purpose, setPurpose] = useState('birth');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // ── Portal Window helper (after 5 PM → ticket scheduled for tomorrow) ─────────
+    const getPortalState = useCallback(() => {
+        const now = new Date();
+        const hours = now.getHours();
+        const totalMinutes = hours * 60 + now.getMinutes();
+        const closeAt = 17 * 60; // 5:00 PM
+        const isAfterCutoff = totalMinutes >= closeAt;
+
+        // Today's date string for max attribute on date inputs
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        return { isAfterCutoff, todayStr };
+    }, []);
+
+    const [portalState, setPortalState] = useState(getPortalState);
+
+    useEffect(() => {
+        // Refresh portal state every minute
+        const interval = setInterval(() => setPortalState(getPortalState()), 60000);
+        return () => clearInterval(interval);
+    }, [getPortalState]);
+
+    const { isAfterCutoff, todayStr: todayDateStr } = portalState;
     const [details, setDetails] = useState({
         // Birth Certificate details
         first_name: '',
@@ -84,12 +111,22 @@ export default function Ticketing({ mode = 'portal' }) {
     /** Updates one certificate-specific ticket detail field. */
     const handleDetailChange = (field, val) => {
         const isNameField = field.includes('name') && !field.includes('place') && !field.includes('date');
-        const cleanVal = isNameField ? sanitizeName(val) : val;
+        let cleanVal = isNameField ? sanitizeName(val) : val;
+
+        if (field.includes('date') && cleanVal) {
+            const parts = cleanVal.split('-');
+            if (parts[0] && parts[0].length > 4) {
+                parts[0] = parts[0].slice(0, 4);
+                cleanVal = parts.join('-');
+            }
+        }
+
         setDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
     const handlePortalSubmit = async (e) => {
         e.preventDefault();
+
         if (!clientName.trim()) {
             showAlert({ title: 'Validation Error', message: 'Please enter your name.', type: 'danger' });
             return;
@@ -338,6 +375,26 @@ export default function Ticketing({ mode = 'portal' }) {
                     </Link>
                 </div>
 
+                {/* ── After-5PM Info Banner ─────────────────────────────── */}
+                {isAfterCutoff && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm"
+                    >
+                        <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <ClockIcon className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="font-black text-blue-900 text-sm">Late Submission — Ticket Will Be Scheduled for Tomorrow</p>
+                            <p className="text-blue-700 text-xs mt-1 font-medium">
+                                It’s past 5:00 PM. You can still submit your request, but it will be
+                                processed <strong>tomorrow</strong>. You cannot submit another request for tomorrow after this.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -360,7 +417,7 @@ export default function Ticketing({ mode = 'portal' }) {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Your Full Name</label>
+                                    <label className="text-xs font-bold text-slate-800">Your Full Name</label>
                                     <div className="relative">
                                         <UserIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
@@ -375,7 +432,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Email Address</label>
+                                    <label className="text-xs font-bold text-slate-800">Email Address</label>
                                     <div className="relative">
                                         <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
@@ -390,18 +447,19 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-700 uppercase tracking-widest">Phone Number</label>
+                                    <label className="text-xs font-bold text-slate-800">Phone Number</label>
                                     <div className="relative">
                                         <PhoneIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
                                             value={phone}
                                             onChange={e => {
-                                                const cleaned = e.target.value.replace(/[^0-9+\-\s()]/g, '').slice(0, 15);
+                                                const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
                                                 setPhone(cleaned);
                                             }}
-                                            maxLength={15}
-                                            placeholder="09123456789 (or +639123456789)"
+                                            maxLength={11}
+                                            placeholder="09123456789"
                                             className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
                                         />
                                     </div>
@@ -452,31 +510,31 @@ export default function Ticketing({ mode = 'portal' }) {
                             {purpose === 'birth' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">First Name (on Certificate)</label>
+                                        <label className="text-xs font-bold text-slate-800">First Name (on Certificate)</label>
                                         <input type="text" required value={details.first_name} onChange={e => handleDetailChange('first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Middle Name (on Certificate)</label>
+                                        <label className="text-xs font-bold text-slate-800">Middle Name (on Certificate)</label>
                                         <input type="text" required value={details.middle_name} onChange={e => handleDetailChange('middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Last Name (on Certificate)</label>
+                                        <label className="text-xs font-bold text-slate-800">Last Name (on Certificate)</label>
                                         <input type="text" required value={details.last_name} onChange={e => handleDetailChange('last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Date of Birth</label>
-                                        <input type="date" required value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800">Date of Birth</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Place of Birth (City/Hospital)</label>
+                                        <label className="text-xs font-bold text-slate-800">Place of Birth (City/Hospital)</label>
                                         <input type="text" required value={details.place_of_birth} onChange={e => handleDetailChange('place_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Father's Full Name</label>
+                                        <label className="text-xs font-bold text-slate-800">Father's Full Name</label>
                                         <input type="text" required value={details.father_name} onChange={e => handleDetailChange('father_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Father's Full Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Mother's Full Maiden Name</label>
+                                        <label className="text-xs font-bold text-slate-800">Mother's Full Maiden Name</label>
                                         <input type="text" required value={details.mother_name} onChange={e => handleDetailChange('mother_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Mother's Maiden Name" />
                                     </div>
                                 </div>
@@ -485,23 +543,23 @@ export default function Ticketing({ mode = 'portal' }) {
                             {purpose === 'death' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Deceased First Name</label>
+                                        <label className="text-xs font-bold text-slate-800">Deceased First Name</label>
                                         <input type="text" required value={details.deceased_first_name} onChange={e => handleDetailChange('deceased_first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased First Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Deceased Middle Name</label>
+                                        <label className="text-xs font-bold text-slate-800">Deceased Middle Name</label>
                                         <input type="text" required value={details.deceased_middle_name} onChange={e => handleDetailChange('deceased_middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Middle Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Deceased Last Name</label>
+                                        <label className="text-xs font-bold text-slate-800">Deceased Last Name</label>
                                         <input type="text" required value={details.deceased_last_name} onChange={e => handleDetailChange('deceased_last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Date of Death</label>
-                                        <input type="date" required value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800">Date of Death</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Place of Death</label>
+                                        <label className="text-xs font-bold text-slate-800">Place of Death</label>
                                         <input type="text" required value={details.place_of_death} onChange={e => handleDetailChange('place_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                 </div>
@@ -511,24 +569,24 @@ export default function Ticketing({ mode = 'portal' }) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* Husband */}
                                     <div className="space-y-3 border-r border-slate-200 pr-4">
-                                        <h4 className="text-xs font-black text-slate-800 uppercase">Husband Details</h4>
+                                        <h4 className="text-xs font-bold text-slate-800">Husband Details</h4>
                                         <input type="text" required value={details.husband_first_name} onChange={e => handleDetailChange('husband_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
                                         <input type="text" required value={details.husband_middle_name} onChange={e => handleDetailChange('husband_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     {/* Wife */}
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-black text-slate-800 uppercase">Wife Details</h4>
+                                        <h4 className="text-xs font-bold text-slate-800">Wife Details</h4>
                                         <input type="text" required value={details.wife_first_name} onChange={e => handleDetailChange('wife_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
                                         <input type="text" required value={details.wife_middle_name} onChange={e => handleDetailChange('wife_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Date of Marriage</label>
-                                        <input type="date" required value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800">Date of Marriage</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Place of Marriage</label>
+                                        <label className="text-xs font-bold text-slate-800">Place of Marriage</label>
                                         <input type="text" required value={details.place_of_marriage} onChange={e => handleDetailChange('place_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                 </div>
@@ -536,12 +594,17 @@ export default function Ticketing({ mode = 'portal' }) {
                         </div>
 
                         <div className="pt-6">
+                            {isAfterCutoff && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+                                    <p className="text-blue-700 text-xs font-bold">📅 Submitting after 5:00 PM — your ticket will be scheduled for <strong>tomorrow</strong>.</p>
+                                </div>
+                            )}
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
                                 className="w-full py-4 bg-gradient-to-r from-[#d4a574] to-[#c49a67] text-[#0f172a] rounded-2xl font-black shadow-xl shadow-[#d4a574]/15 hover:shadow-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
-                                {isSubmitting ? 'Queueing request...' : 'Get Queue Ticket'}
+                                {isSubmitting ? 'Queueing request...' : isAfterCutoff ? 'Get Queue Ticket (Tomorrow)' : 'Get Queue Ticket'}
                             </button>
                         </div>
                     </form>

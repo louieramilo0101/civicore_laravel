@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Setting;
 use App\Models\User;
 
@@ -22,6 +23,12 @@ class SettingController extends Controller
         // Defaults
         if (!isset($settings['ticket_limits_enabled'])) {
             $settings['ticket_limits_enabled'] = '1';
+        }
+        if (!isset($settings['ocr_engine'])) {
+            $settings['ocr_engine'] = 'gemini';
+        }
+        if (!isset($settings['ollama_model'])) {
+            $settings['ollama_model'] = 'qwen2.5vl:3b';
         }
 
         return response()->json(['success' => true, 'settings' => $settings]);
@@ -45,6 +52,8 @@ class SettingController extends Controller
             'announcement_active'   => 'nullable|boolean',
             'announcement_text'     => 'nullable|string|max:500',
             'ticket_limits_enabled' => 'nullable|boolean',
+            'ocr_engine'            => 'nullable|string|in:gemini,ollama',
+            'ollama_model'          => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -83,6 +92,82 @@ class SettingController extends Controller
             );
         }
 
+        // OCR Engine Selection (gemini vs ollama)
+        if ($request->has('ocr_engine')) {
+            Setting::updateOrCreate(
+                ['key' => 'ocr_engine'],
+                ['value' => $request->input('ocr_engine')]
+            );
+        }
+
+        // Ollama Model Selection
+        if ($request->has('ollama_model')) {
+            Setting::updateOrCreate(
+                ['key' => 'ollama_model'],
+                ['value' => $request->input('ollama_model')]
+            );
+        }
+
+        Cache::forget('public_config');
+
         return response()->json(['success' => true, 'message' => 'Portal configuration updated successfully.']);
+    }
+
+    /**
+     * Check live status of OCR engines (Gemini & local Ollama).
+     */
+    public function ocrStatus(Request $request)
+    {
+        $userId = $request->session()->get('user_id');
+        $actor = $userId ? User::find($userId) : null;
+
+        if (!$actor || !in_array($actor->role, ['Admin', 'SuperAdmin'])) {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+
+        $activeEngine = Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
+        $activeModel = Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
+
+        // Check local Ollama status
+        $ollamaOnline = false;
+        $ollamaModels = [];
+        try {
+            $ollamaRes = \Illuminate\Support\Facades\Http::timeout(3)->get('http://127.0.0.1:11434/api/tags');
+            if ($ollamaRes->successful()) {
+                $ollamaOnline = true;
+                $data = $ollamaRes->json();
+                if (isset($data['models']) && is_array($data['models'])) {
+                    foreach ($data['models'] as $m) {
+                        if (!empty($m['name'])) {
+                            $ollamaModels[] = $m['name'];
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $ollamaOnline = false;
+        }
+
+        // Check Gemini API Keys
+        $geminiKeyCount = 0;
+        $keysStr = env('GEMINI_API_KEYS') ?? env('GEMINI_API_KEY') ?? '';
+        if ($keysStr) {
+            $geminiKeyCount = count(array_filter(explode(',', $keysStr)));
+        }
+
+        return response()->json([
+            'success' => true,
+            'active_engine' => $activeEngine,
+            'active_model' => $activeModel,
+            'ollama' => [
+                'online' => $ollamaOnline,
+                'models' => array_values($ollamaModels),
+                'has_qwen' => in_array('qwen2.5vl:3b', $ollamaModels) || in_array('qwen2.5vl:latest', $ollamaModels),
+            ],
+            'gemini' => [
+                'has_keys' => $geminiKeyCount > 0,
+                'key_count' => $geminiKeyCount,
+            ]
+        ]);
     }
 }

@@ -14,6 +14,7 @@ import ArchiveManager   from './components/ArchiveManager.jsx';
 import Issuances        from './components/Issuances.jsx';
 import Mapping          from './components/Mapping.jsx';
 import Accounts         from './components/Accounts.jsx';
+import Backups          from './components/Backups.jsx';
 import Announcements    from './components/Announcements.jsx';
 import Layout           from './components/Layout.jsx';
 import PublicLayout     from './components/PublicLayout.jsx';
@@ -150,6 +151,13 @@ function App() {
                         <Route path="/accounts" element={
                             <ProtectedRoute>
                                 <Layout><Accounts /></Layout>
+                            </ProtectedRoute>
+                        } />
+
+                        {/* System Backup & Recovery — SuperAdmin only */}
+                        <Route path="/backups" element={
+                            <ProtectedRoute allowedRoles={['SuperAdmin']}>
+                                <Layout><Backups /></Layout>
                             </ProtectedRoute>
                         } />
 

@@ -27,6 +27,12 @@ class Issuance extends Model
         'encoded_by',
         'extracted_data',
         'file_path',
+        'image_path',
+    ];
+
+    /** Stores the hidden value to prevent payload bloat. */
+    protected $hidden = [
+        'file_data',
     ];
 
     /**

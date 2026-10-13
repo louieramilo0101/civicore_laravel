@@ -28,6 +28,7 @@ class Ticket extends Model
         'qr_code_token',
         'document_id',
         'expires_at',
+        'scheduled_date',
         'source',
         'qr_code_path',
         'verified_at',
@@ -37,8 +38,9 @@ class Ticket extends Model
     /** Stores the casts value used by this component. */
     protected $casts = [
         'details'      => 'array',
-        'expires_at'   => 'datetime',
-        'verified_at'  => 'datetime',
+        'expires_at'    => 'datetime',
+        'scheduled_date' => 'date',
+        'verified_at'   => 'datetime',
         'issued_at'    => 'datetime',
         'queue_number' => 'integer',
     ];

@@ -6,7 +6,7 @@ import {
     CloudArrowUpIcon, DocumentIcon, TrashIcon, CheckCircleIcon,
     ExclamationTriangleIcon, MagnifyingGlassIcon, XMarkIcon,
     PencilSquareIcon, ShieldExclamationIcon, ShieldCheckIcon, DocumentCheckIcon,
-    EyeIcon, ArrowDownTrayIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
+    EyeIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
     UserIcon, DocumentTextIcon, UsersIcon
 } from '@heroicons/react/24/outline';
 import OcrFormPanel from './OcrFormPanel.jsx';
@@ -15,21 +15,24 @@ import { useModal } from './ModalContext.jsx';
 import { useData } from './DataContext.jsx';
 import CameraModal from './CameraModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
-import ExportReportModal from './ExportReportModal.jsx';
+import Pagination from './Pagination.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
+import useDebounce from '../hooks/useDebounce.js';
 
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
+// ── Document Preview Modal (via Portal) ──────────────────────────────────────
 /** Previews an uploaded or registered document without leaving the list. */
 const DocumentPreviewModal = ({ file, onClose }) => {
-    const viewUrl = `/api/documents/view/${file.id}`;
+    const [previewTab, setPreviewTab] = useState('picture'); // 'picture' | 'pdf'
+    const pdfViewUrl = `/api/documents/view/${file.id}#toolbar=0&navpanes=0`;
+    const imageViewUrl = `/api/documents/view-image/${file.id}`;
     const downloadUrl = `/api/documents/download/${file.id}`;
-    const isPdf = file.name?.toLowerCase().endsWith('.pdf');
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex flex-col bg-black/80 backdrop-blur-sm">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-700 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-700 shrink-0 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                         <DocumentIcon className="w-4 h-4 text-indigo-400" />
@@ -39,6 +42,33 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         <p className="text-xs text-slate-400 capitalize">{file.detected_type || file.type} certificate</p>
                     </div>
                 </div>
+
+                {/* Dual A4 Preview Tabs */}
+                <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                    <button
+                        type="button"
+                        onClick={() => setPreviewTab('picture')}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            previewTab === 'picture' 
+                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                        📷 Uploaded Picture (A4)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setPreviewTab('pdf')}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            previewTab === 'pdf' 
+                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                        📄 Standardized PDF (A4)
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                     {file.ocr_text && (
                         <a
@@ -57,7 +87,6 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         rel="noreferrer"
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700"
                     >
-                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
                         Download PDF
                     </a>
                     <button
@@ -71,20 +100,26 @@ const DocumentPreviewModal = ({ file, onClose }) => {
 
             {/* Preview content */}
             <div className="flex-1 overflow-hidden flex gap-4 p-4">
-                {/* Visual Document (Left/Main) */}
+                {/* Visual Document Container */}
                 <div className={`flex-1 flex items-center justify-center ${file.ocr_text ? 'w-2/3' : 'w-full'}`}>
-                    {isPdf ? (
-                        <iframe
-                            src={viewUrl}
-                            title={file.name}
-                            className="w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl"
-                        />
-                    ) : (
+                    {previewTab === 'picture' ? (
                         <img
-                            src={viewUrl}
+                            src={imageViewUrl}
                             alt={file.name}
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-700"
-                            onError={e => { e.target.src = 'https://placehold.co/600x800?text=Preview+Error'; }}
+                            onError={e => {
+                                e.target.style.display = 'none';
+                                const iframe = document.createElement('iframe');
+                                iframe.src = pdfViewUrl;
+                                iframe.className = "w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl";
+                                e.target.parentNode.appendChild(iframe);
+                            }}
+                        />
+                    ) : (
+                        <iframe
+                            src={pdfViewUrl}
+                            title={file.name}
+                            className="w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl"
                         />
                     )}
                 </div>
@@ -205,6 +240,8 @@ const Documents = () => {
     const [activeTab, setActiveTab] = useState('queue');
     const [queueSearch, setQueueSearch] = useState('');
     const [historySearch, setHistorySearch] = useState('');
+    const debouncedQueueSearch = useDebounce(queueSearch, 300);
+    const debouncedHistorySearch = useDebounce(historySearch, 300);
     const [historyFilters, setHistoryFilters] = useState({
         type: 'all',
         staff: 'all',
@@ -216,7 +253,6 @@ const Documents = () => {
 
     const [previewFile, setPreviewFile] = useState(null); // file to preview
     const [isCameraOpen, setIsCameraOpen] = useState(false);
-    const [showExportModal, setShowExportModal] = useState(false);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, onConfirm: null, title: '', message: '', type: 'info' });
 
     /** Toggles one document in the bulk-selection set. */
@@ -554,55 +590,69 @@ const Documents = () => {
     };
 
     /** Persists an OCR-reviewed document and its extracted certificate fields. */
-    const saveRecord = ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false }) => {
+    const saveRecord = ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, duplicateData = null }) => {
         if (!activeOcr) return Promise.reject(new Error('No active OCR'));
         if (savingRecordRef.current) return Promise.reject(new Error('Save already in progress'));
 
         const file = activeOcr.file;
-        const isDuplicate = file.has_duplicate;
+        const isDuplicate = file.has_duplicate || !!duplicateData;
+        const dupCandidate = duplicateData || file.duplicate_candidate || null;
 
         return new Promise((resolve, reject) => {
-            const performActualSave = async () => {
+            const performActualSave = async (force = false) => {
                 if (savingRecordRef.current) return;
                 savingRecordRef.current = true;
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 setIsOcrSaving(true);
                 try {
-                    const result = await executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested });
+                    const result = await executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested, manualFile, isDummy, force });
                     savingRecordRef.current = false;
                     resolve(result);
                 } catch (err) {
                     savingRecordRef.current = false;
                     setIsOcrSaving(false);
+                    if (err?.duplicate && !force) {
+                        const regNo = fields.registry_number || fields.registry_no || 'N/A';
+                        setConfirmModal({
+                            isOpen: true,
+                            title: 'Duplicate Registry Number Detected',
+                            message: err.message || `A record with Registry No. "${regNo}" already exists in the Master Registry. Do you want to override and save?`,
+                            type: 'warning',
+                            confirmText: 'Override & Save',
+                            cancelText: 'Cancel & Edit',
+                            onConfirm: () => performActualSave(true),
+                            onCancel: () => {
+                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                reject(new Error('duplicate_cancelled'));
+                            }
+                        });
+                        return;
+                    }
                     reject(err);
                 }
             };
 
             if (isDuplicate) {
+                const regNo = fields.registry_number || fields.registry_no || dupCandidate?.certNumber || 'N/A';
+                const conflictMsg = dupCandidate
+                    ? `Registry No. "${regNo}" is already registered in the ${(detectedType || '').toUpperCase()} records for ${dupCandidate.name || 'another record'}${dupCandidate.issuanceDate ? ` issued on ${dupCandidate.issuanceDate}` : ''}. Are you sure you want to proceed and save this record anyway?`
+                    : `A record with Registry No. "${regNo}" already exists in the Master Registry. Are you sure you want to proceed and save this duplicate record?`;
+
                 setConfirmModal({
                     isOpen: true,
-                    title: 'Confirm Duplicate Entry',
-                    message: 'A potential duplicate of this record exists in the Master Registry. Are you sure you want to save and approve this duplicate?',
+                    title: 'Duplicate Registry Number Detected',
+                    message: conflictMsg,
                     type: 'warning',
-                    onConfirm: performActualSave,
+                    confirmText: 'Override & Save',
+                    cancelText: 'Cancel & Edit',
+                    onConfirm: () => performActualSave(true),
                     onCancel: () => {
                         setConfirmModal(prev => ({ ...prev, isOpen: false }));
                         reject(new Error('duplicate_cancelled'));
                     }
                 });
             } else {
-                savingRecordRef.current = true;
-                setIsOcrSaving(true);
-                executeSave({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested })
-                    .then((res) => {
-                        savingRecordRef.current = false;
-                        resolve(res);
-                    })
-                    .catch((err) => {
-                        savingRecordRef.current = false;
-                        setIsOcrSaving(false);
-                        reject(err);
-                    });
+                performActualSave(false);
             }
         });
     };
@@ -636,20 +686,13 @@ const Documents = () => {
         return (nameParts || fields.personName || '').toUpperCase();
     };
 
-    const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false }) => {
+    const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, force = false }) => {
         if (!activeOcr) return;
         const file = activeOcr.file;
         const fileId = file.id;
         const computedName = buildPersonName(fields, detectedType);
         const personName = computedName || file.personName || file.name || 'Document Data';
         const barangay = fields.barangay || file.barangay || '';
-
-        if (minimizeRequested) {
-            setActiveOcr(null);
-        } else {
-            // Keep modal open long enough to see the "Securing" state, then close
-            setTimeout(() => setActiveOcr(null), 800);
-        }
 
         // Immediate local status update in the main table
         if (fileId !== 'manual') {
@@ -658,25 +701,80 @@ const Documents = () => {
 
         return runBackgroundTask(`Saving: ${personName}`, async () => {
             try {
-                const url = fileId === 'manual' ? '/api/documents/manual' : `/api/documents/${fileId}`;
-                const method = fileId === 'manual' ? 'POST' : 'PUT';
-                const res = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        type: detectedType,
-                        extracted_fields: fields,
-                        ocr_text: ocr_text,
-                        personName,
-                        barangay,
-                        status: 'Processed',
-                        parental_consent: parentalConsent,
-                        detectedType
-                    }),
-                });
+                let res;
+                if (fileId === 'manual') {
+                    if (manualFile && !isDummy) {
+                        const formData = new FormData();
+                        formData.append('file', manualFile);
+                        formData.append('type', detectedType || 'birth');
+                        formData.append('personName', personName);
+                        formData.append('barangay', barangay);
+                        formData.append('status', 'Processed');
+                        formData.append('ocr_text', ocr_text || '');
+                        formData.append('parental_consent', parentalConsent ? '1' : '0');
+                        formData.append('is_dummy', '0');
+                        if (force) {
+                            formData.append('force', '1');
+                        }
+                        formData.append('extracted_fields', JSON.stringify(fields));
+
+                        res = await fetch('/api/documents/manual', {
+                            method: 'POST',
+                            headers: { Accept: 'application/json' },
+                            credentials: 'include',
+                            body: formData,
+                        });
+                    } else {
+                        res = await fetch('/api/documents/manual', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                type: detectedType,
+                                extracted_fields: fields,
+                                ocr_text: ocr_text,
+                                personName,
+                                barangay,
+                                status: 'Processed',
+                                parental_consent: parentalConsent,
+                                is_dummy: isDummy,
+                                force: force
+                            }),
+                        });
+                    }
+                } else {
+                    res = await fetch(`/api/documents/${fileId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            type: detectedType,
+                            extracted_fields: fields,
+                            ocr_text: ocr_text,
+                            personName,
+                            barangay,
+                            status: 'Processed',
+                            parental_consent: parentalConsent,
+                            detectedType,
+                            force: force
+                        }),
+                    });
+                }
+
                 const data = await res.json();
+                if ((res.status === 422 || !res.ok) && data.duplicate) {
+                    const dupErr = new Error(data.error || 'Duplicate record detected');
+                    dupErr.duplicate = true;
+                    throw dupErr;
+                }
+
                 if (data.success) {
+                    if (minimizeRequested) {
+                        setActiveOcr(null);
+                    } else {
+                        setTimeout(() => setActiveOcr(null), 400);
+                    }
+
                     // Clear the sessionStorage cache for this file
                     try {
                         sessionStorage.removeItem(`civicore_ocr_draft_${fileId}`);
@@ -708,7 +806,7 @@ const Documents = () => {
                     refreshAll();
                     return { success: true, message: `Data for ${personName} has been secured.` };
                 }
-                throw new Error(data.message || 'Save failed');
+                throw new Error(data.message || data.error || 'Save failed');
             } catch (err) {
                 refreshDocuments(true);
                 throw err;
@@ -977,14 +1075,14 @@ const Documents = () => {
 
 
     const filteredQueue = queueFiles.filter(f =>
-        !queueSearch || f.name.toLowerCase().includes(queueSearch.toLowerCase())
+        !debouncedQueueSearch || f.name.toLowerCase().includes(debouncedQueueSearch.toLowerCase())
     );
 
     const filteredHistory = historyFiles.filter(f => {
         // Search filter
-        const matchesSearch = !historySearch ||
-            f.name.toLowerCase().includes(historySearch.toLowerCase()) ||
-            f.personName?.toLowerCase().includes(historySearch.toLowerCase());
+        const matchesSearch = !debouncedHistorySearch ||
+            f.name.toLowerCase().includes(debouncedHistorySearch.toLowerCase()) ||
+            f.personName?.toLowerCase().includes(debouncedHistorySearch.toLowerCase());
 
         if (!matchesSearch) return false;
 
@@ -1023,6 +1121,35 @@ const Documents = () => {
         return true;
     });
 
+    // Pagination States
+    const [queuePage, setQueuePage] = useState(1);
+    const [queuePageSize, setQueuePageSize] = useState(10);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPageSize, setHistoryPageSize] = useState(10);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setQueuePage(1);
+    }, [debouncedQueueSearch]);
+
+    useEffect(() => {
+        setHistoryPage(1);
+    }, [debouncedHistorySearch, historyFilters]);
+
+    const totalQueuePages = Math.max(1, Math.ceil(filteredQueue.length / queuePageSize));
+    const safeQueuePage = Math.min(queuePage, totalQueuePages);
+    const paginatedQueue = filteredQueue.slice(
+        (safeQueuePage - 1) * queuePageSize,
+        safeQueuePage * queuePageSize
+    );
+
+    const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / historyPageSize));
+    const safeHistoryPage = Math.min(historyPage, totalHistoryPages);
+    const paginatedHistory = filteredHistory.slice(
+        (safeHistoryPage - 1) * historyPageSize,
+        safeHistoryPage * historyPageSize
+    );
+
     // Extract unique staff and barangays for filters
     const staffList = [...new Set(historyFiles.map(f => f.encoded_by).filter(Boolean))];
     const barangayList = [...new Set(historyFiles.map(f => f.barangay).filter(Boolean))];
@@ -1039,16 +1166,13 @@ const Documents = () => {
                 )}
             </AnimatePresence>
 
-            <ExportReportModal
-                isOpen={showExportModal}
-                onClose={() => setShowExportModal(false)}
-            />
-
             <ActionConfirmModal
                 isOpen={confirmModal.isOpen}
                 title={confirmModal.title}
                 message={confirmModal.message}
                 type={confirmModal.type}
+                confirmText={confirmModal.confirmText}
+                cancelText={confirmModal.cancelText}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={confirmModal.onCancel}
             />
@@ -1211,14 +1335,7 @@ const Documents = () => {
                                 </button>
                             ))}
 
-                            <button
-                                onClick={() => setShowExportModal(true)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/15 transition-all active:scale-95 cursor-pointer ml-2"
-                                title="Export Civil Registry Reports"
-                            >
-                                <ArrowDownTrayIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">Export Report</span>
-                            </button>
+
                         </div>
 
                         {activeTab === 'queue' ? (
@@ -1272,7 +1389,8 @@ const Documents = () => {
                                         <p className="text-xs mt-1 max-w-[200px]">{queueSearch ? 'Adjust your search query' : 'Upload documents to begin processing'}</p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
+                                    <>
+                                        <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
                                         <table className="w-full text-left border-collapse table-auto">
                                             <thead>
                                                 <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
@@ -1291,7 +1409,7 @@ const Documents = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredQueue.map(file => (
+                                                {paginatedQueue.map(file => (
                                                     <tr key={file.id} className="hover:bg-slate-50/60 transition-colors">
                                                         {file.isDeleted ? (
                                                             <td colSpan="6" className="p-4 text-center">
@@ -1325,34 +1443,40 @@ const Documents = () => {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-2 py-2.5">
-                                                                    <span className="text-[9.5px] font-black px-1.5 py-0.5 bg-slate-50 text-slate-400 border border-slate-100 rounded-md uppercase tracking-tighter">
-                                                                        {(file.detected_type && file.detected_type.toLowerCase() !== 'unknown') ? file.detected_type : (file.type && file.type.toLowerCase() !== 'unknown' ? file.type : 'birth')}
-                                                                    </span>
+                                                                    {(() => {
+                                                                        const rawType = ((file.detected_type && file.detected_type.toLowerCase() !== 'unknown') ? file.detected_type : (file.type && file.type.toLowerCase() !== 'unknown' ? file.type : 'birth')).toLowerCase();
+                                                                        const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                                        return (
+                                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                                {rawType}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
                                                                 </td>
                                                                 <td className="px-2 py-2.5 text-center">{statusBadge(file)}</td>
                                                                 <td className="px-3 py-2.5 text-right">
                                                                     <div className="flex items-center justify-end gap-1 px-1">
                                                                         {['pending', 'processing'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-sm active:scale-90 group border border-rose-100"
+                                                                                className="p-2.5 text-amber-600 bg-amber-50/80 hover:bg-amber-600 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                                 title="Stop Processing">
-                                                                                <StopIcon className="w-4 h-4" />
+                                                                                <StopIcon className="w-4 h-4 text-amber-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
                                                                         {['stopped', 'failed', 'uploaded'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-indigo-500 hover:text-white hover:bg-indigo-500 rounded-xl transition-all shadow-sm active:scale-90 group border border-indigo-100"
+                                                                                className="p-2.5 text-sky-600 bg-sky-50/80 hover:bg-sky-600 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                                 title="Resume / Retry Processing">
-                                                                                <PlayIcon className="w-4 h-4" />
+                                                                                <PlayIcon className="w-4 h-4 text-sky-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
                                                                         {['extracted', 'processed'].includes(file.status?.toLowerCase()) && (
                                                                             <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
-                                                                                className="p-2.5 text-slate-500 hover:text-[#d4a574] hover:bg-[#d4a574]/10 border border-slate-100 rounded-xl transition-all active:scale-95 group"
+                                                                                className="p-2.5 text-indigo-600 bg-indigo-50/80 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                                                 title={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
-                                                                                <PencilSquareIcon className="w-4 h-4" />
+                                                                                <PencilSquareIcon className="w-4 h-4 text-indigo-600 group-hover/btn:text-white transition-colors" />
                                                                             </button>
                                                                         )}
 
@@ -1365,17 +1489,17 @@ const Documents = () => {
                                                                                 </button>
                                                                             ) : (
                                                                                 <button onClick={() => approveRecord(file.id)}
-                                                                                    className="p-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-100 active:scale-95 group"
+                                                                                    className="p-2.5 text-emerald-600 bg-emerald-50/80 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                                                     title="Direct Approve">
-                                                                                    <CheckCircleIcon className="w-4 h-4" />
+                                                                                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 group-hover/btn:text-white transition-colors" />
                                                                                 </button>
                                                                             )
                                                                         )}
 
                                                                         <button onClick={() => removeFile(file.id)}
-                                                                            className="p-2.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 rounded-xl transition-all shadow-sm shadow-rose-100 active:scale-90 group"
+                                                                            className="p-2.5 text-rose-600 bg-rose-50/80 hover:bg-rose-600 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
                                                                             title="Delete Document">
-                                                                            <TrashIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+                                                                            <TrashIcon className="w-4 h-4 text-rose-600 group-hover/btn:text-white transition-colors" />
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -1386,6 +1510,18 @@ const Documents = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                        <Pagination
+                                            currentPage={safeQueuePage}
+                                            totalItems={filteredQueue.length}
+                                            pageSize={queuePageSize}
+                                            onPageChange={(p) => setQueuePage(p)}
+                                            onPageSizeChange={(s) => {
+                                                setQueuePageSize(s);
+                                                setQueuePage(1);
+                                            }}
+                                            itemLabel="queue items"
+                                        />
+                                    </>
                                 )}
                             </>
                         ) : activeTab === 'history' ? (
@@ -1499,7 +1635,8 @@ const Documents = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto flex-1">
+                                    <>
+                                        <div className="overflow-x-auto flex-1">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
@@ -1511,15 +1648,15 @@ const Documents = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredHistory.map(file => {
+                                                {paginatedHistory.map(file => {
                                                     const dateObj = new Date(file.created_at);
                                                     return (
                                                         <tr key={file.id} className="hover:bg-slate-50/60 transition-colors group">
                                                             <td className="px-3 py-3">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 text-blue-500' :
-                                                                            file.type === 'death' ? 'bg-slate-100 text-slate-600' :
-                                                                                'bg-rose-50 text-rose-500'
+                                                                        file.type === 'death' ? 'bg-slate-100 text-slate-600' :
+                                                                            'bg-rose-50 text-rose-500'
                                                                         }`}>
                                                                         <DocumentIcon className="w-5 h-5" />
                                                                     </div>
@@ -1590,6 +1727,18 @@ const Documents = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                        <Pagination
+                                            currentPage={safeHistoryPage}
+                                            totalItems={filteredHistory.length}
+                                            pageSize={historyPageSize}
+                                            onPageChange={(p) => setHistoryPage(p)}
+                                            onPageSizeChange={(s) => {
+                                                setHistoryPageSize(s);
+                                                setHistoryPage(1);
+                                            }}
+                                            itemLabel="processed records"
+                                        />
+                                    </>
                                 )}
                             </>
                         ) : null}

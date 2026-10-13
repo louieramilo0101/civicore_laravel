@@ -7,6 +7,7 @@ use App\Models\Announcement;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Represents the Announcement Controller application component.
@@ -76,6 +77,8 @@ class AnnouncementController extends Controller
             'updated_at' => now(),
         ]);
 
+        Cache::forget('public_config');
+
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
 
@@ -122,6 +125,8 @@ class AnnouncementController extends Controller
             'updated_at' => now(),
         ]);
 
+        Cache::forget('public_config');
+
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
 
@@ -152,6 +157,8 @@ class AnnouncementController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            Cache::forget('public_config');
         }
 
         return response()->json(['success' => true]);

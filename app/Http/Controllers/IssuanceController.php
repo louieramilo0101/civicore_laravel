@@ -32,8 +32,12 @@ class IssuanceController extends Controller
                 $params[] = $type;
             }
             if (!empty($search)) {
-                $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ?)";
+                $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ? OR i.extracted_data LIKE ? OR i.ticket_number LIKE ? OR i.or_number LIKE ? OR i.barangay LIKE ?)";
                 $searchTerm = "%{$search}%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
             }
@@ -448,7 +452,7 @@ class IssuanceController extends Controller
     }
 
     /**
-     * Serve the original uploaded document. OCR data is never rendered here.
+     * Serve the document file. If missing, automatically generates the official certificate PDF.
      */
     private function getIssuanceFile($id, $disposition = 'inline')
     {
@@ -458,15 +462,45 @@ class IssuanceController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        $filePath = $record->source_file_path;
-        if (!$filePath || !\Storage::disk('public')->exists($filePath)) {
+        $filePath = null;
+        if (!empty($record->source_file_path) && \Storage::disk('public')->exists($record->source_file_path)) {
+            $filePath = $record->source_file_path;
+        } elseif (!empty($record->file_path) && \Storage::disk('public')->exists($record->file_path)) {
+            $filePath = $record->file_path;
+        }
+
+        // If no file exists on disk, generate the standardized A4 certificate PDF on the fly!
+        if (!$filePath) {
+            try {
+                $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
+                $generatedPath = null;
+                if (!empty($record->document_id)) {
+                    $generatedPath = $pdfService->generateForDocument((int)$record->document_id);
+                }
+                if (!$generatedPath) {
+                    $generatedPath = $pdfService->generateForIssuance((int)$id);
+                }
+
+                if ($generatedPath && file_exists($generatedPath)) {
+                    $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $record->name ?: 'Certificate');
+                    $certNum = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $record->certNumber ?: ('ID_' . $id));
+                    $filename = "{$cleanName}_{$certNum}.pdf";
+                    return response()->file($generatedPath, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => $disposition . '; filename="' . addslashes($filename) . '"',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::error("Failed to auto-generate PDF for issuance {$id}: " . $e->getMessage());
+            }
+
             return response()->json(['error' => 'Original document file is not available'], 404);
         }
 
         $absolutePath = \Storage::disk('public')->path($filePath);
         $filename = $record->source_file_name ?: basename($filePath);
         $headers = [
-            'Content-Type' => \Illuminate\Support\Facades\File::mimeType($absolutePath),
+            'Content-Type' => \Illuminate\Support\Facades\File::mimeType($absolutePath) ?: 'application/pdf',
             'Content-Disposition' => $disposition . '; filename="' . addslashes($filename) . '"',
         ];
 
@@ -497,11 +531,16 @@ class IssuanceController extends Controller
         $absolutePath = \Storage::disk('public')->path($tempPath);
 
         try {
-            // Call Python OCR server running on port 8080
-            $response = \Illuminate\Support\Facades\Http::timeout(60)->post('http://127.0.0.1:8080/ocr', [
+            $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
+            $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
+
+            // Call Python OCR server running on port 8080 using selected AI engine
+            $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 180;
+            $response = \Illuminate\Support\Facades\Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $absolutePath,
-                'preprocess' => true,
-                'ocr_mode' => 'balanced',
+                'doc_type' => 'birth',
+                'ocr_engine' => $ocrEngine,
+                'ollama_model' => $ollamaModel,
             ]);
 
             // Delete local temp file

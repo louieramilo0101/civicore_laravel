@@ -18,6 +18,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\BackupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,12 +38,15 @@ Route::middleware('api')->group(function () {
     Route::get('/announcements',    [AnnouncementController::class, 'index']);
     Route::get('/templates',        [TemplateController::class, 'index']);
     Route::get('/templates/preview', [TemplateController::class, 'getPreview']);
-    Route::post('/documents/bulk-process', [DocumentController::class, 'bulkProcess']);
-    Route::post('/public/tickets',         [TicketController::class, 'store']);
     Route::get('/public/tickets/{token}',  [TicketController::class, 'showByToken']);
 
+    // Public ticket creation with IP rate limiting (10 req / min)
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/public/tickets', [TicketController::class, 'store']);
+        Route::post('/v1/tickets',     [TicketController::class, 'store']);
+    });
+
     // V1 Public API Routes
-    Route::post('/v1/tickets',             [TicketController::class, 'store']);
     Route::get('/v1/tickets/{token}',      [TicketController::class, 'showByToken']);
     Route::post('/v1/tickets/scan',        [TicketController::class, 'scanCheckIn']);
 });
@@ -72,6 +76,7 @@ Route::middleware('web')->group(function () {
         Route::post('/verification/verify', [VerificationController::class, 'verify']);
 
         // Documents
+        Route::get('/documents/available-months',   [DocumentController::class, 'availableMonths']);
         Route::get('/documents/export',             [DocumentController::class, 'exportReport']);
         Route::get('/documents',                    [DocumentController::class, 'index']);
         Route::get('/documents/history',            [DocumentController::class, 'history']);
@@ -84,6 +89,7 @@ Route::middleware('web')->group(function () {
         Route::post('/documents/{id}/toggle-ocr',   [DocumentController::class, 'toggleOcr']);
         Route::get('/documents/download/{id}',      [DocumentController::class, 'download']);
         Route::get('/documents/view/{id}',          [DocumentController::class, 'view']);
+        Route::get('/documents/view-image/{id}',    [DocumentController::class, 'viewImage']);
         Route::get('/documents/download-txt/{id}',  [DocumentController::class, 'downloadTxt']);
         Route::post('/documents/{id}/check-duplicate', [DocumentController::class, 'checkDuplicate']);
 
@@ -151,6 +157,7 @@ Route::middleware('web')->group(function () {
             // Portal Settings
             Route::get('/settings',                     [SettingController::class, 'index']);
             Route::post('/settings',                    [SettingController::class, 'update']);
+            Route::get('/settings/ocr-status',          [SettingController::class, 'ocrStatus']);
 
             // Announcements Management
             Route::post('/announcements',               [AnnouncementController::class, 'store']);
@@ -162,7 +169,13 @@ Route::middleware('web')->group(function () {
                 Route::post('/users',                       [UserController::class, 'store']);
                 Route::post('/create-account',              [UserController::class, 'createAccount']);
                 Route::put('/users/{id}',                   [UserController::class, 'update']);
+                Route::post('/users/{id}/toggle-status',     [UserController::class, 'toggleStatus']);
                 Route::delete('/users/{id}',                [UserController::class, 'destroy']);
+
+                // System Backup & Disaster Recovery (SuperAdmin Only - No download endpoints)
+                Route::get('/backups',                      [BackupController::class, 'index']);
+                Route::post('/backups',                     [BackupController::class, 'store']);
+                Route::post('/backups/restore',             [BackupController::class, 'restore']);
 
             });
         });

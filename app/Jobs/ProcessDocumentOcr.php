@@ -144,22 +144,31 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 'updated_at' => now(),
             ]);
 
-            // Calculate total tokens used so far
-            $tokensUsed = 0;
-            $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
-            foreach ($docMeta as $dMeta) {
-                $meta = json_decode($dMeta->metadata, true);
-                if (isset($meta['image_token_cost'])) {
-                    $tokensUsed += (int) $meta['image_token_cost'];
+            // Calculate total tokens used so far (cached to avoid full-table JSON scanning)
+            $tokensUsed = \Illuminate\Support\Facades\Cache::remember('total_gemini_tokens_used', 300, function () {
+                $docMeta = DB::select("SELECT metadata FROM documents WHERE deleted_at IS NULL AND metadata IS NOT NULL");
+                $total = 0;
+                foreach ($docMeta as $dMeta) {
+                    $meta = json_decode($dMeta->metadata, true);
+                    if (isset($meta['image_token_cost'])) {
+                        $total += (int) $meta['image_token_cost'];
+                    }
                 }
-            }
+                return $total;
+            });
             $tokenBudget = (int) env('GEMINI_TOKEN_BUDGET', 1000000);
 
-            // 4. Execute OCR via Gemini API (runs synchronously inside this job)
-            Log::info("Executing Gemini OCR for Document ID {$this->documentId} using image: {$imagePath}");
-            $response = Http::timeout(120)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
+            $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
+
+            // 4. Execute OCR via selected engine (Gemini or Local Ollama)
+            Log::info("Executing OCR for Document ID {$this->documentId} using engine: {$ocrEngine} ({$ollamaModel}) on image: {$imagePath}");
+            $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 300;
+            $response = Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $imagePath,
                 'doc_type' => $this->docType,
+                'ocr_engine' => $ocrEngine,
+                'ollama_model' => $ollamaModel,
                 'languages' => $this->languages,
                 'ocr_mode' => 'balanced',
                 'total_tokens_used' => $tokensUsed,
@@ -216,33 +225,25 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             if ($dupType === 'marriage_license') {
                 $dupType = 'marriage';
             }
-            $dupQuery = DB::table('issuances')
-                ->where('type', $dupType)
-                ->whereNull('deleted_at');
+            $regNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? $extractedFields['certNumber'] ?? '');
+            if (!empty($regNo)) {
+                $dupQuery = DB::table('issuances')
+                    ->whereNull('deleted_at');
 
-            if ($dupType === 'birth' || $dupType === 'death') {
-                $firstName = trim($extractedFields['first_name'] ?? '');
-                $lastName = trim($extractedFields['last_name'] ?? '');
-                if (!empty($firstName) && !empty($lastName)) {
-                    $dupQuery->where('name', 'like', "%{$lastName}%")
-                             ->where('name', 'like', "%{$firstName}%");
-                    if ($dupQuery->exists()) {
-                        $hasDuplicate = true;
-                    }
+                if ($dupType === 'marriage') {
+                    $dupQuery->whereIn('type', ['marriage', 'marriage_license']);
+                } elseif (!empty($dupType)) {
+                    $dupQuery->where('type', $dupType);
                 }
-            } elseif ($dupType === 'marriage') {
-                $hLastName = trim($extractedFields['husband_last_name'] ?? '');
-                $wLastName = trim($extractedFields['wife_last_name'] ?? '');
-                if (!empty($hLastName) || !empty($wLastName)) {
-                    if (!empty($hLastName)) {
-                        $dupQuery->where('name', 'like', "%{$hLastName}%");
-                    }
-                    if (!empty($wLastName)) {
-                        $dupQuery->where('name', 'like', "%{$wLastName}%");
-                    }
-                    if ($dupQuery->exists()) {
-                        $hasDuplicate = true;
-                    }
+
+                $dupQuery->where(function ($q) use ($regNo) {
+                    $q->where('certNumber', $regNo)
+                      ->orWhere('extracted_data->registry_number', $regNo)
+                      ->orWhere('extracted_data->registry_no', $regNo);
+                });
+
+                if ($dupQuery->exists()) {
+                    $hasDuplicate = true;
                 }
             }
 
@@ -253,7 +254,16 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             $metadata['processed_pages_count'] = 1;
             $metadata['has_duplicate'] = $hasDuplicate; // Save directly in metadata for instant client access
             if (isset($result['image_token_cost'])) {
-                $metadata['image_token_cost'] = $result['image_token_cost'];
+                $cost = (int) $result['image_token_cost'];
+                $metadata['image_token_cost'] = $cost;
+                \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', $cost);
+            }
+
+            if (isset($result['processing_time_seconds'])) {
+                $metadata['ocr_processing_time'] = $result['processing_time_seconds'];
+                if (isset($result['timings'])) {
+                    $metadata['ocr_timings'] = $result['timings'];
+                }
             }
 
             // 6. Update database record with temporary checking status phase
@@ -266,25 +276,25 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             usleep(1500000);
 
             // Update database record with final values and status = extracted
-            DB::update(
-                "UPDATE documents
-                 SET ocr_text = ?, detected_type = ?, extracted_fields = ?, metadata = ?, status = 'extracted', updated_at = NOW()
-                 WHERE id = ?",
-                [
-                    $ocrText,
-                    $detectedType,
-                    json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
-                    json_encode($metadata, JSON_UNESCAPED_UNICODE),
-                    $this->documentId,
-                ]
-            );
+            DB::table('documents')->where('id', $this->documentId)->update([
+                'ocr_text' => $ocrText,
+                'detected_type' => $detectedType,
+                'extracted_fields' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
+                'status' => 'extracted',
+                'updated_at' => now(),
+            ]);
 
-            Log::info("ProcessDocumentOcr finished successfully for Document ID: " . $this->documentId);
+            $elapsedLog = isset($result['processing_time_seconds']) ? " in {$result['processing_time_seconds']}s" : "";
+            Log::info("ProcessDocumentOcr finished successfully for Document ID: " . $this->documentId . $elapsedLog);
 
         } catch (\Throwable $e) {
             Log::error("ProcessDocumentOcr failed for Document ID {$this->documentId}: " . $e->getMessage());
             Log::error($e->getTraceAsString());
-            DB::update("UPDATE documents SET status = 'failed', updated_at = NOW() WHERE id = ?", [$this->documentId]);
+            DB::table('documents')->where('id', $this->documentId)->update([
+                'status' => 'failed',
+                'updated_at' => now(),
+            ]);
         }
     }
 

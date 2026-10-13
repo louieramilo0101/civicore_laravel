@@ -144,6 +144,13 @@ class TicketController extends Controller
         $limitsSetting = Setting::where('key', 'ticket_limits_enabled')->value('value');
         $limitsEnabled = ($limitsSetting !== '0');
 
+        $now = Carbon::now(config('app.timezone'));
+        $cutoff = Carbon::today(config('app.timezone'))->setTime(17, 0, 0);
+        // After 5 PM → schedule for tomorrow; before 5 PM → today
+        $scheduledDate = $now->gte($cutoff)
+            ? Carbon::tomorrow(config('app.timezone'))->startOfDay()
+            : Carbon::today(config('app.timezone'))->startOfDay();
+
         if ($limitsEnabled && ($request->email || $request->phone)) {
             $identifierQuery = function ($query) use ($request) {
                 $query->where(function($q) use ($request) {
@@ -158,13 +165,22 @@ class TicketController extends Controller
 
             $now = Carbon::now(config('app.timezone'));
 
-            // Max 1 request per day
-            $todayCount = Ticket::whereDate('created_at', Carbon::today(config('app.timezone')))
+            // Max 1 request per document type (purpose) per scheduled day
+            $purposeLabel = match($request->purpose) {
+                'birth'    => 'Birth Certificate',
+                'death'    => 'Death Certificate',
+                'marriage' => 'Marriage Certificate / Contract',
+                default    => ucfirst($request->purpose),
+            };
+
+            $todayCount = Ticket::whereDate('scheduled_date', $scheduledDate)
+                ->where('purpose', $request->purpose)
                 ->where($identifierQuery)
                 ->count();
 
             if ($todayCount >= 1) {
-                $tomorrow = Carbon::tomorrow(config('app.timezone'));
+                $scheduledLabel = $scheduledDate->isToday() ? 'today' : 'tomorrow (' . $scheduledDate->format('M j') . ')';
+                $tomorrow = $scheduledDate->copy()->addDay();
                 $diff = $now->diff($tomorrow);
                 $hrs = $diff->h;
                 $mins = $diff->i;
@@ -172,18 +188,20 @@ class TicketController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'error'   => "Request Limit Reached: You have already submitted a request today (Limit: 1 per day). You can submit your next request in {$timeStr} (at 12:00 AM tomorrow)."
+                    'error'   => "Request Limit Reached: You have already submitted a {$purposeLabel} request scheduled for {$scheduledLabel}. You may still request other document types. You can resubmit this document type in {$timeStr}."
                 ], 429);
             }
 
-            // Max 3 requests per week
+            // Max 3 requests per week per purpose
             $sevenDaysAgo = Carbon::now(config('app.timezone'))->subDays(7);
             $weekCount = Ticket::where('created_at', '>=', $sevenDaysAgo)
+                ->where('purpose', $request->purpose)
                 ->where($identifierQuery)
                 ->count();
 
             if ($weekCount >= 3) {
                 $oldestTicket = Ticket::where('created_at', '>=', $sevenDaysAgo)
+                    ->where('purpose', $request->purpose)
                     ->where($identifierQuery)
                     ->orderBy('created_at', 'asc')
                     ->first();
@@ -197,13 +215,13 @@ class TicketController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'error'   => "Weekly Limit Reached: You have reached the maximum limit of 3 requests per week. You can request again in {$timeStr} (on " . $availableAt->format('M j, Y \a\t g:i A') . ")."
+                    'error'   => "Weekly Limit Reached: You have reached the maximum of 3 {$purposeLabel} requests per week. You can request again in {$timeStr} (on " . $availableAt->format('M j, Y \a\t g:i A') . ")."
                 ], 429);
             }
         }
 
         try {
-            return DB::transaction(function () use ($request) {
+            return DB::transaction(function () use ($request, $scheduledDate) {
                 $year  = date('Y');
                 $count = DB::table('tickets')
                     ->whereYear('created_at', $year)
@@ -232,6 +250,7 @@ class TicketController extends Controller
                     'queue_status'   => 'not_in_lobby',
                     'source'         => 'online',
                     'expires_at'     => $expiry,
+                    'scheduled_date' => $scheduledDate,
                     'qr_code_path'   => $qrPath,
                 ]);
 
@@ -496,7 +515,30 @@ class TicketController extends Controller
                 WHEN request_status = 'cancelled' THEN 7
                 ELSE 8
             END
-        ")->orderBy('created_at', 'asc')->get();
+        ")->orderBy('created_at', 'asc');
+
+        if ($request->has('page') || $request->has('per_page')) {
+            $perPage = min((int) $request->query('per_page', 20), 100);
+            $paginated = $query->paginate($perPage);
+            $paginated->getCollection()->transform(function ($ticket) {
+                $ticket->qr_code_url = $ticket->qr_code_path
+                    ? Storage::url($ticket->qr_code_path)
+                    : null;
+                $compatStatus = 'Pending';
+                if ($ticket->request_status === 'completed') {
+                    $compatStatus = 'Completed';
+                } elseif ($ticket->request_status === 'cancelled') {
+                    $compatStatus = 'Cancelled';
+                } elseif ($ticket->queue_status === 'serving') {
+                    $compatStatus = 'Serving';
+                }
+                $ticket->status = $compatStatus;
+                return $ticket;
+            });
+            return response()->json($paginated);
+        }
+
+        $tickets = $query->get();
 
         // Attach QR URL and legacy compatibility 'status'
         $tickets->transform(function ($ticket) {
@@ -1076,6 +1118,10 @@ class TicketController extends Controller
         $ticket = Ticket::withTrashed()->find($id);
         if (!$ticket) {
             return response()->json(['error' => 'Ticket not found'], 404);
+        }
+
+        if ($ticket->qr_code_path && Storage::disk('public')->exists($ticket->qr_code_path)) {
+            Storage::disk('public')->delete($ticket->qr_code_path);
         }
 
         if ($ticket->trashed()) {

@@ -27,6 +27,7 @@ class Document extends Model
         'barangay',
         'metadata',
         'file_path',
+        'image_path',
         'raw_text',
         'ocr_text',
         'extracted_fields',
@@ -34,6 +35,13 @@ class Document extends Model
         'detected_type',
         'parental_consent',
         'encoded_by',
+    ];
+
+    /** Stores the hidden value to prevent payload bloat. */
+    protected $hidden = [
+        'file_data',
+        'previewData',
+        'raw_text',
     ];
 
     /** Stores the casts value used by this component. */

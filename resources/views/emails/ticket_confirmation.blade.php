@@ -60,57 +60,33 @@
             border-right: 1px solid #e2e8f0;
         }
 
-        /* QR Section */
-        .qr-section {
-            text-align: center;
-            padding: 24px 0 20px;
+        /* Details Table */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 20px;
+            background-color: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
         }
-        .qr-section img {
-            width: 200px;
-            height: 200px;
-            border-radius: 12px;
-            border: 4px solid #2563eb;
-            padding: 8px;
-            background: #fff;
-        }
-        .qr-label {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 10px;
-        }
-
-        /* Details grid */
-        .details {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
+        .details-table td {
+            padding: 10px 16px;
             font-size: 14px;
+            vertical-align: middle;
         }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-label { color: #64748b; font-weight: 500; }
-        .detail-value { color: #0f172a; font-weight: 700; text-align: right; }
-
-        /* Purpose badge */
-        .purpose-badge {
-            display: inline-block;
-            padding: 3px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .details-table .label-col {
+            color: #64748b;
+            font-weight: 500;
+            width: 38%;
+            border-bottom: 1px solid #e2e8f0;
         }
-        .purpose-birth  { background: #dbeafe; color: #1d4ed8; }
-        .purpose-death  { background: #f3f4f6; color: #374151; }
-        .purpose-marriage { background: #fce7f3; color: #be185d; }
+        .details-table .value-col {
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .details-table tr:last-child td {
+            border-bottom: none;
+        }
 
         /* Warning box */
         .warning {
@@ -162,8 +138,7 @@
             .card { padding: 20px; }
             .header { padding: 24px 20px 18px; }
             .header h1 { font-size: 22px; }
-            .detail-row { flex-direction: column; align-items: flex-start; gap: 2px; }
-            .detail-value { text-align: left; }
+            .details-table td { padding: 8px 12px; font-size: 13px; }
         }
     </style>
 </head>
@@ -181,52 +156,36 @@
     <!-- Card Body -->
     <div class="card">
 
-        <p style="font-size:15px; color:#475569; margin-bottom:4px;">Hello, <strong style="color:#0f172a;">{{ $ticket->client_name }}</strong>!</p>
-        <p style="font-size:14px; color:#64748b;">Your appointment request has been received. Please present the QR code below at the Civil Registry counter.</p>
+        <p style="font-size:15px; color:#475569; margin-bottom:6px;">Hello, <strong style="color:#0f172a;">{{ $ticket->client_name }}</strong>!</p>
+        <p style="font-size:14px; color:#64748b; margin-bottom:16px;">Your appointment request has been received. Please present your ticket number at the Civil Registry counter.</p>
 
-        <!-- QR Code -->
-        <div class="qr-section">
-            @if(!empty($ticket->qr_code_path) && file_exists(storage_path('app/public/' . $ticket->qr_code_path)))
-                <img src="{{ $message->embed(storage_path('app/public/' . $ticket->qr_code_path)) }}" alt="QR Code – {{ $ticket->ticket_number }}">
-            @else
-                <img src="data:image/png;base64,{{ $qrCodeBase64 }}" alt="QR Code – {{ $ticket->ticket_number }}">
-            @endif
-            <div class="qr-label">Scan this QR at the counter to check in</div>
-        </div>
-
-        <!-- Details -->
-        <div class="details">
-            <div class="detail-row">
-                <span class="detail-label">Ticket Number</span>
-                <span class="detail-value">{{ $ticket->ticket_number }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Purpose</span>
-                <span class="detail-value">
-                    <span class="purpose-badge purpose-{{ $ticket->purpose }}">
-                        {{ ucfirst($ticket->purpose) }} Certificate
-                    </span>
-                </span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Name</span>
-                <span class="detail-value">{{ $ticket->client_name }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Date</span>
-                <span class="detail-value">{{ \Carbon\Carbon::parse($ticket->created_at)->format('F j, Y') }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Valid Until</span>
-                <span class="detail-value" style="color:#dc2626;">
-                    {{ \Carbon\Carbon::parse($ticket->expires_at)->format('g:i A') }} today
-                </span>
-            </div>
-        </div>
+        <!-- Details Table -->
+        <table class="details-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; margin:16px 0 20px; background-color:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+            <tr>
+                <td class="label-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#64748b; width:38%;">Ticket Number:</td>
+                <td class="value-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#0f172a; font-weight:bold;">{{ $ticket->ticket_number }}</td>
+            </tr>
+            <tr>
+                <td class="label-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#64748b;">Purpose:</td>
+                <td class="value-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#0f172a;">{{ ucfirst(str_replace('_', ' ', $ticket->purpose)) }} Certificate</td>
+            </tr>
+            <tr>
+                <td class="label-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#64748b;">Name:</td>
+                <td class="value-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#0f172a;">{{ $ticket->client_name }}</td>
+            </tr>
+            <tr>
+                <td class="label-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#64748b;">Date:</td>
+                <td class="value-col" style="padding:10px 16px; border-bottom:1px solid #e2e8f0; font-size:14px; color:#0f172a;">{{ \Carbon\Carbon::parse($ticket->created_at)->format('F j, Y') }}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 16px; font-size:14px; color:#64748b;">Valid Until:</td>
+                <td style="padding:10px 16px; font-size:14px; color:#dc2626; font-weight:bold;">{{ \Carbon\Carbon::parse($ticket->expires_at)->format('g:i A') }} today</td>
+            </tr>
+        </table>
 
         <!-- Expiry Warning -->
         <div class="warning">
-            <strong>Important:</strong> This ticket is valid only until <strong>5:00 PM today</strong>. If you do not visit the Civil Registry within this period, your ticket will expire and you will need to request a new one online.
+            <strong>Important:</strong> This ticket is valid only until <strong>{{ \Carbon\Carbon::parse($ticket->expires_at)->format('g:i A') }} today</strong>. If you do not visit the Civil Registry within this period, your ticket will expire and you will need to request a new one online.
         </div>
 
         <!-- Walk-in note -->
