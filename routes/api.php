@@ -157,6 +157,7 @@ Route::middleware('web')->group(function () {
             // Portal Settings
             Route::get('/settings',                     [SettingController::class, 'index']);
             Route::post('/settings',                    [SettingController::class, 'update']);
+            Route::get('/settings/ocr-status',          [SettingController::class, 'ocrStatus']);
 
             // Announcements Management
             Route::post('/announcements',               [AnnouncementController::class, 'store']);

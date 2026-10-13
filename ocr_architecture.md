@@ -34,27 +34,39 @@ Laravel acts as the "Traffic Cop." It receives the file from React, saves it, an
 
 ---
 
-## 3. The OCR Engine: AI & Image Processing (Python)
-Because Python has the best ecosystem for Artificial Intelligence and Computer Vision, a dedicated, persistent Python server handles the heavy lifting of reading the documents.
+## 3. The OCR Engine: Dual-Engine AI & Image Processing (Python + Ollama)
+Because Python has the best ecosystem for Artificial Intelligence and Computer Vision, a dedicated, persistent Python server handles the heavy lifting of reading the documents. It coordinates two switchable AI engines based on system configuration:
 
-**Core Technologies:**
-*   **FastAPI & Uvicorn**: A modern, high-performance web framework for building APIs in Python. It listens on `http://127.0.0.1:8080/ocr/gemini` and waits for Laravel to send it images.
-*   **Google GenAI SDK (`google-genai`)**: The official Google library used to communicate with the **Gemini 1.5 Flash** AI model. This is the primary engine that visually "reads" the document and returns a structured JSON payload of all the civil registry data.
+**Core Server Framework:**
+*   **FastAPI & Uvicorn**: A modern, high-performance web framework for building APIs in Python. It listens on `http://127.0.0.1:8080/ocr/gemini` and waits for Laravel queue workers to send image payloads.
 
-**Image Processing & Fallback Libraries:**
-*   **Pillow (`PIL`)**: The standard Python image library. It is used to automatically resize and downscale massive uploaded images to a maximum of 1024px before sending them to Gemini. This drastically reduces API token costs.
-*   **OpenCV (`cv2`) & NumPy (`numpy`)**: Advanced computer vision libraries. In this project, they are used to specifically target, crop, and "binarize" (extract ink from background paper) the physical signatures on the documents, turning them into transparent PNGs.
-*   **PyMuPDF (`fitz`)**: If the user uploads a multi-page PDF instead of an image, this library cleanly converts the PDF pages into image arrays so the OCR engines can read them.
-*   **PyTesseract & EasyOCR**: Traditional, non-AI OCR engines built into the script. They act as a fallback. If the Gemini API fails or runs out of quota, the Python server can use these older engines to attempt to read the text.
+**Dual AI Engines:**
+1.  **Google Gemini Cloud AI (`gemini-2.5-flash`)**:
+    *   Communicates via the official **Google GenAI SDK (`google-genai`)**.
+    *   Features intelligent key rotation with automated cooldown backoff across multiple API keys (`GEMINI_API_KEYS`).
+    *   Extracts complete civil registry forms in 2–4 seconds via cloud multimodal intelligence.
+2.  **Local Ollama Vision AI (`qwen2.5vl:3b`)**:
+    *   Communicates directly with the local **Ollama** service running on `http://127.0.0.1:11434/api/generate`.
+    *   Processes document images **100% offline and on-premise** with zero external cloud transmission. Guarantees complete data privacy and compliance for sensitive municipal archives.
+    *   Incurs zero recurring API fees or token costs.
+    *   Supported by CPU inference (optimized at 768px resolution) and hardware GPU acceleration (NVIDIA CUDA).
+
+**Image Processing & Post-Processing Libraries:**
+*   **Pillow (`PIL`)**: The standard Python image library. It dynamically downscales images based on the target engine: **768px** for local CPU-bound Ollama processing to maximize RAM efficiency and inference speed, or **1024px** for Gemini Cloud.
+*   **OpenCV (`cv2`) & NumPy (`numpy`)**: Advanced computer vision libraries. Used to target, crop, and binarize physical registrar signatures into clean transparent PNG stamps.
+*   **PyMuPDF (`fitz`)**: Converts uploaded multi-page PDF documents into optimized image arrays before feeding into the OCR pipeline.
 
 ---
 
 ## Summary of the Data Flow
-1. **React** (`react-dropzone`) captures the scanned birth certificate from the user and sends it via **Axios**.
-2. **Laravel** receives the file, saves it to the `storage` folder, and dispatches a **Queue Job** (`ProcessImageOcrJob`).
-3. The Laravel **Queue Worker** picks up the job, applies the `WithoutOverlapping` lock, and makes an HTTP POST request to the Python server.
-4. **FastAPI** (Python) receives the image. It uses **Pillow** to optimize the size, and **OpenCV** to extract the signatures.
-5. Python sends the optimized image to **Gemini 1.5 Flash** with a strict prompt asking for JSON output.
-6. Python parses the JSON, adds the cropped signatures, and returns everything to Laravel.
-7. Laravel saves the structured data to the MySQL database.
-8. The React frontend fetches the updated database row and displays the fully digitized document to the user!
+1. **React** (`react-dropzone`) captures the scanned document from the user and sends it via **Axios**.
+2. **Laravel** receives the file, saves it to `storage/app/public/documents`, and dispatches a background **Queue Job** (`ProcessImageOcrJob` or `ProcessDocumentOcr`).
+3. The Laravel **Queue Worker** checks the active engine in the database (`Setting::where('key', 'ocr_engine')` -> `gemini` or `ollama`) and issues an HTTP POST request to the Python FastAPI server (`http://127.0.0.1:8080/ocr/gemini`).
+4. **FastAPI** (Python) receives the file path and engine parameters:
+   - Resizes image to optimal bounds (768px for Ollama, 1024px for Gemini).
+   - If **Gemini**: Dispatches multimodal prompt to Google Gemini API using active non-cooling key.
+   - If **Ollama**: Base64-encodes the image and dispatches a JSON-formatted vision request to `http://127.0.0.1:11434/api/generate` running `qwen2.5vl:3b`.
+5. Python extracts registrar signatures using **OpenCV** and saves transparent PNG cutouts.
+6. Python parses the structured JSON output, validates required fields, and returns the payload to Laravel.
+7. Laravel saves the structured civil registry records (and signature paths) to the MySQL database.
+8. The React frontend updates in real-time and displays the digitized record!

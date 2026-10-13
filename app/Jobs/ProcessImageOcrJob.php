@@ -84,10 +84,14 @@ class ProcessImageOcrJob implements ShouldQueue
                 return $total;
             });
             $tokenBudget = (int) env('GEMINI_TOKEN_BUDGET', 1000000);
+            $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
+            $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
 
-            $response = Http::timeout(120)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $response = Http::timeout(300)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $this->imagePath,
                 'doc_type' => $this->docType,
+                'ocr_engine' => $ocrEngine,
+                'ollama_model' => $ollamaModel,
                 'languages' => $this->languages,
                 'ocr_mode' => 'balanced',
                 'total_tokens_used' => $tokensUsed,

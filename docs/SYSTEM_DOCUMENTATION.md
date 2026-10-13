@@ -26,14 +26,25 @@
 - **Animation**: Framer Motion
 - **Icons**: Heroicons v2 (`@heroicons/react`)
 - **GIS Mapping**: Leaflet.js (`react-leaflet`) with custom GeoJSON boundaries for Naic barangays
-- **Charts & Visualizations**: Chart.js (`react-chartjs-2`)
+### 2.3 OCR & AI Vision Architecture
+- **Daemon / Bridge**: Python FastAPI (`ocr_server.py`) running on `http://127.0.0.1:8080`
+- **Cloud Engine**: Google Gemini API (`gemini-2.5-flash`) via `google-genai` with multi-key cooldown rotation
+- **Local / Offline Engine**: **Ollama** running `qwen2.5vl:3b` on `http://127.0.0.1:11434` for 100% offline, zero-leakage municipal data privacy
+- **Computer Vision**: OpenCV (`cv2`) & NumPy for registrar signature isolation; PyMuPDF for PDF page rasterization; Pillow for dynamic scaling (768px for CPU/Ollama, 1024px for Gemini).
 
 ---
 
 ## 3. Core Modules & Implementation Details
 
-### 3.1 Google Gemini AI OCR Pipeline (`OcrFormPanel.jsx`, `DocumentController.php`)
-- **Model**: `gemini-2.5-flash`
+### 3.1 Dual-Engine AI OCR Pipeline (`OcrFormPanel.jsx`, `ocr_server.py`, `SettingController.php`)
+- **Engine Options**:
+  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-throughput multimodal parsing with automated cooldown management across comma-separated API keys (`GEMINI_API_KEYS`).
+  - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: On-premise air-gapped vision model processing documents completely offline with zero external network dependency, ensuring strict data residency compliance for citizen records.
+- **Dynamic Resolution Optimization**:
+  - Input images are automatically scaled to 768px when executing via Local Ollama (optimizing CPU cache and memory overhead) and 1024px when executing via Gemini Cloud.
+- **Real-Time Health Monitoring & Engine Toggle**:
+  - SuperAdmin control panel at `/accounts` provides single-click engine toggling.
+  - Endpoint `/api/settings/ocr-status` performs live ping checks against Ollama (`http://127.0.0.1:11434/api/tags`), inspects installed models, and displays real-time `Offline / Private` visual badges.
 - **Supported Form Types**:
   - **LCR Form 102 (Certificate of Live Birth)**: Extracts registry number, child full name, gender, date of birth, time of birth, place of birth, parents' full names and demographics, marriage of parents, attendant details, and informant.
   - **LCR Form 103 (Certificate of Death)**: Extracts registry number, deceased full name, date of death, place of death, age, marital status, citizenship, immediate/antecedent/underlying causes of death, and medical certifier.

@@ -531,10 +531,15 @@ class IssuanceController extends Controller
         $absolutePath = \Storage::disk('public')->path($tempPath);
 
         try {
-            // Call Python OCR server running on port 8080 using Gemini Vision AI
-            $response = \Illuminate\Support\Facades\Http::timeout(60)->post('http://127.0.0.1:8080/ocr/gemini', [
+            $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
+            $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
+
+            // Call Python OCR server running on port 8080 using selected AI engine
+            $response = \Illuminate\Support\Facades\Http::timeout(180)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $absolutePath,
                 'doc_type' => 'birth',
+                'ocr_engine' => $ocrEngine,
+                'ollama_model' => $ollamaModel,
             ]);
 
             // Delete local temp file

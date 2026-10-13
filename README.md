@@ -5,6 +5,7 @@
   <img src="https://img.shields.io/badge/PHP-8.2+-purple?style=for-the-badge&logo=php" alt="PHP Version">
   <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React Version">
   <img src="https://img.shields.io/badge/Gemini%20AI-Main%20OCR-green?style=for-the-badge&logo=google" alt="Gemini AI">
+  <img src="https://img.shields.io/badge/Ollama-Offline%20Vision%20OCR-orange?style=for-the-badge&logo=ollama" alt="Ollama Local OCR">
   <img src="https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css" alt="Tailwind Version">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Last%20Updated-October%202026-brightgreen?style=for-the-badge" alt="Last Updated">
@@ -17,10 +18,9 @@
 **CiviCORE** is an enterprise-grade Civic Document Management and Civil Registry Information System tailored for Local Government Units (LGUs), specifically engineered for the Municipality of Naic, Cavite.
 
 The platform digitizes, automates, and secures civil registry workflows:
-- **AI-Powered OCR Document Ingestion**: Seamless character recognition and form mapping powered by **Google Gemini AI (`gemini-2.5-flash`)** supporting Philippine civil registry forms:
-  - **LCR Form 102** (Certificate of Live Birth)
-  - **LCR Form 103** (Certificate of Death)
-  - **LCR Form 101** (Certificate of Marriage)
+- **Dual-Engine AI OCR Document Ingestion**: Flexible optical character recognition supporting Philippine civil registry forms (**LCR Form 102** Live Birth, **LCR Form 103** Death, and **LCR Form 101** Marriage) through two switchable engines:
+  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed multimodal intelligence via Google GenAI SDK.
+  - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline, private, on-premise vision inference ensuring citizen data never leaves the municipal network, with zero recurring API costs.
 - **Scanned Image Post-Processing Engine**: In-browser image adjustment modal featuring 90° lossless rotation, document binarization (high-contrast black & white filter for aged/yellowed archives), and interactive 4-corner perspective/crop adjustment.
 - **Automated Backup & Disaster Recovery (DR)**: Multi-tier automated backup scheduler (Daily, Weekly, Monthly, Semi-Annual) with retention pruning, safety snapshot creation before restore, SuperAdmin web console, and a standalone emergency Windows recovery tool (`civicore_backup_recovery.bat`).
 - **Account Security & Soft-Disable Architecture**: Role-based access control with zero-data-loss safe account disabling, real-time database session revocation, and immutable audit logs.
@@ -35,13 +35,26 @@ The platform digitizes, automates, and secures civil registry workflows:
 
 | Component | Minimum Specification | Recommended |
 |---|---|---|
-| **Operating System** | Windows 10 / 11, Ubuntu 22.04 LTS | Windows 11 / Server 2022 |
+| **Operating System** | Windows 10 / 11 (64-bit), Ubuntu 22.04 LTS | Windows 11 64-bit / Server 2022 |
 | **PHP Runtime** | PHP 8.2+ (`pdo_mysql`, `zip`, `gd`, `fileinfo`, `mbstring`, `curl`) | PHP 8.3 |
+| **Python Runtime** | Python 3.10+ (Tested on Python 3.13) | Python 3.12 / 3.13 |
 | **Node.js** | Node.js 18.x or 20.x | Node.js 20.x LTS |
-| **Package Managers** | Composer 2.5+, npm 9.x+ | Composer 2.7+, npm 10.x+ |
+| **Package Managers** | Composer 2.5+, npm 9.x+, pip | Composer 2.7+, npm 10.x+, pip |
 | **Database Engine** | MySQL 8.0+ or MariaDB 10.4+ | MySQL 8.0 / MariaDB 10.11 |
-| **AI OCR Engine** | Google Gemini API Key (`gemini-2.5-flash`) | Gemini Pro / Flash API Key |
+| **AI OCR Engine (Cloud)** | Google Gemini API Key (`gemini-2.5-flash`) | Gemini Pro / Flash API Key |
+| **AI OCR Engine (Local/Offline)** | **Ollama v0.3.0+** with `qwen2.5vl:3b` | Ollama with CUDA GPU Acceleration |
 | **Local Dev Suite** | Laragon Full, XAMPP, or Native Services | **Laragon Full** |
+
+### Local Ollama Hardware Specifications
+
+| Resource | Minimum (CPU-Only Mode) | Recommended (GPU-Accelerated) |
+|---|---|---|
+| **Processor (CPU)** | 4-Core x86_64 CPU (Intel i5 / AMD Ryzen 5) | 6+ Core CPU (Intel i7 / AMD Ryzen 7) |
+| **System Memory (RAM)** | 8 GB System RAM | 16 GB+ System RAM |
+| **Graphics Card (GPU)** | Not required (executes on CPU) | NVIDIA GPU with 4GB+ VRAM (GTX 1650, RTX 3050+) with CUDA |
+| **Disk Storage** | 5 GB free disk space (model weights ~1.9GB) | NVMe SSD storage |
+| **Ollama Service Port** | Port `11434` (`http://127.0.0.1:11434`) | Port `11434` (`http://127.0.0.1:11434`) |
+| **OCR Python Port** | Port `8080` (`http://127.0.0.1:8080`) | Port `8080` (`http://127.0.0.1:8080`) |
 
 ---
 
@@ -60,9 +73,57 @@ composer install
 
 # Install Frontend dependencies
 npm install
+
+# Install Python OCR Server dependencies
+pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration
+### 3. Local Ollama AI Installation & Setup (Offline Vision OCR)
+
+CiviCORE features a 100% offline, privacy-first Vision OCR engine powered by **Ollama** and the **Qwen2.5-VL (3B)** model. This allows municipal staff to process sensitive civil registry documents locally without internet access or recurring cloud API costs.
+
+#### A. Download and Install Ollama
+- **Windows**: Download the official Windows installer from [ollama.com/download](https://ollama.com/download) and run `OllamaSetup.exe`. It installs to `%LOCALAPPDATA%\Programs\Ollama\ollama.exe` and registers the `ollama` command in your PATH.
+- **Linux**:
+  ```bash
+  curl -fsSL https://ollama.ai/install.sh | sh
+  ```
+- **macOS**: Download from [ollama.com/download](https://ollama.com/download) and unzip into Applications.
+
+#### B. Verify Ollama CLI
+Confirm the CLI is recognized in your terminal or Command Prompt:
+```bash
+ollama --version
+# Expected: ollama version 0.3.x or higher
+```
+
+#### C. Download the Recommended Vision Model
+Pull the Qwen2.5-VL 3B vision-language model (approx. 1.9 GB download):
+```bash
+ollama pull qwen2.5vl:3b
+```
+> [!TIP]
+> `qwen2.5vl:3b` is specifically optimized for visual character recognition, complex tabular forms, and handwritten timestamps. It operates efficiently on standard multi-core desktop CPUs without requiring high-end dedicated GPUs. If you have an NVIDIA GPU with 8GB+ VRAM, you can optionally pull `ollama pull qwen2.5vl:7b` for even higher precision.
+
+#### D. Start / Verify Ollama Service
+By default, Ollama runs an HTTP service on `http://127.0.0.1:11434`.
+```bash
+ollama serve
+```
+Verify the API and downloaded models:
+```bash
+curl http://127.0.0.1:11434/api/tags
+```
+*(Note: When using `start-civicore.bat`, the Ollama service is automatically detected and launched in a dedicated terminal window).*
+
+#### E. Switch to Local Ollama in CiviCORE
+1. Log in with SuperAdmin credentials at `http://localhost:8000`.
+2. Navigate to **Accounts & System Administration** (`/accounts`).
+3. Locate the **OCR Engine Selection** card.
+4. Click **Local Ollama (Qwen2.5-VL)**.
+5. The live status indicator will turn green: **Offline / Private**, confirming zero cloud transmissions for document ingestion.
+
+### 4. Environment Configuration
 Copy the sample environment file and generate a secure application key:
 ```bash
 cp .env.example .env
@@ -83,8 +144,11 @@ DB_DATABASE=civicore_laravel
 DB_USERNAME=root
 DB_PASSWORD=
 
-# Google Gemini AI OCR Engine Key
+# Google Gemini AI OCR Engine Key (Optional if using Local Ollama)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Local Ollama URL (Default: http://127.0.0.1:11434)
+OLLAMA_URL=http://127.0.0.1:11434
 
 # Mail Configuration (Mailtrap for local dev / SMTP for production)
 MAIL_MAILER=smtp
@@ -96,7 +160,7 @@ MAIL_FROM_ADDRESS="no-reply@civicore.gov.ph"
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
-### 4. Database Setup & Migrations
+### 5. Database Setup & Migrations
 Execute all schema migrations (including document indexes, ticket tables, soft-delete rules, and account status fields):
 ```bash
 php artisan migrate
@@ -111,13 +175,13 @@ php artisan db:seed
 - **SuperAdmin**: `superadmin@civicore.gov.ph` / `superadmin2024`
 - **Admin**: `admin@civicore.gov.ph` / `admin2024`
 
-### 5. Storage Symlink
+### 6. Storage Symlink
 Generate the public storage symlink for document scans, attachments, and generated QR code images:
 ```bash
 php artisan storage:link
 ```
 
-### 6. Build Frontend Assets
+### 7. Build Frontend Assets
 Compile production-ready JavaScript and Tailwind CSS bundles:
 ```bash
 npm run build
@@ -135,13 +199,24 @@ Double-click `start-civicore.bat` or run:
 start-civicore.bat
 ```
 
-This concurrently launches:
-1. **Laravel HTTP Server** (`http://127.0.0.1:8000`)
-2. **Vite Development Server** (Hot Module Replacement on port 5173)
-3. **Queue Workers**:
+This concurrently launches all 5 core CiviCORE subsystems:
+1. **Ollama Server**: Offline Vision AI service on `http://127.0.0.1:11434`.
+2. **Laravel HTTP Server**: Core application gateway listening on `http://0.0.0.0:8000`.
+3. **Laravel Queue Workers**:
    - `high`: Fast-path single-page scanner jobs.
    - `low`: Multi-page batch processing fan-out.
    - `default`: Email notifications, OTP dispatches, and system tasks.
+4. **Persistent OCR Server**: Python FastAPI vision processing daemon on `http://127.0.0.1:8080`.
+5. **Vite Development Server**: Hot Module Replacement on port `5173`.
+
+### Graceful System Shutdown (Windows)
+To safely stop all background daemons without leaving orphan tasks:
+- Press any key in the main `start-civicore.bat` control center window, **OR**
+- Run the bundled `stop-civicore.bat` utility:
+  ```cmd
+  stop-civicore.bat
+  ```
+This cleanly terminates Ollama, the Python OCR service, queue workers, Laravel, and Vite.
 
 Access the platform in your browser at:
 **`http://localhost:8000`**
@@ -150,8 +225,18 @@ Access the platform in your browser at:
 
 ## System Architecture & Implemented Capabilities
 
-### 1. Document Management & Google Gemini AI OCR
-- **Primary OCR Model**: Uses `gemini-2.5-flash` with tailored JSON response schemas for high-speed, zero-hallucination document extraction.
+### 1. Dual-Engine OCR Pipeline: Google Gemini AI & Local Ollama (Qwen2.5-VL)
+- **Engine Selection Architecture**:
+  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed cloud multimodal extraction with multi-key round-robin rotation and automated cooldown tracking (`GEMINI_API_KEYS`).
+  - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline, privacy-first vision processing. Sensitive civil records containing citizen personal identifiable information (PII) stay strictly inside municipal infrastructure.
+- **Python Vision Bridge (`ocr_server.py`)**:
+  - Persistent FastAPI daemon coordinating OCR execution, signature extraction, and validation.
+  - **Dynamic Resolution Scaling**: Images are automatically pre-scaled (768px for CPU-bound Ollama inference to maximize throughput, 1024px for Gemini Cloud) to achieve optimal performance without losing character definition.
+  - **Strict Structured JSON Prompts**: Zero-hallucination extraction enforced via standardized JSON response schemas.
+  - **Automated Signature Segmentation**: Uses OpenCV (`cv2`) and NumPy to crop and binarize signature zones into clean transparent PNG stamps.
+- **SuperAdmin Engine Control & Real-Time Health Diagnostics**:
+  - Dedicated `/api/settings/ocr-status` endpoint tests live connectivity to Ollama (`http://127.0.0.1:11434/api/tags`) and verifies whether the `qwen2.5vl:3b` model is downloaded.
+  - Single-click switching between Gemini and Ollama directly from the SuperAdmin web UI (`/accounts`).
 - **Multi-Form Civil Registry Support**:
   - **LCR Form 102** (Live Birth): Child details, parent demographics, birth date/time, attendant, informant.
   - **LCR Form 103** (Death): Deceased profile, date/place of death, age, causes of death, medical certification.
@@ -309,7 +394,7 @@ For scenarios where the web application or web server cannot be reached, use the
 
 | ID | Feature / Module | Status | Technical Details |
 |:---:|---|:---:|---|
-| **1a** | OCR Document Search & Extraction | **Completed** | Camera overlay search & file upload scanning powered by Google Gemini AI (`gemini-2.5-flash`). |
+| **1a** | Dual-Engine AI OCR Document Extraction | **Completed** | Camera overlay search & file upload scanning powered by Google Gemini AI (`gemini-2.5-flash`) and Local Ollama (`qwen2.5vl:3b`) for offline privacy. |
 | **1b** | Image Post-Processing Studio | **Completed** | In-browser 90° rotation, B&W binarization filter, and 4-corner crop adjustment modal. |
 | **1c** | Geospatial Analytics | **Completed** | Leaflet map with Naic geofencing, heatmaps, birth-to-death ratios, and leaderboard rankings. |
 | **1d** | Role-Based Access Control & Safe Accounts | **Completed** | Soft-disable user workflow (`is_active`), instant session invalidation, and role middleware. |

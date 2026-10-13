@@ -146,7 +146,12 @@ current_key_index = 0
 
 @app.get('/status')
 def status():
-    return {"status": "ready", "engine": "gemini-3.6-flash", "persistent": True}
+    return {
+        "status": "ready",
+        "engines": ["gemini", "ollama"],
+        "default_engine": "gemini",
+        "persistent": True
+    }
 
 @app.post('/split')
 @serialize_processing
@@ -232,34 +237,38 @@ def process_ocr_gemini(data: dict):
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=400, detail=f"File not found: {file_path}")
         
-    print(f"Processing Gemini OCR for: {file_path}")
+    ocr_engine = str(data.get('ocr_engine', 'gemini')).lower().strip()
+    ollama_model = str(data.get('ollama_model', 'qwen2.5vl:3b')).strip()
     
-    # Read API keys
+    print(f"Processing OCR for: {file_path} using engine: {ocr_engine} (model: {ollama_model if ocr_engine in ('ollama', 'local') else 'gemini'})")
+    
     api_keys = []
-    keys_str = os.environ.get("GEMINI_API_KEYS")
-    
-    if not keys_str:
-        env_path = Path(__file__).resolve().parent / '.env'
-        if env_path.exists():
-            with open(env_path, 'r') as f:
-                for line in f:
-                    if line.startswith('GEMINI_API_KEYS='):
-                        keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
-                        break
-                    elif line.startswith('GEMINI_API_KEY='):
-                        keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
-                        
-    if keys_str:
-        api_keys = [k.strip() for k in keys_str.split(',') if k.strip()]
-    else:
-        single_key = os.environ.get("GEMINI_API_KEY")
-        if single_key:
-            api_keys = [single_key]
-            
-    if not api_keys:
-        raise HTTPException(status_code=500, detail="No Gemini API keys found in environment or .env file.")
+    if ocr_engine == 'gemini':
+        # Read API keys
+        keys_str = os.environ.get("GEMINI_API_KEYS")
         
-    print(f"Found {len(api_keys)} API keys for rotation.")
+        if not keys_str:
+            env_path = Path(__file__).resolve().parent / '.env'
+            if env_path.exists():
+                with open(env_path, 'r') as f:
+                    for line in f:
+                        if line.startswith('GEMINI_API_KEYS='):
+                            keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
+                            break
+                        elif line.startswith('GEMINI_API_KEY='):
+                            keys_str = line.split('=', 1)[1].strip().strip('"').strip("'")
+                            
+        if keys_str:
+            api_keys = [k.strip() for k in keys_str.split(',') if k.strip()]
+        else:
+            single_key = os.environ.get("GEMINI_API_KEY")
+            if single_key:
+                api_keys = [single_key]
+                
+        if not api_keys:
+            raise HTTPException(status_code=500, detail="No Gemini API keys found in environment or .env file.")
+            
+        print(f"Found {len(api_keys)} API keys for rotation.")
     
     ext = Path(file_path).suffix.lower()
     img = None
@@ -277,14 +286,14 @@ def process_ocr_gemini(data: dict):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to open image: {str(e)}")
             
-    # Resize image to max 1024px to optimize Gemini token budget
+    # Resize image to optimize memory and speed (768px for local CPU Ollama, 1024px for Gemini Cloud)
     if img:
-        max_size = 1024
+        max_size = 768 if ocr_engine in ('ollama', 'local') else 1024
         if max(img.size) > max_size:
             orig_w, orig_h = img.size
             resample_filter = getattr(Image, "Resampling", Image).LANCZOS
             img.thumbnail((max_size, max_size), resample_filter)
-            print(f"Optimized tokens: Image resized from {orig_w}x{orig_h} to {img.size[0]}x{img.size[1]}")
+            print(f"Optimized image: resized from {orig_w}x{orig_h} to {img.size[0]}x{img.size[1]} for {ocr_engine}")
             
     doc_type_clean = str(doc_type).lower().strip()
     
@@ -457,68 +466,128 @@ def process_ocr_gemini(data: dict):
         }
         """
     
-    now = time.time()
-    # Filter active keys (cooldown expired) vs cooling keys
-    active_keys = [(idx, k) for idx, k in enumerate(api_keys) if key_cooldowns.get(idx, 0) <= now]
-    
-    if not active_keys:
-        # If all keys are on cooldown, pick key expiring earliest
-        earliest_idx = min(key_cooldowns, key=key_cooldowns.get)
-        wait_secs = max(0.5, key_cooldowns[earliest_idx] - now)
-        print(f"All Gemini API keys on cooldown. Waiting {wait_secs:.1f}s for key index {earliest_idx}...")
-        time.sleep(wait_secs)
-        keys_to_try = [(earliest_idx, api_keys[earliest_idx])]
-    else:
-        # Prioritize primary key (0) if active, else cycle through remaining active keys
-        keys_to_try = active_keys
+    clean_text = None
+    engine_used = None
 
-    for attempt, (key_idx, key) in enumerate(keys_to_try):
-        print(f"Using API Key index {key_idx} (Attempt {attempt+1}/{len(keys_to_try)})")
-        success = False
-        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-        
+    if ocr_engine in ('ollama', 'local'):
+        print(f"Executing Local Ollama OCR with model: {ollama_model}")
+        import io
+        import urllib.request
+        import urllib.error
+
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=85)
+        img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+        payload = {
+            "model": ollama_model,
+            "prompt": prompt + "\n\nCRITICAL: Respond ONLY with a valid JSON object matching the requested schema. No markdown formatting, no code blocks, no conversational text.",
+            "images": [img_b64],
+            "stream": False,
+            "format": "json",
+            "options": {
+                "temperature": 0.1
+            }
+        }
+
         try:
-            for model_name in models_to_try:
-                try:
-                    client = genai.Client(api_key=key)
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=[img, prompt],
-                        config={
-                            "response_mime_type": "application/json"
-                        }
-                    )
-                    key_cooldowns.pop(key_idx, None)
-                    if key_idx > 0:
-                        current_key_index = key_idx
-                    success = True
-                    break
-                except Exception as model_err:
-                    err_str = str(model_err)
-                    if ('503' in err_str or 'UNAVAILABLE' in err_str or '404' in err_str or 'NOT_FOUND' in err_str) and model_name != models_to_try[-1]:
-                        print(f"Model {model_name} unavailable. Retrying with fallback model version...")
-                        continue
-                    raise model_err
-
-            if success:
-                break
+            req = urllib.request.Request(
+                f"{ollama_url}/api/generate",
+                data=json.dumps(payload).encode('utf-8'),
+                headers={"Content-Type": "application/json"}
+            )
+            # 300 second timeout to allow local model loading and CPU inference
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                res_dict = json.loads(resp.read().decode('utf-8'))
+                clean_text = res_dict.get("response", "").strip()
+                engine_used = f"ollama-{ollama_model}"
+        except urllib.error.URLError as e:
+            err_msg = str(e.reason if hasattr(e, 'reason') else e)
+            print(f"Local Ollama connection failed: {err_msg}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Local Ollama server is unreachable on {ollama_url}. Please ensure Ollama is running or switch to Gemini in SuperAdmin settings. Error: {err_msg}"
+            )
         except Exception as e:
-            print(f"DEBUG GEMINI ERROR: {e}")
-            err_str = str(e)
-            if '429' in err_str or '503' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
-                key_cooldowns[key_idx] = time.time() + 60
-                print(f"Key index {key_idx} hit rate limit. Marked on 60s cooldown.")
-                if attempt < len(keys_to_try) - 1:
-                    print("Immediately switching to next available API key...")
-                    continue
-            raise HTTPException(status_code=500, detail=f"Gemini API error after {attempt+1} attempts: {err_str}")
-            
-    if not response:
-        raise HTTPException(status_code=500, detail="Gemini API failed to return a response.")
+            err_msg = str(e)
+            print(f"Ollama execution error: {err_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Local Ollama execution failed: {err_msg}"
+            )
+    else:
+        # Gemini Cloud Vision Pipeline
+        now = time.time()
+        # Filter active keys (cooldown expired) vs cooling keys
+        active_keys = [(idx, k) for idx, k in enumerate(api_keys) if key_cooldowns.get(idx, 0) <= now]
         
-    clean_text = response.text.strip()
+        if not active_keys:
+            # If all keys are on cooldown, pick key expiring earliest
+            earliest_idx = min(key_cooldowns, key=key_cooldowns.get)
+            wait_secs = max(0.5, key_cooldowns[earliest_idx] - now)
+            print(f"All Gemini API keys on cooldown. Waiting {wait_secs:.1f}s for key index {earliest_idx}...")
+            time.sleep(wait_secs)
+            keys_to_try = [(earliest_idx, api_keys[earliest_idx])]
+        else:
+            # Prioritize primary key (0) if active, else cycle through remaining active keys
+            keys_to_try = active_keys
+
+        response = None
+        for attempt, (key_idx, key) in enumerate(keys_to_try):
+            print(f"Using API Key index {key_idx} (Attempt {attempt+1}/{len(keys_to_try)})")
+            success = False
+            models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+            
+            try:
+                for model_name in models_to_try:
+                    try:
+                        client = genai.Client(api_key=key)
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=[img, prompt],
+                            config={
+                                "response_mime_type": "application/json"
+                            }
+                        )
+                        key_cooldowns.pop(key_idx, None)
+                        if key_idx > 0:
+                            current_key_index = key_idx
+                        engine_used = model_name
+                        success = True
+                        break
+                    except Exception as model_err:
+                        err_str = str(model_err)
+                        if ('503' in err_str or 'UNAVAILABLE' in err_str or '404' in err_str or 'NOT_FOUND' in err_str) and model_name != models_to_try[-1]:
+                            print(f"Model {model_name} unavailable. Retrying with fallback model version...")
+                            continue
+                        raise model_err
+
+                if success:
+                    break
+            except Exception as e:
+                print(f"DEBUG GEMINI ERROR: {e}")
+                err_str = str(e)
+                if '429' in err_str or '503' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
+                    key_cooldowns[key_idx] = time.time() + 60
+                    print(f"Key index {key_idx} hit rate limit. Marked on 60s cooldown.")
+                    if attempt < len(keys_to_try) - 1:
+                        print("Immediately switching to next available API key...")
+                        continue
+                raise HTTPException(status_code=500, detail=f"Gemini API error after {attempt+1} attempts: {err_str}")
+                
+        if not response:
+            raise HTTPException(status_code=500, detail="Gemini API failed to return a response.")
+            
+        clean_text = response.text.strip()
+
+    if not clean_text:
+        raise HTTPException(status_code=500, detail="OCR engine returned an empty response.")
+
     if clean_text.startswith("```json"):
         clean_text = clean_text[7:]
+    elif clean_text.startswith("```"):
+        clean_text = clean_text[3:]
     if clean_text.endswith("```"):
         clean_text = clean_text[:-3]
     clean_text = clean_text.strip()
@@ -526,7 +595,14 @@ def process_ocr_gemini(data: dict):
     try:
         extracted_data = json.loads(clean_text)
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse JSON from Gemini response: {str(e)}. Response was: {clean_text}")
+        json_match = re.search(r'(\{[\s\S]*\})', clean_text)
+        if json_match:
+            try:
+                extracted_data = json.loads(json_match.group(1))
+            except Exception:
+                raise HTTPException(status_code=500, detail=f"Failed to parse JSON from OCR response: {str(e)}. Response was: {clean_text}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to parse JSON from OCR response: {str(e)}. Response was: {clean_text}")
     
     if extracted_data.get("is_valid_document") is False:
         err_msg = extracted_data.get("document_validation_error") or "The uploaded image does not appear to be an official Civil Registry document."
@@ -537,7 +613,7 @@ def process_ocr_gemini(data: dict):
             "detail": err_msg,
             "is_valid_document": False,
             "extracted_fields": {},
-            "image_token_cost": 258
+            "image_token_cost": 0 if ocr_engine in ('ollama', 'local') else 258
         }
 
     signatures = crop_and_binarize_signatures(file_path, doc_type)
@@ -546,7 +622,7 @@ def process_ocr_gemini(data: dict):
 
     img_w, img_h = img.size if img else (1024, 1024)
     tiles = math.ceil(img_w / 768) * math.ceil(img_h / 768)
-    image_token_cost = tiles * 258
+    image_token_cost = 0 if ocr_engine in ('ollama', 'local') else (tiles * 258)
 
     text_summary = json.dumps(extracted_data, ensure_ascii=False)
 
@@ -555,7 +631,7 @@ def process_ocr_gemini(data: dict):
         "text": text_summary,
         "detected_type": doc_type,
         "extracted_fields": extracted_data,
-        "engine_used": "gemini-3.6-flash",
+        "engine_used": engine_used or ("gemini" if ocr_engine == 'gemini' else f"ollama-{ollama_model}"),
         "quick_fill_used": True,
         "image_token_cost": image_token_cost
     }

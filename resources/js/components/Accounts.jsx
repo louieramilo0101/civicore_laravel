@@ -4,7 +4,7 @@ import {
     UserIcon, ShieldCheckIcon, AdjustmentsHorizontalIcon,
     AtSymbolIcon, TagIcon, PlusIcon, KeyIcon, TrashIcon, CheckCircleIcon,
     ExclamationTriangleIcon, EyeIcon, EyeSlashIcon, XMarkIcon, CameraIcon, EnvelopeIcon,
-    NoSymbolIcon, UserGroupIcon, ArrowLeftIcon
+    NoSymbolIcon, UserGroupIcon, ArrowLeftIcon, CpuChipIcon, CloudIcon, ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { useModal } from './ModalContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
@@ -23,15 +23,84 @@ const Accounts = () => {
     const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(true);
     const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
 
+    // OCR Engine Configuration State
+    const [ocrEngine, setOcrEngine] = useState('gemini');
+    const [ollamaModel, setOllamaModel] = useState('qwen2.5vl:3b');
+    const [isUpdatingOcr, setIsUpdatingOcr] = useState(false);
+    const [ocrStatusInfo, setOcrStatusInfo] = useState(null);
+    const [isCheckingOcr, setIsCheckingOcr] = useState(false);
+
     const fetchSettings = async () => {
         try {
             const res = await fetch('/api/settings', { credentials: 'include' });
             const data = await res.json();
-            if (data.settings && data.settings.ticket_limits_enabled !== undefined) {
-                setTicketLimitsEnabled(data.settings.ticket_limits_enabled !== '0');
+            if (data.settings) {
+                if (data.settings.ticket_limits_enabled !== undefined) {
+                    setTicketLimitsEnabled(data.settings.ticket_limits_enabled !== '0');
+                }
+                if (data.settings.ocr_engine) {
+                    setOcrEngine(data.settings.ocr_engine);
+                }
+                if (data.settings.ollama_model) {
+                    setOllamaModel(data.settings.ollama_model);
+                }
             }
         } catch (e) {
             console.error("Failed to fetch settings:", e);
+        }
+    };
+
+    const fetchOcrStatus = async () => {
+        setIsCheckingOcr(true);
+        try {
+            const res = await fetch('/api/settings/ocr-status', { credentials: 'include' });
+            const data = await res.json();
+            if (data.success) {
+                setOcrStatusInfo(data);
+                if (data.active_engine) setOcrEngine(data.active_engine);
+                if (data.active_model) setOllamaModel(data.active_model);
+            }
+        } catch (e) {
+            console.error("Failed to fetch OCR status:", e);
+        } finally {
+            setIsCheckingOcr(false);
+        }
+    };
+
+    const handleSwitchOcrEngine = async (newEngine) => {
+        setIsUpdatingOcr(true);
+        const previous = ocrEngine;
+        setOcrEngine(newEngine);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ ocr_engine: newEngine, ollama_model: ollamaModel })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert({
+                    title: 'OCR Engine Switched',
+                    message: newEngine === 'ollama'
+                        ? 'CiviCORE is now using Local Ollama (Qwen2.5-VL). All document processing is running 100% offline with zero cloud transmission.'
+                        : 'CiviCORE is now using Google Gemini Vision (Cloud AI).',
+                    type: 'success'
+                });
+                fetchOcrStatus();
+            } else {
+                setOcrEngine(previous);
+                showAlert({
+                    title: 'Failed to Switch Engine',
+                    message: data.error || 'Unable to update OCR engine.',
+                    type: 'error'
+                });
+            }
+        } catch (e) {
+            console.error("Failed to update OCR engine setting:", e);
+            setOcrEngine(previous);
+        } finally {
+            setIsUpdatingOcr(false);
         }
     };
 
@@ -423,6 +492,7 @@ const Accounts = () => {
     useEffect(() => {
         fetchUsers(true);
         fetchSettings();
+        fetchOcrStatus();
     }, []);
 
     // Initialize Chart
@@ -561,6 +631,74 @@ const Accounts = () => {
                                 <span
                                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${ticketLimitsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
                                 />
+                            </button>
+                        </div>
+
+                        {/* OCR Engine Switcher (SuperAdmin only) */}
+                        <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-black text-slate-800">
+                                        OCR Engine
+                                    </span>
+                                    {ocrEngine === 'ollama' ? (
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full mr-1 ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                                            {ocrStatusInfo?.ollama?.online ? 'Offline / Private' : 'Ollama Offline'}
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                            <span className="w-1.5 h-1.5 rounded-full mr-1 bg-indigo-500"></span>
+                                            Cloud AI
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]">
+                                    {ocrEngine === 'ollama' ? `Local (${ollamaModel})` : 'Google Gemini AI'}
+                                </span>
+                            </div>
+
+                            {/* Switch Buttons */}
+                            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                                <button
+                                    type="button"
+                                    disabled={isUpdatingOcr}
+                                    onClick={() => handleSwitchOcrEngine('gemini')}
+                                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                        ocrEngine === 'gemini'
+                                            ? 'bg-white text-indigo-600 shadow-xs ring-1 ring-slate-200'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                    title="Switch to Google Gemini Vision (Cloud AI)"
+                                >
+                                    <CloudIcon className="w-3.5 h-3.5" />
+                                    <span>Gemini</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isUpdatingOcr}
+                                    onClick={() => handleSwitchOcrEngine('ollama')}
+                                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                        ocrEngine === 'ollama'
+                                            ? 'bg-emerald-600 text-white shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                    title="Switch to Local Ollama Qwen2.5-VL (100% Offline & Private)"
+                                >
+                                    <CpuChipIcon className="w-3.5 h-3.5" />
+                                    <span>Local</span>
+                                </button>
+                            </div>
+
+                            {/* Recheck Connection Button */}
+                            <button
+                                type="button"
+                                onClick={fetchOcrStatus}
+                                disabled={isCheckingOcr}
+                                title="Recheck local Ollama connection status"
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                <ArrowPathIcon className={`w-3.5 h-3.5 ${isCheckingOcr ? 'animate-spin text-indigo-600' : ''}`} />
                             </button>
                         </div>
 
