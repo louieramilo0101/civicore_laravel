@@ -24,23 +24,25 @@ class IssuanceController extends Controller
         // Build query
         $whereClause = "";
         $params = [];
-        
-        if (!empty($type) || !empty($search)) {
-            $conditions = [];
-            if (!empty($type)) {
-                $conditions[] = "i.type = ?";
-                $params[] = $type;
-            }
-            if (!empty($search)) {
-                $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ? OR i.extracted_data LIKE ? OR i.ticket_number LIKE ? OR i.or_number LIKE ? OR i.barangay LIKE ?)";
-                $searchTerm = "%{$search}%";
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
+        $source = $request->query('source', '');
+        $conditions = [];
+
+        if (!empty($type)) {
+            $conditions[] = "i.type = ?";
+            $params[] = $type;
+        }
+        if (!empty($search)) {
+            $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ? OR i.extracted_data LIKE ? OR i.ticket_number LIKE ? OR i.or_number LIKE ? OR i.barangay LIKE ?)";
+            $searchTerm = "%{$search}%";
+            for ($k = 0; $k < 6; $k++) {
                 $params[] = $searchTerm;
             }
+        }
+        if ($source === 'procured' || $request->query('procured') === '1') {
+            $conditions[] = "(i.or_number IS NOT NULL OR i.requested_by IS NOT NULL OR i.print_remarks IS NOT NULL OR (i.ticket_number IS NOT NULL AND i.ticket_number NOT LIKE 'T-2026-0%'))";
+        }
+
+        if (!empty($conditions)) {
             $whereClause = " WHERE " . implode(" AND ", $conditions) . " AND i.deleted_at IS NULL";
         } else {
             $whereClause = " WHERE i.deleted_at IS NULL";
@@ -52,7 +54,7 @@ class IssuanceController extends Controller
         $total = $totalResult[0]->total;
         
         // Get paginated results
-        $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.issuanceDate, i.status, i.encoded_by, i.document_id, i.extracted_data, i.or_number, i.print_remarks, i.requested_by, i.approved_by, i.ticket_number, i.created_at, i.updated_at, i.deleted_at, d.file_path AS source_file_path FROM issuances i LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT ? OFFSET ?";
+        $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.issuanceDate, i.status, i.encoded_by, i.document_id, i.extracted_data, i.or_number, i.print_remarks, i.requested_by, i.approved_by, i.ticket_number, i.created_at, i.updated_at, i.deleted_at, d.file_path AS source_file_path, d.image_path AS source_image_path FROM issuances i LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
         
@@ -149,6 +151,28 @@ class IssuanceController extends Controller
             if ($issuance->document_id) {
                 DB::table('documents')->where('id', $issuance->document_id)->update([
                     'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
+            $recentlyLogged = DB::table('activity_logs')
+                ->where('record_type', 'Issuance')
+                ->where('record_id', $id)
+                ->where('action', 'like', '%Delet%')
+                ->where('created_at', '>=', now()->subSeconds(5))
+                ->exists();
+
+            if (!$recentlyLogged) {
+                $userName = request()->session()->get('user_name') 
+                    ?: (auth()->user()?->name ?? ($issuance->encoded_by ?? 'System Staff'));
+                DB::table('activity_logs')->insert([
+                    'user_name' => $userName,
+                    'action' => 'Deleted',
+                    'record_type' => 'Issuance',
+                    'record_id' => $id,
+                    'details' => "Deleted issuance #{$id}" . (!empty($issuance->name) ? " for {$issuance->name}" : ""),
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
@@ -498,7 +522,15 @@ class IssuanceController extends Controller
         }
 
         $absolutePath = \Storage::disk('public')->path($filePath);
-        $filename = $record->source_file_name ?: basename($filePath);
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) ?: 'pdf';
+        $rawName = $record->source_file_name ?: basename($filePath);
+        $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($rawName));
+        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) !== $ext) {
+            $filename = rtrim($cleanName, '._') . '.' . $ext;
+        } else {
+            $filename = $cleanName;
+        }
+
         $headers = [
             'Content-Type' => \Illuminate\Support\Facades\File::mimeType($absolutePath) ?: 'application/pdf',
             'Content-Disposition' => $disposition . '; filename="' . addslashes($filename) . '"',

@@ -677,9 +677,9 @@ const Documents = () => {
             return (joined || fields.personName || '').toUpperCase();
         }
 
-        const last = (fields.last_name || fields.deceased_last_name || '').toUpperCase().trim();
-        const first = (fields.first_name || fields.deceased_first_name || '').toUpperCase().trim();
-        const middle = (fields.middle_name || fields.deceased_middle_name || '').toUpperCase().trim();
+        const last = (fields.last_name || fields.child_last_name || fields.deceased_last_name || '').toUpperCase().trim();
+        const first = (fields.first_name || fields.child_first_name || fields.deceased_first_name || '').toUpperCase().trim();
+        const middle = (fields.middle_name || fields.child_middle_name || fields.deceased_middle_name || '').toUpperCase().trim();
         const suffix = (fields.suffix || '').toUpperCase().trim();
 
         const nameParts = [last ? `${last},` : '', first, middle, suffix].filter(Boolean).join(' ');

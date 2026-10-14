@@ -7,19 +7,25 @@ import {
     SparklesIcon,
     ArrowsPointingOutIcon,
     ArrowUturnLeftIcon,
-    PhotoIcon
+    PhotoIcon,
+    ViewfinderCircleIcon,
+    ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import { ensureOpenCvLoaded, detectDocumentCorners } from './captureEngine';
 
 /**
  * ImagePostFxModal
  * Allows rotating (90° steps), toggling black & white document filter,
- * and interactively cropping/adjusting document borders before attaching & uploading.
+ * auto-detecting document corners, and interactively cropping/adjusting document borders.
  */
 const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
     const [imageSrc, setImageSrc] = useState(null);
     const [rotation, setRotation] = useState(0);
     const [isBnw, setIsBnw] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [displayUrl, setDisplayUrl] = useState(null);
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [validationNotice, setValidationNotice] = useState(null);
 
     // 4 Corner coordinates (in percentage 0 - 100)
     const [corners, setCorners] = useState({
@@ -36,6 +42,7 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
     useEffect(() => {
         if (!isOpen || !file) {
             setImageSrc(null);
+            setDisplayUrl(null);
             setRotation(0);
             setIsBnw(false);
             setCorners({
@@ -55,6 +62,82 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
         };
     }, [isOpen, file]);
 
+    // Render rotated image to displayUrl whenever imageSrc or rotation changes
+    useEffect(() => {
+        if (!imageSrc) {
+            setDisplayUrl(null);
+            return;
+        }
+        let cancelled = false;
+        const img = new Image();
+        img.onload = () => {
+            if (cancelled) return;
+            const isSwapped = rotation === 90 || rotation === 270;
+            const canvas = document.createElement('canvas');
+            canvas.width = isSwapped ? img.height : img.width;
+            canvas.height = isSwapped ? img.width : img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((rotation * Math.PI) / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            setDisplayUrl(dataUrl);
+
+            // Automatically attempt OpenCV corner detection and document validation on the rotated canvas
+            ensureOpenCvLoaded().then(() => {
+                if (cancelled) return;
+                try {
+                    const detected = detectDocumentCorners(canvas);
+                    if (detected) {
+                        setCorners(detected);
+                        setValidationNotice({
+                            type: 'success',
+                            message: 'Document corners detected and aligned.'
+                        });
+                    } else {
+                        setValidationNotice({
+                            type: 'warning',
+                            message: "Document borders not clearly found. Adjust corner handles manually or use Full Page."
+                        });
+                    }
+                } catch (e) {
+                    console.warn("Auto-detect failed:", e);
+                }
+            });
+        };
+        img.src = imageSrc;
+        return () => {
+            cancelled = true;
+        };
+    }, [imageSrc, rotation]);
+
+    const runAutoDetection = async () => {
+        setIsDetecting(true);
+        try {
+            await ensureOpenCvLoaded();
+            const imgElement = containerRef.current?.querySelector('img');
+            if (imgElement) {
+                const detected = detectDocumentCorners(imgElement);
+                if (detected) {
+                    setCorners(detected);
+                    setValidationNotice({
+                        type: 'success',
+                        message: 'Document corners detected and aligned.'
+                    });
+                } else {
+                    setValidationNotice({
+                        type: 'warning',
+                        message: "Document borders not clearly found. Adjust corner handles manually or use Full Page."
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn("Manual auto-detect error:", err);
+        } finally {
+            setIsDetecting(false);
+        }
+    };
+
     const handleRotate = () => {
         setRotation(prev => (prev + 90) % 360);
     };
@@ -66,6 +149,7 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
             br: { x: 95, y: 95 },
             bl: { x: 5, y: 95 }
         });
+        setValidationNotice(null);
     };
 
     const handleFullCrop = () => {
@@ -118,39 +202,43 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                 const img = new Image();
                 img.onload = () => {
                     try {
-                        const minX = Math.max(0, Math.min(img.width - 1, Math.round(Math.min(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * img.width)));
-                        const maxX = Math.max(minX + 1, Math.min(img.width, Math.round(Math.max(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * img.width)));
-                        const minY = Math.max(0, Math.min(img.height - 1, Math.round(Math.min(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * img.height)));
-                        const maxY = Math.max(minY + 1, Math.min(img.height, Math.round(Math.max(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * img.height)));
+                        const isSwapped = rotation === 90 || rotation === 270;
+                        const rotW = isSwapped ? img.height : img.width;
+                        const rotH = isSwapped ? img.width : img.height;
+
+                        // 1. Fully rotate onto intermediate canvas
+                        const rotCanvas = document.createElement('canvas');
+                        rotCanvas.width = rotW;
+                        rotCanvas.height = rotH;
+                        const rotCtx = rotCanvas.getContext('2d');
+
+                        rotCtx.translate(rotW / 2, rotH / 2);
+                        rotCtx.rotate((rotation * Math.PI) / 180);
+                        rotCtx.drawImage(img, -img.width / 2, -img.height / 2);
+
+                        // 2. Crop from rotated canvas using user corner percentages
+                        const minX = Math.max(0, Math.min(rotW - 1, Math.round(Math.min(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * rotW)));
+                        const maxX = Math.max(minX + 1, Math.min(rotW, Math.round(Math.max(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * rotW)));
+                        const minY = Math.max(0, Math.min(rotH - 1, Math.round(Math.min(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * rotH)));
+                        const maxY = Math.max(minY + 1, Math.min(rotH, Math.round(Math.max(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * rotH)));
 
                         const cropW = Math.max(10, maxX - minX);
                         const cropH = Math.max(10, maxY - minY);
 
-                        const isSwapped = rotation === 90 || rotation === 270;
-                        const outW = isSwapped ? cropH : cropW;
-                        const outH = isSwapped ? cropW : cropH;
-
                         const canvas = document.createElement('canvas');
-                        canvas.width = outW;
-                        canvas.height = outH;
+                        canvas.width = cropW;
+                        canvas.height = cropH;
                         const ctx = canvas.getContext('2d');
 
                         if (isBnw) {
                             ctx.filter = 'grayscale(100%) contrast(115%) brightness(102%)';
                         }
 
-                        ctx.translate(outW / 2, outH / 2);
-                        ctx.rotate((rotation * Math.PI) / 180);
-
-                        ctx.drawImage(
-                            img,
-                            minX, minY, cropW, cropH,
-                            -cropW / 2, -cropH / 2, cropW, cropH
-                        );
+                        ctx.drawImage(rotCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
 
                         // Fallback pixel contrast loop if browser didn't apply ctx.filter
                         if (isBnw && !ctx.filter) {
-                            const imgData = ctx.getImageData(0, 0, outW, outH);
+                            const imgData = ctx.getImageData(0, 0, cropW, cropH);
                             const d = imgData.data;
                             for (let i = 0; i < d.length; i += 4) {
                                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -173,7 +261,7 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                                 lastModified: Date.now()
                             });
                             resolve(finalFile);
-                        }, 'image/jpeg', 0.90);
+                        }, 'image/jpeg', 0.92);
                     } catch (err) {
                         reject(err);
                     }
@@ -238,6 +326,16 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                             <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Crop:</span>
                             <button
                                 type="button"
+                                disabled={isDetecting}
+                                onClick={runAutoDetection}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer text-[11px]"
+                                title="Auto detect rectangular document borders"
+                            >
+                                <ViewfinderCircleIcon className={`w-3.5 h-3.5 ${isDetecting ? 'animate-spin text-[#d4a574]' : 'text-indigo-400'}`} />
+                                <span>{isDetecting ? 'Detecting...' : 'Auto Detect'}</span>
+                            </button>
+                            <button
+                                type="button"
                                 onClick={handleResetCrop}
                                 className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer text-[11px]"
                             >
@@ -280,6 +378,31 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                         </div>
                     </div>
 
+                    {/* Document Detection & Validation Notice Banner */}
+                    {validationNotice && (
+                        <div className={`px-6 py-2.5 text-xs font-semibold flex items-center justify-between gap-3 border-b ${
+                            validationNotice.type === 'success'
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                                : 'bg-amber-500/15 text-amber-200 border-amber-500/30'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                {validationNotice.type === 'success' ? (
+                                    <CheckIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                                )}
+                                <span>{validationNotice.message}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setValidationNotice(null)}
+                                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+
                     {/* Interactive Preview Canvas / Workspace */}
                     <div
                         className="flex-1 min-h-[380px] max-h-[58vh] bg-slate-950 p-6 flex items-center justify-center overflow-hidden relative select-none"
@@ -297,11 +420,10 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                             >
                                 {/* Rotated & Filtered Image */}
                                 <img
-                                    src={imageSrc}
+                                    src={displayUrl || imageSrc}
                                     alt="Document Scan Preview"
-                                    className="max-h-[50vh] max-w-[80vw] object-contain block transition-transform duration-200"
+                                    className="max-h-[50vh] max-w-[80vw] object-contain block transition-all duration-150"
                                     style={{
-                                        transform: `rotate(${rotation}deg)`,
                                         filter: isBnw ? 'grayscale(100%) contrast(115%) brightness(102%)' : 'none'
                                     }}
                                     draggable={false}

@@ -72,25 +72,38 @@ class TemplateConfigService
                 ['key' => 'marriage_parents_place_province', 'x' => 0.64, 'y' => 0.48, 'w' => 0.10, 'h' => 0.015],
                 ['key' => 'marriage_parents_place_country', 'x' => 0.75, 'y' => 0.48, 'w' => 0.10, 'h' => 0.015],
 
-                // ATTENDANT
-                ['key' => 'attendant_type', 'x' => 0.17, 'y' => 0.51, 'w' => 0.15, 'h' => 0.015],
-                ['key' => 'attendant_time', 'x' => 0.65, 'y' => 0.51, 'w' => 0.15, 'h' => 0.015],
+                // ATTENDANT (21a Checklist & 21b Certification)
+                ['key' => 'attendant_check_physician', 'x' => 0.176, 'y' => 0.505, 'w' => 0.03, 'h' => 0.015],
+                ['key' => 'attendant_check_nurse', 'x' => 0.281, 'y' => 0.505, 'w' => 0.03, 'h' => 0.015],
+                ['key' => 'attendant_check_midwife', 'x' => 0.379, 'y' => 0.505, 'w' => 0.03, 'h' => 0.015],
+                ['key' => 'attendant_check_hilot', 'x' => 0.491, 'y' => 0.505, 'w' => 0.03, 'h' => 0.015],
+                ['key' => 'attendant_check_others', 'x' => 0.721, 'y' => 0.505, 'w' => 0.03, 'h' => 0.015],
+                ['key' => 'attendant_others_specify', 'x' => 0.81, 'y' => 0.505, 'w' => 0.12, 'h' => 0.015],
+                ['key' => 'attendant_time', 'x' => 0.60, 'y' => 0.535, 'w' => 0.12, 'h' => 0.015],
+                ['key' => 'attendant_signature', 'x' => 0.22, 'y' => 0.54, 'w' => 0.25, 'h' => 0.030],
                 ['key' => 'attendant_name', 'x' => 0.25, 'y' => 0.57, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'attendant_title', 'x' => 0.25, 'y' => 0.585, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'attendant_address', 'x' => 0.57, 'y' => 0.56, 'w' => 0.20, 'h' => 0.015],
                 ['key' => 'attendant_date', 'x' => 0.55, 'y' => 0.585, 'w' => 0.20, 'h' => 0.015],
 
                 // INFORMANT & OTHERS
+                ['key' => 'informant_signature', 'x' => 0.23, 'y' => 0.622, 'w' => 0.25, 'h' => 0.030],
                 ['key' => 'informant_name', 'x' => 0.25, 'y' => 0.65, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'informant_relationship', 'x' => 0.29, 'y' => 0.667, 'w' => 0.21, 'h' => 0.015],
                 ['key' => 'informant_address', 'x' => 0.22, 'y' => 0.684, 'w' => 0.28, 'h' => 0.015],
                 ['key' => 'informant_date', 'x' => 0.21, 'y' => 0.70, 'w' => 0.20, 'h' => 0.015],
+
+                ['key' => 'prepared_by_signature', 'x' => 0.58, 'y' => 0.625, 'w' => 0.25, 'h' => 0.030],
                 ['key' => 'prepared_by_name', 'x' => 0.60, 'y' => 0.656, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'prepared_by_title', 'x' => 0.61, 'y' => 0.675, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'prepared_by_date', 'x' => 0.56, 'y' => 0.69, 'w' => 0.25, 'h' => 0.015],
+
+                ['key' => 'received_by_signature', 'x' => 0.23, 'y' => 0.716, 'w' => 0.25, 'h' => 0.030],
                 ['key' => 'received_by_name', 'x' => 0.24, 'y' => 0.743, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'received_by_title', 'x' => 0.25, 'y' => 0.758, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'received_by_date', 'x' => 0.23, 'y' => 0.773, 'w' => 0.25, 'h' => 0.015],
+
+                ['key' => 'registered_by_signature', 'x' => 0.58, 'y' => 0.716, 'w' => 0.25, 'h' => 0.030],
                 ['key' => 'registered_by_name', 'x' => 0.60, 'y' => 0.743, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'registered_by_title', 'x' => 0.61, 'y' => 0.758, 'w' => 0.25, 'h' => 0.015],
                 ['key' => 'registered_by_date', 'x' => 0.56, 'y' => 0.773, 'w' => 0.25, 'h' => 0.015],

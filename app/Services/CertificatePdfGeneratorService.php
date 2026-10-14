@@ -175,6 +175,27 @@ class CertificatePdfGeneratorService
             if (empty($fields['place_of_birth_city'])) {
                 $fields['place_of_birth_city'] = 'Naic';
             }
+
+            // Map 21a Attendant Checklist (Checkmark instead of string)
+            $att = strtolower(trim((string)($fields['attendant_type'] ?? '')));
+            if (!empty($fields['attendant_check_physician']) || str_contains($att, 'physician') || $att === '1') {
+                $fields['attendant_check_physician'] = '✓';
+            }
+            if (!empty($fields['attendant_check_nurse']) || str_contains($att, 'nurse') || $att === '2') {
+                $fields['attendant_check_nurse'] = '✓';
+            }
+            if (!empty($fields['attendant_check_midwife']) || str_contains($att, 'midwife') || $att === '3') {
+                $fields['attendant_check_midwife'] = '✓';
+            }
+            if (!empty($fields['attendant_check_hilot']) || str_contains($att, 'hilot') || $att === '4') {
+                $fields['attendant_check_hilot'] = '✓';
+            }
+            if (!empty($fields['attendant_check_others']) || str_contains($att, 'other') || $att === '5') {
+                $fields['attendant_check_others'] = '✓';
+                if (empty($fields['attendant_others_specify']) && !in_array($att, ['others', '5', 'other'])) {
+                    $fields['attendant_others_specify'] = $fields['attendant_type'];
+                }
+            }
         } elseif ($type === 'death') {
             if (!empty($fields['place_of_death']) && empty($fields['place_of_death_hospital'])) {
                 $fields['place_of_death_hospital'] = $fields['place_of_death'];
@@ -247,9 +268,17 @@ class CertificatePdfGeneratorService
                 $width = ($tf['w'] ?? 0.1) * 100;
                 $height = ($tf['h'] ?? 0.015) * 80 * 100; // relative percent
 
-                $valEscaped = htmlspecialchars((string)$val);
-
-                $fieldsHtml .= "<div class=\"field\" style=\"left: {$left}%; top: {$top}%; width: {$width}%;\">{$valEscaped}</div>\n";
+                $isImage = is_string($val) && (str_starts_with($val, 'data:image') || str_starts_with($val, '/storage') || preg_match('/\.(png|jpg|jpeg|svg)$/i', $val));
+                if ($isImage) {
+                    $src = $val;
+                    if (str_starts_with($val, '/storage')) {
+                        $src = public_path($val);
+                    }
+                    $fieldsHtml .= "<div class=\"field\" style=\"left: {$left}%; top: {$top}%; width: {$width}%; height: {$height}%; overflow: visible;\"><img src=\"{$src}\" style=\"width: 100%; height: 100%; object-fit: contain;\" /></div>\n";
+                } else {
+                    $valEscaped = htmlspecialchars((string)$val);
+                    $fieldsHtml .= "<div class=\"field\" style=\"left: {$left}%; top: {$top}%; width: {$width}%;\">{$valEscaped}</div>\n";
+                }
             }
 
             $bgHtml = $bgBase64 ? "<img class=\"bg\" src=\"data:{$bgMime};base64,{$bgBase64}\" />" : '';

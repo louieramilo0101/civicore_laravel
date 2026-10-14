@@ -34,6 +34,13 @@ const TemplateDesigner = ({ template, onClose, onSave }) => {
         { key: 'husbands_name', label: 'Husband Name' },
         { key: 'wifes_name', label: 'Wife Name' },
         { key: 'date_of_marriage', label: 'Date of Marriage' },
+        // Official Signatory Fields
+        { key: 'attendant_signature', label: 'Attendant Signature (Crop/Stamp)' },
+        { key: 'informant_signature', label: 'Informant Signature (Crop/Stamp)' },
+        { key: 'prepared_by_signature', label: 'Prepared By Signature (Crop/Stamp)' },
+        { key: 'received_by_signature', label: 'Received By Signature (Crop/Stamp)' },
+        { key: 'registered_by_signature', label: 'Registered By Signature (Crop/Stamp)' },
+        { key: 'certifying_officer_signature', label: 'Certifying Officer Signature (Crop/Stamp)' },
     ];
 
     /** Adds a configured field to the editable overlay list. */
@@ -189,7 +196,7 @@ const TemplateDesigner = ({ template, onClose, onSave }) => {
                                         y: Math.max(0, Math.min(y, 1 - f.h)) 
                                     });
                                 }}
-                                className="absolute border-2 border-indigo-500 bg-indigo-500/30 backdrop-blur-[2px] flex flex-col p-2 cursor-move group z-10 hover:z-20 transition-colors shadow-lg hover:bg-indigo-500/40"
+                                className={`absolute border-2 ${f.key?.includes('signature') ? 'border-amber-500 bg-amber-500/25' : 'border-indigo-500 bg-indigo-500/30'} backdrop-blur-[2px] flex flex-col p-2 cursor-move group z-10 hover:z-20 transition-colors shadow-lg`}
                                 style={{
                                     left: `${f.x * 100}%`,
                                     top: `${f.y * 100}%`,
@@ -198,15 +205,17 @@ const TemplateDesigner = ({ template, onClose, onSave }) => {
                                 }}
                             >
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-[9px] font-black uppercase tracking-tighter text-white bg-indigo-600 px-1.5 py-0.5 rounded leading-none truncate max-w-[80%] shadow-sm">{f.label}</span>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]"></div>
+                                    <span className={`text-[9px] font-black uppercase tracking-tighter text-white ${f.key?.includes('signature') ? 'bg-amber-600' : 'bg-indigo-600'} px-1.5 py-0.5 rounded leading-none truncate max-w-[85%] shadow-sm`}>
+                                        {f.label}
+                                    </span>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${f.key?.includes('signature') ? 'bg-amber-300 shadow-[0_0_8px_gold]' : 'bg-white shadow-[0_0_8px_white]'} animate-pulse`}></div>
                                 </div>
                                 <div className="flex-1 flex items-center justify-center">
                                     <div className="h-px w-full bg-white/20"></div>
                                 </div>
                                 
                                 {/* Resize handle mockup (Future: implement actual resize) */}
-                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-indigo-500 rounded-lg opacity-0 group-hover:opacity-100 cursor-nwse-resize border border-white shadow-md"></div>
+                                <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${f.key?.includes('signature') ? 'bg-amber-500' : 'bg-indigo-500'} rounded-lg opacity-0 group-hover:opacity-100 cursor-nwse-resize border border-white shadow-md`}></div>
                             </motion.div>
                         ))}
                     </div>

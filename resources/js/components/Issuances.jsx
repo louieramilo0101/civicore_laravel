@@ -32,11 +32,53 @@ const NAIC_BARANGAYS = [
 ].sort();
 
 // ── Issuance Preview Modal ──────────────────────────────────────────────────
-/** Previews an issued certificate and exposes print/download actions. */
 export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openRequestModal }) => {
+    const docId = cert.document_id || cert.raw?.document_id || (cert.source !== 'issuance' ? cert.realId : null);
+    const hasImage = Boolean(cert.image_path || cert.raw?.image_path || cert.source_image_path || docId);
+    const [previewMode, setPreviewMode] = useState(hasImage ? 'image' : 'pdf');
+
     const viewUrl = cert.source === 'issuance'
         ? `/api/issuances/view/${cert.realId}`
         : `/api/documents/view/${cert.realId}`;
+
+    const imageUrl = docId ? `/api/documents/view-image/${docId}` : null;
+
+    const downloadUrl = cert.download_url || (cert.source === 'issuance'
+        ? `/api/issuances/download/${cert.realId}`
+        : `/api/documents/download/${cert.realId}`);
+
+    const handleDownloadJson = () => {
+        let fields = {};
+        if (cert.raw?.extracted_fields) {
+            fields = typeof cert.raw.extracted_fields === 'string'
+                ? JSON.parse(cert.raw.extracted_fields)
+                : cert.raw.extracted_fields;
+        } else if (cert.raw?.extracted_data) {
+            fields = typeof cert.raw.extracted_data === 'string'
+                ? JSON.parse(cert.raw.extracted_data)
+                : cert.raw.extracted_data;
+        }
+        const exportData = {
+            id: cert.realId,
+            reference_number: cert.number,
+            type: cert.type,
+            name: cert.name,
+            barangay: cert.barangay,
+            issuance_date: cert.date,
+            extracted_fields: fields,
+            raw: cert.raw
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeName = (cert.name || 'dummy_data').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `${safeName}_${cert.type || 'record'}_dummy.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     // Keyboard listeners to prevent print/save shortcuts and allow ESC to close
     useEffect(() => {
@@ -73,6 +115,60 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* View Switcher: Captured Image vs Generated PDF */}
+                    {imageUrl && (
+                        <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-white/10 mr-1">
+                            <button
+                                type="button"
+                                onClick={() => setPreviewMode('image')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    previewMode === 'image'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Captured Image
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewMode('pdf')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    previewMode === 'pdf'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Live PDF
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Temporary Download Actions for Dummy Data & Certificate Testing */}
+                    <button
+                        type="button"
+                        onClick={handleDownloadJson}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 text-slate-300 hover:text-white border border-white/10 rounded-xl text-xs font-semibold tracking-wider transition-all cursor-pointer"
+                        title="Download Dummy Data JSON"
+                    >
+                        <DocumentTextIcon className="w-4 h-4 text-slate-400" />
+                        <span>JSON Data</span>
+                    </button>
+
+                    <a
+                        href={downloadUrl}
+                        download={`${(cert.name || 'certificate').replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => onDownload?.()}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-black tracking-wider uppercase rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
+                        title="Download Certificate File"
+                    >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                        <span>Download</span>
+                    </a>
+
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
                     <button
                         onClick={onClose}
                         className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
@@ -85,14 +181,25 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
 
             {/* Immersive Preview Content */}
             <div className="flex-1 overflow-hidden p-8 flex justify-center bg-gradient-to-b from-slate-900 to-slate-950">
-                <div className="w-full max-w-5xl h-full bg-white rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group">
-                    <iframe
-                        src={`${viewUrl}#toolbar=0&navpanes=0`}
-                        title={cert.name}
-                        className="w-full h-full border-none relative z-10"
-                    />
+                <div className="w-full max-w-5xl h-full bg-slate-950 rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
+                    {previewMode === 'image' && imageUrl ? (
+                        <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
+                            <img
+                                src={imageUrl}
+                                alt={cert.name}
+                                className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all"
+                                onError={() => setPreviewMode('pdf')}
+                            />
+                        </div>
+                    ) : (
+                        <iframe
+                            src={`${viewUrl}#toolbar=0&navpanes=0`}
+                            title={cert.name}
+                            className="w-full h-full border-none relative z-10 bg-white"
+                        />
+                    )}
                     {/* Subtle decorative background pulse */}
-                    <div className="absolute inset-0 bg-slate-100 animate-pulse opacity-5 z-0" />
+                    <div className="absolute inset-0 bg-slate-100 animate-pulse opacity-5 z-0 pointer-events-none" />
                 </div>
             </div>
         </div>,
@@ -311,12 +418,15 @@ const Issuances = () => {
                     encoded_by: i.encoded_by,
                     source: 'issuance',
                     ticket_number: i.ticket_number || null,
+                    document_id: i.document_id || linkedDoc?.id || null,
+                    image_path: linkedDoc?.image_path || i.source_image_path || null,
                     raw: {
                         ...i,
                         type,
                         // Pull essential data from linked document if missing
                         ocr_text: i.ocr_text || linkedDoc?.ocr_text || '',
                         file_path: i.file_path || linkedDoc?.file_path || '',
+                        image_path: linkedDoc?.image_path || i.source_image_path || '',
                         // Normalize data structure for the edit form panel
                         extracted_fields: i.extracted_data || i.extracted_fields || linkedDoc?.extracted_fields
                     }
@@ -369,7 +479,7 @@ const Issuances = () => {
     const fetchActivityLogs = async () => {
         setLogsLoading(true);
         try {
-            const res = await axios.get('/api/activity-logs');
+            const res = await axios.get('/api/activity-logs?scope=document');
             setActivityLogs(res.data);
         } catch (e) {
             console.error("Error fetching logs:", e);
@@ -601,6 +711,7 @@ const Issuances = () => {
 
         if (action === 'View') {
             setViewingCert(cert);
+            logActivity('Viewed', cert);
         } else {
             withConfirmation({
                 title: `${action} Document?`,
@@ -730,13 +841,66 @@ const Issuances = () => {
         return matchesType && matchesBarangay && matchesEncoder && matchesSearch;
     });
 
+    const isDocumentAction = (action = '') => {
+        const a = (action || '').toLowerCase();
+        return a.includes('attach') || a.includes('view') || a.includes('delet');
+    };
+
+    const getActionBadge = (action = '') => {
+        const a = (action || '').toLowerCase();
+        if (a.includes('delet')) {
+            return {
+                classes: 'bg-rose-50 text-rose-600 border-rose-100',
+                dot: 'bg-rose-500',
+                label: action.includes('Bulk') ? 'Deleted (Bulk)' : 'Deleted'
+            };
+        }
+        if (a.includes('attach')) {
+            return {
+                classes: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                dot: 'bg-emerald-500',
+                label: 'Attached to Ticket'
+            };
+        }
+        if (a.includes('view')) {
+            return {
+                classes: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                dot: 'bg-indigo-500',
+                label: 'Viewed'
+            };
+        }
+        return {
+            classes: 'bg-slate-100 text-slate-600 border-slate-200',
+            dot: 'bg-slate-400',
+            label: action
+        };
+    };
+
     const filteredLogs = activityLogs.filter(log => {
+        // Enforce document actions only: Attached to ticket, Viewed, Deleted
+        if (!isDocumentAction(log.action)) return false;
+
         const matchesSearch = !historySearch ||
             (log.details || '').toLowerCase().includes(historySearch.toLowerCase()) ||
             (log.user_name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            (log.action || '').toLowerCase().includes(historySearch.toLowerCase());
+            (log.action || '').toLowerCase().includes(historySearch.toLowerCase()) ||
+            (log.record_type || '').toLowerCase().includes(historySearch.toLowerCase());
 
-        const matchesAction = historyActionFilter === 'all' || log.action === historyActionFilter;
+        let matchesAction = true;
+        if (historyActionFilter !== 'all') {
+            const filterLower = historyActionFilter.toLowerCase();
+            const actionLower = (log.action || '').toLowerCase();
+            if (filterLower.includes('attach')) {
+                matchesAction = actionLower.includes('attach');
+            } else if (filterLower.includes('view')) {
+                matchesAction = actionLower.includes('view');
+            } else if (filterLower.includes('delet')) {
+                matchesAction = actionLower.includes('delet');
+            } else {
+                matchesAction = log.action === historyActionFilter;
+            }
+        }
+
         const matchesUser = historyUserFilter === 'all' || log.user_name === historyUserFilter;
 
         // Date Range filtering
@@ -830,7 +994,7 @@ const Issuances = () => {
                         cert={viewingCert}
                         onClose={() => setViewingCert(null)}
                         onPrint={() => handleAction('Print', viewingCert)}
-                        onDownload={() => handleAction('Download', viewingCert)}
+                        onDownload={() => logActivity('Downloaded', viewingCert)}
                         openRequestModal={openRequestModal}
                     />
                 )}
@@ -1666,8 +1830,8 @@ const Issuances = () => {
                                         <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 tracking-tight leading-tight truncate">Activity & Audit Trail</h3>
-                                        <p className="hidden sm:block text-[11px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Tracking all system events and modifications</p>
+                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 tracking-tight leading-tight truncate">Document Activity History</h3>
+                                        <p className="hidden sm:block text-[11px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Tracking document attachments, views, and deletions</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -1710,15 +1874,10 @@ const Issuances = () => {
                                             onChange={(e) => setHistoryActionFilter(e.target.value)}
                                             className="flex-1 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-2 px-2.5 cursor-pointer transition-all outline-none"
                                         >
-                                            <option value="all">All Actions</option>
-                                            <option value="Printed">Printed</option>
-                                            <option value="Downloaded">Downloaded</option>
-                                            <option value="Edited">Edited</option>
+                                            <option value="all">All Document Actions</option>
+                                            <option value="Document Attached">Attached to Ticket</option>
                                             <option value="Viewed">Viewed</option>
-                                            <option value="Issued">Issued</option>
                                             <option value="Deleted">Deleted</option>
-                                            <option value="Deleted (Bulk)">Deleted (Bulk)</option>
-                                            <option value="Issued (Bulk)">Issued (Bulk)</option>
                                         </select>
 
                                         {/* Advanced Filters Button */}
@@ -1815,11 +1974,11 @@ const Issuances = () => {
 
                         {logsLoading ? (
                             <div className="p-6"><SkeletonLoader type="table" rows={10} /></div>
-                        ) : activityLogs.length === 0 ? (
+                        ) : filteredLogs.length === 0 ? (
                             <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-100 m-6 rounded-3xl">
-                                <ShieldCheckIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
-                                <p className="font-bold text-slate-600">No activity logged yet</p>
-                                <p className="text-xs mt-1">Actions like Print, Download, and Edit will appear here.</p>
+                                <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 opacity-10 text-slate-500" />
+                                <p className="font-bold text-slate-600">No document activity logged yet</p>
+                                <p className="text-xs mt-1">Actions like attaching to a ticket, viewing, and deleting documents will appear here.</p>
                             </div>
                         ) : (
                             <>
@@ -1836,76 +1995,68 @@ const Issuances = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {paginatedLogs.map((log) => (
-                                                <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
-                                                    <td className="p-4 pl-8 font-bold text-slate-400 text-[10px] tabular-nums tracking-tighter">
-                                                        {new Date(log.created_at).toLocaleString()}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className="text-xs font-black text-slate-700 uppercase tracking-tight bg-slate-100 px-2 py-0.5 rounded">
-                                                            {log.user_name}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${log.action?.includes('Edit') ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                            log.action?.includes('Delete') ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                                log.action?.includes('Print') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                    'bg-indigo-50 text-indigo-600 border-indigo-100'
-                                                            }`}>
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${log.action?.includes('Edit') ? 'bg-amber-500' :
-                                                                log.action?.includes('Delete') ? 'bg-rose-500' :
-                                                                    log.action?.includes('Print') ? 'bg-emerald-500' : 'bg-indigo-500'
-                                                                }`}></span>
-                                                            {log.action}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <span className="text-[10px] font-bold text-slate-500 font-mono">
-                                                            {log.record_type} #{log.record_id}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 pr-8 text-xs font-medium text-slate-600 italic">
-                                                        {log.details}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {paginatedLogs.map((log) => {
+                                                const badge = getActionBadge(log.action);
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
+                                                        <td className="p-4 pl-8 font-bold text-slate-400 text-[10px] tabular-nums tracking-tighter">
+                                                            {new Date(log.created_at).toLocaleString()}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className="text-xs font-black text-slate-700 uppercase tracking-tight bg-slate-100 px-2 py-0.5 rounded">
+                                                                {log.user_name}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${badge.classes}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                                                                {badge.label}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className="text-[10px] font-bold text-slate-500 font-mono">
+                                                                {log.record_type} #{log.record_id}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 pr-8 text-xs font-medium text-slate-600">
+                                                            {log.details}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
 
                                 {/* Mobile Card View */}
                                 <div className="md:hidden divide-y divide-slate-100">
-                                    {paginatedLogs.map((log) => (
-                                        <div key={log.id} className="p-4 space-y-2 bg-white">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${log.action?.includes('Edit') ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                    log.action?.includes('Delete') ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                        log.action?.includes('Print') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                            'bg-indigo-50 text-indigo-600 border-indigo-100'
-                                                    }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${log.action?.includes('Edit') ? 'bg-amber-500' :
-                                                        log.action?.includes('Delete') ? 'bg-rose-500' :
-                                                            log.action?.includes('Print') ? 'bg-emerald-500' : 'bg-indigo-500'
-                                                        }`}></span>
-                                                    {log.action}
-                                                </span>
-                                                <span className="font-bold text-slate-400 text-[10px] tabular-nums">
-                                                    {new Date(log.created_at).toLocaleString()}
-                                                </span>
+                                    {paginatedLogs.map((log) => {
+                                        const badge = getActionBadge(log.action);
+                                        return (
+                                            <div key={log.id} className="p-4 space-y-2 bg-white">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${badge.classes}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                                                        {badge.label}
+                                                    </span>
+                                                    <span className="font-bold text-slate-400 text-[10px] tabular-nums">
+                                                        {new Date(log.created_at).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                                        {log.user_name}
+                                                    </span>
+                                                    <span className="font-mono text-slate-500 text-[11px]">
+                                                        {log.record_type} #{log.record_id}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-600 font-medium">
+                                                    {log.details}
+                                                </p>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs">
-                                                <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                                                    {log.user_name}
-                                                </span>
-                                                <span className="font-mono text-slate-500 text-[11px]">
-                                                    {log.record_type} #{log.record_id}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-slate-600 font-medium italic">
-                                                {log.details}
-                                            </p>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Audit Logs Pagination */}

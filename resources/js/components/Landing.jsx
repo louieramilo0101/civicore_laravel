@@ -83,14 +83,14 @@ export default function Landing() {
                         animate="visible"
                         className="lg:col-span-7 xl:col-span-7 w-full"
                     >
-                        {/* Status Badge */}
-                        <motion.div variants={itemVars} className="mb-3 sm:mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
-                            <span className="px-3 py-1 rounded-full bg-[#d4a574]/10 border border-[#d4a574]/20 text-[#d4a574] text-xs font-bold uppercase tracking-widest">
-                                Office of the Civil Registrar
-                            </span>
-                            <span className="text-slate-400 text-xs sm:text-sm font-medium">
-                                Official Registry Platform
-                            </span>
+                        {/* Official Institutional Eyebrow */}
+                        <motion.div variants={itemVars} className="mb-4 sm:mb-5 flex items-center gap-3">
+                            <div className="w-1 h-5 bg-[#d4a574] rounded-full shadow-[0_0_8px_rgba(212,165,116,0.6)]" />
+                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs sm:text-sm font-semibold tracking-wider uppercase">
+                                <span className="text-[#d4a574]">Office of the Municipal Civil Registrar</span>
+                                <span className="text-slate-500">•</span>
+                                <span className="text-slate-300 font-medium">Naic, Cavite</span>
+                            </div>
                         </motion.div>
 
                         {/* Main Headline with Dynamic Flip Animated Word */}

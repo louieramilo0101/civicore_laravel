@@ -6,15 +6,29 @@ import { MegaphoneIcon, PlusIcon, TrashIcon, CheckCircleIcon, XCircleIcon, Shiel
 export default function Announcements() {
     const [activeTab, setActiveTab] = useState('broadcasts'); // 'broadcasts' or 'settings'
     
-    // Announcements state
-    const [announcements, setAnnouncements] = useState([]);
-    const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+    // Announcements state with sessionStorage caching
+    const [announcements, setAnnouncements] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_announcements');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loadingAnnouncements, setLoadingAnnouncements] = useState(() => !sessionStorage.getItem('civicore_announcements'));
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [togglingId, setTogglingId] = useState(null);
 
     // Settings state
-    const [settings, setSettings] = useState({ opening_hours: '' });
+    const [settings, setSettings] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_public_settings');
+            return cached ? JSON.parse(cached) : { opening_hours: '' };
+        } catch {
+            return { opening_hours: '' };
+        }
+    });
     const [savingSettings, setSavingSettings] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null); // 'success' or 'error'
 
@@ -24,6 +38,11 @@ export default function Announcements() {
             if (!res.ok) throw new Error(`Announcements fetch failed: ${res.status}`);
             const data = await res.json();
             setAnnouncements(data);
+            try {
+                sessionStorage.setItem('civicore_announcements', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Failed to cache announcements:', e);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -36,7 +55,13 @@ export default function Announcements() {
             const res = await fetch('/api/public/config');
             if (!res.ok) throw new Error(`Settings fetch failed: ${res.status}`);
             const data = await res.json();
-            setSettings({ opening_hours: data.opening_hours });
+            const newSettings = { opening_hours: data.opening_hours || '' };
+            setSettings(newSettings);
+            try {
+                sessionStorage.setItem('civicore_public_settings', JSON.stringify(newSettings));
+            } catch (e) {
+                console.warn('Failed to cache public settings:', e);
+            }
         } catch (e) {
             console.error("Could not load settings:", e);
         }

@@ -156,23 +156,31 @@ export default function Reports() {
 
             if (dataSource === 'procured') {
                 // Fetch issuances (client procured)
-                const res = await fetch(`/api/issuances?${params.toString()}`, { credentials: 'include' });
+                const issParams = new URLSearchParams(params);
+                issParams.append('source', 'procured');
+                const res = await fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' });
                 const data = await res.json();
-                records = (data.data || []).map(r => ({
-                    ...r,
-                    _source: 'procured',
-                    _sourceLabel: 'Client Procured'
-                }));
+                records = (data.data || [])
+                    .filter(r => Boolean(r.or_number || r.requested_by || r.print_remarks || (r.ticket_number && !String(r.ticket_number).startsWith('T-2026-0'))))
+                    .map(r => ({
+                        ...r,
+                        _source: 'procured',
+                        _sourceLabel: 'Client Procured'
+                    }));
             } else if (dataSource === 'all') {
-                // Fetch both
+                // Fetch both internal master records and distinct client procured issuances
+                const issParams = new URLSearchParams(params);
+                issParams.append('source', 'procured');
                 const [docRes, issRes] = await Promise.all([
                     fetch(`/api/documents?${params.toString()}`, { credentials: 'include' }),
-                    fetch(`/api/issuances?${params.toString()}`, { credentials: 'include' })
+                    fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' })
                 ]);
                 const docData = await docRes.json();
                 const issData = await issRes.json();
                 const docs = (docData.data || []).map(r => ({ ...r, _source: 'internal', _sourceLabel: 'Internal Registration' }));
-                const issuances = (issData.data || []).map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
+                const issuances = (issData.data || [])
+                    .filter(r => Boolean(r.or_number || r.requested_by || r.print_remarks || (r.ticket_number && !String(r.ticket_number).startsWith('T-2026-0'))))
+                    .map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
                 records = [...docs, ...issuances];
             } else {
                 // Fetch internal master registry documents

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    ArrowRightOnRectangleIcon, 
     Bars3Icon, 
     XMarkIcon 
 } from '@heroicons/react/24/outline';
@@ -70,14 +69,7 @@ export default function PublicLayout({ children }) {
                         ))}
                     </nav>
 
-                    {/* Login CTA */}
-                    <Link
-                        to="/login"
-                        className="px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-[#d4a574]/40 bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] text-[#d4a574] font-bold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 sm:gap-2 shadow-sm cursor-pointer group"
-                    >
-                        <span>Login</span>
-                        <ArrowRightOnRectangleIcon className="w-4 h-4 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                    </Link>
+
 
                     {/* Mobile Menu Toggle Button */}
                     <button
@@ -149,9 +141,18 @@ export default function PublicLayout({ children }) {
             {/* Footer */}
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">
                 <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain opacity-50" />
                         <span className="text-white font-black tracking-widest uppercase text-sm opacity-50">CiviCORE</span>
+                        <span className="text-slate-600">•</span>
+                        <a
+                            href="https://www.facebook.com/gloria.bago.184"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-slate-400 hover:text-[#d4a574] transition-colors flex items-center gap-1.5"
+                        >
+                            <span>Facebook</span>
+                        </a>
                     </div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em]">
                         &copy; {new Date().getFullYear()} Municipality of Naic. Digital Governance Initiative.

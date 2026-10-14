@@ -44,6 +44,28 @@ class ActivityLogController extends Controller
     {
         $query = DB::table('activity_logs');
 
+        // Document-specific scope: strictly track document attachments, views, and deletions
+        if ($request->query('scope') === 'document' || $request->query('type') === 'document') {
+            $query->where(function ($q) {
+                $q->whereIn('action', [
+                    'Document Attached',
+                    'Attached to Ticket',
+                    'Viewed',
+                    'Document Viewed',
+                    'Deleted',
+                    'Document Deleted',
+                    'Deleted (Bulk)'
+                ])->orWhere(function ($sub) {
+                    $sub->whereIn('record_type', ['Document', 'Issuance'])
+                        ->where(function ($act) {
+                            $act->where('action', 'like', '%Attached%')
+                                ->orWhere('action', 'like', '%View%')
+                                ->orWhere('action', 'like', '%Delet%');
+                        });
+                });
+            });
+        }
+
         if ($request->has('record_type') && !empty($request->record_type)) {
             $query->where('record_type', $request->record_type);
         }

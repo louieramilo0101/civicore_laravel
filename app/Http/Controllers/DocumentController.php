@@ -751,9 +751,9 @@ class DocumentController extends Controller
             return $joined ? strtoupper($joined) : null;
         }
 
-        $last = strtoupper(trim($fields['last_name'] ?? $fields['deceased_last_name'] ?? ''));
-        $first = strtoupper(trim($fields['first_name'] ?? $fields['deceased_first_name'] ?? ''));
-        $middle = strtoupper(trim($fields['middle_name'] ?? $fields['deceased_middle_name'] ?? ''));
+        $last = strtoupper(trim($fields['last_name'] ?? $fields['child_last_name'] ?? $fields['deceased_last_name'] ?? ''));
+        $first = strtoupper(trim($fields['first_name'] ?? $fields['child_first_name'] ?? $fields['deceased_first_name'] ?? ''));
+        $middle = strtoupper(trim($fields['middle_name'] ?? $fields['child_middle_name'] ?? $fields['deceased_middle_name'] ?? ''));
         $suffix = strtoupper(trim($fields['suffix'] ?? ''));
 
         $parts = array_filter([$last ? "{$last}," : '', $first, $middle, $suffix]);
@@ -951,7 +951,7 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'error' => 'Document not found'], 404);
         }
 
-        DB::transaction(function () use ($id) {
+        DB::transaction(function () use ($id, $document) {
             $this->logHistory($id, 'Deleted');
 
             DB::table('documents')->where('id', $id)->update([
@@ -963,6 +963,28 @@ class DocumentController extends Controller
                 'deleted_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
+            $recentlyLogged = DB::table('activity_logs')
+                ->where('record_type', 'Document')
+                ->where('record_id', $id)
+                ->where('action', 'like', '%Delet%')
+                ->where('created_at', '>=', now()->subSeconds(5))
+                ->exists();
+
+            if (!$recentlyLogged) {
+                $userName = request()->session()->get('user_name') 
+                    ?: (auth()->user()?->name ?? ($document->encoded_by ?? 'System Staff'));
+                DB::table('activity_logs')->insert([
+                    'user_name' => $userName,
+                    'action' => 'Deleted',
+                    'record_type' => 'Document',
+                    'record_id' => $id,
+                    'details' => "Deleted document #{$id}" . (!empty($document->name) ? " ({$document->name})" : ""),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         });
 
         return response()->json(['success' => true]);
@@ -1126,9 +1148,17 @@ class DocumentController extends Controller
             }
         }
 
+        $rawName = $metadata['originalName'] ?? $doc->name ?? basename($fullPath);
+        $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($rawName));
+        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) !== $ext) {
+            $downloadFileName = rtrim($cleanName, '._') . '.' . $ext;
+        } else {
+            $downloadFileName = $cleanName;
+        }
+
         return response()->file($fullPath, [
             'Content-Type' => $mimetype,
-            'Content-Disposition' => $disposition . '; filename="' . ($metadata['originalName'] ?? $doc->name ?? basename($fullPath)) . '"'
+            'Content-Disposition' => $disposition . '; filename="' . addslashes($downloadFileName) . '"'
         ]);
     }
 

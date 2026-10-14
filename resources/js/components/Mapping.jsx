@@ -448,9 +448,13 @@ const Mapping = () => {
     };
 
 
-    const filteredPrints = filteredApiData.filter(print =>
-        activeFilter === 'all' || getNormalizedType(print) === activeFilter
-    );
+    const filteredPrints = filteredApiData.filter(print => {
+        const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
+        const status = String(print.status || '').toLowerCase();
+        // Exclude unprocessed/pending raw document scans, include only issued/printed records
+        const isPrintedRecord = ['issued', 'printed', 'completed', 'active'].includes(status) || Boolean(print.or_number || print.issuanceDate);
+        return matchesFilter && isPrintedRecord;
+    });
 
 
 

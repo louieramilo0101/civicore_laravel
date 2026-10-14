@@ -242,19 +242,19 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
     }
 
     // Default other location and citizenship fields for Naic LCRO records if missing
-    ['place_of_birth_province', 'mother_residence_province', 'father_residence_province', 'marriage_parents_place_province'].forEach(k => {
+    ['place_of_birth_province', 'mother_residence_province', 'father_residence_province'].forEach(k => {
         if (!init[k] || init[k] === 'n/a' || init[k] === '') {
             init[k] = 'Cavite';
         }
     });
 
-    ['place_of_birth_city', 'mother_residence_city', 'father_residence_city', 'marriage_parents_place_city'].forEach(k => {
+    ['place_of_birth_city', 'mother_residence_city', 'father_residence_city'].forEach(k => {
         if (!init[k] || init[k] === 'n/a' || init[k] === '') {
             init[k] = 'Naic';
         }
     });
 
-    ['mother_residence_country', 'father_residence_country', 'marriage_parents_place_country'].forEach(k => {
+    ['mother_residence_country', 'father_residence_country'].forEach(k => {
         if (!init[k] || init[k] === 'n/a' || init[k] === '') {
             init[k] = 'Philippines';
         }
@@ -1566,6 +1566,14 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         )}
 
                         <div className={viewMode === 'fields' ? 'block space-y-5' : 'hidden'}>
+                            {/* OCR Accuracy Disclaimer Banner */}
+                            {!isManualEntry && (
+                                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-800 text-xs font-semibold shadow-xs">
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <span>⚠️ OCR results are not 100% accurate. Please verify all fields manually before submitting.</span>
+                                </div>
+                            )}
+
                             {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
                                 <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-sm font-bold shadow-sm">
                                     <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -2023,7 +2031,28 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                         ? DeathTemplateOverlayFields 
                                                         : BirthTemplateOverlayFields
                                             )?.map((item) => {
-                                                const value = formData[item.key] || '';
+                                                let value = formData[item.key] || '';
+                                                // Dynamic checklist resolution for 21a Attendant on Birth Certificates
+                                                if (effectiveType === 'birth' || !effectiveType) {
+                                                    const att = String(formData.attendant_type || '').toLowerCase().trim();
+                                                    if (item.key === 'attendant_check_physician') {
+                                                        value = (formData.attendant_check_physician || att.includes('physician') || att === '1') ? '✓' : '';
+                                                    } else if (item.key === 'attendant_check_nurse') {
+                                                        value = (formData.attendant_check_nurse || att.includes('nurse') || att === '2') ? '✓' : '';
+                                                    } else if (item.key === 'attendant_check_midwife') {
+                                                        value = (formData.attendant_check_midwife || att.includes('midwife') || att === '3') ? '✓' : '';
+                                                    } else if (item.key === 'attendant_check_hilot') {
+                                                        value = (formData.attendant_check_hilot || att.includes('hilot') || att === '4') ? '✓' : '';
+                                                    } else if (item.key === 'attendant_check_others') {
+                                                        value = (formData.attendant_check_others || att.includes('other') || att === '5') ? '✓' : '';
+                                                    } else if (item.key === 'attendant_others_specify') {
+                                                        if (formData.attendant_others_specify) {
+                                                            value = formData.attendant_others_specify;
+                                                        } else if (att && !['1','2','3','4','5','physician','nurse','midwife','hilot (traditional birth attendant)','others','other'].includes(att)) {
+                                                            value = formData.attendant_type;
+                                                        }
+                                                    }
+                                                }
                                                 const label = item.label || item.key;
                                                 return (
                                                     <div
@@ -2042,9 +2071,17 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                 {label}
                                                             </div>
                                                         )}
-                                                        <div className={`font-black text-slate-950 tracking-tight truncate px-0.5 leading-none ${!showDiagnosticBoxes ? 'text-[10px] md:text-[12px]' : 'text-[8.5px] md:text-[10px]'}`}>
-                                                            {value || (!showDiagnosticBoxes ? '' : '—')}
-                                                        </div>
+                                                        {typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('/storage') || value.startsWith('blob:') || value.startsWith('http') || value.endsWith('.png') || value.endsWith('.jpg')) ? (
+                                                            <img
+                                                                src={value}
+                                                                alt={label}
+                                                                className="w-full h-full object-contain pointer-events-none"
+                                                            />
+                                                        ) : (
+                                                            <div className={`font-black text-slate-950 tracking-tight truncate px-0.5 leading-none ${!showDiagnosticBoxes ? 'text-[10px] md:text-[12px]' : 'text-[8.5px] md:text-[10px]'}`}>
+                                                                {value || (!showDiagnosticBoxes ? '' : '—')}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
