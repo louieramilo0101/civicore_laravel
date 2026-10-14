@@ -470,7 +470,16 @@ class TicketController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('ticket_number', 'LIKE', "%{$search}%")
-                  ->orWhere('client_name', 'LIKE', "%{$search}%");
+                  ->orWhere('client_name', 'LIKE', "%{$search}%")
+                  ->orWhere('contact_number', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('purpose', 'LIKE', "%{$search}%")
+                  ->orWhere('details', 'LIKE', "%{$search}%")
+                  ->orWhereHas('document', function ($docQ) use ($search) {
+                      $docQ->where('name', 'LIKE', "%{$search}%")
+                           ->orWhere('personName', 'LIKE', "%{$search}%")
+                           ->orWhere('extracted_fields', 'LIKE', "%{$search}%");
+                  });
             });
         }
 

@@ -751,9 +751,9 @@ class DocumentController extends Controller
             return $joined ? strtoupper($joined) : null;
         }
 
-        $last = strtoupper(trim($fields['last_name'] ?? $fields['deceased_last_name'] ?? ''));
-        $first = strtoupper(trim($fields['first_name'] ?? $fields['deceased_first_name'] ?? ''));
-        $middle = strtoupper(trim($fields['middle_name'] ?? $fields['deceased_middle_name'] ?? ''));
+        $last = strtoupper(trim($fields['last_name'] ?? $fields['child_last_name'] ?? $fields['deceased_last_name'] ?? ''));
+        $first = strtoupper(trim($fields['first_name'] ?? $fields['child_first_name'] ?? $fields['deceased_first_name'] ?? ''));
+        $middle = strtoupper(trim($fields['middle_name'] ?? $fields['child_middle_name'] ?? $fields['deceased_middle_name'] ?? ''));
         $suffix = strtoupper(trim($fields['suffix'] ?? ''));
 
         $parts = array_filter([$last ? "{$last}," : '', $first, $middle, $suffix]);

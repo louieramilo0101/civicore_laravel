@@ -456,6 +456,13 @@ def process_ocr_gemini(data: dict):
         prompt = """
         You are an expert system for reading Philippine Civil Registry documents (specifically Certificate of Live Birth).
         CRITICAL SAFETY REQUIREMENT: You MUST verify if the provided image is an official Philippine Civil Registry Document (Birth, Death, or Marriage Certificate). If the image is NOT a civil registry document (for example: a photo of a person, animal, vehicle, landscape, random text, meme, or blank paper), set "is_valid_document": false and set "document_validation_error" to a clear message describing why it was rejected.
+
+        CRITICAL RULES FOR PERSON NAMES IN BIRTH CERTIFICATES:
+        1. "first_name", "middle_name", "last_name" MUST strictly be the CHILD's name (the newborn/registrant in Box 1: "1. NAME (First, Middle, Last)").
+        2. DO NOT put the Mother's maiden name into "first_name", "middle_name", or "last_name"!
+        3. Mother's maiden name belongs strictly in "mother_first_name", "mother_middle_name", "mother_last_name" (Box 6: "6. MAIDEN NAME").
+        4. Father's name belongs strictly in "father_first_name", "father_middle_name", "father_last_name" (Box 13: "13. NAME").
+
         Please extract the data from this image and return it in a clean JSON format.
         Return ONLY the JSON object. Do not include any markdown formatting or extra text outside the JSON.
         
@@ -520,7 +527,8 @@ def process_ocr_gemini(data: dict):
         prompt_for_ollama = (
             f"You are an expert OCR system for Philippine Civil Registry {doc_type_clean} documents.\n"
             "If the image is NOT a civil registry document, set \"is_valid_document\": false and \"document_validation_error\": \"Reason\".\n"
-            "Extract all visible fields from the image into this exact JSON schema (use null for empty or unreadable fields):\n"
+            + ("CRITICAL: 'first_name', 'middle_name', 'last_name' MUST be the CHILD's name (Box 1 on birth certificate), NOT the mother's maiden name!\n" if doc_type_clean == "birth" else "")
+            + "Extract all visible fields from the image into this exact JSON schema (use null for empty or unreadable fields):\n"
             f"{schema_json}\n\n"
             "CRITICAL: Respond ONLY with a valid JSON object matching the requested schema. No markdown formatting, no code blocks, no conversational text."
         )

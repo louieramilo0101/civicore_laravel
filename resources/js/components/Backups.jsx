@@ -15,9 +15,23 @@ import Pagination from './Pagination.jsx';
  */
 const Backups = () => {
     const { showAlert } = useModal();
-    const [isLoading, setIsLoading] = useState(true);
-    const [backups, setBackups] = useState([]);
-    const [stats, setStats] = useState({ total_count: 0, total_size: '0 B', latest_at: null });
+    const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('civicore_backups'));
+    const [backups, setBackups] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_backups');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [stats, setStats] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_backups_stats');
+            return cached ? JSON.parse(cached) : { total_count: 0, total_size: '0 B', latest_at: null };
+        } catch {
+            return { total_count: 0, total_size: '0 B', latest_at: null };
+        }
+    });
 
     const [isCreatingBackup, setIsCreatingBackup] = useState(false);
     const [selectedBackupForRestore, setSelectedBackupForRestore] = useState(null);
@@ -44,8 +58,16 @@ const Backups = () => {
             const res = await fetch('/api/backups', { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
-                setBackups(data.backups || []);
-                setStats(data.stats || { total_count: 0, total_size: '0 B', latest_at: null });
+                const fetchedBackups = data.backups || [];
+                const fetchedStats = data.stats || { total_count: 0, total_size: '0 B', latest_at: null };
+                setBackups(fetchedBackups);
+                setStats(fetchedStats);
+                try {
+                    sessionStorage.setItem('civicore_backups', JSON.stringify(fetchedBackups));
+                    sessionStorage.setItem('civicore_backups_stats', JSON.stringify(fetchedStats));
+                } catch (e) {
+                    console.warn('Failed to cache backups:', e);
+                }
             } else {
                 showAlert({
                     title: 'Access Restricted',
@@ -62,7 +84,7 @@ const Backups = () => {
     };
 
     useEffect(() => {
-        fetchBackups(true);
+        fetchBackups(!sessionStorage.getItem('civicore_backups'));
     }, []);
 
     const handleCreateBackup = async () => {

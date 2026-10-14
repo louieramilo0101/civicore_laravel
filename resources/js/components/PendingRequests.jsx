@@ -588,10 +588,25 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     };
 
     /** Tickets matching the free-text search currently entered by staff. */
-    const filteredTickets = tickets.filter(t =>
-        t.ticket_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.client_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredTickets = tickets.filter(t => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+
+        if (t.ticket_number?.toLowerCase().includes(query)) return true;
+        if (t.client_name?.toLowerCase().includes(query)) return true;
+        if (t.purpose?.toLowerCase().includes(query)) return true;
+        if (t.contact_number?.toLowerCase().includes(query)) return true;
+        if (t.email?.toLowerCase().includes(query)) return true;
+
+        // Match linked document name & personName
+        if (t.document?.name?.toLowerCase().includes(query)) return true;
+        if (t.document?.personName?.toLowerCase().includes(query)) return true;
+
+        // Match serialized details
+        if (t.details && JSON.stringify(t.details).toLowerCase().includes(query)) return true;
+
+        return false;
+    });
 
     return (
         <div className="flex flex-col space-y-4 h-full min-h-0 overflow-hidden">
@@ -657,7 +672,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Search inbox..."
+                                placeholder="Search by ticket #, client, or document..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20"

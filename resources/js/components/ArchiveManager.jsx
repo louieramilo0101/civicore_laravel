@@ -14,10 +14,24 @@ import Pagination from './Pagination.jsx';
 const ArchiveManager = () => {
     const { backgroundTasks, runBackgroundTask, refreshAll } = useData();
 
-    const [archivedFiles, setArchivedFiles] = useState([]);
-    const [archivedTickets, setArchivedTickets] = useState([]);
-    const [isLoadingArchived, setIsLoadingArchived] = useState(false);
-    const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+    const [archivedFiles, setArchivedFiles] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_archived_files');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [archivedTickets, setArchivedTickets] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_archived_tickets');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [isLoadingArchived, setIsLoadingArchived] = useState(() => !sessionStorage.getItem('civicore_archived_files'));
+    const [isLoadingTickets, setIsLoadingTickets] = useState(() => !sessionStorage.getItem('civicore_archived_tickets'));
     const [archiveSearch, setArchiveSearch] = useState('');
     const [archiveTypeFilter, setArchiveTypeFilter] = useState('all');
     const [archiveSubTab, setArchiveSubTab] = useState('scans');
@@ -50,7 +64,15 @@ const ArchiveManager = () => {
             const res = await fetch(`/api/documents/archived?${params.toString()}`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                setArchivedFiles(data.data || []);
+                const files = data.data || [];
+                setArchivedFiles(files);
+                if (!archiveSearch && archiveTypeFilter === 'all') {
+                    try {
+                        sessionStorage.setItem('civicore_archived_files', JSON.stringify(files));
+                    } catch (e) {
+                        console.warn('Failed to cache archived files:', e);
+                    }
+                }
             }
         } catch (e) {
             console.error('Failed to fetch archived files:', e);
@@ -65,7 +87,13 @@ const ArchiveManager = () => {
             const res = await fetch('/api/tickets/archived', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                setArchivedTickets(data || []);
+                const tickets = data || [];
+                setArchivedTickets(tickets);
+                try {
+                    sessionStorage.setItem('civicore_archived_tickets', JSON.stringify(tickets));
+                } catch (e) {
+                    console.warn('Failed to cache archived tickets:', e);
+                }
             }
         } catch (e) {
             console.error('Failed to fetch archived tickets:', e);

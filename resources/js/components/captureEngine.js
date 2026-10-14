@@ -318,3 +318,135 @@ export const createCaptureEngine = () => {
         stop
     };
 };
+
+/** Ensures OpenCV.js is asynchronously loaded into window.cv */
+export const ensureOpenCvLoaded = () => {
+    if (typeof window === 'undefined') return Promise.resolve(false);
+    if (window.cv && window.cv.Mat) return Promise.resolve(true);
+
+    return new Promise((resolve) => {
+        let script = document.querySelector('script[src*="opencv.js"]');
+        if (!script) {
+            script = document.createElement('script');
+            script.src = 'https://docs.opencv.org/4.x/opencv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+        const timeout = setTimeout(() => {
+            clearInterval(interval);
+            resolve(Boolean(window.cv && window.cv.Mat));
+        }, 8000);
+        const interval = setInterval(() => {
+            if (window.cv && window.cv.Mat) {
+                clearInterval(interval);
+                clearTimeout(timeout);
+                resolve(true);
+            }
+        }, 100);
+    });
+};
+
+/** Analyzes a static image or canvas to detect rectangular document corners */
+export const detectDocumentCorners = (mediaElement) => {
+    const cv = window.cv;
+    if (!mediaElement) return null;
+    const width = mediaElement.naturalWidth || mediaElement.videoWidth || mediaElement.width;
+    const height = mediaElement.naturalHeight || mediaElement.videoHeight || mediaElement.height;
+    if (!width || !height || width < 10 || height < 10) return null;
+
+    if (cv && cv.Mat) {
+        let src = null;
+        let resized = null;
+        let gray = null;
+        let blurred = null;
+        let edged = null;
+        let contours = null;
+        let hierarchy = null;
+        let bestPts = null;
+
+        try {
+            src = cv.imread(mediaElement);
+            resized = new cv.Mat();
+            const targetW = 400;
+            const targetH = Math.round((400 / width) * height);
+            const dsize = new cv.Size(targetW, targetH);
+            if (dsize.width <= 0 || dsize.height <= 0) return null;
+
+            cv.resize(src, resized, dsize, 0, 0, cv.INTER_AREA);
+
+            gray = new cv.Mat();
+            cv.cvtColor(resized, gray, cv.COLOR_RGBA2GRAY);
+
+            blurred = new cv.Mat();
+            cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+
+            edged = new cv.Mat();
+            cv.Canny(blurred, edged, 30, 120);
+
+            contours = new cv.MatVector();
+            hierarchy = new cv.Mat();
+            cv.findContours(edged, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            let maxArea = 0;
+
+            for (let i = 0; i < contours.size(); i += 1) {
+                const contour = contours.get(i);
+                const area = cv.contourArea(contour);
+
+                if (area > 1200) {
+                    const perimeter = cv.arcLength(contour, true);
+                    let quadFound = false;
+                    const epsilons = [0.02, 0.03, 0.015, 0.04];
+                    for (let epsRatio of epsilons) {
+                        const approx = new cv.Mat();
+                        cv.approxPolyDP(contour, approx, epsRatio * perimeter, true);
+                        if (approx.rows === 4 && area > maxArea) {
+                            maxArea = area;
+                            bestPts = [];
+                            for (let k = 0; k < 4; k++) {
+                                bestPts.push({
+                                    x: Number(((approx.data32S[k * 2] / dsize.width) * 100).toFixed(1)),
+                                    y: Number(((approx.data32S[k * 2 + 1] / dsize.height) * 100).toFixed(1))
+                                });
+                            }
+                            approx.delete();
+                            quadFound = true;
+                            break;
+                        }
+                        approx.delete();
+                    }
+
+                    if (!quadFound && area > maxArea && contour.rows >= 4) {
+                        try {
+                            const rotatedRect = cv.minAreaRect(contour);
+                            const vertices = cv.RotatedRect.points(rotatedRect);
+                            if (vertices && vertices.length === 4) {
+                                maxArea = area;
+                                bestPts = vertices.map(pt => ({
+                                    x: Number(((pt.x / dsize.width) * 100).toFixed(1)),
+                                    y: Number(((pt.y / dsize.height) * 100).toFixed(1))
+                                }));
+                            }
+                        } catch (rectErr) {}
+                    }
+                }
+                contour.delete();
+            }
+
+            if (bestPts && bestPts.length === 4) {
+                return sortPoints(bestPts);
+            }
+        } catch (error) {
+            console.warn("OpenCV document detection failed:", error);
+        } finally {
+            if (src) src.delete();
+            if (resized) resized.delete();
+            if (gray) gray.delete();
+            if (blurred) blurred.delete();
+            if (edged) edged.delete();
+            if (contours) contours.delete();
+            if (hierarchy) hierarchy.delete();
+        }
+    }
+    return null;
+};

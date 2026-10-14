@@ -15,9 +15,25 @@ import { AVATAR_LIBRARY } from './AvatarLibrary.js';
 const Accounts = () => {
     const { showAlert } = useModal();
     const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
-    const [isLoading, setIsLoading] = useState(true);
-    const [users, setUsers] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('civicore_users'));
+    const [users, setUsers] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_users');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [selectedUser, setSelectedUser] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_users');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return parsed.length > 0 ? parsed[0] : null;
+            }
+        } catch {}
+        return null;
+    });
     const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'details'
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled'
     const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(true);
@@ -84,7 +100,7 @@ const Accounts = () => {
                     title: 'OCR Engine Switched',
                     message: newEngine === 'ollama'
                         ? 'CiviCORE is now using Local Ollama (Qwen2.5-VL). All document processing is running 100% offline with zero cloud transmission.'
-                        : 'CiviCORE is now using Google Gemini Vision (Cloud AI).',
+                        : 'CiviCORE is now using Cloud AI.',
                     type: 'success'
                 });
                 fetchOcrStatus();
@@ -247,6 +263,11 @@ const Accounts = () => {
                     joined: new Date(u.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 }));
                 setUsers(updatedUsers);
+                try {
+                    sessionStorage.setItem('civicore_users', JSON.stringify(updatedUsers));
+                } catch (e) {
+                    console.warn('Failed to cache users:', e);
+                }
                 if (updatedUsers.length > 0) {
                     setSelectedUser(prev => {
                         if (!prev) return updatedUsers[0];
@@ -490,7 +511,7 @@ const Accounts = () => {
     };
 
     useEffect(() => {
-        fetchUsers(true);
+        fetchUsers(!sessionStorage.getItem('civicore_users'));
         fetchSettings();
         fetchOcrStatus();
     }, []);
@@ -654,7 +675,7 @@ const Accounts = () => {
                                     )}
                                 </div>
                                 <span className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]">
-                                    {ocrEngine === 'ollama' ? `Local (${ollamaModel})` : 'Google Gemini AI'}
+                                    {ocrEngine === 'ollama' ? `Local (${ollamaModel})` : 'Cloud AI'}
                                 </span>
                             </div>
 
@@ -667,12 +688,12 @@ const Accounts = () => {
                                     className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
                                         ocrEngine === 'gemini'
                                             ? 'bg-white text-indigo-600 shadow-xs ring-1 ring-slate-200'
-                                            : 'text-slate-500 hover:text-slate-700'
+                                             : 'text-slate-500 hover:text-slate-700'
                                     }`}
-                                    title="Switch to Google Gemini Vision (Cloud AI)"
+                                    title="Switch to Cloud AI OCR"
                                 >
                                     <CloudIcon className="w-3.5 h-3.5" />
-                                    <span>Gemini</span>
+                                    <span>Cloud</span>
                                 </button>
                                 <button
                                     type="button"

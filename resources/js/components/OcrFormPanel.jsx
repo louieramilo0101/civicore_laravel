@@ -1566,6 +1566,14 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         )}
 
                         <div className={viewMode === 'fields' ? 'block space-y-5' : 'hidden'}>
+                            {/* OCR Accuracy Disclaimer Banner */}
+                            {!isManualEntry && (
+                                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-800 text-xs font-semibold shadow-xs">
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <span>⚠️ OCR results are not 100% accurate. Please verify all fields manually before submitting.</span>
+                                </div>
+                            )}
+
                             {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
                                 <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-sm font-bold shadow-sm">
                                     <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />

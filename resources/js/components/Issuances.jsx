@@ -32,11 +32,16 @@ const NAIC_BARANGAYS = [
 ].sort();
 
 // ── Issuance Preview Modal ──────────────────────────────────────────────────
-/** Previews an issued certificate and exposes print/download actions. */
 export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openRequestModal }) => {
+    const docId = cert.document_id || cert.raw?.document_id || (cert.source !== 'issuance' ? cert.realId : null);
+    const hasImage = Boolean(cert.image_path || cert.raw?.image_path || cert.source_image_path || docId);
+    const [previewMode, setPreviewMode] = useState(hasImage ? 'image' : 'pdf');
+
     const viewUrl = cert.source === 'issuance'
         ? `/api/issuances/view/${cert.realId}`
         : `/api/documents/view/${cert.realId}`;
+
+    const imageUrl = docId ? `/api/documents/view-image/${docId}` : null;
 
     const downloadUrl = cert.download_url || (cert.source === 'issuance'
         ? `/api/issuances/download/${cert.realId}`
@@ -110,6 +115,34 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* View Switcher: Captured Image vs Generated PDF */}
+                    {imageUrl && (
+                        <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-white/10 mr-1">
+                            <button
+                                type="button"
+                                onClick={() => setPreviewMode('image')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    previewMode === 'image'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Captured Image
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewMode('pdf')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    previewMode === 'pdf'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Live PDF
+                            </button>
+                        </div>
+                    )}
+
                     {/* Temporary Download Actions for Dummy Data & Certificate Testing */}
                     <button
                         type="button"
@@ -148,14 +181,25 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
 
             {/* Immersive Preview Content */}
             <div className="flex-1 overflow-hidden p-8 flex justify-center bg-gradient-to-b from-slate-900 to-slate-950">
-                <div className="w-full max-w-5xl h-full bg-white rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group">
-                    <iframe
-                        src={`${viewUrl}#toolbar=0&navpanes=0`}
-                        title={cert.name}
-                        className="w-full h-full border-none relative z-10"
-                    />
+                <div className="w-full max-w-5xl h-full bg-slate-950 rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
+                    {previewMode === 'image' && imageUrl ? (
+                        <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
+                            <img
+                                src={imageUrl}
+                                alt={cert.name}
+                                className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all"
+                                onError={() => setPreviewMode('pdf')}
+                            />
+                        </div>
+                    ) : (
+                        <iframe
+                            src={`${viewUrl}#toolbar=0&navpanes=0`}
+                            title={cert.name}
+                            className="w-full h-full border-none relative z-10 bg-white"
+                        />
+                    )}
                     {/* Subtle decorative background pulse */}
-                    <div className="absolute inset-0 bg-slate-100 animate-pulse opacity-5 z-0" />
+                    <div className="absolute inset-0 bg-slate-100 animate-pulse opacity-5 z-0 pointer-events-none" />
                 </div>
             </div>
         </div>,
@@ -374,12 +418,15 @@ const Issuances = () => {
                     encoded_by: i.encoded_by,
                     source: 'issuance',
                     ticket_number: i.ticket_number || null,
+                    document_id: i.document_id || linkedDoc?.id || null,
+                    image_path: linkedDoc?.image_path || i.source_image_path || null,
                     raw: {
                         ...i,
                         type,
                         // Pull essential data from linked document if missing
                         ocr_text: i.ocr_text || linkedDoc?.ocr_text || '',
                         file_path: i.file_path || linkedDoc?.file_path || '',
+                        image_path: linkedDoc?.image_path || i.source_image_path || '',
                         // Normalize data structure for the edit form panel
                         extracted_fields: i.extracted_data || i.extracted_fields || linkedDoc?.extracted_fields
                     }
