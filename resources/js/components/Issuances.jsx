@@ -38,6 +38,43 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
         ? `/api/issuances/view/${cert.realId}`
         : `/api/documents/view/${cert.realId}`;
 
+    const downloadUrl = cert.download_url || (cert.source === 'issuance'
+        ? `/api/issuances/download/${cert.realId}`
+        : `/api/documents/download/${cert.realId}`);
+
+    const handleDownloadJson = () => {
+        let fields = {};
+        if (cert.raw?.extracted_fields) {
+            fields = typeof cert.raw.extracted_fields === 'string'
+                ? JSON.parse(cert.raw.extracted_fields)
+                : cert.raw.extracted_fields;
+        } else if (cert.raw?.extracted_data) {
+            fields = typeof cert.raw.extracted_data === 'string'
+                ? JSON.parse(cert.raw.extracted_data)
+                : cert.raw.extracted_data;
+        }
+        const exportData = {
+            id: cert.realId,
+            reference_number: cert.number,
+            type: cert.type,
+            name: cert.name,
+            barangay: cert.barangay,
+            issuance_date: cert.date,
+            extracted_fields: fields,
+            raw: cert.raw
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeName = (cert.name || 'dummy_data').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `${safeName}_${cert.type || 'record'}_dummy.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     // Keyboard listeners to prevent print/save shortcuts and allow ESC to close
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -73,6 +110,32 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Temporary Download Actions for Dummy Data & Certificate Testing */}
+                    <button
+                        type="button"
+                        onClick={handleDownloadJson}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 text-slate-300 hover:text-white border border-white/10 rounded-xl text-xs font-semibold tracking-wider transition-all cursor-pointer"
+                        title="Download Dummy Data JSON"
+                    >
+                        <DocumentTextIcon className="w-4 h-4 text-slate-400" />
+                        <span>JSON Data</span>
+                    </button>
+
+                    <a
+                        href={downloadUrl}
+                        download={`${(cert.name || 'certificate').replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => onDownload?.()}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-black tracking-wider uppercase rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
+                        title="Download Certificate File"
+                    >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                        <span>Download</span>
+                    </a>
+
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
                     <button
                         onClick={onClose}
                         className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
@@ -884,7 +947,7 @@ const Issuances = () => {
                         cert={viewingCert}
                         onClose={() => setViewingCert(null)}
                         onPrint={() => handleAction('Print', viewingCert)}
-                        onDownload={() => handleAction('Download', viewingCert)}
+                        onDownload={() => logActivity('Downloaded', viewingCert)}
                         openRequestModal={openRequestModal}
                     />
                 )}

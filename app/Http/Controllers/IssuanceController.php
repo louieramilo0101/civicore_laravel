@@ -520,7 +520,15 @@ class IssuanceController extends Controller
         }
 
         $absolutePath = \Storage::disk('public')->path($filePath);
-        $filename = $record->source_file_name ?: basename($filePath);
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) ?: 'pdf';
+        $rawName = $record->source_file_name ?: basename($filePath);
+        $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($rawName));
+        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) !== $ext) {
+            $filename = rtrim($cleanName, '._') . '.' . $ext;
+        } else {
+            $filename = $cleanName;
+        }
+
         $headers = [
             'Content-Type' => \Illuminate\Support\Facades\File::mimeType($absolutePath) ?: 'application/pdf',
             'Content-Disposition' => $disposition . '; filename="' . addslashes($filename) . '"',

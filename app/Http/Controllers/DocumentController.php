@@ -1148,9 +1148,17 @@ class DocumentController extends Controller
             }
         }
 
+        $rawName = $metadata['originalName'] ?? $doc->name ?? basename($fullPath);
+        $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($rawName));
+        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) !== $ext) {
+            $downloadFileName = rtrim($cleanName, '._') . '.' . $ext;
+        } else {
+            $downloadFileName = $cleanName;
+        }
+
         return response()->file($fullPath, [
             'Content-Type' => $mimetype,
-            'Content-Disposition' => $disposition . '; filename="' . ($metadata['originalName'] ?? $doc->name ?? basename($fullPath)) . '"'
+            'Content-Disposition' => $disposition . '; filename="' . addslashes($downloadFileName) . '"'
         ]);
     }
 
