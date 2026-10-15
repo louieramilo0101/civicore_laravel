@@ -416,9 +416,7 @@ For scenarios where the web application or web server cannot be reached, use the
 
 The following enhancements are staged for future releases:
 - **Export Reports Secondary Statistics Bar Simplification / Removal**: Re-evaluating or removing the secondary vital indicators bar (`Gender Ratio`, `Barangays Covered`, `Timely Filings`, `Special Vital: Seniors • Weddings`) on the Export Reports page pending municipal registrar workflow requirements and final reporting guidelines.
-- **Production SMTP Mail Gateway**: Transition from local sandbox (Mailtrap) to production SMTP (Google Workspace / AWS SES) for live citizen OTP and ticket updates.
-- **SMS Gateway Integration**: Hooking automated SMS dispatch (Semaphore / Globe Labs) to the stored `phone` number when tickets move to *Serving* or *Issued*.
-- **Multi-Factor Authentication (MFA)**: Optional authenticator app (TOTP) enforcement for SuperAdmin and Registrar staff logins.
+
 
 ---
 
