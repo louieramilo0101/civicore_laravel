@@ -36,12 +36,35 @@ const Accounts = () => {
     });
     const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'details'
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled'
-    const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(true);
+    const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) {
+                const s = JSON.parse(cached);
+                if (s.ticket_limits_enabled !== undefined) {
+                    return s.ticket_limits_enabled === '1' || s.ticket_limits_enabled === 1 || s.ticket_limits_enabled === true;
+                }
+            }
+        } catch {}
+        return false;
+    });
     const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
 
     // OCR Engine Configuration State
-    const [ocrEngine, setOcrEngine] = useState('gemini');
-    const [ollamaModel, setOllamaModel] = useState('qwen2.5vl:3b');
+    const [ocrEngine, setOcrEngine] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) return JSON.parse(cached).ocr_engine || 'gemini';
+        } catch {}
+        return 'gemini';
+    });
+    const [ollamaModel, setOllamaModel] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) return JSON.parse(cached).ollama_model || 'qwen2.5vl:3b';
+        } catch {}
+        return 'qwen2.5vl:3b';
+    });
     const [isUpdatingOcr, setIsUpdatingOcr] = useState(false);
     const [ocrStatusInfo, setOcrStatusInfo] = useState(null);
     const [isCheckingOcr, setIsCheckingOcr] = useState(false);
@@ -51,8 +74,9 @@ const Accounts = () => {
             const res = await fetch('/api/settings', { credentials: 'include' });
             const data = await res.json();
             if (data.settings) {
+                sessionStorage.setItem('civicore_settings', JSON.stringify(data.settings));
                 if (data.settings.ticket_limits_enabled !== undefined) {
-                    setTicketLimitsEnabled(data.settings.ticket_limits_enabled !== '0');
+                    setTicketLimitsEnabled(data.settings.ticket_limits_enabled === '1' || data.settings.ticket_limits_enabled === 1 || data.settings.ticket_limits_enabled === true);
                 }
                 if (data.settings.ocr_engine) {
                     setOcrEngine(data.settings.ocr_engine);
@@ -132,9 +156,17 @@ const Accounts = () => {
             });
             const data = await res.json();
             if (data.success) {
+                try {
+                    const currentSettings = JSON.parse(sessionStorage.getItem('civicore_settings') || '{}');
+                    currentSettings.ticket_limits_enabled = newVal ? '1' : '0';
+                    sessionStorage.setItem('civicore_settings', JSON.stringify(currentSettings));
+                } catch {}
+
                 showAlert({
-                    title: 'Settings Updated',
-                    message: newVal ? 'Ticket request rate limits are now ENABLED.' : 'Ticket request rate limits are now DISABLED for testing mode.',
+                    title: 'Limits Setting Updated',
+                    message: newVal
+                        ? 'Ticket request limits are now ENABLED. The anti-spam protection is active (1 per day & 3 per week).'
+                        : 'Ticket request limits are now TURNED OFF. Requesters can submit without restriction.',
                     type: 'success'
                 });
             }
@@ -265,6 +297,7 @@ const Accounts = () => {
                 setUsers(updatedUsers);
                 try {
                     sessionStorage.setItem('civicore_users', JSON.stringify(updatedUsers));
+                    sessionStorage.setItem('civicore_users_time', String(Date.now()));
                 } catch (e) {
                     console.warn('Failed to cache users:', e);
                 }
@@ -511,9 +544,14 @@ const Accounts = () => {
     };
 
     useEffect(() => {
-        fetchUsers(!sessionStorage.getItem('civicore_users'));
-        fetchSettings();
-        fetchOcrStatus();
+        const cachedUsers = sessionStorage.getItem('civicore_users');
+        const lastFetchTime = Number(sessionStorage.getItem('civicore_users_time') || 0);
+        const isStale = Date.now() - lastFetchTime > 300000; // 5 min TTL
+
+        if (!cachedUsers || isStale) {
+            fetchUsers(!cachedUsers);
+            fetchSettings();
+        }
     }, []);
 
     // Initialize Chart
@@ -632,28 +670,42 @@ const Accounts = () => {
                 </div>
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                        {/* Testing Mode Rate Limit Toggle */}
+                        {/* Turn on limits for requests Toggle (Anti-Spam) */}
                         <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
                             <div className="flex flex-col">
                                 <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                                    Rate Limits (Testing Mode)
+                                    Turn on limits for requests
                                 </span>
                                 <span className="text-[10px] text-slate-500 font-medium">
-                                    {ticketLimitsEnabled ? '1/day & 3/week ENFORCED' : 'Limits OFF (Testing Mode)'}
+                                    {ticketLimitsEnabled ? 'Anti-Spam Limits Active (1/day & 3/week)' : 'Limits Disabled (Open requests)'}
                                 </span>
                             </div>
                             <button
                                 type="button"
                                 disabled={isUpdatingLimits}
                                 onClick={() => handleToggleLimits(!ticketLimitsEnabled)}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                                title={ticketLimitsEnabled ? 'Click to disable limits for testing' : 'Click to enable limits'}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                                title={ticketLimitsEnabled ? 'Click to turn off request limits' : 'Click to turn on limits for requests'}
                             >
                                 <span
                                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${ticketLimitsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
                                 />
                             </button>
                         </div>
+
+                        {/* Force Refresh Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                fetchUsers(true);
+                                fetchSettings();
+                                fetchOcrStatus();
+                            }}
+                            className="p-2.5 rounded-2xl border border-slate-200 bg-white/80 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-sm"
+                            title="Refresh Accounts & Settings"
+                        >
+                            <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
+                        </button>
 
                         {/* OCR Engine Switcher (SuperAdmin only) */}
                         <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">

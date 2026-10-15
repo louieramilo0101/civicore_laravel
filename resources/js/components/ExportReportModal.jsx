@@ -220,11 +220,30 @@ export default function ExportReportModal({ isOpen, onClose }) {
                         </div>
                     </div>
 
-                    {/* Included Columns Notice */}
-                    <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
+                    {/* Included Columns Notice (PSA Aligned) */}
+                    <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-100 flex items-start gap-3">
                         <DocumentChartBarIcon className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
-                        <div className="text-xs text-indigo-900 leading-relaxed">
-                            <span className="font-bold">Export Columns Included:</span> Ticket #, Registry No., Document Category, Full Name, Gender, Event Date, Barangay, Municipality, Father/Husband, Mother/Wife, and Registration Date.
+                        <div className="text-xs text-indigo-950 leading-relaxed space-y-1">
+                            <div>
+                                <span className="font-black text-indigo-900 uppercase text-[10px] tracking-wider block">
+                                    PSA-Aligned Columns ({docType === 'all' ? 'All Document Types' : docType.toUpperCase()}):
+                                </span>
+                                {docType === 'birth' && (
+                                    <span>Registry No., Child Full Name, Sex, Date of Birth, Place of Birth (Hospital/Address, City, Province), Father Name, Mother Maiden Name, Barangay, Registration Date.</span>
+                                )}
+                                {docType === 'death' && (
+                                    <span>Registry No., Deceased Full Name, Sex, Date of Death, Place of Death, Age, Senior Citizen (≥60), Resident Status, Immediate Cause, Manner / Natural Cause, Barangay, Registration Date.</span>
+                                )}
+                                {docType === 'marriage' && (
+                                    <span>Registry No., Husband Full Name, Wife Full Name, Date of Marriage, Place of Marriage, Solemnizing Officer / Ceremony Type, Barangay, Registration Date.</span>
+                                )}
+                                {docType === 'all' && (
+                                    <span>Registry No., Document Type, Primary/Spouse Names, Sex, Event Date, Place, Senior Citizen Flag (≥60), Resident Status, Cause / Ceremony Type, Parents / Relatives, Barangay, Status, Registration Date.</span>
+                                )}
+                            </div>
+                            <div className="text-[10px] text-indigo-700 font-bold border-t border-indigo-200/50 pt-1 mt-1">
+                                Includes official PSA Summary Statistics Block at the top (Totals, Senior count, Resident count, Natural causes count). Data-only output for direct PSA reporting.
+                            </div>
                         </div>
                     </div>
 

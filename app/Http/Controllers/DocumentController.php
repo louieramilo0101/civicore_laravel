@@ -1562,7 +1562,8 @@ class DocumentController extends Controller
     }
 
     /**
-     * Export Civil Registry Documents Report in CSV or Excel format
+     * Export Civil Registry Documents Report in CSV or Excel format (PSA-Aligned).
+     * Client Requirement: Data-only export for official PSA forms submission.
      */
     public function exportReport(Request $request)
     {
@@ -1577,8 +1578,10 @@ class DocumentController extends Controller
         $dateFrom = $request->query('date_from', '');
         $dateTo = $request->query('date_to', '');
 
-        // If exporting procured client documents from issuances table
-        if ($source === 'procured') {
+        $records = [];
+
+        // 1. Fetch from Issuances (Procured) if needed
+        if ($source === 'procured' || $source === 'all') {
             $conditions = ["i.deleted_at IS NULL"];
             $params = [];
 
@@ -1611,52 +1614,21 @@ class DocumentController extends Controller
             }
 
             $whereClause = " WHERE " . implode(" AND ", $conditions);
-
             $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
                              i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
-                             i.ticket_number, i.created_at
+                             i.ticket_number, i.extracted_data, i.created_at
                       FROM issuances i" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
 
-            $records = DB::select($query, $params);
-
-            $headers = [
-                'ID',
-                'Registry / Cert Number',
-                'Record Source',
-                'Ticket Number',
-                'Document Type',
-                'Client / Person Name',
-                'Barangay',
-                'Status',
-                'Requested By',
-                'Approved By',
-                'Encoded By',
-                'Remarks',
-                'Issuance Date',
-                'Date Requested'
-            ];
-
-            $rows = [];
-            foreach ($records as $doc) {
-                $rows[] = [
-                    $doc->id,
-                    $doc->certNumber ?: 'N/A',
-                    'Client Procured Document',
-                    $doc->ticket_number ?: 'N/A',
-                    ucfirst($doc->type ?? 'Birth'),
-                    $doc->name ?: 'N/A',
-                    $doc->barangay ?: 'N/A',
-                    ucfirst($doc->status ?? 'Active'),
-                    $doc->requested_by ?: 'N/A',
-                    $doc->approved_by ?: 'N/A',
-                    $doc->encoded_by ?: 'System Staff',
-                    $doc->print_remarks ?: '',
-                    $doc->issuanceDate ?: 'N/A',
-                    date('Y-m-d H:i', strtotime($doc->created_at))
-                ];
+            $issRecords = DB::select($query, $params);
+            foreach ($issRecords as $r) {
+                $r->_source = 'Client Procured';
+                $r->extracted_fields = $r->extracted_data;
+                $records[] = $r;
             }
-        } else {
-            // Internal Master Registry records (from documents table)
+        }
+
+        // 2. Fetch from Documents (Internal Master Registry) if needed
+        if ($source === 'internal' || $source === 'all') {
             $conditions = ["deleted_at IS NULL"];
             $params = [];
 
@@ -1698,117 +1670,297 @@ class DocumentController extends Controller
             }
 
             $whereClause = " WHERE " . implode(" AND ", $conditions);
-
             $query = "SELECT id, name, type, date, status, personName, barangay, extracted_fields, encoded_by, created_at
                       FROM documents" . $whereClause . " ORDER BY id DESC LIMIT 5000";
 
-            $records = DB::select($query, $params);
+            $docRecords = DB::select($query, $params);
+            foreach ($docRecords as $r) {
+                $r->_source = 'Internal Master Registry';
+                $r->certNumber = null;
+                $records[] = $r;
+            }
+        }
 
-            // Standard Report Headers
+        // Determine specific document type mode
+        $isSingleType = (count($types) === 1 && !in_array('all', $types));
+        $singleType = $isSingleType ? reset($types) : 'all';
+
+        // Initialize statistical counters for PSA summary
+        $totalCount = count($records);
+        $bCount = 0;
+        $dCount = 0;
+        $mCount = 0;
+        $seniorCount = 0;
+        $residentCount = 0;
+        $naturalCount = 0;
+
+        // Determine Headers based on PSA document category
+        if ($singleType === 'birth') {
             $headers = [
-                'ID',
                 'Registry Number',
-                'Record Source',
-                'Document Type',
-                'Person Name / Spouse Names',
-                'Sex / Gender',
-                'Event Date',
-                'Barangay',
+                'Child Full Name',
+                'Sex',
+                'Date of Birth',
+                'Place of Birth (Hospital / Address)',
                 'City / Municipality',
                 'Province',
-                'Status',
-                'Father / Husband Name',
-                'Mother / Wife Name',
-                'Encoded By',
-                'Date Registered'
+                'Father Full Name',
+                'Mother Maiden Name',
+                'Barangay',
+                'Record Source',
+                'Date Registered',
+                'Encoded By'
             ];
+        } elseif ($singleType === 'death') {
+            $headers = [
+                'Registry Number',
+                'Deceased Full Name',
+                'Sex',
+                'Date of Death',
+                'Place of Death',
+                'Age',
+                'Senior Citizen (≥60)',
+                'Residence Status',
+                'Cause of Death (Immediate)',
+                'Manner of Death / Natural Cause',
+                'Barangay',
+                'Record Source',
+                'Date Registered',
+                'Encoded By'
+            ];
+        } elseif ($singleType === 'marriage') {
+            $headers = [
+                'Registry Number',
+                'Husband Full Name',
+                'Wife Full Name',
+                'Date of Marriage',
+                'Place of Marriage',
+                'Solemnizing Officer / Ceremony Type',
+                'Barangay',
+                'Record Source',
+                'Date Registered',
+                'Encoded By'
+            ];
+        } else {
+            // Unified PSA Summary Columns
+            $headers = [
+                'Registry Number',
+                'Document Type',
+                'Primary Person / Spouses',
+                'Sex',
+                'Event Date',
+                'Place of Event',
+                'Senior Citizen (Death ≥60)',
+                'Resident Status',
+                'Cause / Ceremony Details',
+                'Parents / Relatives',
+                'Barangay',
+                'Status',
+                'Record Source',
+                'Date Registered',
+                'Encoded By'
+            ];
+        }
 
-            $rows = [];
+        $rows = [];
 
-            foreach ($records as $doc) {
-                $ef = [];
-                if (!empty($doc->extracted_fields)) {
-                    $ef = is_string($doc->extracted_fields) ? json_decode($doc->extracted_fields, true) : (array) $doc->extracted_fields;
-                }
+        foreach ($records as $doc) {
+            $ef = [];
+            if (!empty($doc->extracted_fields)) {
+                $ef = is_string($doc->extracted_fields) ? json_decode($doc->extracted_fields, true) : (array) $doc->extracted_fields;
+            }
 
-                $docType = ucfirst($doc->type ?? 'Birth');
-                $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? 'N/A';
-                $personName = !empty($doc->personName) ? $doc->personName : 'N/A';
-                $sex = $ef['sex'] ?? 'N/A';
+            $docType = strtolower($doc->type ?? 'birth');
+            if ($docType === 'birth') $bCount++;
+            elseif ($docType === 'death') $dCount++;
+            elseif ($docType === 'marriage') $mCount++;
 
-                // Event Date
+            $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? $doc->certNumber ?? 'N/A';
+            $sex = ucfirst($ef['sex'] ?? 'N/A');
+            $brgy = $doc->barangay ?? $ef['barangay'] ?? 'N/A';
+            $encodedBy = $doc->encoded_by ?? 'System Staff';
+            $registeredAt = date('Y-m-d', strtotime($doc->created_at));
+            $recordSource = $doc->_source ?? 'Civil Registry';
+
+            // Senior status calculation (Death)
+            $ageVal = (int) ($ef['age_completed_years'] ?? $ef['age'] ?? 0);
+            $isSenior = ($ageVal >= 60);
+            if ($docType === 'death' && $isSenior) $seniorCount++;
+
+            // Residence calculation (Resident vs Non-Resident of Naic)
+            $residence = strtolower($ef['residence'] ?? $doc->barangay ?? '');
+            $isResident = (str_contains($residence, 'naic') || (!empty($doc->barangay) && $doc->barangay !== 'N/A'));
+            if ($isResident) $residentCount++;
+            $residentStatusLabel = $isResident ? 'Local Resident' : 'Non-Resident';
+
+            // Natural cause calculation (Death)
+            $immediateCause = $ef['cause_of_death_immediate'] ?? $ef['cause_of_death'] ?? 'N/A';
+            $manner = strtolower($ef['manner_of_death'] ?? '');
+            $isNatural = (str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide')));
+            if ($docType === 'death' && $isNatural) $naturalCount++;
+            $mannerLabel = $isNatural ? 'Natural Cause' : 'External / Non-Natural';
+
+            if ($singleType === 'birth') {
+                $childName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
+                $dobDay = $ef['dob_day'] ?? '';
+                $dobMonth = $ef['dob_month'] ?? '';
+                $dobYear = $ef['dob_year'] ?? '';
+                $dobFormatted = ($dobDay || $dobMonth || $dobYear) ? trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ") : ($doc->date ?? 'N/A');
+
+                $hospital = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? 'N/A';
+                $city = $ef['place_of_birth_city'] ?? $ef['city_municipality'] ?? 'Naic';
+                $province = $ef['place_of_birth_province'] ?? $ef['province'] ?? 'Cavite';
+
+                $fatherName = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_middle_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? '')) ?: 'N/A';
+                $motherName = trim(($ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '') . ' ' . ($ef['mother_middle_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '')) ?: 'N/A';
+
+                $rows[] = [
+                    $regNo,
+                    $childName ?: 'N/A',
+                    $sex,
+                    $dobFormatted,
+                    $hospital,
+                    $city,
+                    $province,
+                    $fatherName,
+                    $motherName,
+                    $brgy,
+                    $recordSource,
+                    $registeredAt,
+                    $encodedBy
+                ];
+            } elseif ($singleType === 'death') {
+                $deceasedName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
+                $dod = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
+                $pod = $ef['place_of_death'] ?? $ef['place_of_death_hospital'] ?? 'N/A';
+
+                $rows[] = [
+                    $regNo,
+                    $deceasedName ?: 'N/A',
+                    $sex,
+                    $dod,
+                    $pod,
+                    $ageVal > 0 ? (string) $ageVal : 'N/A',
+                    $isSenior ? 'Yes (Senior Citizen ≥60)' : ($ageVal > 0 ? 'No (<60)' : 'N/A'),
+                    $residentStatusLabel,
+                    $immediateCause,
+                    $mannerLabel,
+                    $brgy,
+                    $recordSource,
+                    $registeredAt,
+                    $encodedBy
+                ];
+            } elseif ($singleType === 'marriage') {
+                $husbandName = trim(($ef['husband_first_name'] ?? '') . ' ' . ($ef['husband_middle_name'] ?? '') . ' ' . ($ef['husband_last_name'] ?? '')) ?: 'N/A';
+                $wifeName = trim(($ef['wife_first_name'] ?? '') . ' ' . ($ef['wife_middle_name'] ?? '') . ' ' . ($ef['wife_last_name'] ?? '')) ?: 'N/A';
+                $dom = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
+                $pom = $ef['place_of_marriage'] ?? 'N/A';
+
+                // Solemnizing Officer / Ceremony
+                $officer = $ef['solemnizing_officer_name'] ?? $ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? '';
+                $ceremony = 'Civil / Church';
+                $lowerOff = strtolower($officer);
+                if (str_contains($lowerOff, 'mayor')) $ceremony = 'Mayor (Civil)';
+                elseif (str_contains($lowerOff, 'judge')) $ceremony = 'Judge (Civil)';
+                elseif (str_contains($lowerOff, 'church') || str_contains($lowerOff, 'priest') || str_contains($lowerOff, 'pastor') || str_contains($lowerOff, 'parish')) $ceremony = 'Church / Religious';
+                elseif (str_contains($lowerOff, 'islam') || str_contains($lowerOff, 'imam')) $ceremony = 'Islamic Rites';
+                elseif (!empty($officer)) $ceremony = $officer;
+
+                $rows[] = [
+                    $regNo,
+                    $husbandName,
+                    $wifeName,
+                    $dom,
+                    $pom,
+                    $ceremony,
+                    $brgy,
+                    $recordSource,
+                    $registeredAt,
+                    $encodedBy
+                ];
+            } else {
+                // Unified All Records
+                $primaryName = !empty($doc->personName) ? $doc->personName : 'N/A';
                 $eventDate = $doc->date ?? 'N/A';
-                if (strtolower($docType) === 'marriage') {
-                    $eventDate = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
-                } elseif (strtolower($docType) === 'death') {
-                    $eventDate = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
-                } else {
+                $place = 'Naic, Cavite';
+                $details = 'N/A';
+                $parentsRel = 'N/A';
+
+                if ($docType === 'birth') {
                     $dobDay = $ef['dob_day'] ?? '';
                     $dobMonth = $ef['dob_month'] ?? '';
                     $dobYear = $ef['dob_year'] ?? '';
-                    if ($dobDay || $dobMonth || $dobYear) {
-                        $eventDate = trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ");
-                    }
+                    if ($dobDay || $dobMonth || $dobYear) $eventDate = trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ");
+                    $place = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? 'Naic';
+                    $f = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? ''));
+                    $m = trim(($ef['mother_first_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? ''));
+                    $parentsRel = trim("Father: {$f} | Mother: {$m}", " |");
+                } elseif ($docType === 'death') {
+                    $eventDate = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
+                    $place = $ef['place_of_death'] ?? 'Naic';
+                    $details = "Cause: {$immediateCause} ({$mannerLabel})";
+                } elseif ($docType === 'marriage') {
+                    $h = trim(($ef['husband_first_name'] ?? '') . ' ' . ($ef['husband_last_name'] ?? ''));
+                    $w = trim(($ef['wife_first_name'] ?? '') . ' ' . ($ef['wife_last_name'] ?? ''));
+                    $primaryName = trim("{$h} & {$w}", " &");
+                    $eventDate = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
+                    $place = $ef['place_of_marriage'] ?? 'Naic';
+                    $details = "Ceremony: " . ($ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? 'Civil/Church');
                 }
-
-                $brgy = $doc->barangay ?? $ef['barangay'] ?? 'N/A';
-                $city = $ef['city_municipality'] ?? $ef['place_of_birth_city'] ?? 'Naic';
-                $province = $ef['province'] ?? 'Cavite';
-                $statusVal = ucfirst($doc->status ?? 'Processed');
-
-                // Relative / Spouse fields
-                $fatherOrHusband = 'N/A';
-                $motherOrWife = 'N/A';
-
-                if (strtolower($docType) === 'marriage') {
-                    $hFirst = $ef['husband_first_name'] ?? '';
-                    $hLast = $ef['husband_last_name'] ?? '';
-                    $wFirst = $ef['wife_first_name'] ?? '';
-                    $wLast = $ef['wife_last_name'] ?? '';
-                    $fatherOrHusband = trim("{$hFirst} {$hLast}");
-                    $motherOrWife = trim("{$wFirst} {$wLast}");
-                } else {
-                    $fFirst = $ef['father_first_name'] ?? '';
-                    $fLast = $ef['father_last_name'] ?? '';
-                    $mFirst = $ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '';
-                    $mLast = $ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '';
-                    $fatherOrHusband = trim("{$fFirst} {$fLast}");
-                    $motherOrWife = trim("{$mFirst} {$mLast}");
-                }
-
-                $encodedBy = $doc->encoded_by ?? 'System Staff';
-                $registeredAt = date('Y-m-d H:i', strtotime($doc->created_at));
 
                 $rows[] = [
-                    $doc->id,
                     $regNo,
-                    'Uploaded Documents',
-                    $docType,
-                    $personName,
+                    ucfirst($docType),
+                    $primaryName,
                     $sex,
                     $eventDate,
+                    $place,
+                    $docType === 'death' ? ($isSenior ? 'Yes (≥60)' : 'No (<60)') : 'N/A',
+                    $residentStatusLabel,
+                    $details,
+                    $parentsRel,
                     $brgy,
-                    $city,
-                    $province,
-                    $statusVal,
-                    $fatherOrHusband ?: 'N/A',
-                    $motherOrWife ?: 'N/A',
-                    $encodedBy,
-                    $registeredAt
+                    ucfirst($doc->status ?? 'Registered'),
+                    $recordSource,
+                    $registeredAt,
+                    $encodedBy
                 ];
             }
         }
 
-        $filename = "civil_registry_report_" . date('Y_m_d_His') . ($format === 'excel' ? '.xls' : '.csv');
+        $filename = "civil_registry_psa_report_" . date('Y_m_d_His') . ($format === 'excel' ? '.xls' : '.csv');
         $delimiter = $format === 'excel' ? "\t" : ",";
 
-        $output = "\xEF\xBB\xBF"; // UTF-8 BOM for Microsoft Excel compatibility
-        $output .= implode($delimiter, array_map(function($h) use ($delimiter) {
+        $output = "\xEF\xBB\xBF"; // UTF-8 BOM for Microsoft Excel / LibreOffice
+
+        // PSA-Aligned Summary Header Block
+        $periodLabel = ($dateFrom ? $dateFrom : 'All') . " to " . ($dateTo ? $dateTo : 'Present');
+        $scopeLabel = ucfirst($source) . ' Records (' . ucfirst($singleType) . ')';
+
+        $summaryStatsLine = "Total Records: {$totalCount} | Births: {$bCount} | Deaths: {$dCount} (Senior Citizens ≥60: {$seniorCount}, Local Residents: {$residentCount}, Natural Causes: {$naturalCount}) | Marriages: {$mCount}";
+
+        $summaryHeaders = [
+            ["OFFICE OF THE MUNICIPAL CIVIL REGISTRAR - NAIC, CAVITE"],
+            ["CIVIL REGISTRY DATA REPORT (PHILIPPINE STATISTICS AUTHORITY - PSA ALIGNED)"],
+            ["Generated At: " . date('Y-m-d H:i') . " | Reporting Period: " . $periodLabel . " | Scope: " . $scopeLabel],
+            ["SUMMARY AT A GLANCE: " . $summaryStatsLine],
+            [""] // Blank separator
+        ];
+
+        foreach ($summaryHeaders as $sRow) {
+            $output .= implode($delimiter, array_map(function($c) {
+                return '"' . str_replace('"', '""', (string)$c) . '"';
+            }, $sRow)) . "\r\n";
+        }
+
+        // Table Column Headers
+        $output .= implode($delimiter, array_map(function($h) {
             return '"' . str_replace('"', '""', $h) . '"';
         }, $headers)) . "\r\n";
 
+        // Table Data Rows
         foreach ($rows as $row) {
-            $output .= implode($delimiter, array_map(function($cell) use ($delimiter) {
+            $output .= implode($delimiter, array_map(function($cell) {
                 return '"' . str_replace('"', '""', (string)$cell) . '"';
             }, $row)) . "\r\n";
         }

@@ -140,6 +140,8 @@ Route::middleware('web')->group(function () {
         Route::patch('/v1/tickets/{id}/cancel',    [TicketController::class, 'cancelTicket']);
         Route::post('/v1/tickets/{id}/issue',      [TicketController::class, 'issueDocument']);
         Route::post('/v1/tickets/walk-in',         [TicketController::class, 'storeWalkIn']);
+        Route::get('/v1/tickets/{id}/consent-form', [TicketController::class, 'getConsentForm']);
+        Route::get('/tickets/{id}/consent-form',    [TicketController::class, 'getConsentForm']);
 
         // Document Archive/Undo (Restore) accessible to all authenticated users
         Route::get('/documents/archived',           [DocumentController::class, 'archived']);

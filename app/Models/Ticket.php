@@ -31,6 +31,7 @@ class Ticket extends Model
         'scheduled_date',
         'source',
         'qr_code_path',
+        'consent_form_path',
         'verified_at',
         'issued_at',
     ];

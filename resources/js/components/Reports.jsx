@@ -73,6 +73,13 @@ export default function Reports() {
     const [previewRecords, setPreviewRecords] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [typeCounts, setTypeCounts] = useState({ birth: 0, death: 0, marriage: 0 });
+    const [psaMetrics, setPsaMetrics] = useState({
+        seniorDeaths: 0,
+        residentDeaths: 0,
+        naturalDeaths: 0,
+        mayorMarriages: 0,
+        churchMarriages: 0
+    });
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -226,6 +233,49 @@ export default function Reports() {
             const dCount = filtered.filter(d => (d.type || '').toLowerCase() === 'death').length;
             const mCount = filtered.filter(d => (d.type || '').toLowerCase() === 'marriage').length;
             setTypeCounts({ birth: bCount, death: dCount, marriage: mCount });
+
+            // Calculate PSA vital metrics
+            let seniorDeaths = 0;
+            let residentDeaths = 0;
+            let naturalDeaths = 0;
+            let mayorMarriages = 0;
+            let churchMarriages = 0;
+
+            filtered.forEach(d => {
+                const t = (d.type || '').toLowerCase();
+                let ef = d.extracted_fields || d.extracted_data || {};
+                if (typeof ef === 'string') {
+                    try { ef = JSON.parse(ef); } catch {}
+                }
+
+                if (t === 'death') {
+                    const age = parseInt(ef.age_completed_years || ef.age || 0, 10);
+                    if (age >= 60) seniorDeaths++;
+
+                    const res = (ef.residence || d.barangay || '').toLowerCase();
+                    if (res.includes('naic') || (d.barangay && d.barangay !== 'N/A')) residentDeaths++;
+
+                    const manner = (ef.manner_of_death || ef.cause_of_death_immediate || '').toLowerCase();
+                    if (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide'))) {
+                        naturalDeaths++;
+                    }
+                } else if (t === 'marriage') {
+                    const officer = (ef.solemnizing_officer_name || ef.solemnizing_officer_title || ef.ceremony_type || '').toLowerCase();
+                    if (officer.includes('mayor') || officer.includes('judge') || officer.includes('civil')) {
+                        mayorMarriages++;
+                    } else {
+                        churchMarriages++;
+                    }
+                }
+            });
+
+            setPsaMetrics({
+                seniorDeaths,
+                residentDeaths,
+                naturalDeaths,
+                mayorMarriages,
+                churchMarriages
+            });
 
         } catch (err) {
             console.error("Failed to fetch preview data:", err);
@@ -509,6 +559,30 @@ export default function Reports() {
                                     <div className="min-w-0">
                                         <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.marriage}</div>
                                         <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Marriage</div>
+                                    </div>
+                                </div>
+
+                                {/* PSA Vital Indicators at a Glance */}
+                                <div className="col-span-2 lg:col-span-4 bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                            PSA Vital Indicators (At a Glance):
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-150 font-bold text-[11px]" title="Senior citizen deaths (Age 60 and above)">
+                                            <span className="font-black text-rose-600">Seniors (≥60):</span> {psaMetrics.seniorDeaths} of {typeCounts.death}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-150 font-bold text-[11px]" title="Naic municipality residents">
+                                            <span className="font-black text-indigo-600">Residents:</span> {psaMetrics.residentDeaths} of {typeCounts.death}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-150 font-bold text-[11px]" title="Natural cause of death">
+                                            <span className="font-black text-emerald-600">Natural Causes:</span> {psaMetrics.naturalDeaths} of {typeCounts.death}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-150 font-bold text-[11px]" title="Ceremony solemnization">
+                                            <span className="font-black text-amber-700">Marriages:</span> {psaMetrics.mayorMarriages} Civil • {psaMetrics.churchMarriages} Church
+                                        </span>
                                     </div>
                                 </div>
                             </div>
