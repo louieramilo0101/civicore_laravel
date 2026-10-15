@@ -179,6 +179,8 @@ Route::middleware('web')->group(function () {
                 Route::post('/backups',                     [BackupController::class, 'store']);
                 Route::post('/backups/restore',             [BackupController::class, 'restore']);
 
+                // System Restart & Cache Purge (SuperAdmin Only)
+                Route::post('/system/restart',              [SettingController::class, 'restartSystem']);
             });
         });
     });

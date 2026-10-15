@@ -272,12 +272,12 @@ const Documents = () => {
     };
 
     useEffect(() => {
-        const hasProcessing = files.some(f => f.status === 'processing' || f.status === 'uploading' || f.status === 'checking' || f.status === 'pending');
+        const hasProcessing = files.some(f => f.status === 'processing' || f.status === 'uploading' || f.status === 'checking');
         if (!hasProcessing) return;
 
         const interval = setInterval(() => {
             refreshDocuments(true);
-        }, 2000);
+        }, 3000);
 
         return () => clearInterval(interval);
     }, [files, refreshDocuments]);

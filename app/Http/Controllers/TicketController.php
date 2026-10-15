@@ -498,7 +498,11 @@ class TicketController extends Controller
         }
 
         if ($request->has('request_status') && !empty($request->request_status) && $request->request_status !== 'all') {
-            $query->where('request_status', $request->request_status);
+            if ($request->request_status === 'waiting') {
+                $query->whereIn('request_status', ['pending', 'ready_for_pickup']);
+            } else {
+                $query->where('request_status', $request->request_status);
+            }
         }
 
         if ($request->has('queue_status') && !empty($request->queue_status) && $request->queue_status !== 'all') {
@@ -508,8 +512,8 @@ class TicketController extends Controller
         // Support legacy 'status' filter if passed by older UI
         if ($request->has('status') && !empty($request->status) && $request->status !== 'all') {
             $status = strtolower($request->status);
-            if ($status === 'pending') {
-                $query->where('request_status', 'pending');
+            if ($status === 'waiting' || $status === 'pending') {
+                $query->whereIn('request_status', ['pending', 'ready_for_pickup']);
             } elseif ($status === 'serving') {
                 $query->where('queue_status', 'serving');
             } elseif ($status === 'completed') {
@@ -523,18 +527,30 @@ class TicketController extends Controller
             $query->where('source', $request->source);
         }
 
-        $tickets = $query->orderByRaw("
-            CASE
-                WHEN queue_status = 'serving' THEN 1
-                WHEN queue_status = 'waiting' THEN 2
-                WHEN request_status = 'pending' THEN 3
-                WHEN request_status = 'waiting_for_approval' THEN 4
-                WHEN request_status = 'ready_for_pickup' THEN 5
-                WHEN request_status = 'completed' THEN 6
-                WHEN request_status = 'cancelled' THEN 7
-                ELSE 8
-            END
-        ")->orderBy('created_at', 'asc');
+        $sortOrder = strtolower($request->query('sort_order', $request->query('order', 'asc')));
+        if (!in_array($sortOrder, ['asc', 'desc'], true)) {
+            $sortOrder = 'asc';
+        }
+
+        if ($sortOrder === 'desc') {
+            // Newest first (reverse FIFO)
+            $query->orderByRaw("CASE WHEN queue_status = 'serving' THEN 1 ELSE 2 END")
+                  ->orderBy('created_at', 'desc');
+        } else {
+            // FIFO: Oldest first
+            $query->orderByRaw("
+                CASE
+                    WHEN queue_status = 'serving' THEN 1
+                    WHEN queue_status = 'waiting' THEN 2
+                    WHEN request_status = 'pending' THEN 3
+                    WHEN request_status = 'waiting_for_approval' THEN 4
+                    WHEN request_status = 'ready_for_pickup' THEN 5
+                    WHEN request_status = 'completed' THEN 6
+                    WHEN request_status = 'cancelled' THEN 7
+                    ELSE 8
+                END
+            ")->orderBy('created_at', 'asc');
+        }
 
         if ($request->has('page') || $request->has('per_page')) {
             $perPage = min((int) $request->query('per_page', 20), 100);
@@ -590,22 +606,20 @@ class TicketController extends Controller
         $start = Carbon::today(config('app.timezone'))->startOfDay();
         $end = Carbon::today(config('app.timezone'))->endOfDay();
 
-        $pendingInbox = Ticket::where('request_status', 'pending')
-            ->where('source', 'online')
+        $waitingCount = Ticket::whereIn('request_status', ['pending', 'ready_for_pickup'])
             ->count();
 
         $attachedToday = Ticket::where('request_status', 'ready_for_pickup')
-            ->where('source', 'online')
             ->whereBetween('updated_at', [$start, $end])
             ->count();
 
         $completedToday = Ticket::where('request_status', 'completed')
-            ->where('source', 'online')
             ->whereBetween('updated_at', [$start, $end])
             ->count();
 
         return response()->json([
-            'pending_inbox' => $pendingInbox,
+            'waiting' => $waitingCount,
+            'pending_inbox' => $waitingCount,
             'attached_today' => $attachedToday,
             'completed_today' => $completedToday,
         ]);

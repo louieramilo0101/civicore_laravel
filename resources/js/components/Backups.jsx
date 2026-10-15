@@ -8,6 +8,7 @@ import {
 import { useModal } from './ModalContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Pagination from './Pagination.jsx';
+import SystemRestartModal from './SystemRestartModal.jsx';
 
 /**
  * SuperAdmin-exclusive system backup and point-in-time disaster recovery interface.
@@ -36,6 +37,7 @@ const Backups = () => {
     const [isCreatingBackup, setIsCreatingBackup] = useState(false);
     const [selectedBackupForRestore, setSelectedBackupForRestore] = useState(null);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [isRestartModalOpen, setIsRestartModalOpen] = useState(false);
     const [restorePassword, setRestorePassword] = useState('');
     const [showRestorePassword, setShowRestorePassword] = useState(false);
     const [restoreConfirmText, setRestoreConfirmText] = useState('');
@@ -249,6 +251,14 @@ const Backups = () => {
                         title="Refresh List"
                     >
                         <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin text-[#d4a574]' : ''}`} />
+                    </button>
+                    <button
+                        onClick={() => setIsRestartModalOpen(true)}
+                        className="px-4 py-2.5 bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 text-slate-700 hover:text-amber-800 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer group active:scale-95"
+                        title="Reboot system engine & flush application caches"
+                    >
+                        <ArrowPathIcon className="w-4 h-4 text-amber-500 group-hover:rotate-180 transition-transform duration-500" />
+                        <span>Restart Application</span>
                     </button>
                     <button
                         onClick={handleCreateBackup}
@@ -556,6 +566,12 @@ const Backups = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* System Engine Reboot Modal */}
+            <SystemRestartModal
+                isOpen={isRestartModalOpen}
+                onClose={() => setIsRestartModalOpen(false)}
+            />
         </motion.div>
     );
 };

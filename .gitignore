@@ -28,4 +28,4 @@ Thumbs.db
 
 __pycache__/
 scratch/
-
+/graphify-out/cache/

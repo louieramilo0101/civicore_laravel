@@ -17,7 +17,9 @@ import {
     DocumentTextIcon,
     UsersIcon,
     ChartBarIcon,
-    ClipboardDocumentCheckIcon
+    ClipboardDocumentCheckIcon,
+    PrinterIcon,
+    ArrowUpTrayIcon
 } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Avatar from 'boring-avatars';
@@ -98,6 +100,7 @@ const Mapping = () => {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [showRatioMode, setShowRatioMode] = useState(false);
     const [rightPanelTab, setRightPanelTab] = useState('charts');
+    const [tableTab, setTableTab] = useState('prints'); // 'prints' | 'uploads'
     const [showAllBarangays, setShowAllBarangays] = useState(false);
     const [statsMode, setStatsMode] = useState('records'); // 'records' | 'issued'
     const [stats, setStats] = useState({ birthCount: 0, deathCount: 0, marriageCount: 0, mostActiveBrgy: 'N/A', totalRecords: 0, totalDocs: 0, maxTotal: 0 });
@@ -135,8 +138,13 @@ const Mapping = () => {
     const clearFilter = () => { setQuickFilter('all'); setDateFrom(''); setDateTo(''); setShowDatePicker(false); };
     const applyCustomRange = () => { if (dateFrom && dateTo) { setQuickFilter('custom'); setShowDatePicker(false); } };
 
-    const filteredApiData = apiData.filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
-    const filteredDocsData = docsData.filter(d => isWithinTimeframe(d.created_at));
+    const filteredApiData = React.useMemo(() => {
+        return apiData.filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
+    }, [apiData, quickFilter, dateFrom, dateTo]);
+
+    const filteredDocsData = React.useMemo(() => {
+        return docsData.filter(d => isWithinTimeframe(d.created_at));
+    }, [docsData, quickFilter, dateFrom, dateTo]);
 
     const uniqueIssuances = React.useMemo(() => {
         const seenDocIds = new Set();
@@ -448,18 +456,50 @@ const Mapping = () => {
     };
 
 
-    const filteredPrints = filteredApiData.filter(print => {
-        const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
-        const status = String(print.status || '').toLowerCase();
-        // Exclude unprocessed/pending raw document scans, include only issued/printed records
-        const isPrintedRecord = ['issued', 'printed', 'completed', 'active'].includes(status) || Boolean(print.or_number || print.issuanceDate);
-        return matchesFilter && isPrintedRecord;
-    });
+    const filteredPrints = React.useMemo(() => {
+        return filteredApiData.filter(print => {
+            const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
+            const status = String(print.status || '').toLowerCase();
+            // A printed/procured record must have been physically printed/issued (status is issued/printed, or has OR number/print remarks)
+            const isPrintedRecord = ['issued', 'printed'].includes(status) || 
+                Boolean(print.or_number || print.print_remarks || (print.ticket_number && !print.ticket_number.startsWith('T-2026-0')));
+            return matchesFilter && isPrintedRecord;
+        });
+    }, [filteredApiData, activeFilter]);
+
+    const filteredUploads = React.useMemo(() => {
+        return filteredDocsData.filter(doc => {
+            const matchesFilter = activeFilter === 'all' || getNormalizedType(doc) === activeFilter;
+            const status = String(doc.status || '').toLowerCase();
+            const isSavedToRegistry = ['processed', 'issued', 'active'].includes(status);
+            return matchesFilter && isSavedToRegistry;
+        }).map(doc => {
+            let ef = doc.extracted_fields;
+            if (typeof ef === 'string') {
+                try { ef = JSON.parse(ef); } catch { ef = {}; }
+            }
+            const regNo = doc.certNumber || ef?.registry_number || ef?.registry_no || `REG-#${doc.id}`;
+
+            return {
+                id: doc.id,
+                document_id: doc.id,
+                number: regNo,
+                name: doc.personName || doc.name || 'Registry Document',
+                type: doc.detected_type || doc.type || 'birth',
+                barangay: doc.barangay || 'Ibayo Silangan',
+                date: doc.date || (doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''),
+                encoded_by: doc.encoded_by || 'Staff',
+                status: doc.status || 'uploaded'
+            };
+        });
+    }, [filteredDocsData, activeFilter]);
+
+    const activeTableData = tableTab === 'prints' ? filteredPrints : filteredUploads;
 
 
 
-    /** Produces ranked barangay summaries for the analytics panel. */
-    const getBarangayRankings = () => {
+    /** Produces ranked barangay summaries for the analytics panel with memoization. */
+    const barangayRankings = React.useMemo(() => {
         const brgyCountsLocal = {};
         
         uniqueIssuances.forEach(i => {
@@ -474,7 +514,7 @@ const Mapping = () => {
             }
         });
 
-        const list = Object.keys(brgyCountsLocal).map(name => {
+        return Object.keys(brgyCountsLocal).map(name => {
             const item = brgyCountsLocal[name];
             const ratio = item.deaths > 0 ? (item.births / item.deaths) : item.births;
             return {
@@ -486,16 +526,16 @@ const Mapping = () => {
                 ratio
             };
         }).sort((a, b) => b.total - a.total);
+    }, [uniqueIssuances]);
 
-        return list;
-    };
-
-    const unmappedCount = uniqueIssuances.filter(i => {
-        const rb = i.barangay || 'Ibayo Silangan';
-        if (!rb) return true;
-        const norm = normalizeBrgy(rb);
-        return !staticBarangays.some(sb => normalizeBrgy(sb.name) === norm || rb.toLowerCase().includes(normalizeBrgy(sb.name)));
-    }).length;
+    const unmappedCount = React.useMemo(() => {
+        return uniqueIssuances.filter(i => {
+            const rb = i.barangay || 'Ibayo Silangan';
+            if (!rb) return true;
+            const norm = normalizeBrgy(rb);
+            return !staticBarangays.some(sb => normalizeBrgy(sb.name) === norm || rb.toLowerCase().includes(normalizeBrgy(sb.name)));
+        }).length;
+    }, [uniqueIssuances]);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -983,9 +1023,9 @@ const Mapping = () => {
                                     </h3>
                                     <p className="text-[10px] text-slate-500 font-medium">Click any row to locate on map</p>
                                 </div>
-                                {getBarangayRankings().length > 10 && (
+                                {barangayRankings.length > 10 && (
                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-lg">
-                                        {showAllBarangays ? getBarangayRankings().length : Math.min(10, getBarangayRankings().length)} of {getBarangayRankings().length}
+                                        {showAllBarangays ? barangayRankings.length : Math.min(10, barangayRankings.length)} of {barangayRankings.length}
                                     </span>
                                 )}
                             </div>
@@ -994,13 +1034,13 @@ const Mapping = () => {
                                 <div className="space-y-1.5">
                                     {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />)}
                                 </div>
-                            ) : getBarangayRankings().length === 0 ? (
+                            ) : barangayRankings.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
                                     <MapPinIcon className="w-8 h-8 text-slate-200 mb-2" />
                                     <p className="text-xs text-slate-400 font-semibold">No barangay records yet</p>
                                 </div>
                             ) : (() => {
-                                const rankings = getBarangayRankings();
+                                const rankings = barangayRankings;
                                 const maxTotal = rankings[0]?.total || 1;
                                 const displayed = showAllBarangays ? rankings : rankings.slice(0, 10);
                                 return (
@@ -1060,19 +1100,52 @@ const Mapping = () => {
                 </motion.div>
             </div>
 
-            {/* Print Records Table */}
+            {/* Activity Table (Prints / Uploads) */}
             <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col">
                 <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                    <div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-800">Recent Document Prints</h3>
-                        <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">
-                            Track physical issuance logs
-                            {quickFilter !== 'all' && (
-                                <span className="ml-1.5 text-[#d4a574] font-bold">
-                                    · {quickFilter === 'today' ? 'Today' : quickFilter === 'week' ? 'This Week' : quickFilter === 'month' ? 'This Month' : quickFilter === 'year' ? 'This Year' : quickFilter === 'custom' ? `${dateFrom} → ${dateTo}` : ''} only
+                    {/* Simplified Tabs: Prints vs Uploads */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => setTableTab('prints')}
+                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                    tableTab === 'prints'
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <PrinterIcon className="w-3.5 h-3.5" />
+                                <span>Prints</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                                    tableTab === 'prints' ? 'bg-[#d4a574]/20 text-[#9c6e3b]' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                    {filteredPrints.length}
                                 </span>
-                            )}
-                        </p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTableTab('uploads')}
+                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                    tableTab === 'uploads'
+                                        ? 'bg-white text-slate-800 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <ArrowUpTrayIcon className="w-3.5 h-3.5" />
+                                <span>Registry Records</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                                    tableTab === 'uploads' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                    {filteredUploads.length}
+                                </span>
+                            </button>
+                        </div>
+                        {quickFilter !== 'all' && (
+                            <span className="text-xs text-[#d4a574] font-bold">
+                                · {quickFilter === 'today' ? 'Today' : quickFilter === 'week' ? 'This Week' : quickFilter === 'month' ? 'This Month' : quickFilter === 'year' ? 'This Year' : `${dateFrom} → ${dateTo}`}
+                            </span>
+                        )}
                     </div>
 
                     {/* Filter Pills */}
@@ -1098,46 +1171,46 @@ const Mapping = () => {
                         <div className="p-4">
                             <SkeletonLoader type="table" rows={3} />
                         </div>
-                    ) : filteredPrints.length === 0 ? (
+                    ) : activeTableData.length === 0 ? (
                         <div className="p-8 text-center text-slate-500 text-xs font-medium">
-                            No tracking logs found.
+                            {tableTab === 'prints' ? 'No prints found.' : 'No registry records found.'}
                         </div>
                     ) : (
-                        filteredPrints.map((print, index) => {
-                            const normType = getNormalizedType(print);
+                        activeTableData.map((item, index) => {
+                            const normType = getNormalizedType(item);
                             const colorClass = normType === 'birth' ? 'text-[#d4a574] bg-[#d4a574]/10 border-[#d4a574]/20' : normType === 'death' ? 'text-rose-500 bg-rose-50 border-rose-100' : 'text-indigo-500 bg-indigo-50 border-indigo-100';
 
                             return (
                                 <div key={index} className="p-4 space-y-2.5 bg-white/40 hover:bg-slate-50/60 transition-colors">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <span className="font-bold text-slate-800 text-xs">{print.number}</span>
-                                            <div className="text-[10px] text-slate-400 font-medium">{print.date}</div>
+                                            <span className="font-bold text-slate-800 text-xs">{item.number}</span>
+                                            <div className="text-[10px] text-slate-400 font-medium">{item.date}</div>
                                         </div>
                                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${colorClass}`}>
-                                            {print.type}
+                                            {item.type}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold text-slate-700">{print.name}</span>
+                                        <span className="font-semibold text-slate-700">{item.name}</span>
                                         <span className="text-slate-500 font-medium flex items-center gap-1 text-[11px]">
                                             <MapPinIcon className="w-3.5 h-3.5 text-[#d4a574]" />
-                                            {print.barangay}
+                                            {item.barangay}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between pt-1 border-t border-slate-100/60">
                                         <div className="flex items-center gap-1.5">
                                             <Avatar
                                                 size={18}
-                                                name={print.encoded_by || 'System'}
+                                                name={item.encoded_by || 'System'}
                                                 variant="beam"
                                                 colors={['#0f172a', '#d4a574', '#6366f1', '#f43f5e', '#10b981']}
                                             />
-                                            <span className="text-[11px] font-medium text-slate-500">{print.encoded_by || 'System'}</span>
+                                            <span className="text-[11px] font-medium text-slate-500">{item.encoded_by || 'System'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
-                                                onClick={() => locateBarangay(print.barangay)}
+                                                onClick={() => locateBarangay(item.barangay)}
                                                 className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-[#d4a574]/10 text-slate-600 hover:text-[#d4a574] rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                 title="Locate on Map"
                                             >
@@ -1145,7 +1218,7 @@ const Mapping = () => {
                                                 <span>Locate</span>
                                             </button>
                                             <a
-                                                href={`/api/documents/view/${print.document_id || print.id}`}
+                                                href={`/api/documents/view/${item.document_id || item.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -1167,11 +1240,11 @@ const Mapping = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
-                                <th className="p-4 pl-6">Certificate No.</th>
+                                <th className="p-4 pl-6">{tableTab === 'prints' ? 'Certificate No.' : 'Registry No.'}</th>
                                 <th className="p-4">Type</th>
                                 <th className="p-4">Subject Name</th>
                                 <th className="p-4">Barangay</th>
-                                <th className="p-4">Encoded By</th>
+                                <th className="p-4">{tableTab === 'prints' ? 'Handled By' : 'Registered By'}</th>
                                 <th className="p-4 text-right pr-6">Actions</th>
                             </tr>
                         </thead>
@@ -1182,61 +1255,61 @@ const Mapping = () => {
                                         <SkeletonLoader type="table" rows={4} />
                                     </td>
                                 </tr>
-                            ) : filteredPrints.length === 0 ? (
+                            ) : activeTableData.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="p-8 text-center text-slate-500">
-                                        No tracking logs found.
+                                        {tableTab === 'prints' ? 'No prints found.' : 'No registry records found.'}
                                     </td>
                                 </tr>
                             ) : (
-                                filteredPrints.map((print, index) => (
+                                activeTableData.map((item, index) => (
                                     <tr
                                         key={index}
-                                        onMouseEnter={() => setHoveredBrgy(print.barangay)}
+                                        onMouseEnter={() => setHoveredBrgy(item.barangay)}
                                         onMouseLeave={() => setHoveredBrgy(null)}
-                                        className={`hover:bg-slate-50 transition-colors text-xs group/row ${hoveredBrgy === print.barangay ? 'bg-slate-50' : ''}`}
+                                        className={`hover:bg-slate-50 transition-colors text-xs group/row ${hoveredBrgy === item.barangay ? 'bg-slate-50' : ''}`}
                                     >
                                         <td className="p-4 pl-6">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800">{print.number}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium">{print.date}</span>
+                                                <span className="font-bold text-slate-800">{item.number}</span>
+                                                <span className="text-[10px] text-slate-400 font-medium">{item.date}</span>
                                             </div>
                                         </td>
                                         <td className="p-4">
                                             {(() => {
-                                                const normType = getNormalizedType(print);
+                                                const normType = getNormalizedType(item);
                                                 const colorClass = normType === 'birth' ? 'text-[#d4a574]' : normType === 'death' ? 'text-rose-500' : 'text-indigo-500';
                                                 return (
                                                     <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
-                                                        {print.type}
+                                                        {item.type}
                                                     </span>
                                                 );
                                             })()}
                                         </td>
-                                        <td className="p-4 font-semibold text-slate-700">{print.name}</td>
-                                        <td className="p-4 text-slate-600 font-medium">{print.barangay}</td>
+                                        <td className="p-4 font-semibold text-slate-700">{item.name}</td>
+                                        <td className="p-4 text-slate-600 font-medium">{item.barangay}</td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <Avatar
                                                     size={20}
-                                                    name={print.encoded_by || 'System'}
+                                                    name={item.encoded_by || 'System'}
                                                     variant="beam"
                                                     colors={['#0f172a', '#d4a574', '#6366f1', '#f43f5e', '#10b981']}
                                                 />
-                                                <span className="font-medium text-slate-500">{print.encoded_by || 'System'}</span>
+                                                <span className="font-medium text-slate-500">{item.encoded_by || 'System'}</span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2 opacity-90 sm:opacity-0 sm:group-hover/row:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => locateBarangay(print.barangay)}
+                                                    onClick={() => locateBarangay(item.barangay)}
                                                     className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-[#d4a574] transition-all cursor-pointer"
                                                     title="Locate on Map"
                                                 >
                                                     <MagnifyingGlassIcon className="w-4 h-4" />
                                                 </button>
                                                 <a
-                                                    href={`/api/documents/view/${print.document_id || print.id}`}
+                                                    href={`/api/documents/view/${item.document_id || item.id}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-500 transition-all cursor-pointer"

@@ -37,7 +37,8 @@ class DashboardController extends Controller
             ->whereIn(DB::raw('LOWER(status)'), ['processed', 'issued', 'active'])
             ->count();
 
-        $usersCount = DB::table('users')->count();
+        // Active system users count (excludes disabled accounts)
+        $usersCount = DB::table('users')->where('is_active', 1)->count();
 
         // Count type groupings only for finalized/approved documents using certificate_type
         $docTypes = DB::table('issuances')

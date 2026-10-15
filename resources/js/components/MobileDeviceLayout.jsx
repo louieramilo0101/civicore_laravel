@@ -76,7 +76,7 @@ const MobileDeviceLayout = ({ children }) => {
         } catch (e) {}
         localStorage.removeItem('user');
         sessionStorage.clear();
-        navigate('/');
+        navigate('/login', { replace: true });
     };
 
     // Scroll Handler for Auto-hiding Navigation Bar & Top Header

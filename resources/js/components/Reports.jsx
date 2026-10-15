@@ -21,6 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Pagination from './Pagination.jsx';
+import useDebounce from '../hooks/useDebounce.js';
 
 const BARANGAY_LIST = [
     'Gomez-Zamora (Pob.)', 'Capt. C. Nazareno (Pob.)', 'Ibayo Silangan', 'Ibayo Estacion', 'Kanluran',
@@ -69,16 +70,30 @@ export default function Reports() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 350);
 
     const [previewRecords, setPreviewRecords] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [typeCounts, setTypeCounts] = useState({ birth: 0, death: 0, marriage: 0 });
-    const [psaMetrics, setPsaMetrics] = useState({
+    const [smartMetrics, setSmartMetrics] = useState({
+        birthMale: 0,
+        birthFemale: 0,
+        birthTimely: 0,
+        birthDelayed: 0,
+        birthHospital: 0,
+        birthHome: 0,
         seniorDeaths: 0,
         residentDeaths: 0,
         naturalDeaths: 0,
-        mayorMarriages: 0,
-        churchMarriages: 0
+        deathMale: 0,
+        deathFemale: 0,
+        civilMarriages: 0,
+        churchMarriages: 0,
+        totalMales: 0,
+        totalFemales: 0,
+        distinctBarangays: 0,
+        timelyTotal: 0,
+        delayedTotal: 0
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
@@ -153,7 +168,7 @@ export default function Reports() {
             const params = new URLSearchParams({
                 per_page: '1000',
                 type: typeParam,
-                search: searchQuery
+                search: debouncedSearchQuery
             });
 
             if (effectiveDates.from) params.append('date_from', effectiveDates.from);
@@ -178,26 +193,34 @@ export default function Reports() {
                 // Fetch both internal master records and distinct client procured issuances
                 const issParams = new URLSearchParams(params);
                 issParams.append('source', 'procured');
+                const docParams = new URLSearchParams(params);
+                docParams.append('status', 'processed');
                 const [docRes, issRes] = await Promise.all([
-                    fetch(`/api/documents?${params.toString()}`, { credentials: 'include' }),
+                    fetch(`/api/documents?${docParams.toString()}`, { credentials: 'include' }),
                     fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' })
                 ]);
                 const docData = await docRes.json();
                 const issData = await issRes.json();
-                const docs = (docData.data || []).map(r => ({ ...r, _source: 'internal', _sourceLabel: 'Internal Registration' }));
+                const docs = (docData.data || [])
+                    .filter(r => ['processed', 'issued', 'active'].includes((r.status || '').toLowerCase()))
+                    .map(r => ({ ...r, _source: 'internal', _sourceLabel: 'Internal Registration' }));
                 const issuances = (issData.data || [])
                     .filter(r => Boolean(r.or_number || r.requested_by || r.print_remarks || (r.ticket_number && !String(r.ticket_number).startsWith('T-2026-0'))))
                     .map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
                 records = [...docs, ...issuances];
             } else {
-                // Fetch internal master registry documents
-                const res = await fetch(`/api/documents?${params.toString()}`, { credentials: 'include' });
+                // Fetch internal master registry documents (only approved documents uploaded into the registry database)
+                const docParams = new URLSearchParams(params);
+                docParams.append('status', 'processed');
+                const res = await fetch(`/api/documents?${docParams.toString()}`, { credentials: 'include' });
                 const data = await res.json();
-                records = (data.data || []).map(r => ({
-                    ...r,
-                    _source: 'internal',
-                    _sourceLabel: 'Internal Registration'
-                }));
+                records = (data.data || [])
+                    .filter(r => ['processed', 'issued', 'active'].includes((r.status || '').toLowerCase()))
+                    .map(r => ({
+                        ...r,
+                        _source: 'internal',
+                        _sourceLabel: 'Internal Registration'
+                    }));
             }
 
             let filtered = records;
@@ -234,12 +257,28 @@ export default function Reports() {
             const mCount = filtered.filter(d => (d.type || '').toLowerCase() === 'marriage').length;
             setTypeCounts({ birth: bCount, death: dCount, marriage: mCount });
 
-            // Calculate PSA vital metrics
+            // Calculate Category-Smart Metrics
+            let birthMale = 0;
+            let birthFemale = 0;
+            let birthTimely = 0;
+            let birthDelayed = 0;
+            let birthHospital = 0;
+            let birthHome = 0;
+
             let seniorDeaths = 0;
             let residentDeaths = 0;
             let naturalDeaths = 0;
-            let mayorMarriages = 0;
+            let deathMale = 0;
+            let deathFemale = 0;
+
+            let civilMarriages = 0;
             let churchMarriages = 0;
+
+            const brgySet = new Set();
+            let totalMales = 0;
+            let totalFemales = 0;
+            let timelyTotal = 0;
+            let delayedTotal = 0;
 
             filtered.forEach(d => {
                 const t = (d.type || '').toLowerCase();
@@ -248,12 +287,55 @@ export default function Reports() {
                     try { ef = JSON.parse(ef); } catch {}
                 }
 
-                if (t === 'death') {
+                if (d.barangay && d.barangay !== 'N/A' && d.barangay !== 'Unspecified') {
+                    brgySet.add(d.barangay);
+                }
+
+                const rawSex = (ef.sex || ef.gender || '').toLowerCase();
+                const isMale = rawSex === 'male' || rawSex === 'm';
+                const isFemale = rawSex === 'female' || rawSex === 'f';
+                if (isMale) totalMales++;
+                if (isFemale) totalFemales++;
+
+                const isDelayed = Boolean(
+                    ef.delayed_registration === true ||
+                    ef.delayed_registration === 'true' ||
+                    ef.delayed_registration === 1 ||
+                    ef.is_delayed === true ||
+                    ef.registration_type === 'delayed' ||
+                    ef.remarks?.toLowerCase()?.includes('delayed') ||
+                    ef.remarks?.toLowerCase()?.includes('late')
+                );
+                if (isDelayed) {
+                    delayedTotal++;
+                } else {
+                    timelyTotal++;
+                }
+
+                if (t === 'birth') {
+                    if (isMale) birthMale++;
+                    if (isFemale) birthFemale++;
+
+                    if (isDelayed) birthDelayed++;
+                    else birthTimely++;
+
+                    const hospStr = (ef.place_of_birth_hospital || ef.place_of_birth_type || ef.attendant_type || '').toLowerCase();
+                    if (hospStr.includes('hosp') || hospStr.includes('clinic') || hospStr.includes('center') || hospStr.includes('physician') || hospStr.includes('midwife')) {
+                        birthHospital++;
+                    } else {
+                        birthHome++;
+                    }
+                } else if (t === 'death') {
+                    if (isMale) deathMale++;
+                    if (isFemale) deathFemale++;
+
                     const age = parseInt(ef.age_completed_years || ef.age || 0, 10);
                     if (age >= 60) seniorDeaths++;
 
                     const res = (ef.residence || d.barangay || '').toLowerCase();
-                    if (res.includes('naic') || (d.barangay && d.barangay !== 'N/A')) residentDeaths++;
+                    if (res.includes('naic') || (d.barangay && d.barangay !== 'N/A' && d.barangay !== 'Unspecified')) {
+                        residentDeaths++;
+                    }
 
                     const manner = (ef.manner_of_death || ef.cause_of_death_immediate || '').toLowerCase();
                     if (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide'))) {
@@ -262,19 +344,32 @@ export default function Reports() {
                 } else if (t === 'marriage') {
                     const officer = (ef.solemnizing_officer_name || ef.solemnizing_officer_title || ef.ceremony_type || '').toLowerCase();
                     if (officer.includes('mayor') || officer.includes('judge') || officer.includes('civil')) {
-                        mayorMarriages++;
+                        civilMarriages++;
                     } else {
                         churchMarriages++;
                     }
                 }
             });
 
-            setPsaMetrics({
+            setSmartMetrics({
+                birthMale,
+                birthFemale,
+                birthTimely,
+                birthDelayed,
+                birthHospital,
+                birthHome,
                 seniorDeaths,
                 residentDeaths,
                 naturalDeaths,
-                mayorMarriages,
-                churchMarriages
+                deathMale,
+                deathFemale,
+                civilMarriages,
+                churchMarriages,
+                totalMales,
+                totalFemales,
+                distinctBarangays: brgySet.size,
+                timelyTotal,
+                delayedTotal
             });
 
         } catch (err) {
@@ -282,7 +377,7 @@ export default function Reports() {
         } finally {
             setIsLoading(false);
         }
-    }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, searchQuery]);
+    }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, debouncedSearchQuery]);
 
     useEffect(() => {
         fetchPreviewData();
@@ -295,7 +390,7 @@ export default function Reports() {
     // Reset pagination when data source, filters, or date range changes
     useEffect(() => {
         setReportsPage(1);
-    }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, searchQuery]);
+    }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, debouncedSearchQuery]);
 
     const totalReportsPages = Math.max(1, Math.ceil(previewRecords.length / reportsPageSize));
     const safeReportsPage = Math.min(reportsPage, totalReportsPages);
@@ -435,8 +530,8 @@ export default function Reports() {
                         }`}
                     >
                         <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="hidden sm:inline">Uploaded Documents</span>
-                        <span className="sm:hidden truncate">Uploaded</span>
+                        <span className="hidden sm:inline">Registry Database</span>
+                        <span className="sm:hidden truncate">Registry</span>
                     </button>
 
                     <button
@@ -562,28 +657,93 @@ export default function Reports() {
                                     </div>
                                 </div>
 
-                                {/* PSA Vital Indicators at a Glance */}
-                                <div className="col-span-2 lg:col-span-4 bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-                                            PSA Vital Indicators (At a Glance):
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-150 font-bold text-[11px]" title="Senior citizen deaths (Age 60 and above)">
-                                            <span className="font-black text-rose-600">Seniors (≥60):</span> {psaMetrics.seniorDeaths} of {typeCounts.death}
-                                        </span>
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-150 font-bold text-[11px]" title="Naic municipality residents">
-                                            <span className="font-black text-indigo-600">Residents:</span> {psaMetrics.residentDeaths} of {typeCounts.death}
-                                        </span>
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-150 font-bold text-[11px]" title="Natural cause of death">
-                                            <span className="font-black text-emerald-600">Natural Causes:</span> {psaMetrics.naturalDeaths} of {typeCounts.death}
-                                        </span>
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-150 font-bold text-[11px]" title="Ceremony solemnization">
-                                            <span className="font-black text-amber-700">Marriages:</span> {psaMetrics.mayorMarriages} Civil • {psaMetrics.churchMarriages} Church
-                                        </span>
-                                    </div>
+                                {/* Dynamic Smart Category Breakdown */}
+                                <div className="col-span-2 lg:col-span-4 bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200/80 shadow-xs">
+                                    {selectedDocTypes.length === 1 && selectedDocTypes[0] === 'birth' ? (
+                                        /* Mode 1: Births Only */
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 text-sky-800 border border-sky-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80" title="Male births count">
+                                                <span className="font-black text-sky-600">Male Births:</span>
+                                                <span className="font-extrabold text-sky-950 tabular-nums">
+                                                    {smartMetrics.birthMale} {typeCounts.birth > 0 ? `(${Math.round((smartMetrics.birthMale / typeCounts.birth) * 100)}%)` : ''}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-pink-50/90 text-pink-800 border border-pink-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-pink-100/80" title="Female births count">
+                                                <span className="font-black text-pink-600">Female Births:</span>
+                                                <span className="font-extrabold text-pink-950 tabular-nums">
+                                                    {smartMetrics.birthFemale} {typeCounts.birth > 0 ? `(${Math.round((smartMetrics.birthFemale / typeCounts.birth) * 100)}%)` : ''}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Timely vs. Delayed registrations">
+                                                <span className="font-black text-amber-700">Registration:</span>
+                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.birthTimely} Timely • {smartMetrics.birthDelayed} Delayed</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Hospital/Clinic delivery vs Home delivery">
+                                                <span className="font-black text-emerald-600">Facility:</span>
+                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.birthHospital} Facility • {smartMetrics.birthHome} Home</span>
+                                            </div>
+                                        </div>
+                                    ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'death' ? (
+                                        /* Mode 2: Deaths Only */
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-rose-50/90 text-rose-800 border border-rose-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-rose-100/80" title="Senior citizen deaths (Age 60 and above)">
+                                                <span className="font-black text-rose-600">Seniors (≥60):</span>
+                                                <span className="font-extrabold text-rose-950 tabular-nums">{smartMetrics.seniorDeaths} of {typeCounts.death}</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Deceased whose usual residence was Naic municipality">
+                                                <span className="font-black text-indigo-600">Resident Deaths:</span>
+                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.residentDeaths} of {typeCounts.death}</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Natural causes vs external causes">
+                                                <span className="font-black text-emerald-600">Manner of Death:</span>
+                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.naturalDeaths} Natural • {typeCounts.death - smartMetrics.naturalDeaths} External</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs sm:text-[13px] transition-all hover:bg-slate-100/80" title="Gender breakdown of deceased individuals">
+                                                <span className="font-black text-slate-600">Gender Ratio:</span>
+                                                <span className="font-extrabold text-slate-950 tabular-nums">{smartMetrics.deathMale} Male • {smartMetrics.deathFemale} Female</span>
+                                            </div>
+                                        </div>
+                                    ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'marriage' ? (
+                                        /* Mode 3: Marriages Only */
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Civil ceremonies officiated by Mayor or Judge">
+                                                <span className="font-black text-amber-700">Civil Weddings:</span>
+                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.civilMarriages} of {typeCounts.marriage}</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Religious ceremonies in churches or chapels">
+                                                <span className="font-black text-indigo-600">Church Weddings:</span>
+                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.churchMarriages} of {typeCounts.marriage}</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Total marriages registered in Naic">
+                                                <span className="font-black text-emerald-600">Solemnized in Naic:</span>
+                                                <span className="font-extrabold text-emerald-950 tabular-nums">{typeCounts.marriage} Weddings</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 text-sky-800 border border-sky-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80" title="All marriage records certified">
+                                                <span className="font-black text-sky-600">Certified Status:</span>
+                                                <span className="font-extrabold text-sky-950 tabular-nums">{typeCounts.marriage > 0 ? '100% Registered' : '0 Registered'}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Mode 4: All / Multiple Categories Combined */
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Gender distribution across civil records">
+                                                <span className="font-black text-indigo-600">Gender Ratio:</span>
+                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.totalMales} Male • {smartMetrics.totalFemales} Female</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-[#d4a574]/15 text-[#8f6333] border border-[#d4a574]/30 font-bold text-xs sm:text-[13px] transition-all hover:bg-[#d4a574]/25" title="Naic barangays represented in these records">
+                                                <span className="font-black text-[#8f6333]">Barangays:</span>
+                                                <span className="font-extrabold text-slate-900 tabular-nums">{smartMetrics.distinctBarangays} Covered</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Timely registered vs delayed registration">
+                                                <span className="font-black text-emerald-600">Timely Filings:</span>
+                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.timelyTotal} Timely • {smartMetrics.delayedTotal} Delayed</span>
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Senior deaths and civil ceremonies summary">
+                                                <span className="font-black text-amber-700">Special Vital:</span>
+                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.seniorDeaths} Seniors • {smartMetrics.civilMarriages + smartMetrics.churchMarriages} Weddings</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -942,7 +1102,7 @@ export default function Reports() {
                     <div>
                         <h3 className="text-base font-bold text-slate-900">Live Data Export Preview</h3>
                         <p className="text-xs text-slate-400">
-                            <strong className="text-slate-700">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Uploaded Documents'}</strong>
+                            <strong className="text-slate-700">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Registry Database (Approved Records)'}</strong>
                             {' • '}Categories: ({selectedDocTypes.join(', ')})
                             {effectiveDates.from ? ` • Between ${effectiveDates.from} and ${effectiveDates.to}` : ''}
                         </p>
@@ -970,7 +1130,9 @@ export default function Reports() {
                                             <th className="px-4 py-3.5 font-black text-slate-500">Record Scope</th>
                                         )}
                                         <th className="px-6 py-3.5 font-black text-slate-500">ID / Reg No.</th>
-                                        <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
+                                        {dataSource !== 'internal' && (
+                                            <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
+                                        )}
                                         <th className="px-4 py-3.5 font-black text-slate-500">Category</th>
                                         <th className="px-6 py-3.5 font-black text-slate-500">Person / Client Name</th>
                                         <th className="px-4 py-3.5 font-black text-slate-500">
@@ -983,7 +1145,6 @@ export default function Reports() {
                                     {paginatedReports.map((doc) => {
                                         const ef = typeof doc.extracted_fields === 'string' ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
                                         const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
-                                        const ticketNo = doc.ticket_number || `T-2026-${String(doc.id).padStart(4, '0')}`;
                                         const isProcured = doc._source === 'procured';
 
                                         return (
@@ -995,18 +1156,24 @@ export default function Reports() {
                                                                 ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                                                 : 'bg-slate-100 text-slate-700 border-slate-200'
                                                         }`}>
-                                                            {isProcured ? 'Procured' : 'Uploaded'}
+                                                            {isProcured ? 'Procured' : 'Registry'}
                                                         </span>
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 font-mono font-bold text-slate-900">
                                                     #{doc.id} <span className="text-[11px] text-slate-400 block font-sans font-normal">{regNo}</span>
                                                 </td>
-                                                <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
-                                                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
-                                                        {ticketNo}
-                                                    </span>
-                                                </td>
+                                                {dataSource !== 'internal' && (
+                                                    <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
+                                                        {isProcured && doc.ticket_number ? (
+                                                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                                                {doc.ticket_number}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-slate-300 font-normal select-none">—</span>
+                                                        )}
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-4">
                                                     {(() => {
                                                         const t = (doc.type || '').toLowerCase();

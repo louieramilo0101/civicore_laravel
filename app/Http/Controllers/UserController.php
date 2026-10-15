@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 
 /**
@@ -180,6 +181,8 @@ class UserController extends Controller
             $user->save();
         }
 
+        Cache::forget('dashboard_stats_cache');
+
         return response()->json([
             'success' => true,
             'message' => 'Account created successfully.',
@@ -338,6 +341,8 @@ class UserController extends Controller
             } catch (\Throwable $e) {}
         }
 
+        Cache::forget('dashboard_stats_cache');
+
         $statusText = $newStatus ? 'enabled' : 'disabled';
 
         return response()->json([
@@ -378,6 +383,8 @@ class UserController extends Controller
         try {
             DB::table('sessions')->where('user_id', $user->id)->delete();
         } catch (\Throwable $e) {}
+
+        Cache::forget('dashboard_stats_cache');
 
         return response()->json([
             'success' => true, 

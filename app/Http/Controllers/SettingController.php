@@ -187,4 +187,61 @@ class SettingController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Restart application caches, queue workers, and clear system buffers.
+     * Accessible exclusively to SuperAdmin.
+     */
+    public function restartSystem(Request $request)
+    {
+        $userId = $request->session()->get('user_id');
+        $actor = $userId ? User::find($userId) : null;
+
+        if (!$actor || $actor->role !== 'SuperAdmin') {
+            return response()->json(['error' => 'Forbidden. SuperAdmin privileges required.'], 403);
+        }
+
+        try {
+            // 1. Clear framework caches
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            \Illuminate\Support\Facades\Artisan::call('view:clear');
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+
+            // 2. Restart background queue workers if running
+            try {
+                \Illuminate\Support\Facades\Artisan::call('queue:restart');
+            } catch (\Throwable $qe) {
+                // Ignore if queue table/worker not configured
+            }
+
+            // 3. Flush application Cache facade
+            \Illuminate\Support\Facades\Cache::flush();
+
+            // 4. Reset OPcache if available
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+
+            // 5. Log activity
+            \App\Models\ActivityLog::create([
+                'user_name'   => $actor->name ?? 'SuperAdmin',
+                'action'      => 'System Restart',
+                'record_type' => 'System',
+                'record_id'   => null,
+                'details'     => 'SuperAdmin triggered complete application cache flush and system restart.'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'System engine and caches restarted successfully.'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('System restart failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to restart system: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

@@ -24,48 +24,55 @@ class DocumentController extends Controller
         $page = (int) $request->query('page', 1);
         $perPage = min((int) $request->query('per_page', 20), 100);
         $type = $request->query('type', '');
+        $status = strtolower(trim($request->query('status', '')));
         $search = $request->query('search', '');
         
         // Build query
-        $whereClause = "";
+        $conditions = ["d.deleted_at IS NULL"];
         $params = [];
         
-        if (!empty($type) || !empty($search)) {
-            $conditions = [];
-            if (!empty($type)) {
-                $types = is_array($type) ? $type : explode(',', $type);
-                $types = array_filter(array_map('trim', array_map('strtolower', $types)));
-                if (!empty($types) && !in_array('all', $types)) {
-                    $placeholders = implode(',', array_fill(0, count($types), '?'));
-                    $conditions[] = "LOWER(d.type) IN ($placeholders)";
-                    foreach ($types as $t) {
-                        $params[] = $t;
-                    }
+        if (!empty($type)) {
+            $types = is_array($type) ? $type : explode(',', $type);
+            $types = array_filter(array_map('trim', array_map('strtolower', $types)));
+            if (!empty($types) && !in_array('all', $types)) {
+                $placeholders = implode(',', array_fill(0, count($types), '?'));
+                $conditions[] = "LOWER(d.type) IN ($placeholders)";
+                foreach ($types as $t) {
+                    $params[] = $t;
                 }
             }
-            if (!empty($search)) {
-                $conditions[] = "(d.name LIKE ? OR d.personName LIKE ? OR d.barangay LIKE ? OR d.extracted_fields LIKE ? OR d.raw_text LIKE ? OR d.ocr_text LIKE ?)";
-                $searchTerm = "%{$search}%";
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
+        }
+
+        if (!empty($status) && $status !== 'all') {
+            if ($status === 'processed' || $status === 'registered') {
+                $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
+            } elseif ($status === 'pending' || $status === 'draft') {
+                $conditions[] = "LOWER(d.status) IN ('pending', 'extracted', 'draft')";
+            } else {
+                $conditions[] = "LOWER(d.status) = ?";
+                $params[] = $status;
+            }
+        }
+
+        if (!empty($search)) {
+            $conditions[] = "(d.name LIKE ? OR d.personName LIKE ? OR d.barangay LIKE ? OR d.extracted_fields LIKE ? OR d.raw_text LIKE ? OR d.ocr_text LIKE ? OR i.certNumber LIKE ?)";
+            $searchTerm = "%{$search}%";
+            for ($k = 0; $k < 7; $k++) {
                 $params[] = $searchTerm;
             }
-            $whereClause = " WHERE " . implode(" AND ", $conditions) . " AND d.deleted_at IS NULL";
-        } else {
-            $whereClause = " WHERE d.deleted_at IS NULL";
         }
+
+        $whereClause = " WHERE " . implode(" AND ", $conditions);
         
         // Get total count
-        $countQuery = "SELECT COUNT(*) as total FROM documents d" . $whereClause;
+        $countQuery = "SELECT COUNT(*) as total FROM documents d LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause;
         $totalResult = DB::select($countQuery, $params);
         $total = $totalResult[0]->total;
         
         // Get paginated results without loading binary content.
         $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
-                         COALESCE(t.ticket_number, i.ticket_number) as ticket_number
+                         COALESCE(t.ticket_number, i.ticket_number) as ticket_number,
+                         i.certNumber as certNumber
                   FROM documents d
                   LEFT JOIN tickets t ON t.document_id = d.id
                   LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
@@ -93,7 +100,7 @@ class DocumentController extends Controller
                         $doc->batch_finished = $batch->finished();
                     }
                 }
-            } elseif ($status === 'extracted' || $status === 'checking') {
+            } elseif (!$request->boolean('for_attach') && ($status === 'extracted' || $status === 'checking')) {
                 if ($doc->has_duplicate) {
                     // Skip redundant query if metadata already flagged it
                 } else {
@@ -1629,54 +1636,58 @@ class DocumentController extends Controller
 
         // 2. Fetch from Documents (Internal Master Registry) if needed
         if ($source === 'internal' || $source === 'all') {
-            $conditions = ["deleted_at IS NULL"];
+            $conditions = ["d.deleted_at IS NULL"];
             $params = [];
 
             if (!empty($types) && !in_array('all', $types)) {
                 $placeholders = implode(',', array_fill(0, count($types), '?'));
-                $conditions[] = "LOWER(type) IN ($placeholders)";
+                $conditions[] = "LOWER(d.type) IN ($placeholders)";
                 foreach ($types as $t) {
                     $params[] = $t;
                 }
             }
 
             if (!empty($barangay) && $barangay !== 'all') {
-                $conditions[] = "barangay = ?";
+                $conditions[] = "d.barangay = ?";
                 $params[] = $barangay;
             }
 
             if (!empty($status) && $status !== 'all') {
                 $s = strtolower($status);
                 if ($s === 'processed' || $s === 'registered') {
-                    $conditions[] = "LOWER(status) IN ('processed', 'issued', 'active')";
+                    $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
                 } elseif ($s === 'pending' || $s === 'draft') {
-                    $conditions[] = "LOWER(status) IN ('pending', 'extracted', 'draft')";
+                    $conditions[] = "LOWER(d.status) IN ('pending', 'extracted', 'draft')";
                 } elseif ($s === 'issued' || $s === 'completed') {
-                    $conditions[] = "LOWER(status) IN ('issued', 'completed')";
+                    $conditions[] = "LOWER(d.status) IN ('issued', 'completed')";
                 } else {
-                    $conditions[] = "LOWER(status) = ?";
+                    $conditions[] = "LOWER(d.status) = ?";
                     $params[] = $s;
                 }
+            } else {
+                // By default in Master Registry reports, exclude raw drafts and only include documents uploaded/saved to the registry!
+                $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
             }
 
             if (!empty($dateFrom)) {
-                $conditions[] = "DATE(created_at) >= ?";
+                $conditions[] = "DATE(d.created_at) >= ?";
                 $params[] = $dateFrom;
             }
 
             if (!empty($dateTo)) {
-                $conditions[] = "DATE(created_at) <= ?";
+                $conditions[] = "DATE(d.created_at) <= ?";
                 $params[] = $dateTo;
             }
 
             $whereClause = " WHERE " . implode(" AND ", $conditions);
-            $query = "SELECT id, name, type, date, status, personName, barangay, extracted_fields, encoded_by, created_at
-                      FROM documents" . $whereClause . " ORDER BY id DESC LIMIT 5000";
+            $query = "SELECT d.id, d.name, d.type, d.date, d.status, d.personName, d.barangay, d.extracted_fields, d.encoded_by, d.created_at,
+                             i.certNumber
+                      FROM documents d
+                      LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT 5000";
 
             $docRecords = DB::select($query, $params);
             foreach ($docRecords as $r) {
                 $r->_source = 'Internal Master Registry';
-                $r->certNumber = null;
                 $records[] = $r;
             }
         }

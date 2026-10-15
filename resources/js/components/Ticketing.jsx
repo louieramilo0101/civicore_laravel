@@ -44,7 +44,7 @@ export default function Ticketing({ mode = 'portal' }) {
     const { token } = useParams();
     const navigate = useNavigate();
     const { showAlert } = useModal();
-    const { documents: globalDocs, refreshAll } = useData();
+    const { refreshAll } = useData();
 
     // ── Portal State ──────────────────────────────────────────────────────────
     const [clientName, setClientName] = useState('');

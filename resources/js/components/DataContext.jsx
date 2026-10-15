@@ -13,7 +13,7 @@ export const useData = () => {
 
 /** Owns shared dashboard, document, issuance, history, and template state. */
 export const DataProvider = ({ children }) => {
-    const DATA_VERSION = '1.0.3';
+    const DATA_VERSION = '1.0.5';
     
     // ── State for Stats ──────────────────────────────────────────────────────
     const [stats, setStats] = useState(() => {
