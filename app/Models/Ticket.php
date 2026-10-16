@@ -13,6 +13,14 @@ class Ticket extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Dynamically resolve the connection (defaults to local database, or cloud database if DB_PORTAL_CONNECTION is set).
+     */
+    public function getConnectionName()
+    {
+        return env('DB_PORTAL_CONNECTION') ?: parent::getConnectionName();
+    }
+
     /** Stores the fillable value used by this component. */
     protected $fillable = [
         'ticket_number',

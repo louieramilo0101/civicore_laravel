@@ -39,6 +39,10 @@ class TicketController extends Controller
      */
     private function buildTicketUrl(Request $request, string $token): string
     {
+        if ($portalUrl = env('PUBLIC_PORTAL_URL')) {
+            return rtrim($portalUrl, '/') . "/ticket-status/{$token}";
+        }
+
         $host = $request->getSchemeAndHttpHost();
 
         // If request comes from localhost or 127.0.0.1, resolve local LAN IP so mobile devices on Wi-Fi can open it
@@ -232,8 +236,7 @@ class TicketController extends Controller
 
             return DB::transaction(function () use ($request, $scheduledDate, $consentPath) {
                 $year  = date('Y');
-                $count = DB::table('tickets')
-                    ->whereYear('created_at', $year)
+                $count = Ticket::whereYear('created_at', $year)
                     ->lockForUpdate()
                     ->count();
 

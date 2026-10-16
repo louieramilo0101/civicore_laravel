@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
 import SkeletonLoader from './SkeletonLoader';
 
 function FacebookIcon({ className }) {
@@ -17,13 +18,9 @@ export default function ContactDirectory() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/public/config')
+        axios.get('/api/public/config')
             .then(res => {
-                if (!res.ok) throw new Error(`Config load failed: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                setOpeningHours(data.opening_hours);
+                setOpeningHours(res.data?.opening_hours || '');
                 setIsLoading(false);
             })
             .catch(err => {

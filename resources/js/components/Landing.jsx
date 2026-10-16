@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
     ClockIcon, 
     MegaphoneIcon, 
@@ -34,12 +35,8 @@ export default function Landing() {
     }, []);
 
     useEffect(() => {
-        fetch('/api/public/config', { cache: 'no-store' })
-            .then(res => {
-                if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
-                return res.json();
-            })
-            .then(data => setConfig(data))
+        axios.get('/api/public/config')
+            .then(res => setConfig(res.data))
             .catch(err => console.error(err));
     }, []);
 
