@@ -19,7 +19,7 @@ import useDebounce from '../hooks/useDebounce.js';
 /** Lets staff attach an existing registry document to a pending request. */
 export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach }) {
     const [ocrQuery, setOcrQuery] = useState('');
-    const debouncedQuery = useDebounce(ocrQuery, 250);
+    const debouncedQuery = useDebounce(ocrQuery, 300);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchingOcr, setIsSearchingOcr] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
@@ -43,6 +43,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
         try {
             const params = {
                 per_page: 30,
+                for_attach: 1,
             };
             if (type) {
                 params.type = type === 'marriage' ? 'marriage' : type;

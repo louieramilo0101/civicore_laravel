@@ -26,7 +26,7 @@ export default function PublicLayout({ children }) {
         <div className="min-h-screen flex flex-col bg-[#0f172a] relative overflow-hidden font-sans">
             {/* Background Effects */}
             <div
-                className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-screen"
+                className="absolute inset-0 opacity-[0.04] pointer-events-none"
                 style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 30-30 30L0 30z' fill='%23d4a574' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E")`
                 }}

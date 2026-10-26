@@ -22,9 +22,12 @@ import AboutPortal      from './components/AboutPortal.jsx';
 import DigitalServices  from './components/DigitalServices.jsx';
 import ContactDirectory from './components/ContactDirectory.jsx';
 import Ticketing        from './components/Ticketing.jsx';
+import PublicRestrictedNotice from './components/PublicRestrictedNotice.jsx';
 import { ModalProvider } from './components/ModalContext.jsx';
 import { DataProvider } from './components/DataContext.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+
+const IS_PUBLIC_PORTAL_ONLY = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 
@@ -74,6 +77,31 @@ const ScrollToTop = () => {
 // ─── App ─────────────────────────────────────────────────────────────────────
 /** Configures the application providers and route tree. */
 function App() {
+    // When deployed as a public citizen portal (e.g. on Vercel),
+    // only mount public pages and guard all back-office routes.
+    if (IS_PUBLIC_PORTAL_ONLY) {
+        return (
+            <DataProvider>
+                <ModalProvider>
+                    <BrowserRouter>
+                        <ScrollToTop />
+                        <Routes>
+                            <Route path="/"         element={<PublicLayout><Landing /></PublicLayout>} />
+                            <Route path="/about"    element={<PublicLayout><AboutPortal /></PublicLayout>} />
+                            <Route path="/services" element={<PublicLayout><DigitalServices /></PublicLayout>} />
+                            <Route path="/contact"  element={<PublicLayout><ContactDirectory /></PublicLayout>} />
+                            <Route path="/ticket-request" element={<PublicLayout><Ticketing mode="portal" /></PublicLayout>} />
+                            <Route path="/ticket-status/:token" element={<PublicLayout><Ticketing mode="status" /></PublicLayout>} />
+                            <Route path="/ticket/:token" element={<PublicLayout><Ticketing mode="status" /></PublicLayout>} />
+                            <Route path="/login"    element={<PublicRestrictedNotice />} />
+                            <Route path="*"         element={<PublicRestrictedNotice />} />
+                        </Routes>
+                    </BrowserRouter>
+                </ModalProvider>
+            </DataProvider>
+        );
+    }
+
     return (
         <DataProvider>
             <ModalProvider>

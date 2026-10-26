@@ -1,0 +1,3710 @@
+{
+  "app/Console/Commands/BackupCommand.php": {
+    "mtime": 1791418328.3030927,
+    "seen": 1792017681.0454872,
+    "ast_hash": "e13a15492d08942825baa767031a8d6b",
+    "semantic_hash": "e13a15492d08942825baa767031a8d6b"
+  },
+  "app/Console/Commands/CleanupExpiredTokens.php": {
+    "mtime": 1790056354.4022446,
+    "seen": 1792017681.0455093,
+    "ast_hash": "87fd3149a5209babb14ed4242e7a302f",
+    "semantic_hash": "87fd3149a5209babb14ed4242e7a302f"
+  },
+  "app/Console/Commands/ListBackupsCommand.php": {
+    "mtime": 1791418347.216283,
+    "seen": 1792017681.045519,
+    "ast_hash": "4ca4f81b2fbc456562ebf559470ee890",
+    "semantic_hash": "4ca4f81b2fbc456562ebf559470ee890"
+  },
+  "app/Console/Commands/PruneBackupsCommand.php": {
+    "mtime": 1791418354.1807244,
+    "seen": 1792017681.0455267,
+    "ast_hash": "a2d2bc659d7a79768861838ad44e756c",
+    "semantic_hash": "a2d2bc659d7a79768861838ad44e756c"
+  },
+  "app/Console/Commands/RestoreCommand.php": {
+    "mtime": 1791418338.022084,
+    "seen": 1792017681.045535,
+    "ast_hash": "1d1faf190da5a7e528e8bc27338c09af",
+    "semantic_hash": "1d1faf190da5a7e528e8bc27338c09af"
+  },
+  "app/Http/Controllers/ActivityLogController.php": {
+    "mtime": 1791900434.4008808,
+    "seen": 1792017681.0455415,
+    "ast_hash": "e075f07678520b77772c2ca82a659a8a",
+    "semantic_hash": "e075f07678520b77772c2ca82a659a8a"
+  },
+  "app/Http/Controllers/AnnouncementController.php": {
+    "mtime": 1790770283.5965312,
+    "seen": 1792017681.04555,
+    "ast_hash": "52cc5d252e109b72c4f569aefae4e81f",
+    "semantic_hash": "52cc5d252e109b72c4f569aefae4e81f"
+  },
+  "app/Http/Controllers/AuthController.php": {
+    "mtime": 1791417548.1468587,
+    "seen": 1792017681.0455563,
+    "ast_hash": "0a909403f5e1745f03d2aa180031702d",
+    "semantic_hash": "0a909403f5e1745f03d2aa180031702d"
+  },
+  "app/Http/Controllers/BackupController.php": {
+    "mtime": 1791419175.4200933,
+    "seen": 1792017681.045563,
+    "ast_hash": "eb7716e45f6ceedb72d252b6f92631ff",
+    "semantic_hash": "eb7716e45f6ceedb72d252b6f92631ff"
+  },
+  "app/Http/Controllers/BarangayController.php": {
+    "mtime": 1790056354.4043133,
+    "seen": 1792017681.04557,
+    "ast_hash": "af8f2bb53b24f9e765fa867b2c4181d2",
+    "semantic_hash": "af8f2bb53b24f9e765fa867b2c4181d2"
+  },
+  "app/Http/Controllers/Controller.php": {
+    "mtime": 1790056354.405322,
+    "seen": 1792017681.045577,
+    "ast_hash": "c91c68c8dbcf65365c6b639fab483c97",
+    "semantic_hash": "c91c68c8dbcf65365c6b639fab483c97"
+  },
+  "app/Http/Controllers/DashboardController.php": {
+    "mtime": 1790056354.405322,
+    "seen": 1792017681.0455852,
+    "ast_hash": "d4dee4040fbe277b78988bed4fbaf764",
+    "semantic_hash": "d4dee4040fbe277b78988bed4fbaf764"
+  },
+  "app/Http/Controllers/DocumentController.php": {
+    "mtime": 1792044163.6641736,
+    "seen": 1792044358.71676,
+    "ast_hash": "fbe0e671157e4dfc12fd97bc7c2136f7",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/IssuanceController.php": {
+    "mtime": 1791980463.1759362,
+    "seen": 1792017681.0455985,
+    "ast_hash": "a0989209e6511572393071d782173403",
+    "semantic_hash": "a0989209e6511572393071d782173403"
+  },
+  "app/Http/Controllers/OcrController.php": {
+    "mtime": 1790056354.4073408,
+    "seen": 1792017681.0456054,
+    "ast_hash": "477049828433f02a1df737eac8e6db65",
+    "semantic_hash": "477049828433f02a1df737eac8e6db65"
+  },
+  "app/Http/Controllers/PublicController.php": {
+    "mtime": 1790770238.4501002,
+    "seen": 1792017681.0456123,
+    "ast_hash": "026e56c9543ade15830d95f595c38a12",
+    "semantic_hash": "026e56c9543ade15830d95f595c38a12"
+  },
+  "app/Http/Controllers/SettingController.php": {
+    "mtime": 1792041516.2788877,
+    "seen": 1792044358.7178378,
+    "ast_hash": "389278fab2c7454f83d83e77e3c312fb",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/TemplateController.php": {
+    "mtime": 1790056354.4083462,
+    "seen": 1792017681.0456269,
+    "ast_hash": "fafd6eaf4ab192d988c1dab2ec2e89a7",
+    "semantic_hash": "fafd6eaf4ab192d988c1dab2ec2e89a7"
+  },
+  "app/Http/Controllers/TicketController.php": {
+    "mtime": 1792043695.1538956,
+    "seen": 1792044358.7181923,
+    "ast_hash": "85c02f787a8d405976e0a10b6ba306d7",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/UserController.php": {
+    "mtime": 1791417615.950521,
+    "seen": 1792017681.0456426,
+    "ast_hash": "36a4643b190db1bbd07fdafd4f3716f5",
+    "semantic_hash": "36a4643b190db1bbd07fdafd4f3716f5"
+  },
+  "app/Http/Controllers/VerificationController.php": {
+    "mtime": 1790056354.4093583,
+    "seen": 1792017681.04565,
+    "ast_hash": "62512ccad6c5550852dc213f06f62806",
+    "semantic_hash": "62512ccad6c5550852dc213f06f62806"
+  },
+  "app/Http/Middleware/AdminRoleMiddleware.php": {
+    "mtime": 1790056354.4093583,
+    "seen": 1792017681.0456576,
+    "ast_hash": "d1273f722eb9383dc1102508f685e54a",
+    "semantic_hash": "d1273f722eb9383dc1102508f685e54a"
+  },
+  "app/Http/Middleware/RequireSessionAuth.php": {
+    "mtime": 1791417571.8698838,
+    "seen": 1792017681.0456676,
+    "ast_hash": "0d08a30ca852a1a5a7988038846ae9fd",
+    "semantic_hash": "0d08a30ca852a1a5a7988038846ae9fd"
+  },
+  "app/Http/Middleware/SuperAdminRoleMiddleware.php": {
+    "mtime": 1790056354.410363,
+    "seen": 1792017681.0456758,
+    "ast_hash": "f1f2750977976bf131b32a97c5f530be",
+    "semantic_hash": "f1f2750977976bf131b32a97c5f530be"
+  },
+  "app/Jobs/ProcessDocumentOcr.php": {
+    "mtime": 1791879482.21523,
+    "seen": 1792017681.0456843,
+    "ast_hash": "ca32f57bb5ef9109f48daacb2f354c50",
+    "semantic_hash": "ca32f57bb5ef9109f48daacb2f354c50"
+  },
+  "app/Jobs/ProcessImageOcrJob.php": {
+    "mtime": 1791876859.5025847,
+    "seen": 1792017681.0456915,
+    "ast_hash": "7358f0935f2881aa79128d2c82fadf4b",
+    "semantic_hash": "7358f0935f2881aa79128d2c82fadf4b"
+  },
+  "app/Mail/TicketConfirmation.php": {
+    "mtime": 1790778241.0580394,
+    "seen": 1792017681.0456994,
+    "ast_hash": "4bb40e7eba15e8b50b7a6a2c7536dc3d",
+    "semantic_hash": "4bb40e7eba15e8b50b7a6a2c7536dc3d"
+  },
+  "app/Mail/TicketDeclinedMail.php": {
+    "mtime": 1790778252.8671582,
+    "seen": 1792017681.045707,
+    "ast_hash": "901e82c42b9a8f5e3b5ff7acbd09bfef",
+    "semantic_hash": "901e82c42b9a8f5e3b5ff7acbd09bfef"
+  },
+  "app/Mail/VerificationCodeMail.php": {
+    "mtime": 1790056354.4123769,
+    "seen": 1792017681.0457125,
+    "ast_hash": "7d048a1d9513b18a557521b2234fc363",
+    "semantic_hash": "7d048a1d9513b18a557521b2234fc363"
+  },
+  "app/Models/ActivityLog.php": {
+    "mtime": 1790056354.413385,
+    "seen": 1792017681.045717,
+    "ast_hash": "c15afd59933318d38e2c56dc6775c45d",
+    "semantic_hash": "c15afd59933318d38e2c56dc6775c45d"
+  },
+  "app/Models/Announcement.php": {
+    "mtime": 1790056354.413385,
+    "seen": 1792017681.0457213,
+    "ast_hash": "ad3a84dc9384926d24076b682e5965a6",
+    "semantic_hash": "ad3a84dc9384926d24076b682e5965a6"
+  },
+  "app/Models/Document.php": {
+    "mtime": 1790056354.413385,
+    "seen": 1792017681.0457256,
+    "ast_hash": "a70c223b03a417209879e21685191fdc",
+    "semantic_hash": "a70c223b03a417209879e21685191fdc"
+  },
+  "app/Models/DocumentHistoryLog.php": {
+    "mtime": 1790056354.4143896,
+    "seen": 1792017681.0457304,
+    "ast_hash": "0aebf8df247e851420ec8ae207c8bf3d",
+    "semantic_hash": "0aebf8df247e851420ec8ae207c8bf3d"
+  },
+  "app/Models/DocumentOcrPage.php": {
+    "mtime": 1790056354.4143896,
+    "seen": 1792017681.0457344,
+    "ast_hash": "36eca602702ee1270e750137167cdc7c",
+    "semantic_hash": "36eca602702ee1270e750137167cdc7c"
+  },
+  "app/Models/Issuance.php": {
+    "mtime": 1790056354.4143896,
+    "seen": 1792017681.0457385,
+    "ast_hash": "d0df775bd24d846867c71b78ac37842d",
+    "semantic_hash": "d0df775bd24d846867c71b78ac37842d"
+  },
+  "app/Models/Setting.php": {
+    "mtime": 1790056354.4153993,
+    "seen": 1792017681.0457425,
+    "ast_hash": "e4bc894cdecd737d6e75a9f88953719a",
+    "semantic_hash": "e4bc894cdecd737d6e75a9f88953719a"
+  },
+  "app/Models/Ticket.php": {
+    "mtime": 1792040547.1396801,
+    "seen": 1792044358.723929,
+    "ast_hash": "5bee0348aa8a7218587ab9475a69e168",
+    "semantic_hash": ""
+  },
+  "app/Models/User.php": {
+    "mtime": 1791417519.7254946,
+    "seen": 1792017681.0457509,
+    "ast_hash": "2c38dbc8b361fbff35f848b99f4d377f",
+    "semantic_hash": "2c38dbc8b361fbff35f848b99f4d377f"
+  },
+  "app/Models/VerificationCode.php": {
+    "mtime": 1790056354.4164066,
+    "seen": 1792017681.045755,
+    "ast_hash": "343e1f7c0d70e34d0cc7f230d2c774fc",
+    "semantic_hash": "343e1f7c0d70e34d0cc7f230d2c774fc"
+  },
+  "app/Providers/AppServiceProvider.php": {
+    "mtime": 1790056354.4164066,
+    "seen": 1792017681.0457587,
+    "ast_hash": "c3e3589010699654fc4e582d7f1f7d7c",
+    "semantic_hash": "c3e3589010699654fc4e582d7f1f7d7c"
+  },
+  "app/Services/BackupService.php": {
+    "mtime": 1791419162.0254965,
+    "seen": 1792017681.0457628,
+    "ast_hash": "03c8cf6f966646b7061e256c23c6eb66",
+    "semantic_hash": "03c8cf6f966646b7061e256c23c6eb66"
+  },
+  "app/Services/CertificatePdfGeneratorService.php": {
+    "mtime": 1791898500.1056495,
+    "seen": 1792017681.0457666,
+    "ast_hash": "014d41d8e9a4009a48441a4a16fe2826",
+    "semantic_hash": "014d41d8e9a4009a48441a4a16fe2826"
+  },
+  "app/Services/DocumentPdfConverterService.php": {
+    "mtime": 1790064387.203071,
+    "seen": 1792017681.0457706,
+    "ast_hash": "cbc5657aaaeefa0513eaa9b36bf55c80",
+    "semantic_hash": "cbc5657aaaeefa0513eaa9b36bf55c80"
+  },
+  "app/Services/OcrParserService.php": {
+    "mtime": 1790056354.417415,
+    "seen": 1792017681.0457773,
+    "ast_hash": "8817625149244e85588a91edc5842e27",
+    "semantic_hash": "8817625149244e85588a91edc5842e27"
+  },
+  "app/Services/TemplateConfigService.php": {
+    "mtime": 1791898451.7432706,
+    "seen": 1792017681.0457816,
+    "ast_hash": "60c27299febf23fd9280874ee58c52c7",
+    "semantic_hash": "60c27299febf23fd9280874ee58c52c7"
+  },
+  "artisan": {
+    "mtime": 1790056354.4184194,
+    "seen": 1792017681.045786,
+    "ast_hash": "e66bb13691f6184c762c196427d8e685",
+    "semantic_hash": "e66bb13691f6184c762c196427d8e685"
+  },
+  "babel.config.cjs": {
+    "mtime": 1790056354.4194696,
+    "seen": 1792017681.0457897,
+    "ast_hash": "38eb8f86730f7c14dfbfbcc77fb31551",
+    "semantic_hash": "38eb8f86730f7c14dfbfbcc77fb31551"
+  },
+  "bootstrap/app.php": {
+    "mtime": 1790056354.4194696,
+    "seen": 1792017681.045794,
+    "ast_hash": "ebbfc24c35d2df3ddf139a50d3c9f14f",
+    "semantic_hash": "ebbfc24c35d2df3ddf139a50d3c9f14f"
+  },
+  "bootstrap/providers.php": {
+    "mtime": 1790056354.420459,
+    "seen": 1792017681.0457978,
+    "ast_hash": "d18593472c5e35d8ab5add4240fc95f6",
+    "semantic_hash": "d18593472c5e35d8ab5add4240fc95f6"
+  },
+  "composer.json": {
+    "mtime": 1790056354.4229763,
+    "seen": 1792017681.0458019,
+    "ast_hash": "47644bb6ccfde327930d9d6d831ed9c2",
+    "semantic_hash": "47644bb6ccfde327930d9d6d831ed9c2"
+  },
+  "config/app.php": {
+    "mtime": 1790056354.4250095,
+    "seen": 1792017681.0458062,
+    "ast_hash": "8920fcb1a5a220672f5a2a9795d47bb4",
+    "semantic_hash": "8920fcb1a5a220672f5a2a9795d47bb4"
+  },
+  "config/auth.php": {
+    "mtime": 1790056354.4250095,
+    "seen": 1792017681.04581,
+    "ast_hash": "5f0554e97f71dbb4359623981234277c",
+    "semantic_hash": "5f0554e97f71dbb4359623981234277c"
+  },
+  "config/cache.php": {
+    "mtime": 1790056354.4260206,
+    "seen": 1792017681.0458138,
+    "ast_hash": "022fdf20e95ddb79949954243e367003",
+    "semantic_hash": "022fdf20e95ddb79949954243e367003"
+  },
+  "config/cors.php": {
+    "mtime": 1790056354.4260206,
+    "seen": 1792017681.045818,
+    "ast_hash": "32280f296622a07701b0553cc093192f",
+    "semantic_hash": "32280f296622a07701b0553cc093192f"
+  },
+  "config/database.php": {
+    "mtime": 1790056354.4260206,
+    "seen": 1792017681.0458217,
+    "ast_hash": "00f3e0fc59ab1f91c34203cec0f9f80f",
+    "semantic_hash": "00f3e0fc59ab1f91c34203cec0f9f80f"
+  },
+  "config/filesystems.php": {
+    "mtime": 1790056354.4270294,
+    "seen": 1792017681.0458257,
+    "ast_hash": "bde1aa1027f0448f17348dbd93f3d7ea",
+    "semantic_hash": "bde1aa1027f0448f17348dbd93f3d7ea"
+  },
+  "config/logging.php": {
+    "mtime": 1790056354.4270294,
+    "seen": 1792017681.0458305,
+    "ast_hash": "8c2daadb3f84863916297f91d5f864e6",
+    "semantic_hash": "8c2daadb3f84863916297f91d5f864e6"
+  },
+  "config/mail.php": {
+    "mtime": 1790778230.0182958,
+    "seen": 1792017681.0458345,
+    "ast_hash": "f7b3308d88642bf1b551267accb0366c",
+    "semantic_hash": "f7b3308d88642bf1b551267accb0366c"
+  },
+  "config/queue.php": {
+    "mtime": 1790056354.4280403,
+    "seen": 1792017681.0458388,
+    "ast_hash": "f98ce92e7bf51db1fabaf8a30e12fc5a",
+    "semantic_hash": "f98ce92e7bf51db1fabaf8a30e12fc5a"
+  },
+  "config/services.php": {
+    "mtime": 1790056354.4280403,
+    "seen": 1792017681.0458436,
+    "ast_hash": "534a1b7af7009c373ea4ebfa18823d57",
+    "semantic_hash": "534a1b7af7009c373ea4ebfa18823d57"
+  },
+  "config/session.php": {
+    "mtime": 1790056354.4290452,
+    "seen": 1792017681.045848,
+    "ast_hash": "fda952d5253ed99577ea324b33527cc5",
+    "semantic_hash": "fda952d5253ed99577ea324b33527cc5"
+  },
+  "database/factories/UserFactory.php": {
+    "mtime": 1790056354.4300537,
+    "seen": 1792017681.0458524,
+    "ast_hash": "de4ddaa5cb05e45df022ce2e053a7b1d",
+    "semantic_hash": "de4ddaa5cb05e45df022ce2e053a7b1d"
+  },
+  "database/migrations/0001_01_01_000000_create_users_table.php": {
+    "mtime": 1790056354.4300537,
+    "seen": 1792017681.0458565,
+    "ast_hash": "e962dd44637733b92b5cd43d237bc38f",
+    "semantic_hash": "e962dd44637733b92b5cd43d237bc38f"
+  },
+  "database/migrations/0001_01_01_000001_create_cache_table.php": {
+    "mtime": 1790056354.4300537,
+    "seen": 1792017681.0458605,
+    "ast_hash": "d3ef68a567be0bdb7d9d2188991faf07",
+    "semantic_hash": "d3ef68a567be0bdb7d9d2188991faf07"
+  },
+  "database/migrations/0001_01_01_000002_create_jobs_table.php": {
+    "mtime": 1790056354.4310598,
+    "seen": 1792017681.0458648,
+    "ast_hash": "d24d585e446137941ee6293f9a4c9e81",
+    "semantic_hash": "d24d585e446137941ee6293f9a4c9e81"
+  },
+  "database/migrations/2024_01_15_000001_add_performance_indexes.php": {
+    "mtime": 1790056354.4320738,
+    "seen": 1792017681.0458689,
+    "ast_hash": "7953dc3d4ff6834455334c5f55a0b821",
+    "semantic_hash": "7953dc3d4ff6834455334c5f55a0b821"
+  },
+  "database/migrations/2026_03_24_000001_create_documents_table.php": {
+    "mtime": 1790056354.4320738,
+    "seen": 1792017681.0458732,
+    "ast_hash": "801743b28fb79d3b4fa4681f1624a528",
+    "semantic_hash": "801743b28fb79d3b4fa4681f1624a528"
+  },
+  "database/migrations/2026_03_24_000002_create_issuances_table.php": {
+    "mtime": 1790064403.7912433,
+    "seen": 1792017681.0458775,
+    "ast_hash": "11f5f7d27a82997e7e29768c24de2891",
+    "semantic_hash": "11f5f7d27a82997e7e29768c24de2891"
+  },
+  "database/migrations/2026_03_24_000003_create_barangays_table.php": {
+    "mtime": 1790056354.4330792,
+    "seen": 1792017681.0458825,
+    "ast_hash": "f565093cf32b57b3db0c41a7fe8cf69b",
+    "semantic_hash": "f565093cf32b57b3db0c41a7fe8cf69b"
+  },
+  "database/migrations/2026_04_08_014000_create_activity_logs_table.php": {
+    "mtime": 1790056354.4330792,
+    "seen": 1792017681.0458863,
+    "ast_hash": "9948dd948b35e903cfc11f9c822d72b6",
+    "semantic_hash": "9948dd948b35e903cfc11f9c822d72b6"
+  },
+  "database/migrations/2026_04_09_000001_create_document_history_logs_table.php": {
+    "mtime": 1790056354.4330792,
+    "seen": 1792017681.0458906,
+    "ast_hash": "16fa058c2f3d183913e421d53f087acc",
+    "semantic_hash": "16fa058c2f3d183913e421d53f087acc"
+  },
+  "database/migrations/2026_04_09_000721_add_avatar_to_users_table.php": {
+    "mtime": 1790056354.4340885,
+    "seen": 1792017681.0458941,
+    "ast_hash": "c85522b4d9734debf2e33314e5851e36",
+    "semantic_hash": "c85522b4d9734debf2e33314e5851e36"
+  },
+  "database/migrations/2026_04_21_060039_create_settings_table.php": {
+    "mtime": 1790056354.4340885,
+    "seen": 1792017681.045899,
+    "ast_hash": "68e2e50e010ea953b0f60dd1fce7df08",
+    "semantic_hash": "68e2e50e010ea953b0f60dd1fce7df08"
+  },
+  "database/migrations/2026_04_21_061006_create_announcements_table.php": {
+    "mtime": 1790056354.4340885,
+    "seen": 1792017681.0459037,
+    "ast_hash": "5bc54924219708e482db7ddf38962f8e",
+    "semantic_hash": "5bc54924219708e482db7ddf38962f8e"
+  },
+  "database/migrations/2026_04_21_065817_create_verification_codes_table.php": {
+    "mtime": 1790056354.435159,
+    "seen": 1792017681.0459077,
+    "ast_hash": "fdf3b9827526318a8b38b4beda71aa7e",
+    "semantic_hash": "fdf3b9827526318a8b38b4beda71aa7e"
+  },
+  "database/migrations/2026_04_27_000001_create_document_ocr_pages_table.php": {
+    "mtime": 1790056354.435159,
+    "seen": 1792017681.045912,
+    "ast_hash": "34b2a4e48f09732b796cfb24b1201dc6",
+    "semantic_hash": "34b2a4e48f09732b796cfb24b1201dc6"
+  },
+  "database/migrations/2026_04_27_092700_create_template_profiles_table.php": {
+    "mtime": 1790056354.436165,
+    "seen": 1792017681.045917,
+    "ast_hash": "fcdd850d8b75e107ef2401cb26fd9b27",
+    "semantic_hash": "fcdd850d8b75e107ef2401cb26fd9b27"
+  },
+  "database/migrations/2026_05_18_000001_align_file_storage_and_soft_deletes.php": {
+    "mtime": 1790056354.436165,
+    "seen": 1792017681.0459218,
+    "ast_hash": "a4b519e6ef7b6cc8a9b5fcfcb1e59285",
+    "semantic_hash": "a4b519e6ef7b6cc8a9b5fcfcb1e59285"
+  },
+  "database/migrations/2026_05_26_000001_create_tickets_table.php": {
+    "mtime": 1790056354.436165,
+    "seen": 1792017681.0459275,
+    "ast_hash": "e70534451fb6b135ad5b23b04d925bd6",
+    "semantic_hash": "e70534451fb6b135ad5b23b04d925bd6"
+  },
+  "database/migrations/2026_05_26_101717_add_print_approval_fields_to_issuances_table.php": {
+    "mtime": 1790056354.4371698,
+    "seen": 1792017681.045933,
+    "ast_hash": "07c657444f222e8c9717eca234b3ab46",
+    "semantic_hash": "07c657444f222e8c9717eca234b3ab46"
+  },
+  "database/migrations/2026_05_27_230000_add_certificate_type_to_issuances.php": {
+    "mtime": 1790056354.4371698,
+    "seen": 1792017681.045937,
+    "ast_hash": "8b6807ec23b2a4cb75a9e00390f61333",
+    "semantic_hash": "8b6807ec23b2a4cb75a9e00390f61333"
+  },
+  "database/migrations/2026_05_28_000001_add_qr_fields_to_tickets_table.php": {
+    "mtime": 1790056354.4371698,
+    "seen": 1792017681.0459416,
+    "ast_hash": "4606fdf0fb23717f3415db3a8e02f07d",
+    "semantic_hash": "4606fdf0fb23717f3415db3a8e02f07d"
+  },
+  "database/migrations/2026_05_28_104539_add_ticket_number_to_issuances_table.php": {
+    "mtime": 1790056354.4381776,
+    "seen": 1792017681.0459456,
+    "ast_hash": "6da9c22b1323cb0b3f5869e11ca0a2d5",
+    "semantic_hash": "6da9c22b1323cb0b3f5869e11ca0a2d5"
+  },
+  "database/migrations/2026_05_28_110000_change_extracted_data_to_longtext_in_issuances_table.php": {
+    "mtime": 1790056354.4381776,
+    "seen": 1792017681.045951,
+    "ast_hash": "720c20c471802fa7d435d61ea489eaeb",
+    "semantic_hash": "720c20c471802fa7d435d61ea489eaeb"
+  },
+  "database/migrations/2026_05_28_192000_update_tickets_table_v2.php": {
+    "mtime": 1790056354.4381776,
+    "seen": 1792017681.0459557,
+    "ast_hash": "942f48fd66abf6b14a29d0cf82c051af",
+    "semantic_hash": "942f48fd66abf6b14a29d0cf82c051af"
+  },
+  "database/migrations/2026_05_29_000002_drop_unique_document_registry_index_from_issuances.php": {
+    "mtime": 1790056354.4391823,
+    "seen": 1792017681.0459602,
+    "ast_hash": "15b1198292cc928c59566bd1fb6f6c71",
+    "semantic_hash": "15b1198292cc928c59566bd1fb6f6c71"
+  },
+  "database/migrations/2026_05_29_225347_add_soft_deletes_to_tickets_table.php": {
+    "mtime": 1790056354.4391823,
+    "seen": 1792017681.04597,
+    "ast_hash": "55b85cb7a5c49e5e39f11a29cc7b4090",
+    "semantic_hash": "55b85cb7a5c49e5e39f11a29cc7b4090"
+  },
+  "database/migrations/2026_09_18_000001_add_image_path_to_documents_and_issuances_tables.php": {
+    "mtime": 1790056354.4391823,
+    "seen": 1792017681.0459754,
+    "ast_hash": "f4b446631721d582c345a9a3ad92e427",
+    "semantic_hash": "f4b446631721d582c345a9a3ad92e427"
+  },
+  "database/migrations/2026_09_18_000002_add_performance_indexes_to_civicore_tables.php": {
+    "mtime": 1790056354.4401906,
+    "seen": 1792017681.0459807,
+    "ast_hash": "f203f2d03049218a9c16c406381285bc",
+    "semantic_hash": "f203f2d03049218a9c16c406381285bc"
+  },
+  "database/migrations/2026_09_22_000001_drop_unique_certnumber_index_from_issuances.php": {
+    "mtime": 1790064438.9278018,
+    "seen": 1792017681.0459847,
+    "ast_hash": "fc245858e7d5bbfc3e78ca9057ccc1ec",
+    "semantic_hash": "fc245858e7d5bbfc3e78ca9057ccc1ec"
+  },
+  "database/migrations/2026_10_05_000001_add_scheduled_date_to_tickets_table.php": {
+    "mtime": 1791189874.0024474,
+    "seen": 1792017681.045989,
+    "ast_hash": "5e4d6b57d09dbfe3e10be5b70e5108ec",
+    "semantic_hash": "5e4d6b57d09dbfe3e10be5b70e5108ec"
+  },
+  "database/migrations/2026_10_08_000001_add_is_active_to_users_table.php": {
+    "mtime": 1791417497.305113,
+    "seen": 1792017681.0459938,
+    "ast_hash": "96c5cad9708fe2dacb623917cc5e56d9",
+    "semantic_hash": "96c5cad9708fe2dacb623917cc5e56d9"
+  },
+  "database/seeders/DashboardSeeder.php": {
+    "mtime": 1790056354.4401906,
+    "seen": 1792017681.0459988,
+    "ast_hash": "558fd1dac38f9a472a2cf907453c3a5e",
+    "semantic_hash": "558fd1dac38f9a472a2cf907453c3a5e"
+  },
+  "database/seeders/DatabaseSeeder.php": {
+    "mtime": 1790056354.4411955,
+    "seen": 1792017681.0460033,
+    "ast_hash": "db6b1de6439ae66cbafbd9fd0944463a",
+    "semantic_hash": "db6b1de6439ae66cbafbd9fd0944463a"
+  },
+  "database/seeders/DummyDataSeeder.php": {
+    "mtime": 1790056354.4411955,
+    "seen": 1792017681.0460086,
+    "ast_hash": "9bf9d32a382641022c7329f4351462ef",
+    "semantic_hash": "9bf9d32a382641022c7329f4351462ef"
+  },
+  "defense_materials/generate_docs.py": {
+    "mtime": 1790056354.5756774,
+    "seen": 1792017681.0460129,
+    "ast_hash": "797e0313700ab39407f74f6a6b1b8ada",
+    "semantic_hash": "797e0313700ab39407f74f6a6b1b8ada"
+  },
+  "glass_replacer.cjs": {
+    "mtime": 1790056354.579711,
+    "seen": 1792017681.0460181,
+    "ast_hash": "15f20438757ee0c262713b8846014037",
+    "semantic_hash": "15f20438757ee0c262713b8846014037"
+  },
+  "jest.config.cjs": {
+    "mtime": 1790056354.579711,
+    "seen": 1792017681.0460222,
+    "ast_hash": "7869459e445d0b6ebf3191fdbbd4b8ae",
+    "semantic_hash": "7869459e445d0b6ebf3191fdbbd4b8ae"
+  },
+  "ocr_server.py": {
+    "mtime": 1791980120.2393808,
+    "seen": 1792017681.0460272,
+    "ast_hash": "5a4282c3cc7ed1c6e02d27152093c71c",
+    "semantic_hash": "5a4282c3cc7ed1c6e02d27152093c71c"
+  },
+  "package.json": {
+    "mtime": 1791450246.6407151,
+    "seen": 1792017681.046032,
+    "ast_hash": "e747ce05b0373b324ae4e8e5a55d4b38",
+    "semantic_hash": "e747ce05b0373b324ae4e8e5a55d4b38"
+  },
+  "public/index.php": {
+    "mtime": 1790056354.624425,
+    "seen": 1792017681.0460365,
+    "ast_hash": "d8eda274115af5fd2aaa8230af329ef7",
+    "semantic_hash": "d8eda274115af5fd2aaa8230af329ef7"
+  },
+  "public/js/chart.js": {
+    "mtime": 1790056354.626459,
+    "seen": 1792017681.0460408,
+    "ast_hash": "e6452e2b454b091f857a45cce7624eae",
+    "semantic_hash": "e6452e2b454b091f857a45cce7624eae"
+  },
+  "public/js/leaflet.js": {
+    "mtime": 1790056354.6275048,
+    "seen": 1792017681.0460446,
+    "ast_hash": "35b48eb991f383702f153452506e07b2",
+    "semantic_hash": "35b48eb991f383702f153452506e07b2"
+  },
+  "resources/js/app.js": {
+    "mtime": 1790056354.6326425,
+    "seen": 1792017681.0460498,
+    "ast_hash": "1ccf2b9101110f40ecaab1608a6f91cf",
+    "semantic_hash": "1ccf2b9101110f40ecaab1608a6f91cf"
+  },
+  "resources/js/app.jsx": {
+    "mtime": 1791418605.4801815,
+    "seen": 1792017681.0460544,
+    "ast_hash": "111771da7aa882457a9548cd4537f305",
+    "semantic_hash": "111771da7aa882457a9548cd4537f305"
+  },
+  "resources/js/bootstrap.js": {
+    "mtime": 1790056354.6336641,
+    "seen": 1792017681.0460584,
+    "ast_hash": "78f909acc19aea4717eddca5a87c1ba3",
+    "semantic_hash": "78f909acc19aea4717eddca5a87c1ba3"
+  },
+  "resources/js/components/AboutPortal.jsx": {
+    "mtime": 1791895907.9364848,
+    "seen": 1792017681.0460622,
+    "ast_hash": "d2f2c2da266a0c2b49a4b79f97ca4e3f",
+    "semantic_hash": "d2f2c2da266a0c2b49a4b79f97ca4e3f"
+  },
+  "resources/js/components/Accounts.jsx": {
+    "mtime": 1792041034.4776716,
+    "seen": 1792044358.7503953,
+    "ast_hash": "4b41dd3cdb6f249e82afd56034848552",
+    "semantic_hash": ""
+  },
+  "resources/js/components/ActionCenter.jsx": {
+    "mtime": 1790056354.6357577,
+    "seen": 1792017681.0460708,
+    "ast_hash": "8b08df7844c002b05b54a93def587db7",
+    "semantic_hash": "8b08df7844c002b05b54a93def587db7"
+  },
+  "resources/js/components/ActionConfirmModal.jsx": {
+    "mtime": 1790065110.608557,
+    "seen": 1792017681.0460758,
+    "ast_hash": "22bc2375595b9a65e2182bcc37a5b0f2",
+    "semantic_hash": "22bc2375595b9a65e2182bcc37a5b0f2"
+  },
+  "resources/js/components/AlertModal.jsx": {
+    "mtime": 1790056354.6380434,
+    "seen": 1792017681.0460808,
+    "ast_hash": "d3a96931da5a6416940466477db7128d",
+    "semantic_hash": "d3a96931da5a6416940466477db7128d"
+  },
+  "resources/js/components/AnimatedCounter.jsx": {
+    "mtime": 1790056354.6380434,
+    "seen": 1792017681.0460856,
+    "ast_hash": "552c9ef6ecd896e0aa46d6d19a1c00c6",
+    "semantic_hash": "552c9ef6ecd896e0aa46d6d19a1c00c6"
+  },
+  "resources/js/components/Announcements.jsx": {
+    "mtime": 1791979587.8180175,
+    "seen": 1792017681.0460908,
+    "ast_hash": "9f01751ebb8db26ac1f88005c0a22b54",
+    "semantic_hash": "9f01751ebb8db26ac1f88005c0a22b54"
+  },
+  "resources/js/components/ArchiveManager.jsx": {
+    "mtime": 1791979621.0543861,
+    "seen": 1792017681.0460951,
+    "ast_hash": "a289849578538cdaa582846c83ce4924",
+    "semantic_hash": "a289849578538cdaa582846c83ce4924"
+  },
+  "resources/js/components/AttachDocumentModal.jsx": {
+    "mtime": 1792043731.444203,
+    "seen": 1792044358.7524276,
+    "ast_hash": "2f23448e4db651e11e65cd6835fdf6e1",
+    "semantic_hash": ""
+  },
+  "resources/js/components/Avatar.jsx": {
+    "mtime": 1790056354.6411142,
+    "seen": 1792017681.046104,
+    "ast_hash": "688c2e1a3d8281780ed446653525a7ce",
+    "semantic_hash": "688c2e1a3d8281780ed446653525a7ce"
+  },
+  "resources/js/components/AvatarLibrary.js": {
+    "mtime": 1790056354.6411142,
+    "seen": 1792017681.0461087,
+    "ast_hash": "1e0487b7a5d66212fd9f1e8f9a56d5f0",
+    "semantic_hash": "1e0487b7a5d66212fd9f1e8f9a56d5f0"
+  },
+  "resources/js/components/Backups.jsx": {
+    "mtime": 1791979636.3759694,
+    "seen": 1792017681.0461135,
+    "ast_hash": "73fb07d3bccc636c95e6779a4dd5228e",
+    "semantic_hash": "73fb07d3bccc636c95e6779a4dd5228e"
+  },
+  "resources/js/components/Barangays.jsx": {
+    "mtime": 1790056354.6421611,
+    "seen": 1792017681.0461185,
+    "ast_hash": "ff083f624973d0a9ab6be81d649698f4",
+    "semantic_hash": "ff083f624973d0a9ab6be81d649698f4"
+  },
+  "resources/js/components/CameraModal.jsx": {
+    "mtime": 1790056354.6421611,
+    "seen": 1792017681.0461223,
+    "ast_hash": "582840afc6684cbc32753bb95e46278c",
+    "semantic_hash": "582840afc6684cbc32753bb95e46278c"
+  },
+  "resources/js/components/ContactDirectory.jsx": {
+    "mtime": 1791896038.7784817,
+    "seen": 1792017681.0461266,
+    "ast_hash": "e791c4ab052a47a80ebfdb0972ff88ba",
+    "semantic_hash": "e791c4ab052a47a80ebfdb0972ff88ba"
+  },
+  "resources/js/components/Dashboard.jsx": {
+    "mtime": 1791430972.2573423,
+    "seen": 1792017681.0461307,
+    "ast_hash": "0c1b79fb42d8ea770693c320cc5d7d54",
+    "semantic_hash": "0c1b79fb42d8ea770693c320cc5d7d54"
+  },
+  "resources/js/components/DataContext.jsx": {
+    "mtime": 1792040925.9567442,
+    "seen": 1792044358.754774,
+    "ast_hash": "548ade9879c169c195ce011c870fa0a3",
+    "semantic_hash": ""
+  },
+  "resources/js/components/DatePickerInput.jsx": {
+    "mtime": 1790056354.6441824,
+    "seen": 1792017681.0461404,
+    "ast_hash": "818ce2d9b39768b0cb4d923789a49b92",
+    "semantic_hash": "818ce2d9b39768b0cb4d923789a49b92"
+  },
+  "resources/js/components/DigitalServices.jsx": {
+    "mtime": 1790056354.6441824,
+    "seen": 1792017681.0461445,
+    "ast_hash": "a2dbdd158b3f4362931e71fe05b1d514",
+    "semantic_hash": "a2dbdd158b3f4362931e71fe05b1d514"
+  },
+  "resources/js/components/DocumentViewerModal.jsx": {
+    "mtime": 1790056354.6441824,
+    "seen": 1792017681.0461485,
+    "ast_hash": "9ea2d3bd5100ec4367273caa2d5c65f5",
+    "semantic_hash": "9ea2d3bd5100ec4367273caa2d5c65f5"
+  },
+  "resources/js/components/Documents.jsx": {
+    "mtime": 1791980131.294177,
+    "seen": 1792017681.0461538,
+    "ast_hash": "0b934688b349733d5c0934ed09b38cf4",
+    "semantic_hash": "0b934688b349733d5c0934ed09b38cf4"
+  },
+  "resources/js/components/ErrorBoundary.jsx": {
+    "mtime": 1790056354.6452024,
+    "seen": 1792017681.0461586,
+    "ast_hash": "c2990cea0388aa8959da8fcc7a80add3",
+    "semantic_hash": "c2990cea0388aa8959da8fcc7a80add3"
+  },
+  "resources/js/components/ExportReportModal.jsx": {
+    "mtime": 1792041388.9580464,
+    "seen": 1792044358.756427,
+    "ast_hash": "fe6c552aaa3e730e5df3437aedc12d6c",
+    "semantic_hash": ""
+  },
+  "resources/js/components/ImagePostFxModal.jsx": {
+    "mtime": 1791980686.8909693,
+    "seen": 1792017681.0461686,
+    "ast_hash": "5fb0b26bf158b5e3d9774d9c748d8d71",
+    "semantic_hash": "5fb0b26bf158b5e3d9774d9c748d8d71"
+  },
+  "resources/js/components/Issuances.jsx": {
+    "mtime": 1791979823.5749874,
+    "seen": 1792017681.0461733,
+    "ast_hash": "25a397985b2aae1133f80f1e3250331b",
+    "semantic_hash": "25a397985b2aae1133f80f1e3250331b"
+  },
+  "resources/js/components/Issuances.test.jsx": {
+    "mtime": 1790056354.6472259,
+    "seen": 1792017681.0461776,
+    "ast_hash": "d89887dc234d186ef360f26314700663",
+    "semantic_hash": "d89887dc234d186ef360f26314700663"
+  },
+  "resources/js/components/Landing.jsx": {
+    "mtime": 1792044060.580509,
+    "seen": 1792044358.7574322,
+    "ast_hash": "87e0125e88fc37726d39d95c238dca7d",
+    "semantic_hash": ""
+  },
+  "resources/js/components/LandingCanvaReference.jsx": {
+    "mtime": 1790777030.2763753,
+    "seen": 1792017681.0461879,
+    "ast_hash": "5ae8be43499bca2997f72d79f2d45870",
+    "semantic_hash": "5ae8be43499bca2997f72d79f2d45870"
+  },
+  "resources/js/components/Layout.jsx": {
+    "mtime": 1792043986.1954727,
+    "seen": 1792044358.757771,
+    "ast_hash": "f6c201b1e9610bd41a465b2ca87d7131",
+    "semantic_hash": ""
+  },
+  "resources/js/components/LoadingSpinner.jsx": {
+    "mtime": 1790056354.6482446,
+    "seen": 1792017681.0461974,
+    "ast_hash": "70204f98bc4aae9a34c637d100d689d5",
+    "semantic_hash": "70204f98bc4aae9a34c637d100d689d5"
+  },
+  "resources/js/components/Login.jsx": {
+    "mtime": 1790056354.6492963,
+    "seen": 1792017681.0462027,
+    "ast_hash": "b14b0f7b244ab796a645a92ec1ba9deb",
+    "semantic_hash": "b14b0f7b244ab796a645a92ec1ba9deb"
+  },
+  "resources/js/components/Mapping.jsx": {
+    "mtime": 1791980365.5740955,
+    "seen": 1792017681.0462072,
+    "ast_hash": "61c66ff843eff39c5e57c1da942563fe",
+    "semantic_hash": "61c66ff843eff39c5e57c1da942563fe"
+  },
+  "resources/js/components/MobileDeviceLayout.jsx": {
+    "mtime": 1791424876.364892,
+    "seen": 1792017681.0462124,
+    "ast_hash": "3de33a4fa5de11179504e3c79926b0f6",
+    "semantic_hash": "3de33a4fa5de11179504e3c79926b0f6"
+  },
+  "resources/js/components/ModalContext.jsx": {
+    "mtime": 1790056354.6503215,
+    "seen": 1792017681.046218,
+    "ast_hash": "078be9fea9801f9340d9d9531a3f4264",
+    "semantic_hash": "078be9fea9801f9340d9d9531a3f4264"
+  },
+  "resources/js/components/OcrFormPanel.jsx": {
+    "mtime": 1791979286.002206,
+    "seen": 1792017681.046222,
+    "ast_hash": "3e9dfa5c86ee7d38f867fde6d070f4ef",
+    "semantic_hash": "3e9dfa5c86ee7d38f867fde6d070f4ef"
+  },
+  "resources/js/components/PageTransition.jsx": {
+    "mtime": 1790056354.6522887,
+    "seen": 1792017681.0462265,
+    "ast_hash": "dd55fb9a47391aed704596d4aa2b5a96",
+    "semantic_hash": "dd55fb9a47391aed704596d4aa2b5a96"
+  },
+  "resources/js/components/Pagination.jsx": {
+    "mtime": 1791431429.9123237,
+    "seen": 1792017681.0462315,
+    "ast_hash": "8bfcedebaaf9fc3f8072042b9986e7a6",
+    "semantic_hash": "8bfcedebaaf9fc3f8072042b9986e7a6"
+  },
+  "resources/js/components/PasswordConfirmModal.jsx": {
+    "mtime": 1790056354.6527948,
+    "seen": 1792017681.0462358,
+    "ast_hash": "9e63ce13062138cadd464ba9ddc70448",
+    "semantic_hash": "9e63ce13062138cadd464ba9ddc70448"
+  },
+  "resources/js/components/PendingRequests.jsx": {
+    "mtime": 1792043957.817341,
+    "seen": 1792044358.7614198,
+    "ast_hash": "311110da24cb9b996c8e66b5d3f10e3b",
+    "semantic_hash": ""
+  },
+  "resources/js/components/PublicLayout.jsx": {
+    "mtime": 1792044002.430508,
+    "seen": 1792044358.7614262,
+    "ast_hash": "d03e6428f04d0560f00a108973a29d70",
+    "semantic_hash": ""
+  },
+  "resources/js/components/Reports.jsx": {
+    "mtime": 1792041369.1886923,
+    "seen": 1792044358.7614326,
+    "ast_hash": "57fced0cb977c56c4231879d21753a53",
+    "semantic_hash": ""
+  },
+  "resources/js/components/SaveToasts.jsx": {
+    "mtime": 1790056354.6548269,
+    "seen": 1792017681.0462568,
+    "ast_hash": "b0a70fff85c02e42da784521067003fd",
+    "semantic_hash": "b0a70fff85c02e42da784521067003fd"
+  },
+  "resources/js/components/SignaturePad.jsx": {
+    "mtime": 1791980975.4703302,
+    "seen": 1792017681.0462618,
+    "ast_hash": "c6a4f806708b4a1e4ce4db43e3fb0136",
+    "semantic_hash": "c6a4f806708b4a1e4ce4db43e3fb0136"
+  },
+  "resources/js/components/SkeletonLoader.jsx": {
+    "mtime": 1790056354.6561327,
+    "seen": 1792017681.0462663,
+    "ast_hash": "41b61dce3fe3b78608b2492e6cf82931",
+    "semantic_hash": "41b61dce3fe3b78608b2492e6cf82931"
+  },
+  "resources/js/components/TemplateDesigner.jsx": {
+    "mtime": 1791981006.6103704,
+    "seen": 1792017681.0462704,
+    "ast_hash": "3f26f0627911e7a27d9e43f9e947c88e",
+    "semantic_hash": "3f26f0627911e7a27d9e43f9e947c88e"
+  },
+  "resources/js/components/Templates.jsx": {
+    "mtime": 1790056354.657475,
+    "seen": 1792017681.0462751,
+    "ast_hash": "487626597f193bba0f0f000242aac08d",
+    "semantic_hash": "487626597f193bba0f0f000242aac08d"
+  },
+  "resources/js/components/TicketScannerModal.jsx": {
+    "mtime": 1791435876.3280952,
+    "seen": 1792017681.0462794,
+    "ast_hash": "6f42e9ed1bc654592f99017cd0965a29",
+    "semantic_hash": "6f42e9ed1bc654592f99017cd0965a29"
+  },
+  "resources/js/components/Ticketing.jsx": {
+    "mtime": 1792044093.917173,
+    "seen": 1792044358.7634537,
+    "ast_hash": "f0ca257fbf8bf7775e4c2a3c62b0e7d2",
+    "semantic_hash": ""
+  },
+  "resources/js/components/Users.jsx": {
+    "mtime": 1790056354.6594946,
+    "seen": 1792017681.0462897,
+    "ast_hash": "bb0a7781402df7622b60cb0d4d23489d",
+    "semantic_hash": "bb0a7781402df7622b60cb0d4d23489d"
+  },
+  "resources/js/components/captureEngine.js": {
+    "mtime": 1791980582.6173575,
+    "seen": 1792017681.0462945,
+    "ast_hash": "b57ef5c42dc1cc7aeed071ba2844defb",
+    "semantic_hash": "b57ef5c42dc1cc7aeed071ba2844defb"
+  },
+  "resources/js/components/forms/BirthCertificateConfig.js": {
+    "mtime": 1791939288.0087814,
+    "seen": 1792017681.0463004,
+    "ast_hash": "8da337b93be4ee34cfce26f7822bc0d7",
+    "semantic_hash": "8da337b93be4ee34cfce26f7822bc0d7"
+  },
+  "resources/js/components/forms/DeathCertificateConfig.js": {
+    "mtime": 1791430215.7185545,
+    "seen": 1792017681.046305,
+    "ast_hash": "88f7ec22608ea9ad18fa45480f621e48",
+    "semantic_hash": "88f7ec22608ea9ad18fa45480f621e48"
+  },
+  "resources/js/components/forms/MarriageCertificateConfig.js": {
+    "mtime": 1790059598.8706274,
+    "seen": 1792017681.0463097,
+    "ast_hash": "d54aad151e8051c1068cd45b23eadfc9",
+    "semantic_hash": "d54aad151e8051c1068cd45b23eadfc9"
+  },
+  "resources/js/components/forms/SharedConfig.js": {
+    "mtime": 1790059508.3676097,
+    "seen": 1792017681.0463142,
+    "ast_hash": "790cbdd7f553b299c79ac5161a6c46bc",
+    "semantic_hash": "790cbdd7f553b299c79ac5161a6c46bc"
+  },
+  "resources/js/hooks/useDebounce.js": {
+    "mtime": 1790056354.6625292,
+    "seen": 1792017681.0463214,
+    "ast_hash": "f7154c02fbe25892936bcde8fdde226c",
+    "semantic_hash": "f7154c02fbe25892936bcde8fdde226c"
+  },
+  "resources/js/test/setup.js": {
+    "mtime": 1790056354.6635342,
+    "seen": 1792017681.046326,
+    "ast_hash": "00e47f7b9836e8f731101981fa2bb2de",
+    "semantic_hash": "00e47f7b9836e8f731101981fa2bb2de"
+  },
+  "resources/js/utils/uploadPreprocess.js": {
+    "mtime": 1790056354.6635342,
+    "seen": 1792017681.0463307,
+    "ast_hash": "1274e131a230a805a93a5e3a25fe6708",
+    "semantic_hash": "1274e131a230a805a93a5e3a25fe6708"
+  },
+  "resources/views/app.blade.php": {
+    "mtime": 1790056354.6645591,
+    "seen": 1792017681.0463386,
+    "ast_hash": "d2bd03f6c4020f93c56157c2a3828a23",
+    "semantic_hash": "d2bd03f6c4020f93c56157c2a3828a23"
+  },
+  "resources/views/emails/ticket_confirmation.blade.php": {
+    "mtime": 1790780009.5802917,
+    "seen": 1792017681.0463436,
+    "ast_hash": "dbf709acd92320faac9e96e5acbfdca0",
+    "semantic_hash": "dbf709acd92320faac9e96e5acbfdca0"
+  },
+  "resources/views/emails/tickets/declined.blade.php": {
+    "mtime": 1790056354.6655705,
+    "seen": 1792017681.0463517,
+    "ast_hash": "9d5ae6b80a03bd7b5c5915469674d2cb",
+    "semantic_hash": "9d5ae6b80a03bd7b5c5915469674d2cb"
+  },
+  "resources/views/mail/verification_code.blade.php": {
+    "mtime": 1790056354.666575,
+    "seen": 1792017681.046365,
+    "ast_hash": "5293431f732cd632bc796c03f649892c",
+    "semantic_hash": "5293431f732cd632bc796c03f649892c"
+  },
+  "resources/views/pdf/certificate.blade.php": {
+    "mtime": 1790056354.6687622,
+    "seen": 1792017681.0463767,
+    "ast_hash": "077e1e26e8e72b2a3c41f3afaa7c6ea4",
+    "semantic_hash": "077e1e26e8e72b2a3c41f3afaa7c6ea4"
+  },
+  "resources/views/pdf/composite_document.blade.php": {
+    "mtime": 1790056354.6687622,
+    "seen": 1792017681.046388,
+    "ast_hash": "11318331eebf6b21e34a294bb2a67f65",
+    "semantic_hash": "11318331eebf6b21e34a294bb2a67f65"
+  },
+  "resources/views/pdf/ocr_report.blade.php": {
+    "mtime": 1790056354.6687622,
+    "seen": 1792017681.046397,
+    "ast_hash": "c7b19e8c0487c7109754e06458abeffe",
+    "semantic_hash": "c7b19e8c0487c7109754e06458abeffe"
+  },
+  "resources/views/welcome.blade.php": {
+    "mtime": 1790056354.6699376,
+    "seen": 1792017681.046406,
+    "ast_hash": "f9f90b3bab40fd1d366e9b54466deac7",
+    "semantic_hash": "f9f90b3bab40fd1d366e9b54466deac7"
+  },
+  "routes/api.php": {
+    "mtime": 1792040691.187564,
+    "seen": 1792044358.7691567,
+    "ast_hash": "89c2ec4f416d13cc9518c99a93164123",
+    "semantic_hash": ""
+  },
+  "routes/console.php": {
+    "mtime": 1791418369.063562,
+    "seen": 1792017681.0464368,
+    "ast_hash": "5021b60458d9bdb2e1e6396a2fa50b31",
+    "semantic_hash": "5021b60458d9bdb2e1e6396a2fa50b31"
+  },
+  "routes/web.php": {
+    "mtime": 1790056354.6709454,
+    "seen": 1792017681.0464454,
+    "ast_hash": "0af12adff9992d3408de595f6a784f5a",
+    "semantic_hash": "0af12adff9992d3408de595f6a784f5a"
+  },
+  "tailwind.config.js": {
+    "mtime": 1790056354.677025,
+    "seen": 1792017681.0464528,
+    "ast_hash": "de2b3dd425c1ab5bf1a88534ee7cd465",
+    "semantic_hash": "de2b3dd425c1ab5bf1a88534ee7cd465"
+  },
+  "test_issuance_update.php": {
+    "mtime": 1790056354.677025,
+    "seen": 1792017681.0464606,
+    "ast_hash": "38502a347a5a622e1401157faaddb46a",
+    "semantic_hash": "38502a347a5a622e1401157faaddb46a"
+  },
+  "tests/Feature/CertificatePdfTest.php": {
+    "mtime": 1790059880.5187516,
+    "seen": 1792017681.046469,
+    "ast_hash": "a922020c9f1938e1e24fc90f68586808",
+    "semantic_hash": "a922020c9f1938e1e24fc90f68586808"
+  },
+  "tests/Feature/DashboardStatsTest.php": {
+    "mtime": 1790056354.6780472,
+    "seen": 1792017681.0464773,
+    "ast_hash": "1a9e599d42fada57c975afc269e61ff3",
+    "semantic_hash": "1a9e599d42fada57c975afc269e61ff3"
+  },
+  "tests/Feature/DocumentArchiveTest.php": {
+    "mtime": 1790056354.6780472,
+    "seen": 1792017681.0464852,
+    "ast_hash": "889a0eb8f2c5810b6cc92ec7b80dcf98",
+    "semantic_hash": "889a0eb8f2c5810b6cc92ec7b80dcf98"
+  },
+  "tests/Feature/DocumentValidationTest.php": {
+    "mtime": 1790058499.7263093,
+    "seen": 1792017681.0464933,
+    "ast_hash": "f39f2d3d754ede0f4dfd916df480de79",
+    "semantic_hash": "f39f2d3d754ede0f4dfd916df480de79"
+  },
+  "tests/Feature/ExampleTest.php": {
+    "mtime": 1790056354.6780472,
+    "seen": 1792017681.0465019,
+    "ast_hash": "9a1a698c66e5b7f524c6857219e77085",
+    "semantic_hash": "9a1a698c66e5b7f524c6857219e77085"
+  },
+  "tests/Feature/ManualRegistrationDuplicateTest.php": {
+    "mtime": 1790064270.358373,
+    "seen": 1792017681.0465095,
+    "ast_hash": "a835ec7bfd8b6c66aa570f581b19248e",
+    "semantic_hash": "a835ec7bfd8b6c66aa570f581b19248e"
+  },
+  "tests/Feature/PrintApprovalTest.php": {
+    "mtime": 1790056354.6790547,
+    "seen": 1792017681.0465164,
+    "ast_hash": "95a3cce5a6555a63a9533210d1f62ccc",
+    "semantic_hash": "95a3cce5a6555a63a9533210d1f62ccc"
+  },
+  "tests/Feature/RbacSecurityTest.php": {
+    "mtime": 1790056354.6790547,
+    "seen": 1792017681.046524,
+    "ast_hash": "d5fa2b31728fb2fd4ca4d0c5350f17ee",
+    "semantic_hash": "d5fa2b31728fb2fd4ca4d0c5350f17ee"
+  },
+  "tests/TestCase.php": {
+    "mtime": 1790056354.6790547,
+    "seen": 1792017681.0465333,
+    "ast_hash": "0dc4cca1b56812c4cbeee8ee7580401e",
+    "semantic_hash": "0dc4cca1b56812c4cbeee8ee7580401e"
+  },
+  "tests/Unit/ExampleTest.php": {
+    "mtime": 1790056354.6800587,
+    "seen": 1792017681.0465415,
+    "ast_hash": "b1d8c807d194c02d3c2c588d1481745e",
+    "semantic_hash": "b1d8c807d194c02d3c2c588d1481745e"
+  },
+  "vite.config.js": {
+    "mtime": 1790056354.6800587,
+    "seen": 1792017681.046549,
+    "ast_hash": "0704c38393071a59f3f8f48fb2d63cf9",
+    "semantic_hash": "0704c38393071a59f3f8f48fb2d63cf9"
+  },
+  "database/migrations/2026_10_15_000001_add_consent_form_path_to_tickets_table.php": {
+    "mtime": 1792040466.6031778,
+    "seen": 1792044358.7452893,
+    "ast_hash": "c025fe8a4c22d098012fd04e1dd52201",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1791881449.476052,
+    "seen": 1792044358.774074,
+    "ast_hash": "2cc08755c9dfeef01edaf3c31e60fd0f",
+    "semantic_hash": ""
+  },
+  "TODO/INDEX.md": {
+    "mtime": 1790056354.3288488,
+    "seen": 1792044358.7740808,
+    "ast_hash": "227bc7f65ee22fab2f469d4ab124ca13",
+    "semantic_hash": ""
+  },
+  "TODO/TODO-2024-01-React-Migration.md": {
+    "mtime": 1790056354.3288488,
+    "seen": 1792044358.7740865,
+    "ast_hash": "8e43183e971ca55d4fa92cde20d6e90a",
+    "semantic_hash": ""
+  },
+  "TODO/TODO-2025-03-Alert-to-Popup.md": {
+    "mtime": 1790056354.3298533,
+    "seen": 1792044358.7740912,
+    "ast_hash": "8ad6bf6682c4240c1bf6d9d384a7c0cc",
+    "semantic_hash": ""
+  },
+  "TODO/TODO-Fixes-Plan.md": {
+    "mtime": 1790056354.3298533,
+    "seen": 1792044358.7740955,
+    "ast_hash": "baa709d97cee6d4b248f8f4561ebd366",
+    "semantic_hash": ""
+  },
+  "TODO/TODO-icon-migration.md": {
+    "mtime": 1790056354.3298533,
+    "seen": 1792044358.7741015,
+    "ast_hash": "e636b704ece79424db09a631d25d20b0",
+    "semantic_hash": ""
+  },
+  "TODO/template.md": {
+    "mtime": 1790056354.3308601,
+    "seen": 1792044358.774106,
+    "ast_hash": "01a6f754f4fc80c9b51c01db8a1f4473",
+    "semantic_hash": ""
+  },
+  "defense_materials/app_directory_explanation.md": {
+    "mtime": 1790056354.4422033,
+    "seen": 1792044358.7741108,
+    "ast_hash": "4529a3b45232a94becc156ae98810ec0",
+    "semantic_hash": ""
+  },
+  "defense_materials/bootstrap_and_config_explanation.md": {
+    "mtime": 1790056354.4422033,
+    "seen": 1792044358.7741153,
+    "ast_hash": "b9291ebe5fa268cde077ba11997dddef",
+    "semantic_hash": ""
+  },
+  "defense_materials/data_flow_diagram.md": {
+    "mtime": 1790056354.443216,
+    "seen": 1792044358.77412,
+    "ast_hash": "83ee179d75c9f4a85f27634e63339434",
+    "semantic_hash": ""
+  },
+  "defense_materials/database_directory_explanation.md": {
+    "mtime": 1790056354.443216,
+    "seen": 1792044358.7741249,
+    "ast_hash": "9b97562cb6d33414e2da75d42f0b170e",
+    "semantic_hash": ""
+  },
+  "defense_materials/database_schema_and_flow.md": {
+    "mtime": 1790056354.444226,
+    "seen": 1792044358.7741299,
+    "ast_hash": "11f4a45a9bdcb4ca52652cb558a65d37",
+    "semantic_hash": ""
+  },
+  "defense_materials/entity_relationship_diagram.md": {
+    "mtime": 1790056354.444226,
+    "seen": 1792044358.7741346,
+    "ast_hash": "0e67929964ca594fd57ac53c5a9db6fe",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/ActivityLogController.php.md": {
+    "mtime": 1790056354.4452314,
+    "seen": 1792044358.774139,
+    "ast_hash": "0232174db93a32bc06a8d0b6c4bba244",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/AnnouncementController.php.md": {
+    "mtime": 1790056354.4452314,
+    "seen": 1792044358.7741437,
+    "ast_hash": "b18cbfda4b10460f098d93d1bc2713a8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/AuthController.php.md": {
+    "mtime": 1790056354.446241,
+    "seen": 1792044358.7741537,
+    "ast_hash": "221d6ccd33a9ea980003f50447a57d75",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/BarangayController.php.md": {
+    "mtime": 1790056354.446241,
+    "seen": 1792044358.7741585,
+    "ast_hash": "943ee0f4344a7a5351c76044d017c0bc",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/Controller.php.md": {
+    "mtime": 1790056354.4472473,
+    "seen": 1792044358.7741635,
+    "ast_hash": "4f405901dabcbc978e7481c2d8ae914f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/DashboardController.php.md": {
+    "mtime": 1790056354.4472473,
+    "seen": 1792044358.774168,
+    "ast_hash": "022ad409f1a58314ce626faacc7455cf",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/DocumentController.php.md": {
+    "mtime": 1790056354.4482613,
+    "seen": 1792044358.7741728,
+    "ast_hash": "3faad0c751f9bf7020ba2a676b835139",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/IssuanceController.php.md": {
+    "mtime": 1790056354.4482613,
+    "seen": 1792044358.774177,
+    "ast_hash": "83da1d6a9e0f065db63be037999723ff",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/OcrController.php.md": {
+    "mtime": 1790056354.4482613,
+    "seen": 1792044358.7741816,
+    "ast_hash": "f416f7a434a3b099ef63d979f748c149",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/PublicController.php.md": {
+    "mtime": 1790056354.4482613,
+    "seen": 1792044358.7741861,
+    "ast_hash": "eb3e5afa264cd5f8d46223d769ccadb7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/SettingController.php.md": {
+    "mtime": 1790056354.4496925,
+    "seen": 1792044358.7741911,
+    "ast_hash": "fd0ca38b7d99871ff16caf94bf4dcb8c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/TemplateController.php.md": {
+    "mtime": 1790056354.4496925,
+    "seen": 1792044358.7741954,
+    "ast_hash": "2cb41295b91147ffb1714595870488d1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/TicketController.php.md": {
+    "mtime": 1790056354.4508388,
+    "seen": 1792044358.774201,
+    "ast_hash": "8ffcb1907b9776bdbad58829b66d3377",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/UserController.php.md": {
+    "mtime": 1790056354.4508388,
+    "seen": 1792044358.7742052,
+    "ast_hash": "5f8d045bf1946d5928b9e1aeb9f7fbcd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Controllers/VerificationController.php.md": {
+    "mtime": 1790056354.4508388,
+    "seen": 1792044358.7742095,
+    "ast_hash": "9a162f0f957b858a737a840dbb3051dd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Middleware/AdminRoleMiddleware.php.md": {
+    "mtime": 1790056354.4518585,
+    "seen": 1792044358.7742136,
+    "ast_hash": "a15f69592264ca9b6add1ad2829b99af",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Middleware/RequireSessionAuth.php.md": {
+    "mtime": 1790056354.4518585,
+    "seen": 1792044358.774218,
+    "ast_hash": "53e52d80b57b9446ef3d40776c4c82ad",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Http/Middleware/SuperAdminRoleMiddleware.php.md": {
+    "mtime": 1790056354.452866,
+    "seen": 1792044358.7742226,
+    "ast_hash": "4ce1d66b3e8fe1140fcd83db3e1c0e76",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Jobs/ProcessDocumentOcr.php.md": {
+    "mtime": 1790056354.452866,
+    "seen": 1792044358.7742274,
+    "ast_hash": "af0557561cf4e0953af17f3c5e36a421",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Jobs/ProcessImageOcrJob.php.md": {
+    "mtime": 1790056354.453871,
+    "seen": 1792044358.774232,
+    "ast_hash": "def77868928d72d3d64255975ed74296",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Mail/TicketConfirmation.php.md": {
+    "mtime": 1790056354.453871,
+    "seen": 1792044358.774236,
+    "ast_hash": "a54e9b182012d9193083b44caa51e9db",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Mail/TicketDeclinedMail.php.md": {
+    "mtime": 1790056354.453871,
+    "seen": 1792044358.77424,
+    "ast_hash": "e8cc711e4258d744012d8472a7d47501",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Mail/VerificationCodeMail.php.md": {
+    "mtime": 1790056354.4548965,
+    "seen": 1792044358.774244,
+    "ast_hash": "d2f2e6ec9fc757e4c51157eaad69c117",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/ActivityLog.php.md": {
+    "mtime": 1790056354.4548965,
+    "seen": 1792044358.7742481,
+    "ast_hash": "ec48f7aa4be618bd51cabf214d13aa18",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/Announcement.php.md": {
+    "mtime": 1790056354.4548965,
+    "seen": 1792044358.774252,
+    "ast_hash": "d036db4c0b8ad11174e2484de5ab6060",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/Document.php.md": {
+    "mtime": 1790056354.4559011,
+    "seen": 1792044358.7742572,
+    "ast_hash": "1f2301a4795d29e576481827adee7a79",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/DocumentHistoryLog.php.md": {
+    "mtime": 1790056354.4559011,
+    "seen": 1792044358.7742615,
+    "ast_hash": "f76bfb8367bd8c92362bcacbf8978837",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/DocumentOcrPage.php.md": {
+    "mtime": 1790056354.4559011,
+    "seen": 1792044358.7742655,
+    "ast_hash": "598a54198069fea6c09302129a30ac9a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/Issuance.php.md": {
+    "mtime": 1790056354.4569092,
+    "seen": 1792044358.7742693,
+    "ast_hash": "8e4780df67338a824d08fd31c1b96611",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/Setting.php.md": {
+    "mtime": 1790056354.4569092,
+    "seen": 1792044358.7742743,
+    "ast_hash": "73b4515a8d7305b108fea6c08a1905d0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/Ticket.php.md": {
+    "mtime": 1790056354.4569092,
+    "seen": 1792044358.7742784,
+    "ast_hash": "fbebb29b42bc0a09d4f41bba44078965",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/User.php.md": {
+    "mtime": 1790056354.4579134,
+    "seen": 1792044358.774283,
+    "ast_hash": "c021075b87a3e2bb5af1bd144367b054",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Models/VerificationCode.php.md": {
+    "mtime": 1790056354.4579134,
+    "seen": 1792044358.774287,
+    "ast_hash": "3584496a2c30d2c728bafb2ef9866b7c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Providers/AppServiceProvider.php.md": {
+    "mtime": 1790056354.4579134,
+    "seen": 1792044358.7742915,
+    "ast_hash": "b40aeb09978233624f79ad0df51014c8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Services/OcrParserService.php.md": {
+    "mtime": 1790056354.458921,
+    "seen": 1792044358.7742958,
+    "ast_hash": "22c7edc99316ea56440509efd163a335",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/app/Services/TemplateConfigService.php.md": {
+    "mtime": 1790056354.458921,
+    "seen": 1792044358.7743,
+    "ast_hash": "d6553d836315a9a4cc05c50cdc96870b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/bootstrap/app.php.md": {
+    "mtime": 1790056354.459925,
+    "seen": 1792044358.774305,
+    "ast_hash": "1a5aea6941f1a56e7f290c6934e6639c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/bootstrap/cache/.gitignore.md": {
+    "mtime": 1790056354.459925,
+    "seen": 1792044358.7743094,
+    "ast_hash": "0ca9c0f9f2db4f5a44c8c3f21f50051a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/bootstrap/cache/packages.php.md": {
+    "mtime": 1790056354.460932,
+    "seen": 1792044358.7743132,
+    "ast_hash": "00fbc65768273775c7cdb62b350b659d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/bootstrap/cache/services.php.md": {
+    "mtime": 1790056354.460932,
+    "seen": 1792044358.7743173,
+    "ast_hash": "c9d813f5ac8761ce754d3a4422640ee9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/bootstrap/providers.php.md": {
+    "mtime": 1790056354.460932,
+    "seen": 1792044358.7743213,
+    "ast_hash": "b9f35001b673d7162fc2045cf532624a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/app.php.md": {
+    "mtime": 1790056354.460932,
+    "seen": 1792044358.7743258,
+    "ast_hash": "e2b21c168f8c06efe40655f25b66f3ae",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/auth.php.md": {
+    "mtime": 1790056354.4619362,
+    "seen": 1792044358.77433,
+    "ast_hash": "cac1472c0d116824ece4e7ddc3fbb3c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/cache.php.md": {
+    "mtime": 1790056354.4619362,
+    "seen": 1792044358.7743337,
+    "ast_hash": "68fdf0869e41abe70cb85ed1dd6fa416",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/cors.php.md": {
+    "mtime": 1790056354.4619362,
+    "seen": 1792044358.774338,
+    "ast_hash": "e93bed2fcce8f2cb05b73177bb9ba252",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/database.php.md": {
+    "mtime": 1790056354.4629486,
+    "seen": 1792044358.7743418,
+    "ast_hash": "9b329f8053dc11f49981f51bbdadf1b5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/filesystems.php.md": {
+    "mtime": 1790056354.4629486,
+    "seen": 1792044358.7743475,
+    "ast_hash": "a58a1dbb62790ba256f028d9736650b8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/logging.php.md": {
+    "mtime": 1790056354.4629486,
+    "seen": 1792044358.7743514,
+    "ast_hash": "6dfa7693fbefbd5375feb06dfde469d4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/mail.php.md": {
+    "mtime": 1790056354.4639533,
+    "seen": 1792044358.7743552,
+    "ast_hash": "955b38ed0feeb385eac53f05d59cb55a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/queue.php.md": {
+    "mtime": 1790056354.4639533,
+    "seen": 1792044358.7743592,
+    "ast_hash": "31ed4036e15f7c307a83e9003331f508",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/services.php.md": {
+    "mtime": 1790056354.4639533,
+    "seen": 1792044358.774364,
+    "ast_hash": "56a490b75c0526214f3ba2c04cceee54",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/config/session.php.md": {
+    "mtime": 1790056354.4649806,
+    "seen": 1792044358.7743683,
+    "ast_hash": "130110fac79da33f0ab82e48f07b1511",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/.gitignore.md": {
+    "mtime": 1790056354.4649806,
+    "seen": 1792044358.774372,
+    "ast_hash": "9fad1a0c94fa2831dd4f42204f745859",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/database.sqlite.md": {
+    "mtime": 1790056354.4662485,
+    "seen": 1792044358.7743766,
+    "ast_hash": "ec34ce1e4117791ada7870a5906760f2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/factories/UserFactory.php.md": {
+    "mtime": 1790056354.4662485,
+    "seen": 1792044358.7743807,
+    "ast_hash": "b0227b90671757cc070e29206cee9667",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/0001_01_01_000000_create_users_table.php.md": {
+    "mtime": 1790056354.4672549,
+    "seen": 1792044358.7743847,
+    "ast_hash": "70202f3f061c9d0dd4f68d63dd53d6a3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/0001_01_01_000001_create_cache_table.php.md": {
+    "mtime": 1790056354.4672549,
+    "seen": 1792044358.7743886,
+    "ast_hash": "e53b749e3b857a7618d9faf9a20a3ce2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/0001_01_01_000002_create_jobs_table.php.md": {
+    "mtime": 1790056354.4672549,
+    "seen": 1792044358.7743924,
+    "ast_hash": "3e70677b88fc4834278dbd330fa46d24",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2024_01_15_000001_add_performance_indexes.php.md": {
+    "mtime": 1790056354.468262,
+    "seen": 1792044358.7743967,
+    "ast_hash": "5c8cd0666f513f8e36e9aa70555c68c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_03_24_000001_create_documents_table.php.md": {
+    "mtime": 1790056354.468262,
+    "seen": 1792044358.774401,
+    "ast_hash": "1eb09f6e35a1f789e4e8aaa47bef24f7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_03_24_000002_create_issuances_table.php.md": {
+    "mtime": 1790056354.468262,
+    "seen": 1792044358.7744055,
+    "ast_hash": "5383cb7439dbedf04c9b32c3907b0556",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_03_24_000003_create_barangays_table.php.md": {
+    "mtime": 1790056354.4692707,
+    "seen": 1792044358.7744098,
+    "ast_hash": "5115c44d55675531b57c29a1e8cdf71b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_08_014000_create_activity_logs_table.php.md": {
+    "mtime": 1790056354.4692707,
+    "seen": 1792044358.7744138,
+    "ast_hash": "3aee40735dd7cfbfe7d6782a40ab79c9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_09_000001_create_document_history_logs_table.php.md": {
+    "mtime": 1790056354.4692707,
+    "seen": 1792044358.7744186,
+    "ast_hash": "47c951c43e5cbd34f568a46dcd33983b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_09_000721_add_avatar_to_users_table.php.md": {
+    "mtime": 1790056354.4692707,
+    "seen": 1792044358.7744226,
+    "ast_hash": "8c93903e25633a0bae7286bb42eb3075",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_21_060039_create_settings_table.php.md": {
+    "mtime": 1790056354.4702773,
+    "seen": 1792044358.7744274,
+    "ast_hash": "5808a1a766c1e59af034f7fbfad98b41",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_21_061006_create_announcements_table.php.md": {
+    "mtime": 1790056354.4702773,
+    "seen": 1792044358.7744315,
+    "ast_hash": "63d68d54a2b3b95ee9c199c29aec7103",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_21_065817_create_verification_codes_table.php.md": {
+    "mtime": 1790056354.4702773,
+    "seen": 1792044358.7744367,
+    "ast_hash": "08f7a99dda18e6c14a16913e8d7dd627",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_27_000001_create_document_ocr_pages_table.php.md": {
+    "mtime": 1790056354.4712856,
+    "seen": 1792044358.774441,
+    "ast_hash": "decba27311df53d0bd7891f97ef30ff9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_04_27_092700_create_template_profiles_table.php.md": {
+    "mtime": 1790056354.4712856,
+    "seen": 1792044358.774445,
+    "ast_hash": "435df1e06bedfb57e09ef501c22f8a32",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_18_000001_align_file_storage_and_soft_deletes.php.md": {
+    "mtime": 1790056354.4712856,
+    "seen": 1792044358.7744493,
+    "ast_hash": "2f64d408cf3fd6c74a7d1ebf662773c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_26_000001_create_tickets_table.php.md": {
+    "mtime": 1790056354.4712856,
+    "seen": 1792044358.774453,
+    "ast_hash": "4dcb6e8ca4061b38d952da78523e0efb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_26_101717_add_print_approval_fields_to_issuances_table.php.md": {
+    "mtime": 1790056354.4726396,
+    "seen": 1792044358.774458,
+    "ast_hash": "19edd51d619e4a725a94db4c9951f111",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_27_230000_add_certificate_type_to_issuances.php.md": {
+    "mtime": 1790056354.4726396,
+    "seen": 1792044358.7744625,
+    "ast_hash": "c38d16ba83d4f35f224cc352f341045f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_28_000001_add_qr_fields_to_tickets_table.php.md": {
+    "mtime": 1790056354.4726396,
+    "seen": 1792044358.7744665,
+    "ast_hash": "1505c2c7299b2e5ef6aff458578719c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_28_104539_add_ticket_number_to_issuances_table.php.md": {
+    "mtime": 1790056354.4736354,
+    "seen": 1792044358.7744706,
+    "ast_hash": "adc5fb82dd18e4cf7d57602928e8d0eb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_28_110000_change_extracted_data_to_longtext_in_issuances_table.php.md": {
+    "mtime": 1790056354.4736354,
+    "seen": 1792044358.774475,
+    "ast_hash": "285d6c7b6b449bc7b600814e0bc60c8a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/migrations/2026_05_28_192000_update_tickets_table_v2.php.md": {
+    "mtime": 1790056354.4736354,
+    "seen": 1792044358.774479,
+    "ast_hash": "da0bf7a97de1cab3cb7b135a7d069b40",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/seeders/DashboardSeeder.php.md": {
+    "mtime": 1790056354.4746325,
+    "seen": 1792044358.7744832,
+    "ast_hash": "0ebe3d46c8b080a42227b1e6c36a3f97",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/database/seeders/DatabaseSeeder.php.md": {
+    "mtime": 1790056354.4746325,
+    "seen": 1792044358.7744873,
+    "ast_hash": "f039a618ed21bfb5991bbcd59b3584a1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/.htaccess.md": {
+    "mtime": 1790056354.4756296,
+    "seen": 1792044358.7744913,
+    "ast_hash": "8918aea118a689f233bff9d763180612",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/Templates/birth.jpg.md": {
+    "mtime": 1790056354.4756296,
+    "seen": 1792044358.7744958,
+    "ast_hash": "b84cd20d6a3f3bd460d64686bd52c13f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/Templates/death.jpg.md": {
+    "mtime": 1790056354.4756296,
+    "seen": 1792044358.7745001,
+    "ast_hash": "ec685b250b5876f4f89e3e3cd3f574a5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/Templates/marriage.pdf.md": {
+    "mtime": 1790056354.4766252,
+    "seen": 1792044358.7745042,
+    "ast_hash": "7db1c8723de6469fea55ea534b45bd52",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/css/leaflet.css.md": {
+    "mtime": 1790056354.4796157,
+    "seen": 1792044358.7745085,
+    "ast_hash": "b21d1adc30220a44c22ca0bef9684470",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/favicon.ico.md": {
+    "mtime": 1790056354.4796157,
+    "seen": 1792044358.774513,
+    "ast_hash": "916d82c40d3318993e66e36e14c6308c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/index.html.bak.md": {
+    "mtime": 1790056354.4796157,
+    "seen": 1792044358.7745168,
+    "ast_hash": "51f16ea3b4f6e179fcca197f4152fa6f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/index.html.disabled.md": {
+    "mtime": 1790056354.4806128,
+    "seen": 1792044358.7745209,
+    "ast_hash": "869b58940152a071e1e9ae20de56f9cf",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/index.php.md": {
+    "mtime": 1790056354.4806128,
+    "seen": 1792044358.774525,
+    "ast_hash": "815bd75393a99717d8f6888cfca43017",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/js/chart.js.md": {
+    "mtime": 1790056354.4806128,
+    "seen": 1792044358.7745292,
+    "ast_hash": "45efe9e32d7e2bd934fb9aafeba4447d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/js/leaflet.js.md": {
+    "mtime": 1790056354.4817002,
+    "seen": 1792044358.7745333,
+    "ast_hash": "f708071fea7086200b79beb759f53400",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/logo.png.md": {
+    "mtime": 1790056354.4817002,
+    "seen": 1792044358.7745378,
+    "ast_hash": "25566e57a1d97091015212d2244393fd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/robots.txt.md": {
+    "mtime": 1790056354.4817002,
+    "seen": 1792044358.7745416,
+    "ast_hash": "e6ea93b9d05c0957f580b9d686169ae3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/.gitignore.md": {
+    "mtime": 1790056354.4827192,
+    "seen": 1792044358.7745461,
+    "ast_hash": "6222c87872e102a7fa83d05bbbcd28b1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639097-833613327_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4827192,
+    "seen": 1792044358.7745502,
+    "ast_hash": "66b3229f97401632ac76ff1934210e76",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639097-833613327_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4837456,
+    "seen": 1792044358.774555,
+    "ast_hash": "9960d6bb54b74bb1ec4b04b4a3faafc9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639122-830794878_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4837456,
+    "seen": 1792044358.774559,
+    "ast_hash": "d7d61a2b253c8764478728c28c5cc67c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639122-830794878_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4837456,
+    "seen": 1792044358.7745636,
+    "ast_hash": "5984eed0837d1b5bef1a524ed31de79d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639128-216555474_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4847825,
+    "seen": 1792044358.7745674,
+    "ast_hash": "ecc7704450f255a47c232fa787b5fce6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639130-879103671_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4847825,
+    "seen": 1792044358.7745712,
+    "ast_hash": "13c508cbda3e99a869dbe37b1dd496c2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778639130-879103671_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4847825,
+    "seen": 1792044358.774575,
+    "ast_hash": "322ae7a9b79ee0bdd1e217a38c0d4145",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778641472-400364683_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4847825,
+    "seen": 1792044358.7745798,
+    "ast_hash": "96d72afa4b50e1ca260d183cf20ebaae",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778641472-400364683_page_2_proc.jpg.md": {
+    "mtime": 1790056354.485804,
+    "seen": 1792044358.774584,
+    "ast_hash": "cf15d0099edd443f47a9351b4128f9ce",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642149-756695867_page_1_proc.jpg.md": {
+    "mtime": 1790056354.485804,
+    "seen": 1792044358.774588,
+    "ast_hash": "d027cace2d1de348cf59bf2270876916",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642149-756695867_page_2_proc.jpg.md": {
+    "mtime": 1790056354.485804,
+    "seen": 1792044358.7745922,
+    "ast_hash": "0c0eaeb9a8497a10470b94192109dd84",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642676-306961225_page_1_proc.jpg.md": {
+    "mtime": 1790056354.485804,
+    "seen": 1792044358.7745962,
+    "ast_hash": "a629620ab2efbf29e91c8004f97bdee0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642676-306961225_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4868183,
+    "seen": 1792044358.7746007,
+    "ast_hash": "dec1242dd901aec717f60fad14ac8dbe",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642998-995678754_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4868183,
+    "seen": 1792044358.7746053,
+    "ast_hash": "cae6407027db033e779ee9c96e7749ed",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778642998-995678754_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4868183,
+    "seen": 1792044358.774609,
+    "ast_hash": "048f0a474b4a0fe515a41a90398704ac",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778643784-904358041_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4878404,
+    "seen": 1792044358.7746139,
+    "ast_hash": "5694f3911c33e0ed1634fdc0beb0a2f2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778643784-904358041_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4878404,
+    "seen": 1792044358.7746181,
+    "ast_hash": "a72fe6cc52a4759810b89ae4459ab004",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778644959-436395591_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4878404,
+    "seen": 1792044358.7746222,
+    "ast_hash": "6d76cba8cb1130410e3c46635390ecd2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778644959-436395591_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4878404,
+    "seen": 1792044358.7746263,
+    "ast_hash": "3ccb27b46a73df838e0c8f02954b18ea",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778645966-796526270_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4888525,
+    "seen": 1792044358.7746303,
+    "ast_hash": "49bfcb01fa6f0b680494e3f04daa07cd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778645966-796526270_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4888525,
+    "seen": 1792044358.7746348,
+    "ast_hash": "a463d9b3265794e35181d885b8c383a5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647095-372712110_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4888525,
+    "seen": 1792044358.774639,
+    "ast_hash": "ec58f2791fef1d9e6da91f330d554101",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647095-372712110_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4898663,
+    "seen": 1792044358.774643,
+    "ast_hash": "18365650b4d849c86b262164914831e2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647449-417107282_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4898663,
+    "seen": 1792044358.774647,
+    "ast_hash": "6003f4fa00ce7f895d4d5fa47970887c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647449-417107282_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4898663,
+    "seen": 1792044358.774651,
+    "ast_hash": "9fb08a8e42cc5b1672d0f004f06ced01",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647838-194526962_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4898663,
+    "seen": 1792044358.7746558,
+    "ast_hash": "0377e09850e7e9a5307fa42ede0845a3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778647838-194526962_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4908917,
+    "seen": 1792044358.7746596,
+    "ast_hash": "48098b473c4cb4b0bcd302ed10af3368",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778649643-169916742_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4908917,
+    "seen": 1792044358.7746637,
+    "ast_hash": "6cdc4d89233e5c69942f0d1328774e3c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778649643-169916742_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4908917,
+    "seen": 1792044358.7746677,
+    "ast_hash": "420dcbba5fa745ae6007d1f65d411654",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778650247-736022372_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4919014,
+    "seen": 1792044358.7746718,
+    "ast_hash": "b535206905a477d521ee6195a2ca24f9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778650247-736022372_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4919014,
+    "seen": 1792044358.7746763,
+    "ast_hash": "364a27660551b07482dc45450eb47149",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778650732-645702334_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4919014,
+    "seen": 1792044358.7746804,
+    "ast_hash": "0d8cd2eb96cbfcb0ba5569cea5567a66",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778650732-645702334_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4919014,
+    "seen": 1792044358.7746844,
+    "ast_hash": "cf5a96558bece4a8b09d101c0876d87a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778651759-190262570_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4929216,
+    "seen": 1792044358.7746887,
+    "ast_hash": "6d2f40f951cc2e169eb6ff0150ee3ec7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778651759-190262570_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4929216,
+    "seen": 1792044358.774693,
+    "ast_hash": "ef95b8aefeaac983aa51b3e29aaa71b6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778652722-274970352_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4929216,
+    "seen": 1792044358.7746975,
+    "ast_hash": "1c8b6fff3f34101a53072371b9ec6522",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778652722-274970352_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4939308,
+    "seen": 1792044358.774702,
+    "ast_hash": "a016ee54157fe903a43a56ba53a4f108",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778653403-747182798_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4939308,
+    "seen": 1792044358.7747064,
+    "ast_hash": "09fe3242b648af36f337d50c7d32eae9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778653403-747182798_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4939308,
+    "seen": 1792044358.7747104,
+    "ast_hash": "7cd085508efb20395120849a017bcfcd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778653933-317052799_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4939308,
+    "seen": 1792044358.774715,
+    "ast_hash": "a9ed0f588f1a12dc32d6be3bd870049d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778653933-317052799_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4949532,
+    "seen": 1792044358.774719,
+    "ast_hash": "218d4757c2d02f9fae5eafd49e8a3c8b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778654369-675239551_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4949532,
+    "seen": 1792044358.7747233,
+    "ast_hash": "b7c8b59538ce88cf763ec2f1d28eece2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778654369-675239551_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4949532,
+    "seen": 1792044358.7747276,
+    "ast_hash": "61514f411a824aba5286ab446a19de1d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778654601-204734521_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4959686,
+    "seen": 1792044358.7747324,
+    "ast_hash": "2d5321c9c7ea7a27a30f43d42fba143b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778654601-204734521_page_2.jpg.md": {
+    "mtime": 1790056354.4959686,
+    "seen": 1792044358.7747366,
+    "ast_hash": "c445d480cac76d08e11e6842f3651d84",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778654601-204734521_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4959686,
+    "seen": 1792044358.774741,
+    "ast_hash": "3c681bc5d5d1c8f2c5d2199409ea25b8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778655297-301348616_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4959686,
+    "seen": 1792044358.7747452,
+    "ast_hash": "249f36ac87fcd4b3579042c2195352c6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778655297-301348616_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4970343,
+    "seen": 1792044358.774795,
+    "ast_hash": "2b43ab7e540a6c7c1df8c997b51d15fa",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778655990-118157265_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4970343,
+    "seen": 1792044358.7747996,
+    "ast_hash": "7634a8dd468d7f054d5f41d197d60711",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778655990-118157265_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4980636,
+    "seen": 1792044358.7748034,
+    "ast_hash": "5143fbc67f0afd51ad80dd9b16c29718",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778657449-921367783_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4980636,
+    "seen": 1792044358.7748075,
+    "ast_hash": "e01b3642a8f99ee1a28bd4e51e0c6a3f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778657449-921367783_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4980636,
+    "seen": 1792044358.7748122,
+    "ast_hash": "0aca8d639581eefb6c737fac07269521",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778660653-264600071_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4991019,
+    "seen": 1792044358.7748163,
+    "ast_hash": "0a900bb2c298696b464b34a89eca54a0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778660653-264600071_page_2_proc.jpg.md": {
+    "mtime": 1790056354.4991019,
+    "seen": 1792044358.7748206,
+    "ast_hash": "978747ac35da5f21fd4d1ddac6a09d54",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778661447-939634051_page_1.jpg.md": {
+    "mtime": 1790056354.4991019,
+    "seen": 1792044358.7748244,
+    "ast_hash": "be217d911276a36c8af63793f7de6654",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778661447-939634051_page_1_proc.jpg.md": {
+    "mtime": 1790056354.4991019,
+    "seen": 1792044358.774829,
+    "ast_hash": "4a6356adf5647112bbf7a138e4d24439",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778661447-939634051_page_2.jpg.md": {
+    "mtime": 1790056354.5001264,
+    "seen": 1792044358.7748332,
+    "ast_hash": "0032375d9f6c3c63ee360c2334b63cf0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778661447-939634051_page_2_proc.jpg.md": {
+    "mtime": 1790056354.5001264,
+    "seen": 1792044358.7748373,
+    "ast_hash": "e83b9b5b4e5e0917db7c67cfe7804718",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662207-443095665_page_1.jpg.md": {
+    "mtime": 1790056354.5001264,
+    "seen": 1792044358.7748413,
+    "ast_hash": "54733a59c1fdbde6d650789c5dc4ae51",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662207-443095665_page_1_proc.jpg.md": {
+    "mtime": 1790056354.501145,
+    "seen": 1792044358.7748451,
+    "ast_hash": "f9325ecb32be58af6c2a5fc2d3a4a1d2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662207-443095665_page_2.jpg.md": {
+    "mtime": 1790056354.501145,
+    "seen": 1792044358.77485,
+    "ast_hash": "2519eaebf7c07ba8462a71a8af41a290",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662207-443095665_page_2_proc.jpg.md": {
+    "mtime": 1790056354.501145,
+    "seen": 1792044358.7748542,
+    "ast_hash": "cd7f8d5b280b230321e7fb3d3c3f9537",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662898-308727968_page_1.jpg.md": {
+    "mtime": 1790056354.5021603,
+    "seen": 1792044358.7748582,
+    "ast_hash": "20b537572f8f9497dfaf250c6d0a7d72",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662898-308727968_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5021603,
+    "seen": 1792044358.774862,
+    "ast_hash": "c29302defe413eb6cebebe0d863dac4f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662898-308727968_page_2.jpg.md": {
+    "mtime": 1790056354.5021603,
+    "seen": 1792044358.774866,
+    "ast_hash": "ec49b540ac4f95133c8c45ccb76282e4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778662898-308727968_page_2_proc.jpg.md": {
+    "mtime": 1790056354.5021603,
+    "seen": 1792044358.7748706,
+    "ast_hash": "dcc9e9e8b2d96ed82cd5c25b3b8c3326",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663253-739114332_page_1.jpg.md": {
+    "mtime": 1790056354.5031743,
+    "seen": 1792044358.774875,
+    "ast_hash": "8d90c15d300e1140c321a9c971568efa",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663253-739114332_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5031743,
+    "seen": 1792044358.7748787,
+    "ast_hash": "7c14242508e176608f88ec3f5f780112",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663253-739114332_page_2.jpg.md": {
+    "mtime": 1790056354.5031743,
+    "seen": 1792044358.7748828,
+    "ast_hash": "15045524ef891916b09b6ba4156648f0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663253-739114332_page_2_proc.jpg.md": {
+    "mtime": 1790056354.5041952,
+    "seen": 1792044358.7748868,
+    "ast_hash": "9a577ab95b5ad8123cc4b42fd3ac6b90",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663786-516582593_page_1.jpg.md": {
+    "mtime": 1790056354.5041952,
+    "seen": 1792044358.7748907,
+    "ast_hash": "a6c4ddbbdc7267d38ce58ca5ae664405",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663786-516582593_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5041952,
+    "seen": 1792044358.774895,
+    "ast_hash": "d48d5d2f76f30ca77bcb60452d5e991c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663786-516582593_page_2.jpg.md": {
+    "mtime": 1790056354.5041952,
+    "seen": 1792044358.7748992,
+    "ast_hash": "13985a717c1f644dbd197439e0dee7f8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778663786-516582593_page_2_proc.jpg.md": {
+    "mtime": 1790056354.5052142,
+    "seen": 1792044358.7749033,
+    "ast_hash": "46981e7b68dd76ae8ab51c4c248cfcae",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778664718-161662763_page_1.jpg.md": {
+    "mtime": 1790056354.5052142,
+    "seen": 1792044358.7749074,
+    "ast_hash": "6fde5b5ecc9ca2226376150429b2ed6f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778664718-161662763_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5052142,
+    "seen": 1792044358.7749116,
+    "ast_hash": "7551a3c87749aa362570f0d5f3c5feb0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778664718-161662763_page_2.jpg.md": {
+    "mtime": 1790056354.5062256,
+    "seen": 1792044358.7749157,
+    "ast_hash": "ebe3ba7be3f39fd27f85d212775e92a3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778664718-161662763_page_2_proc.jpg.md": {
+    "mtime": 1790056354.5062256,
+    "seen": 1792044358.7749195,
+    "ast_hash": "68b69a6a7593c8eeb9836cf1727e6054",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778665445-134544170_page_1.jpg.md": {
+    "mtime": 1790056354.5062256,
+    "seen": 1792044358.7749236,
+    "ast_hash": "39a2b5e49d33a9c96cb6fcb41e9089c8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778665445-134544170_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5062256,
+    "seen": 1792044358.7749276,
+    "ast_hash": "fd23d24e16033c8e218a6dcee0f44498",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778665445-134544170_page_2.jpg.md": {
+    "mtime": 1790056354.507242,
+    "seen": 1792044358.7749314,
+    "ast_hash": "3b4099642025b7f927ff2929f618e573",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778665445-134544170_page_2_proc.jpg.md": {
+    "mtime": 1790056354.507242,
+    "seen": 1792044358.7749352,
+    "ast_hash": "ccc95b2c69874d62906aa97f9f9e4ffb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778670503-174443547_proc.jpg.md": {
+    "mtime": 1790056354.507242,
+    "seen": 1792044358.7749393,
+    "ast_hash": "eb9cb65f56d54cd4afc224556d9f7ae9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778891934-803139288_page_1.jpg.md": {
+    "mtime": 1790056354.5082579,
+    "seen": 1792044358.774944,
+    "ast_hash": "2044ae338e8499b333013cf5b8dc5103",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778891934-803139288_page_2.jpg.md": {
+    "mtime": 1790056354.5082579,
+    "seen": 1792044358.7749481,
+    "ast_hash": "f46cfae94faf51bda9d9c3d43fc7c92c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778892547-837431737_page_1.jpg.md": {
+    "mtime": 1790056354.5082579,
+    "seen": 1792044358.7749524,
+    "ast_hash": "2215dcfabd4cbd625fd3f44c9afa2762",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1778892547-837431737_page_2.jpg.md": {
+    "mtime": 1790056354.5082579,
+    "seen": 1792044358.7749565,
+    "ast_hash": "944fd6b3a2b4a0548d7e8b069e3f0508",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779013287-639329607_page_1.jpg.md": {
+    "mtime": 1790056354.509274,
+    "seen": 1792044358.7749608,
+    "ast_hash": "2d1e8dc187b9b81639690f5acf1345f5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779013287-639329607_page_2.jpg.md": {
+    "mtime": 1790056354.509274,
+    "seen": 1792044358.7749648,
+    "ast_hash": "92e3ddc886029e76b40b99dfcc67488e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014459-946312454_page_1.jpg.md": {
+    "mtime": 1790056354.509274,
+    "seen": 1792044358.774969,
+    "ast_hash": "f8a392a7595a6504e1369605d971b11b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014459-946312454_page_2.jpg.md": {
+    "mtime": 1790056354.5102954,
+    "seen": 1792044358.7749732,
+    "ast_hash": "160f410233266e37553fc0b1efb14083",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014857-741843586_page_1.jpg.md": {
+    "mtime": 1790056354.5102954,
+    "seen": 1792044358.7749772,
+    "ast_hash": "6bf50211ee98a87f2c8b87241ca7d242",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014857-741843586_page_2.jpg.md": {
+    "mtime": 1790056354.5102954,
+    "seen": 1792044358.7749813,
+    "ast_hash": "ccea64a6c51574e0a3c3533b3c17d808",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014998-937525936_page_1.jpg.md": {
+    "mtime": 1790056354.5113153,
+    "seen": 1792044358.7749853,
+    "ast_hash": "b6eaef791e0db8db8a05070d7d515c75",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779014998-937525936_page_2.jpg.md": {
+    "mtime": 1790056354.5113153,
+    "seen": 1792044358.7749896,
+    "ast_hash": "11f77c9008aa8f9f7b6aba0d1958acfd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779015655-265784521_page_1.jpg.md": {
+    "mtime": 1790056354.5123062,
+    "seen": 1792044358.774997,
+    "ast_hash": "ac486f7b413127dfce50ea0d39728f4b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779015753-306789799_page_1.jpg.md": {
+    "mtime": 1790056354.5123062,
+    "seen": 1792044358.775004,
+    "ast_hash": "0d353e2ea886e3a240aff7e345351560",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779096708-862130812_page_1.jpg.md": {
+    "mtime": 1790056354.5123062,
+    "seen": 1792044358.7750113,
+    "ast_hash": "851b4d6503743aa876d26dc8afc2d535",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779096708-862130812_page_2.jpg.md": {
+    "mtime": 1790056354.513302,
+    "seen": 1792044358.775019,
+    "ast_hash": "9d604442c4b0503a0ee843bc3fdf4812",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779096890-239060958_page_1.jpg.md": {
+    "mtime": 1790056354.513302,
+    "seen": 1792044358.7750273,
+    "ast_hash": "03ecb69a7dab5e79aa003e1cca00e180",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779096890-239060958_page_2.jpg.md": {
+    "mtime": 1790056354.513302,
+    "seen": 1792044358.7750347,
+    "ast_hash": "ec16aa4c9688599656ba0b34cdbf8bb0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779097095-298061042_page_1.jpg.md": {
+    "mtime": 1790056354.5143,
+    "seen": 1792044358.775041,
+    "ast_hash": "571470eacc7aeb6ca03395a31136e9bf",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779097095-298061042_page_2.jpg.md": {
+    "mtime": 1790056354.5143,
+    "seen": 1792044358.7750463,
+    "ast_hash": "7d9755d35206078711fada87a25f629f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779097756-849949427_page_1.jpg.md": {
+    "mtime": 1790056354.5143,
+    "seen": 1792044358.7750506,
+    "ast_hash": "4372fe56fa3f7530c759b33b5bb1604e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779097756-849949427_page_2.jpg.md": {
+    "mtime": 1790056354.5152962,
+    "seen": 1792044358.775055,
+    "ast_hash": "d307902cc21dce27c5a27880b1ef8f14",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098407-183819663_page_1.jpg.md": {
+    "mtime": 1790056354.5152962,
+    "seen": 1792044358.7750587,
+    "ast_hash": "7bb28ef0434b23f4632f6946460dcf11",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098407-183819663_page_2.jpg.md": {
+    "mtime": 1790056354.5152962,
+    "seen": 1792044358.775063,
+    "ast_hash": "22f9d4934f2bc92116415f98c430e306",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098411-249107787_page_1.jpg.md": {
+    "mtime": 1790056354.5152962,
+    "seen": 1792044358.7750669,
+    "ast_hash": "6ef478b369a9033be5451a473a45f0dd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098413-186056009_page_1.jpg.md": {
+    "mtime": 1790056354.516686,
+    "seen": 1792044358.775071,
+    "ast_hash": "28c557c156fec7b2b8c577675c4bc89d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098413-186056009_page_2.jpg.md": {
+    "mtime": 1790056354.516686,
+    "seen": 1792044358.7750757,
+    "ast_hash": "ea4adeeea7f6289c8f3ad0bb8bb56c13",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779098414-887294642_page_1.jpg.md": {
+    "mtime": 1790056354.516686,
+    "seen": 1792044358.7750807,
+    "ast_hash": "22540f6ad83cf5b7348d39ab4fa46a24",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099010-832342541_page_1.jpg.md": {
+    "mtime": 1790056354.5176845,
+    "seen": 1792044358.7750852,
+    "ast_hash": "4eec59a8075e8d4664ae7d9055895d2e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099010-832342541_page_2.jpg.md": {
+    "mtime": 1790056354.5176845,
+    "seen": 1792044358.77509,
+    "ast_hash": "c1c1a8f46342d90209c53ac0547999bb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099011-816447885_page_1.jpg.md": {
+    "mtime": 1790056354.5176845,
+    "seen": 1792044358.7750938,
+    "ast_hash": "eef601619a52e02df36dea384d1c0adb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099024-231871516_page_1.jpg.md": {
+    "mtime": 1790056354.5176845,
+    "seen": 1792044358.775098,
+    "ast_hash": "8ccea1c7abf0dd8a31af06dc71b35fce",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099024-231871516_page_2.jpg.md": {
+    "mtime": 1790056354.518681,
+    "seen": 1792044358.7751021,
+    "ast_hash": "dd3adb4b21d2a048d3f9e586a6a48b2e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099025-270690228_page_1.jpg.md": {
+    "mtime": 1790056354.518681,
+    "seen": 1792044358.7751067,
+    "ast_hash": "ff80ada32af4fd8d31d8a3f5adc579bd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099835-378507920_page_1.jpg.md": {
+    "mtime": 1790056354.518681,
+    "seen": 1792044358.775111,
+    "ast_hash": "4cc5b9404993b7e9e0ee5ee012d0a80d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779099835-378507920_page_2.jpg.md": {
+    "mtime": 1790056354.5196776,
+    "seen": 1792044358.7751155,
+    "ast_hash": "02357659cbd6fe76830c145dad1a701c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100485-429643881_page_1.jpg.md": {
+    "mtime": 1790056354.5196776,
+    "seen": 1792044358.7751198,
+    "ast_hash": "60be0cd6f026271d97eaeb7b8ac5e273",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100485-429643881_page_2.jpg.md": {
+    "mtime": 1790056354.5196776,
+    "seen": 1792044358.7751243,
+    "ast_hash": "2d570280ff690617b2d8c208fe44cf0f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100487-910190836_page_1.jpg.md": {
+    "mtime": 1790056354.5196776,
+    "seen": 1792044358.7751288,
+    "ast_hash": "6ff8f4749a8924db2bcc03f5c1edbfb4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100490-959280352_page_1.jpg.md": {
+    "mtime": 1790056354.5206745,
+    "seen": 1792044358.7751331,
+    "ast_hash": "86a3499e391f04799dd521ffca42c98b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100490-959280352_page_2.jpg.md": {
+    "mtime": 1790056354.5211763,
+    "seen": 1792044358.7751372,
+    "ast_hash": "b409c35ca50a33ffd20af4e306f4eae7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100491-618483654_page_1.jpg.md": {
+    "mtime": 1790056354.5211763,
+    "seen": 1792044358.7751415,
+    "ast_hash": "8a284c9ed19cf943ffbf9cb4f6428919",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100884-193854441_page_1.jpg.md": {
+    "mtime": 1790056354.5211763,
+    "seen": 1792044358.7751453,
+    "ast_hash": "3a5f7ac30ae2877111a398a11b5297dd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779100884-193854441_page_2.jpg.md": {
+    "mtime": 1790056354.5211763,
+    "seen": 1792044358.775149,
+    "ast_hash": "18e066f7b1bdfdf6558e3c656ea8b2fe",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779101463-122773590_page_1.jpg.md": {
+    "mtime": 1790056354.522175,
+    "seen": 1792044358.7751553,
+    "ast_hash": "a48f197f16d3f57c3f57384a3539fc8a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779101463-122773590_page_2.jpg.md": {
+    "mtime": 1790056354.522175,
+    "seen": 1792044358.7751598,
+    "ast_hash": "7ac2d439ded93e6c9dadc78f3fe5bddc",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779101465-970769428_page_1.jpg.md": {
+    "mtime": 1790056354.522175,
+    "seen": 1792044358.7751656,
+    "ast_hash": "c03ae6d8bcdd2f1ff67ddc775c287c64",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779101471-748082577_page_1.jpg.md": {
+    "mtime": 1790056354.523172,
+    "seen": 1792044358.775171,
+    "ast_hash": "f3627323c5c92de7eeb1e576744e3c0f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779101471-748082577_page_2.jpg.md": {
+    "mtime": 1790056354.523172,
+    "seen": 1792044358.775175,
+    "ast_hash": "f018595cbb6dd5f81c813f868906f834",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779667148-255955678_page_1.jpg.md": {
+    "mtime": 1790056354.523172,
+    "seen": 1792044358.775179,
+    "ast_hash": "c4e22a906e4029d9525a07dd4b8b00ac",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779667253-522358330.pdf.md": {
+    "mtime": 1790056354.523172,
+    "seen": 1792044358.7751832,
+    "ast_hash": "00ad4f705574de78497c4f2c9e9fb21f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779667253-522358330_page_1.jpg.md": {
+    "mtime": 1790056354.5241683,
+    "seen": 1792044358.7751877,
+    "ast_hash": "232c44c936abd893d7355f0fb485461f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779667253-522358330_page_2.jpg.md": {
+    "mtime": 1790056354.5241683,
+    "seen": 1792044358.7751923,
+    "ast_hash": "35f1de31028106882754f7bab93d1b40",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779774045-787827154.pdf.md": {
+    "mtime": 1790056354.5241683,
+    "seen": 1792044358.7751963,
+    "ast_hash": "ac65ab93a578675e488660e898683378",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779774045-787827154_page_1.jpg.md": {
+    "mtime": 1790056354.5254166,
+    "seen": 1792044358.7752016,
+    "ast_hash": "29c6eb66a98388bf1bc9db9a2a3f14bd",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779774045-787827154_page_2.jpg.md": {
+    "mtime": 1790056354.5254166,
+    "seen": 1792044358.7752059,
+    "ast_hash": "e33ee064eee4db78ad6a5c4544de46b1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779778102-961991293.pdf.md": {
+    "mtime": 1790056354.5254166,
+    "seen": 1792044358.7752104,
+    "ast_hash": "b045e09655bfb847bf04abbc0caf4dfc",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779778102-961991293_page_1.jpg.md": {
+    "mtime": 1790056354.5254166,
+    "seen": 1792044358.775215,
+    "ast_hash": "9d6985f7f62604a29f20e54077e20e0d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779778102-961991293_page_2.jpg.md": {
+    "mtime": 1790056354.5264132,
+    "seen": 1792044358.7752187,
+    "ast_hash": "969d8e10af28c7f039800a5e5a4bdeb2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779795045-610768643.pdf.md": {
+    "mtime": 1790056354.5264132,
+    "seen": 1792044358.7752295,
+    "ast_hash": "396c71a4f61f7917dc5ab197222f0ea3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779795045-610768643_page_1.jpg.md": {
+    "mtime": 1790056354.5264132,
+    "seen": 1792044358.7752342,
+    "ast_hash": "c58dca457e5166db62727a84b445cc61",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779795045-610768643_page_2.jpg.md": {
+    "mtime": 1790056354.5274098,
+    "seen": 1792044358.7752385,
+    "ast_hash": "3277e2af1775cfc30ca36b15bbde958a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779798337-404423365.pdf.md": {
+    "mtime": 1790056354.5274098,
+    "seen": 1792044358.7752428,
+    "ast_hash": "169f4a73af14db320a24ce6ea502bf27",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779798337-404423365_page_1.jpg.md": {
+    "mtime": 1790056354.5274098,
+    "seen": 1792044358.7752469,
+    "ast_hash": "c3a1647ff018033828f5335b37cfbcdb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779798337-404423365_page_2.jpg.md": {
+    "mtime": 1790056354.5284066,
+    "seen": 1792044358.775251,
+    "ast_hash": "f0a4253e7c0478234e4a852048169f2c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799486-581828114.pdf.md": {
+    "mtime": 1790056354.5284066,
+    "seen": 1792044358.775255,
+    "ast_hash": "e98b85062a8df795c642c370f352c0d9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799486-581828114_page_1.jpg.md": {
+    "mtime": 1790056354.5284066,
+    "seen": 1792044358.7752597,
+    "ast_hash": "c50a6ddee006a88877bed8b44b7dc20f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799486-581828114_page_2.jpg.md": {
+    "mtime": 1790056354.5294032,
+    "seen": 1792044358.775264,
+    "ast_hash": "cd2e33da948bc4d42728790f8d3a2ad1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799710-814549296.pdf.md": {
+    "mtime": 1790056354.5294032,
+    "seen": 1792044358.7752683,
+    "ast_hash": "717d19e4b5b11f4a6a843550c4815678",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799710-814549296_page_1.jpg.md": {
+    "mtime": 1790056354.5294032,
+    "seen": 1792044358.7752862,
+    "ast_hash": "a0c7749ce45e4a4e9502ff2a5a7a2b3d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799710-814549296_page_2.jpg.md": {
+    "mtime": 1790056354.5303998,
+    "seen": 1792044358.7752903,
+    "ast_hash": "0947041949ff26364f69c1386ebc33e6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799777-449994509.pdf.md": {
+    "mtime": 1790056354.5303998,
+    "seen": 1792044358.7752948,
+    "ast_hash": "1aea8dcb70ff324868bd340059edc3b2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799777-449994509_page_1.jpg.md": {
+    "mtime": 1790056354.5303998,
+    "seen": 1792044358.775299,
+    "ast_hash": "565ea74d3b2f8f893703e3ebba584d03",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779799777-449994509_page_2.jpg.md": {
+    "mtime": 1790056354.531398,
+    "seen": 1792044358.775303,
+    "ast_hash": "eea3553fdc318e432174c5b0e85cd6c6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800237-290942756.pdf.md": {
+    "mtime": 1790056354.531398,
+    "seen": 1792044358.775307,
+    "ast_hash": "b22de60fdcd7cb43eae10af6c8e260f3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800237-290942756_page_1.jpg.md": {
+    "mtime": 1790056354.5323935,
+    "seen": 1792044358.775311,
+    "ast_hash": "7283b8accadf9fe87d397a7c7ffa2f46",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800237-290942756_page_2.jpg.md": {
+    "mtime": 1790056354.5323935,
+    "seen": 1792044358.7753153,
+    "ast_hash": "373ccc20ecdbdea7759b8e8d736dbddc",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800642-625269416.pdf.md": {
+    "mtime": 1790056354.5323935,
+    "seen": 1792044358.7753193,
+    "ast_hash": "08b3faa1ba96ccbb33c72389af7ea5e6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800642-625269416_page_1.jpg.md": {
+    "mtime": 1790056354.5333898,
+    "seen": 1792044358.7753234,
+    "ast_hash": "95566193a6f295a9e4790efe84e7c5a3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779800642-625269416_page_2.jpg.md": {
+    "mtime": 1790056354.5333898,
+    "seen": 1792044358.775328,
+    "ast_hash": "3867247e102d75689ab246e8e5604946",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779801587-171175550.pdf.md": {
+    "mtime": 1790056354.5333898,
+    "seen": 1792044358.7753322,
+    "ast_hash": "3ea1a5e172b93d0ca4f82f959b69f7ea",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779801587-171175550_page_1.jpg.md": {
+    "mtime": 1790056354.5343866,
+    "seen": 1792044358.7753367,
+    "ast_hash": "1cdd9b335df71f03e027a3e6d4bf4c1d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779890059-145258840.pdf.md": {
+    "mtime": 1790056354.5343866,
+    "seen": 1792044358.775341,
+    "ast_hash": "1d6e10d454f4a08eb0693b732f74665f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779890059-145258840_page_1.jpg.md": {
+    "mtime": 1790056354.5343866,
+    "seen": 1792044358.7753456,
+    "ast_hash": "3881bb6830547f12338f64ae537b05b3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779890341-901483712.pdf.md": {
+    "mtime": 1790056354.5343866,
+    "seen": 1792044358.77535,
+    "ast_hash": "2f586c6946df8b23c64663abe0dec10b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779890341-901483712_page_1.jpg.md": {
+    "mtime": 1790056354.5353835,
+    "seen": 1792044358.7753544,
+    "ast_hash": "5e982051ee6e49f41b3b1c0a448604a4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891252-729412503.pdf.md": {
+    "mtime": 1790056354.5353835,
+    "seen": 1792044358.7753582,
+    "ast_hash": "c12ad8b3afa1e06713f2545eb99ea501",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891252-729412503_page_1.jpg.md": {
+    "mtime": 1790056354.5353835,
+    "seen": 1792044358.7753625,
+    "ast_hash": "69d700bb3c2e359d393407b212720046",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891551-509464639.pdf.md": {
+    "mtime": 1790056354.5353835,
+    "seen": 1792044358.775367,
+    "ast_hash": "e13024a698d55b391a8434b13c5bdaca",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891551-509464639_page_1.jpg.md": {
+    "mtime": 1790056354.536701,
+    "seen": 1792044358.7753718,
+    "ast_hash": "04784cb90360030414149543300b655b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891624-628348718.pdf.md": {
+    "mtime": 1790056354.536701,
+    "seen": 1792044358.7753756,
+    "ast_hash": "1843306a4300bccf6d6b5086f0cbf6d1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891624-628348718_page_1.jpg.md": {
+    "mtime": 1790056354.536701,
+    "seen": 1792044358.7753801,
+    "ast_hash": "e551922de4a9a5aed1cd04d2683cae83",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891738-815799244.pdf.md": {
+    "mtime": 1790056354.5377088,
+    "seen": 1792044358.7753844,
+    "ast_hash": "b2c4cc6a45de115ce7fcc13f81b61d37",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891738-815799244_page_1.jpg.md": {
+    "mtime": 1790056354.5377088,
+    "seen": 1792044358.7753892,
+    "ast_hash": "4a3ab6d1f9f7e0f2bafbb6d31051df30",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891753-866499146.pdf.md": {
+    "mtime": 1790056354.5377088,
+    "seen": 1792044358.775394,
+    "ast_hash": "d0543196ddbc99a5af8cff0d25d924c3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779891753-866499146_page_1.jpg.md": {
+    "mtime": 1790056354.5387137,
+    "seen": 1792044358.7753985,
+    "ast_hash": "ece9f01ce69e97969291709d4e4c6f68",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779892499-317398905.pdf.md": {
+    "mtime": 1790056354.5387137,
+    "seen": 1792044358.775403,
+    "ast_hash": "ca8efa0c8f053810aa466df6d80e3bf5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779892499-317398905_page_1.jpg.md": {
+    "mtime": 1790056354.5387137,
+    "seen": 1792044358.7754076,
+    "ast_hash": "089a7f04f6a65d670cffaedc8ecafccb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779919174-491381314.jpg.md": {
+    "mtime": 1790056354.5387137,
+    "seen": 1792044358.7754123,
+    "ast_hash": "23ed2f9a141226168cbe93de2d62eb5e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779919956-601123034.pdf.md": {
+    "mtime": 1790056354.539722,
+    "seen": 1792044358.7754166,
+    "ast_hash": "bab4ba0fd04f25827046687aba6ee6df",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779919956-601123034_page_1.jpg.md": {
+    "mtime": 1790056354.539722,
+    "seen": 1792044358.775421,
+    "ast_hash": "1d6063166bb267f4a163165932aa3a31",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779920617-350587004.pdf.md": {
+    "mtime": 1790056354.539722,
+    "seen": 1792044358.7754247,
+    "ast_hash": "23ed1b40920bf25d910ae17539bcf2ad",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779920617-350587004_page_1.jpg.md": {
+    "mtime": 1790056354.540727,
+    "seen": 1792044358.775429,
+    "ast_hash": "c5042cfb87b1eee9e96aef81b955f328",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779932818-236728400.jpg.md": {
+    "mtime": 1790056354.540727,
+    "seen": 1792044358.7754333,
+    "ast_hash": "76a2f4e552601f8376e6ba4fa6f87523",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779932920-433710513.pdf.md": {
+    "mtime": 1790056354.540727,
+    "seen": 1792044358.7754376,
+    "ast_hash": "7ea7d966fb74e0ae16d0602c1dc76164",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/documents/doc-1779932920-433710513_page_1.jpg.md": {
+    "mtime": 1790056354.540727,
+    "seen": 1792044358.7754421,
+    "ast_hash": "1074009fc81baaadefcbe502e0cc1219",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_126_1779778095.pdf.md": {
+    "mtime": 1790056354.5417347,
+    "seen": 1792044358.7754464,
+    "ast_hash": "a006780eadb0ef0476603630a987bb6e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_127_1779776962.pdf.md": {
+    "mtime": 1790056354.5417347,
+    "seen": 1792044358.7754512,
+    "ast_hash": "962b521e0223b6ff7c964ddc301ea283",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_128_1779796962.pdf.md": {
+    "mtime": 1790056354.5427432,
+    "seen": 1792044358.7754552,
+    "ast_hash": "7f7a4bedf556d03d7c5b656163b92a98",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_129_1779795469.pdf.md": {
+    "mtime": 1790056354.5427432,
+    "seen": 1792044358.7754595,
+    "ast_hash": "92037c954f4a67de1ebb861212bd124a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_131_1779799513.pdf.md": {
+    "mtime": 1790056354.5427432,
+    "seen": 1792044358.775466,
+    "ast_hash": "9e0a64d63bc0603634ca09072df9fb13",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_132_1779799739.pdf.md": {
+    "mtime": 1790056354.5438564,
+    "seen": 1792044358.775488,
+    "ast_hash": "895fc3b5a819de8653316295335de6f3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_133_1779799818.pdf.md": {
+    "mtime": 1790056354.5438564,
+    "seen": 1792044358.7754965,
+    "ast_hash": "01bf9fa305fb6994f1d9d16edf0fc153",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_145_1779801335.pdf.md": {
+    "mtime": 1790056354.5438564,
+    "seen": 1792044358.7755048,
+    "ast_hash": "8bff9f253842d977eb8706445207bd27",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_146_1779801581.pdf.md": {
+    "mtime": 1790056354.5438564,
+    "seen": 1792044358.7755132,
+    "ast_hash": "3b862c7616469eca3d16815cdd683ea8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_156_1779919233.pdf.md": {
+    "mtime": 1790056354.5449002,
+    "seen": 1792044358.7755206,
+    "ast_hash": "27ce317c2a4eef4d5cbbaf3c89398a59",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_156_1779919438.pdf.md": {
+    "mtime": 1790056354.5449002,
+    "seen": 1792044358.775525,
+    "ast_hash": "9237b212e9295de373d23b4c20a63b2e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_156_1779919893.pdf.md": {
+    "mtime": 1790056354.5449002,
+    "seen": 1792044358.7755294,
+    "ast_hash": "403761dcbd43ff74c72a5fea91029462",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_158_1779921690.pdf.md": {
+    "mtime": 1790056354.5449002,
+    "seen": 1792044358.7755346,
+    "ast_hash": "2dde40b854976ed06d79ed7e5f1b1a13",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_158_1779922328.pdf.md": {
+    "mtime": 1790056354.5459144,
+    "seen": 1792044358.775541,
+    "ast_hash": "9d1e5f4cb61ec3fc180112bf27031d95",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_44_1779796935.pdf.md": {
+    "mtime": 1790056354.5459144,
+    "seen": 1792044358.7755454,
+    "ast_hash": "0cd1276e1e022ffdccd0876bcfe07ba4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_45_1779935851.pdf.md": {
+    "mtime": 1790056354.5459144,
+    "seen": 1792044358.775551,
+    "ast_hash": "eebac7f875cf204c4a836057ab8d05de",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_45_1779935875.pdf.md": {
+    "mtime": 1790056354.546937,
+    "seen": 1792044358.7755558,
+    "ast_hash": "2ab8d8efd660c5a23b158ac5b1b9ea27",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_45_1779936704.pdf.md": {
+    "mtime": 1790056354.546937,
+    "seen": 1792044358.7755601,
+    "ast_hash": "3e2746647e9679089d4d8e75861c35df",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_45_1779936753.pdf.md": {
+    "mtime": 1790056354.546937,
+    "seen": 1792044358.7755656,
+    "ast_hash": "677e14a12b13441bba8cd5daaaa0fefb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_45_1779937950.pdf.md": {
+    "mtime": 1790056354.546937,
+    "seen": 1792044358.77557,
+    "ast_hash": "9c30a95a002a84dea5ba774be3d339a0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/birth_47_1779974125.pdf.md": {
+    "mtime": 1790056354.5483236,
+    "seen": 1792044358.775576,
+    "ast_hash": "26888b0b0a7fc95a4e85397dcafab884",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/issuances/marriage_154_1779922337.pdf.md": {
+    "mtime": 1790056354.5483236,
+    "seen": 1792044358.7755806,
+    "ast_hash": "ddc9d07c863cf1db817055f4b6a4a58f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_JOsY6OHMazUlaYe6yf1sqGntJ5wJuBXNpo0ipByd.svg.md": {
+    "mtime": 1790056354.549334,
+    "seen": 1792044358.7755852,
+    "ast_hash": "9bfde0c7e7efda8bc79430f86eb59fab",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_NXumQvkIOjKyw6MLUtvR7c2mXvv9itKpzWgQjkHD.svg.md": {
+    "mtime": 1790056354.549334,
+    "seen": 1792044358.775591,
+    "ast_hash": "24883454e21a0b0de50d874cadb61cda",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_RMPRbps0HB7VYKW2wIQelO34WcIz5nLe71apMxiz.svg.md": {
+    "mtime": 1790056354.549334,
+    "seen": 1792044358.7755952,
+    "ast_hash": "4c63c615eed1719564c69109be488ac5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_TPALIH1D9uRwJjJKiYQ5KqYkxr1NnBEMPY9Yontc.svg.md": {
+    "mtime": 1790056354.5503428,
+    "seen": 1792044358.7755992,
+    "ast_hash": "7e0306a15393daa34e686e6f6a648261",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_Z8LgS4so3bjkKuorqSU1WIdCbuJowuhEiWZsjAjd.svg.md": {
+    "mtime": 1790056354.5503428,
+    "seen": 1792044358.7756035,
+    "ast_hash": "bd1e11f49eb99349bb571be34e131f0a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/qrcodes/ticket_kLHkIGrgdUIABmhUPiCoK8OKHG6Lw5PYRNMqeAh0.svg.md": {
+    "mtime": 1790056354.5503428,
+    "seen": 1792044358.775608,
+    "ast_hash": "0a488a89bd9896ee9b0c177e75733699",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/storage/temp_ocr_search/1779763682_6a1509e2ea3df_proc.jpg.md": {
+    "mtime": 1790056354.551351,
+    "seen": 1792044358.775613,
+    "ast_hash": "3eca03a58da53735559a32c15c23850a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/public/styles.css.md": {
+    "mtime": 1790056354.551351,
+    "seen": 1792044358.7756178,
+    "ast_hash": "5748596d568a9cda14562f64432705d3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/css/app.css.md": {
+    "mtime": 1790056354.551351,
+    "seen": 1792044358.7756226,
+    "ast_hash": "d082037b3a71e635787f44407be30dd5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/css/prototype-reference.css.md": {
+    "mtime": 1790056354.5523562,
+    "seen": 1792044358.7756274,
+    "ast_hash": "90c948294c0877103ef2658a4ce62aa7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/app.js.md": {
+    "mtime": 1790056354.5523562,
+    "seen": 1792044358.7756314,
+    "ast_hash": "166f42a1c706fc3ea13b9f1a365c0a1c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/app.jsx.md": {
+    "mtime": 1790056354.5523562,
+    "seen": 1792044358.775636,
+    "ast_hash": "04b11957759df3485b9b37ce79a5bb69",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/bootstrap.js.md": {
+    "mtime": 1790056354.5533643,
+    "seen": 1792044358.7756402,
+    "ast_hash": "cb16263b1c708242774bda16791c6997",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/AboutPortal.jsx.md": {
+    "mtime": 1790056354.5533643,
+    "seen": 1792044358.7756443,
+    "ast_hash": "3a6429394edc9f04193fdc4eaa757ca0",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Accounts.jsx.md": {
+    "mtime": 1790056354.5533643,
+    "seen": 1792044358.7756486,
+    "ast_hash": "e623264b2767d0607e87be124dc4a4e7",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/ActionCenter.jsx.md": {
+    "mtime": 1790056354.5543687,
+    "seen": 1792044358.7756534,
+    "ast_hash": "a466582eca7d3b2be44a1c3665234d13",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/ActionConfirmModal.jsx.md": {
+    "mtime": 1790056354.5543687,
+    "seen": 1792044358.7756586,
+    "ast_hash": "d8d87b47db740e04d7d6218f1de921f2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/AlertModal.jsx.md": {
+    "mtime": 1790056354.5543687,
+    "seen": 1792044358.775663,
+    "ast_hash": "6896af5278f7caf72d9cfb2de1e281c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/AnimatedCounter.jsx.md": {
+    "mtime": 1790056354.5553775,
+    "seen": 1792044358.775667,
+    "ast_hash": "d77188d845f07572554dc0d31ef8072f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Announcements.jsx.md": {
+    "mtime": 1790056354.5553775,
+    "seen": 1792044358.7756712,
+    "ast_hash": "1cabd9b2ce21f3423874b295485ea162",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/ArchiveManager.jsx.md": {
+    "mtime": 1790056354.5553775,
+    "seen": 1792044358.7756765,
+    "ast_hash": "081d6ad56894a2f38c2bf454cc6dae85",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Avatar.jsx.md": {
+    "mtime": 1790056354.5553775,
+    "seen": 1792044358.775682,
+    "ast_hash": "aa4b1bb55a28c99e067ffcf832a93cf6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/AvatarLibrary.js.md": {
+    "mtime": 1790056354.5563827,
+    "seen": 1792044358.7756867,
+    "ast_hash": "25ea077f8a7fc32c12a999950444a0e5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Barangays.jsx.md": {
+    "mtime": 1790056354.5563827,
+    "seen": 1792044358.7756915,
+    "ast_hash": "f079f950358890a23f4327ba00b1fd59",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/CameraModal.jsx.md": {
+    "mtime": 1790056354.5563827,
+    "seen": 1792044358.775696,
+    "ast_hash": "3f995118bd18f2cde4fd0f1c171d4ec6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/ContactDirectory.jsx.md": {
+    "mtime": 1790056354.5563827,
+    "seen": 1792044358.7757008,
+    "ast_hash": "2b775269785d04efd04e6778638feb81",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Dashboard.jsx.md": {
+    "mtime": 1790056354.557391,
+    "seen": 1792044358.7757056,
+    "ast_hash": "a528c1b89239e9e1d108abbfc29d59ef",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/DataContext.jsx.md": {
+    "mtime": 1790056354.557391,
+    "seen": 1792044358.7757099,
+    "ast_hash": "899274bbe878878b5d4d293f0c8cd00f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/DigitalServices.jsx.md": {
+    "mtime": 1790056354.557391,
+    "seen": 1792044358.7757149,
+    "ast_hash": "62cade193eae7008a8452923eec49daf",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/DocumentViewerModal.jsx.md": {
+    "mtime": 1790056354.557391,
+    "seen": 1792044358.7757192,
+    "ast_hash": "0d21a41e6f664802205c9ede3adaf7c2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Documents.jsx.md": {
+    "mtime": 1790056354.5583951,
+    "seen": 1792044358.7757242,
+    "ast_hash": "7ec6a9715b32714d4ce74cbc1f58ef11",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Issuances.jsx.md": {
+    "mtime": 1790056354.5583951,
+    "seen": 1792044358.775729,
+    "ast_hash": "6e34013d7fc8f48e6e427c32f7076f47",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Landing.jsx.md": {
+    "mtime": 1790056354.5583951,
+    "seen": 1792044358.7757342,
+    "ast_hash": "69d4c482be3c34eea4c4c90e6ef260c4",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Layout.jsx.md": {
+    "mtime": 1790056354.5594347,
+    "seen": 1792044358.7757392,
+    "ast_hash": "765665c4f96f5529cafb0f6efaa5924f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/LoadingSpinner.jsx.md": {
+    "mtime": 1790056354.5594347,
+    "seen": 1792044358.7757442,
+    "ast_hash": "97844411d3cc709332fb8d03b9ea8210",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/LobbyQueue.jsx.md": {
+    "mtime": 1790056354.5594347,
+    "seen": 1792044358.775749,
+    "ast_hash": "ea7efd74d402eec1b8e46e3541129f79",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Login.jsx.md": {
+    "mtime": 1790056354.5594347,
+    "seen": 1792044358.7757537,
+    "ast_hash": "3f45065391579a657766ed2db6db39e8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Mapping.jsx.md": {
+    "mtime": 1790056354.560443,
+    "seen": 1792044358.775762,
+    "ast_hash": "f054e1174e68672f92ddee4a5ee478db",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/ModalContext.jsx.md": {
+    "mtime": 1790056354.560443,
+    "seen": 1792044358.7757702,
+    "ast_hash": "11a6b0b832ea4d40c9fde40f1b8647d8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/OcrFormPanel.jsx.md": {
+    "mtime": 1790056354.5614479,
+    "seen": 1792044358.7757778,
+    "ast_hash": "cb01073668b56e68e5ce76a6096ca052",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/PageTransition.jsx.md": {
+    "mtime": 1790056354.5614479,
+    "seen": 1792044358.7757862,
+    "ast_hash": "389a811eb838a4f33cd50e2b22c6eb70",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/PasswordConfirmModal.jsx.md": {
+    "mtime": 1790056354.5614479,
+    "seen": 1792044358.7757955,
+    "ast_hash": "fa6078ed07948a949ad3b35fe47da049",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/PendingRequests.jsx.md": {
+    "mtime": 1790056354.5614479,
+    "seen": 1792044358.7758036,
+    "ast_hash": "18823103494742b25088720d44792980",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/PublicLayout.jsx.md": {
+    "mtime": 1790056354.5624573,
+    "seen": 1792044358.7758093,
+    "ast_hash": "3c99786435f35945647a548acdada1ca",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/SaveToasts.jsx.md": {
+    "mtime": 1790056354.5624573,
+    "seen": 1792044358.7758138,
+    "ast_hash": "d684cca9ef986ec71bd959e387197c4c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/SignaturePad.jsx.md": {
+    "mtime": 1790056354.5624573,
+    "seen": 1792044358.7758186,
+    "ast_hash": "0518df6bce9d52c7ab34baf509f0c87a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/SkeletonLoader.jsx.md": {
+    "mtime": 1790056354.5624573,
+    "seen": 1792044358.7758236,
+    "ast_hash": "e6c035584339873455246bffbe6eb216",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/TemplateDesigner.jsx.md": {
+    "mtime": 1790056354.5634623,
+    "seen": 1792044358.775828,
+    "ast_hash": "16217f8bd24d666dde27e199bfa500a8",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Templates.jsx.md": {
+    "mtime": 1790056354.5634623,
+    "seen": 1792044358.7758322,
+    "ast_hash": "0ce07a4670240a0e59509b3951c7bdd9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Ticketing.jsx.md": {
+    "mtime": 1790056354.5634623,
+    "seen": 1792044358.7758365,
+    "ast_hash": "774b819ed6a525d97e648257cd82fd56",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/Users.jsx.md": {
+    "mtime": 1790056354.5644734,
+    "seen": 1792044358.7758408,
+    "ast_hash": "ba1ac9164ce80ddd7125b7f5f30a03e9",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/captureEngine.js.md": {
+    "mtime": 1790056354.5644734,
+    "seen": 1792044358.775845,
+    "ast_hash": "6dd10f371f2d7a1bf611e7e093e81bec",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/forms/BirthCertificateConfig.js.md": {
+    "mtime": 1790056354.5654864,
+    "seen": 1792044358.7758496,
+    "ast_hash": "f42f69d31b8978b6d3964dae633088cb",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/forms/DeathCertificateConfig.js.md": {
+    "mtime": 1790056354.5654864,
+    "seen": 1792044358.7758539,
+    "ast_hash": "e8e70f5d1c8d35831d705c9f451438da",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/forms/MarriageCertificateConfig.js.md": {
+    "mtime": 1790056354.5664976,
+    "seen": 1792044358.7758584,
+    "ast_hash": "d848e0e613ce0d284590381de094324e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/components/forms/SharedConfig.js.md": {
+    "mtime": 1790056354.5664976,
+    "seen": 1792044358.775863,
+    "ast_hash": "242f5f86dc8a58651fa8f2839d915e6e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/resources/js/utils/uploadPreprocess.js.md": {
+    "mtime": 1790056354.5664976,
+    "seen": 1792044358.7758691,
+    "ast_hash": "4f21e36abc48fb91afe9cab2d2fe16df",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/routes/api.php.md": {
+    "mtime": 1790056354.5675035,
+    "seen": 1792044358.7758744,
+    "ast_hash": "98f7ceab81b0aff13d2248f14e27d15b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/routes/console.php.md": {
+    "mtime": 1790056354.5675035,
+    "seen": 1792044358.7758794,
+    "ast_hash": "7aad40cf874f8d0b37b39c010680103b",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/routes/web.php.md": {
+    "mtime": 1790056354.5675035,
+    "seen": 1792044358.7758837,
+    "ast_hash": "440ef3f98930540562229d87e542c691",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/CamScanner-07-01-2026-11.20.pdf.md": {
+    "mtime": 1790056354.5685132,
+    "seen": 1792044358.7758887,
+    "ast_hash": "f2d4542781db7f9b98d52b02cef66a73",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/CamScanner-07-01-2026-11.20_page_1.jpg.md": {
+    "mtime": 1790056354.5685132,
+    "seen": 1792044358.7758934,
+    "ast_hash": "44d54b4644c7f6c2d36c9a3558266cda",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/CamScanner-07-01-2026-11.20_page_1_proc.jpg.md": {
+    "mtime": 1790056354.5685132,
+    "seen": 1792044358.7758982,
+    "ast_hash": "d33a38f774b6cbc80e25e9da65302564",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/Certificate of death template.pdf.md": {
+    "mtime": 1790056354.5695188,
+    "seen": 1792044358.7759027,
+    "ast_hash": "6ad973d9b8665dcfca14f98fa72b5a3d",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/Certificate of death template_page_1.jpg.md": {
+    "mtime": 1790056354.5695188,
+    "seen": 1792044358.7759068,
+    "ast_hash": "221f9dde454b6a73c8c63fe19564a2b6",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/Notice of the applicatos for the marriage license.pdf.md": {
+    "mtime": 1790056354.5695188,
+    "seen": 1792044358.7759116,
+    "ast_hash": "2e40193d08c070d40f61a4229b6f26a1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/application for marriage license template.pdf.md": {
+    "mtime": 1790056354.5705302,
+    "seen": 1792044358.7759168,
+    "ast_hash": "162150533b559b18ea916768264db228",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate o live birth sample 3.pdf.md": {
+    "mtime": 1790056354.5705302,
+    "seen": 1792044358.7759213,
+    "ast_hash": "82f1f6d3ec3d36511cedf053de27008f",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate o live birth sample 3_page_1.jpg.md": {
+    "mtime": 1790056354.5705302,
+    "seen": 1792044358.7759264,
+    "ast_hash": "4d08ca1b247506a0b185b0e770380339",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of birth.pdf.md": {
+    "mtime": 1790056354.5705302,
+    "seen": 1792044358.775931,
+    "ast_hash": "4714f7cf0ba5b20b6af8b8cd13fec4d3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of death sample.pdf.md": {
+    "mtime": 1790056354.571539,
+    "seen": 1792044358.7759352,
+    "ast_hash": "d95b764249e74c92ad196d8e965a114c",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth sample 1.pdf.md": {
+    "mtime": 1790056354.571539,
+    "seen": 1792044358.77594,
+    "ast_hash": "efdb4f2001c4f555adfbd4d940c407e3",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth sample 2.pdf.md": {
+    "mtime": 1790056354.571539,
+    "seen": 1792044358.775944,
+    "ast_hash": "f017f24ef7f0398378ae724c1d3adf16",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth sample 4.pdf.md": {
+    "mtime": 1790056354.5725994,
+    "seen": 1792044358.7759483,
+    "ast_hash": "7702b2ad90090e180bf36fcb530281d2",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth sample.pdf.md": {
+    "mtime": 1790056354.5725994,
+    "seen": 1792044358.7759526,
+    "ast_hash": "75e2f0b20ff74df388c0bd94ab15372a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth template.pdf.md": {
+    "mtime": 1790056354.5725994,
+    "seen": 1792044358.7759576,
+    "ast_hash": "1155f2d41ab4e6f909e32a0f56a7232a",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of live birth template_page_1.jpg.md": {
+    "mtime": 1790056354.5736077,
+    "seen": 1792044358.7759628,
+    "ast_hash": "554a54328f46745f03deba5a300374f5",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/certificate of marriage tempalte.pdf.md": {
+    "mtime": 1790056354.5736077,
+    "seen": 1792044358.7759671,
+    "ast_hash": "00b960551bc2a2ee1891ff053e46cd67",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/consent to marriage of a person under age.pdf.md": {
+    "mtime": 1790056354.5736077,
+    "seen": 1792044358.7759717,
+    "ast_hash": "a2f841c0b3263a08a21ff0a16c18aef1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/marriage contract sample.pdf.md": {
+    "mtime": 1790056354.5746686,
+    "seen": 1792044358.7759762,
+    "ast_hash": "0a6dcd706435ad85e2e5bd56ab78e01e",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/roi_profiles.json.md": {
+    "mtime": 1790056354.5746686,
+    "seen": 1792044358.7759807,
+    "ast_hash": "f63b24011c1121f731c239806633d3a1",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/sworn statement that advice of parents or guardian has been asked.pdf.md": {
+    "mtime": 1790056354.5746686,
+    "seen": 1792044358.7759855,
+    "ast_hash": "484da6599d7a5c776fe040344f98fe73",
+    "semantic_hash": ""
+  },
+  "defense_materials/file_breakdowns/templates/test.md": {
+    "mtime": 1790056354.5756774,
+    "seen": 1792044358.7759905,
+    "ast_hash": "af842e22cdd93f4411fa488fcd3d5cf5",
+    "semantic_hash": ""
+  },
+  "defense_materials/project_roadmap.md": {
+    "mtime": 1790056354.5756774,
+    "seen": 1792044358.7759948,
+    "ast_hash": "1b0d87e111bc032b240bde551b45b15b",
+    "semantic_hash": ""
+  },
+  "defense_materials/resources_directory_explanation.md": {
+    "mtime": 1790056354.576683,
+    "seen": 1792044358.7759995,
+    "ast_hash": "4fec0766aa52672a71f96202c633b2c9",
+    "semantic_hash": ""
+  },
+  "defense_materials/root_files_explanation.md": {
+    "mtime": 1790056354.576683,
+    "seen": 1792044358.776004,
+    "ast_hash": "2bd2c53cb24e06f5cb99b4fd275fd3d9",
+    "semantic_hash": ""
+  },
+  "defense_materials/routes_directory_explanation.md": {
+    "mtime": 1790056354.577693,
+    "seen": 1792044358.7760084,
+    "ast_hash": "582611e7248aa4068abe047c02c59bb9",
+    "semantic_hash": ""
+  },
+  "defense_materials/system_architecture_and_data_flow.md": {
+    "mtime": 1790056354.577693,
+    "seen": 1792044358.776013,
+    "ast_hash": "c163b38686303e494e3350b56ea08b77",
+    "semantic_hash": ""
+  },
+  "diff.txt": {
+    "mtime": 1790056354.5786994,
+    "seen": 1792044358.7760174,
+    "ast_hash": "26506f90ac82745b6da7dca55623fa78",
+    "semantic_hash": ""
+  },
+  "docs/SYSTEM_DOCUMENTATION.md": {
+    "mtime": 1791875114.3840494,
+    "seen": 1792044358.7760224,
+    "ast_hash": "bd3a0a53da48aa0eea4aaa5c86fce67b",
+    "semantic_hash": ""
+  },
+  "ocr_architecture.md": {
+    "mtime": 1791875089.5815527,
+    "seen": 1792044358.776027,
+    "ast_hash": "53f89cf73885aa33228c4b1e2b3317ee",
+    "semantic_hash": ""
+  },
+  "public/robots.txt": {
+    "mtime": 1790056354.6295552,
+    "seen": 1792044358.7760324,
+    "ast_hash": "b6216d61c03e6ce0c9aea6ca7808f7ca",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1791874946.6613908,
+    "seen": 1792044358.7760375,
+    "ast_hash": "96e4d33de03c14c900ba8e84d03d9f5b",
+    "semantic_hash": ""
+  },
+  "public/Templates/marriage.pdf": {
+    "mtime": 1790056354.608597,
+    "seen": 1792044358.776042,
+    "ast_hash": "6cbc00d49264fa9200d304db64b99200",
+    "semantic_hash": ""
+  },
+  "logo.png": {
+    "mtime": 1790056354.5807166,
+    "seen": 1792044358.7760475,
+    "ast_hash": "7217847821fb4b772b335a18771cb686",
+    "semantic_hash": ""
+  },
+  "public/Templates/birth.jpg": {
+    "mtime": 1790056354.5867877,
+    "seen": 1792044358.776054,
+    "ast_hash": "5cf33221f6c290f3e87db5205b938eb1",
+    "semantic_hash": ""
+  },
+  "public/Templates/death.jpg": {
+    "mtime": 1790056354.5877924,
+    "seen": 1792044358.7760592,
+    "ast_hash": "9e035b61ec4258a29e563b1f3d9ef33b",
+    "semantic_hash": ""
+  },
+  "public/Templates/marriage.jpg": {
+    "mtime": 1790056354.6043334,
+    "seen": 1792044358.7760644,
+    "ast_hash": "6fb2e7cdaad0aa8bbeb9a1f94dcbafe2",
+    "semantic_hash": ""
+  },
+  "public/Templates/marriage.png": {
+    "mtime": 1790056354.6223984,
+    "seen": 1792044358.7760696,
+    "ast_hash": "6fb2e7cdaad0aa8bbeb9a1f94dcbafe2",
+    "semantic_hash": ""
+  },
+  "public/images/Civil Registry/logo civil registry.jpg": {
+    "mtime": 1791893906.2093475,
+    "seen": 1792044358.7760742,
+    "ast_hash": "0cda7d781aac835d33a923ccedb4f22c",
+    "semantic_hash": ""
+  },
+  "public/images/Civil Registry/picture of civil registry employee.png": {
+    "mtime": 1791893893.3572385,
+    "seen": 1792044358.7760792,
+    "ast_hash": "516561f0dc516c092c2d2f581df174de",
+    "semantic_hash": ""
+  },
+  "public/images/Student/elijah.png": {
+    "mtime": 1791893750.6078188,
+    "seen": 1792044358.776084,
+    "ast_hash": "2ae74f689c0bbd1e8ee63c61192f00db",
+    "semantic_hash": ""
+  },
+  "public/images/Student/jhay.png": {
+    "mtime": 1791893760.5571303,
+    "seen": 1792044358.7760897,
+    "ast_hash": "d271cfc9219078d4361a88e0105b07f1",
+    "semantic_hash": ""
+  },
+  "public/images/Student/louie.png": {
+    "mtime": 1791893768.9713328,
+    "seen": 1792044358.7760942,
+    "ast_hash": "58773846a1fce56a75e45b2b5ae60791",
+    "semantic_hash": ""
+  },
+  "public/images/naic-municipal-hall-clean.png": {
+    "mtime": 1790775156.3932152,
+    "seen": 1792044358.776099,
+    "ast_hash": "2b05df29dfa02de6fd29ea2c36758476",
+    "semantic_hash": ""
+  },
+  "public/images/naic-municipal-hall-hero.png": {
+    "mtime": 1790776292.9332962,
+    "seen": 1792044358.7761035,
+    "ast_hash": "8d505715161fd19b0e5618b80583a10d",
+    "semantic_hash": ""
+  },
+  "public/images/naic-municipal-hall-night.png": {
+    "mtime": 1790776347.637935,
+    "seen": 1792044358.776108,
+    "ast_hash": "86c8c48fd04501f38161b5748861896c",
+    "semantic_hash": ""
+  },
+  "public/images/naic-municipal-hall-perfect.png": {
+    "mtime": 1790776498.133536,
+    "seen": 1792044358.7761128,
+    "ast_hash": "7db5aadd092682a6d0f182eb8247be5d",
+    "semantic_hash": ""
+  },
+  "public/images/naic-municipal-hall.png": {
+    "mtime": 1790772010.9115427,
+    "seen": 1792044358.7761176,
+    "ast_hash": "68af3cc16dbabfa2f78438e5e8c2c2f9",
+    "semantic_hash": ""
+  },
+  "public/images/ref-crop.png": {
+    "mtime": 1790776156.2338336,
+    "seen": 1792044358.7761226,
+    "ast_hash": "b7b9821ed341bd4f86d17707d400fbf7",
+    "semantic_hash": ""
+  },
+  "public/images/test-preview.png": {
+    "mtime": 1790776516.3630874,
+    "seen": 1792044358.7761266,
+    "ast_hash": "8788903e626affb112fa2c0a2311800b",
+    "semantic_hash": ""
+  },
+  "public/logo.png": {
+    "mtime": 1790056354.6295552,
+    "seen": 1792044358.7761312,
+    "ast_hash": "da997fa24afa7dba727c770e47ee23dc",
+    "semantic_hash": ""
+  }
+}

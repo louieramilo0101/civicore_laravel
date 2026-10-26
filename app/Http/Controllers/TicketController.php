@@ -39,6 +39,10 @@ class TicketController extends Controller
      */
     private function buildTicketUrl(Request $request, string $token): string
     {
+        if ($portalUrl = env('PUBLIC_PORTAL_URL')) {
+            return rtrim($portalUrl, '/') . "/ticket-status/{$token}";
+        }
+
         $host = $request->getSchemeAndHttpHost();
 
         // If request comes from localhost or 127.0.0.1, resolve local LAN IP so mobile devices on Wi-Fi can open it
@@ -131,10 +135,13 @@ class TicketController extends Controller
             'phone'       => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
             'purpose'     => 'required|in:birth,death,marriage',
             'details'     => 'required|array',
+            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'client_name.regex' => 'Name cannot contain numbers or invalid special characters (only letters, spaces, and . , - \' are allowed).',
             'phone.regex' => 'Phone number may only contain numbers and valid phone symbols (+, -, space, parens).',
             'phone.max'   => 'Phone number cannot exceed 15 characters.',
+            'consent_form.mimes' => 'Consent form must be a PDF, JPG, JPEG, or PNG file.',
+            'consent_form.max'   => 'Consent form file size cannot exceed 10MB.',
         ]);
 
         if ($validator->fails()) {
@@ -142,7 +149,8 @@ class TicketController extends Controller
         }
 
         $limitsSetting = Setting::where('key', 'ticket_limits_enabled')->value('value');
-        $limitsEnabled = ($limitsSetting !== '0');
+        // Limits are disabled by default (anti-spam feature that can be toggled on by admin)
+        $limitsEnabled = ($limitsSetting === '1' || $limitsSetting === 1 || $limitsSetting === true);
 
         $now = Carbon::now(config('app.timezone'));
         $cutoff = Carbon::today(config('app.timezone'))->setTime(17, 0, 0);
@@ -221,10 +229,14 @@ class TicketController extends Controller
         }
 
         try {
-            return DB::transaction(function () use ($request, $scheduledDate) {
+            $consentPath = null;
+            if ($request->hasFile('consent_form')) {
+                $consentPath = $request->file('consent_form')->store('consent_forms', 'public');
+            }
+
+            return DB::transaction(function () use ($request, $scheduledDate, $consentPath) {
                 $year  = date('Y');
-                $count = DB::table('tickets')
-                    ->whereYear('created_at', $year)
+                $count = Ticket::whereYear('created_at', $year)
                     ->lockForUpdate()
                     ->count();
 
@@ -238,20 +250,21 @@ class TicketController extends Controller
                 [$qrPath, $qrBase64] = $this->generateQr($token, $ticketUrl);
 
                 $ticket = Ticket::create([
-                    'ticket_number'  => $ticketNumber,
-                    'client_name'    => $request->client_name,
-                    'email'          => $request->email,
-                    'phone'          => $request->phone,
-                    'purpose'        => $request->purpose,
-                    'details'        => $request->details,
-                    'token'          => $token,
-                    'qr_code_token'  => $token,
-                    'request_status' => 'pending',
-                    'queue_status'   => 'not_in_lobby',
-                    'source'         => 'online',
-                    'expires_at'     => $expiry,
-                    'scheduled_date' => $scheduledDate,
-                    'qr_code_path'   => $qrPath,
+                    'ticket_number'     => $ticketNumber,
+                    'client_name'       => $request->client_name,
+                    'email'             => $request->email,
+                    'phone'             => $request->phone,
+                    'purpose'           => $request->purpose,
+                    'details'           => $request->details,
+                    'token'             => $token,
+                    'qr_code_token'     => $token,
+                    'request_status'    => 'pending',
+                    'queue_status'      => 'not_in_lobby',
+                    'source'            => 'online',
+                    'expires_at'        => $expiry,
+                    'scheduled_date'    => $scheduledDate,
+                    'qr_code_path'      => $qrPath,
+                    'consent_form_path' => $consentPath,
                 ]);
 
                 // Send email if provided (non-blocking)
@@ -488,7 +501,11 @@ class TicketController extends Controller
         }
 
         if ($request->has('request_status') && !empty($request->request_status) && $request->request_status !== 'all') {
-            $query->where('request_status', $request->request_status);
+            if ($request->request_status === 'waiting') {
+                $query->whereIn('request_status', ['pending', 'ready_for_pickup']);
+            } else {
+                $query->where('request_status', $request->request_status);
+            }
         }
 
         if ($request->has('queue_status') && !empty($request->queue_status) && $request->queue_status !== 'all') {
@@ -498,8 +515,8 @@ class TicketController extends Controller
         // Support legacy 'status' filter if passed by older UI
         if ($request->has('status') && !empty($request->status) && $request->status !== 'all') {
             $status = strtolower($request->status);
-            if ($status === 'pending') {
-                $query->where('request_status', 'pending');
+            if ($status === 'waiting' || $status === 'pending') {
+                $query->whereIn('request_status', ['pending', 'ready_for_pickup']);
             } elseif ($status === 'serving') {
                 $query->where('queue_status', 'serving');
             } elseif ($status === 'completed') {
@@ -513,18 +530,30 @@ class TicketController extends Controller
             $query->where('source', $request->source);
         }
 
-        $tickets = $query->orderByRaw("
-            CASE
-                WHEN queue_status = 'serving' THEN 1
-                WHEN queue_status = 'waiting' THEN 2
-                WHEN request_status = 'pending' THEN 3
-                WHEN request_status = 'waiting_for_approval' THEN 4
-                WHEN request_status = 'ready_for_pickup' THEN 5
-                WHEN request_status = 'completed' THEN 6
-                WHEN request_status = 'cancelled' THEN 7
-                ELSE 8
-            END
-        ")->orderBy('created_at', 'asc');
+        $sortOrder = strtolower($request->query('sort_order', $request->query('order', 'asc')));
+        if (!in_array($sortOrder, ['asc', 'desc'], true)) {
+            $sortOrder = 'asc';
+        }
+
+        if ($sortOrder === 'desc') {
+            // Newest first (reverse FIFO)
+            $query->orderByRaw("CASE WHEN queue_status = 'serving' THEN 1 ELSE 2 END")
+                  ->orderBy('created_at', 'desc');
+        } else {
+            // FIFO: Oldest first
+            $query->orderByRaw("
+                CASE
+                    WHEN queue_status = 'serving' THEN 1
+                    WHEN queue_status = 'waiting' THEN 2
+                    WHEN request_status = 'pending' THEN 3
+                    WHEN request_status = 'waiting_for_approval' THEN 4
+                    WHEN request_status = 'ready_for_pickup' THEN 5
+                    WHEN request_status = 'completed' THEN 6
+                    WHEN request_status = 'cancelled' THEN 7
+                    ELSE 8
+                END
+            ")->orderBy('created_at', 'asc');
+        }
 
         if ($request->has('page') || $request->has('per_page')) {
             $perPage = min((int) $request->query('per_page', 20), 100);
@@ -580,22 +609,20 @@ class TicketController extends Controller
         $start = Carbon::today(config('app.timezone'))->startOfDay();
         $end = Carbon::today(config('app.timezone'))->endOfDay();
 
-        $pendingInbox = Ticket::where('request_status', 'pending')
-            ->where('source', 'online')
+        $waitingCount = Ticket::whereIn('request_status', ['pending', 'ready_for_pickup'])
             ->count();
 
         $attachedToday = Ticket::where('request_status', 'ready_for_pickup')
-            ->where('source', 'online')
             ->whereBetween('updated_at', [$start, $end])
             ->count();
 
         $completedToday = Ticket::where('request_status', 'completed')
-            ->where('source', 'online')
             ->whereBetween('updated_at', [$start, $end])
             ->count();
 
         return response()->json([
-            'pending_inbox' => $pendingInbox,
+            'waiting' => $waitingCount,
+            'pending_inbox' => $waitingCount,
             'attached_today' => $attachedToday,
             'completed_today' => $completedToday,
         ]);
@@ -1151,5 +1178,23 @@ class TicketController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Download or view the uploaded consent/authorization form or ID for a ticket.
+     */
+    public function getConsentForm($id)
+    {
+        $ticket = Ticket::withTrashed()->find($id);
+        if (!$ticket || !$ticket->consent_form_path) {
+            return response()->json(['error' => 'Consent or authorization form not found for this ticket.'], 404);
+        }
+
+        if (!Storage::disk('public')->exists($ticket->consent_form_path)) {
+            return response()->json(['error' => 'File does not exist in storage.'], 404);
+        }
+
+        $fullPath = Storage::disk('public')->path($ticket->consent_form_path);
+        return response()->file($fullPath);
     }
 }

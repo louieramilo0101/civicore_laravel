@@ -13,7 +13,7 @@ export const useData = () => {
 
 /** Owns shared dashboard, document, issuance, history, and template state. */
 export const DataProvider = ({ children }) => {
-    const DATA_VERSION = '1.0.3';
+    const DATA_VERSION = '1.0.5';
     
     // ── State for Stats ──────────────────────────────────────────────────────
     const [stats, setStats] = useState(() => {
@@ -165,10 +165,12 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const CACHE_TTL_MS = 300000; // 5 minutes cache to prevent repetitive loading
+
     const refreshStats = useCallback(async (force = false) => {
         if (!isAuthenticated()) return;
         const now = Date.now();
-        if (!force && now - lastFetch.current.stats < 5000) return; // Debounce fetches
+        if (!force && now - lastFetch.current.stats < CACHE_TTL_MS) return;
         
         try {
             const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
@@ -193,7 +195,7 @@ export const DataProvider = ({ children }) => {
     const refreshDocuments = useCallback(async (force = false) => {
         if (!isAuthenticated()) return;
         const now = Date.now();
-        if (!force && now - lastFetch.current.documents < 5000) return;
+        if (!force && now - lastFetch.current.documents < CACHE_TTL_MS) return;
 
         try {
             const response = await fetch('/api/documents', { credentials: 'include' });
@@ -249,7 +251,7 @@ export const DataProvider = ({ children }) => {
     const refreshIssuances = useCallback(async (force = false) => {
         if (!isAuthenticated()) return;
         const now = Date.now();
-        if (!force && now - lastFetch.current.issuances < 5000) return;
+        if (!force && now - lastFetch.current.issuances < CACHE_TTL_MS) return;
 
         try {
             const response = await fetch('/api/issuances', { credentials: 'include' });
@@ -294,7 +296,7 @@ export const DataProvider = ({ children }) => {
     const refreshHistory = useCallback(async (force = false) => {
         if (!isAuthenticated()) return;
         const now = Date.now();
-        if (!force && now - lastFetch.current.history < 5000) return;
+        if (!force && now - lastFetch.current.history < CACHE_TTL_MS) return;
 
         try {
             const response = await fetch('/api/documents/history', { credentials: 'include' });
@@ -316,7 +318,7 @@ export const DataProvider = ({ children }) => {
     const refreshTemplates = useCallback(async (force = false) => {
         if (!isAuthenticated()) return;
         const now = Date.now();
-        if (!force && now - lastFetch.current.templates < 5000) return;
+        if (!force && now - lastFetch.current.templates < CACHE_TTL_MS) return;
 
         try {
             const response = await fetch('/api/templates', { credentials: 'include' });
@@ -371,7 +373,7 @@ export const DataProvider = ({ children }) => {
             refreshIssuances();
             refreshHistory();
             refreshTemplates();
-        }, 15000);
+        }, 60000); // 60s background polling
     }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
 
     // ── Global Polling ────────────────────────────────────────────────────────

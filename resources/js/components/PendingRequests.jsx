@@ -23,7 +23,12 @@ import {
     QrCodeIcon,
     ArrowLeftIcon,
     CameraIcon,
-    PhotoIcon
+    PhotoIcon,
+    ShieldCheckIcon,
+    EyeIcon,
+    IdentificationIcon,
+    ArrowUpIcon,
+    ArrowDownIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import AttachDocumentModal from './AttachDocumentModal';
@@ -95,7 +100,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [purposeFilter, setPurposeFilter] = useState('all');
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
-    const [statusFilter, setStatusFilter] = useState('pending');
+    const [statusFilter, setStatusFilter] = useState('waiting');
+    /** @type {['asc'|'desc', import('react').Dispatch<import('react').SetStateAction<'asc'|'desc'>>]} */
+    const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = FIFO (oldest first), 'desc' = newest first
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isLoading, setIsLoading] = useState(false);
 
@@ -149,6 +156,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
+    const [isIdPreviewOpen, setIsIdPreviewOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIssuing, setIsIssuing] = useState(false);
 
@@ -302,8 +311,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
      * the selected purpose or request-status filter changes.
      */
     useEffect(() => {
-        /** Cache key scoped to the active purpose and status filters. */
-        const cacheKey = `civicore_pending_tickets_${purposeFilter}_${statusFilter}`;
+        /** Cache key scoped to the active purpose, status, and sort order. */
+        const cacheKey = `civicore_pending_tickets_${purposeFilter}_${statusFilter}_${sortOrder}`;
         /** Previously cached ticket list, if one exists. */
         const cachedTickets = sessionStorage.getItem(cacheKey);
         /** Previously cached summary statistics, if one exists. */
@@ -319,7 +328,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
 
         fetchPendingTickets(!cachedTickets);
-    }, [purposeFilter, statusFilter]);
+    }, [purposeFilter, statusFilter, sortOrder]);
 
     /** Refreshes the inbox silently when the parent reports a data change. */
     useEffect(() => {
@@ -337,12 +346,13 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const fetchPendingTickets = async (showLoading = true) => {
         try {
             if (showLoading) setIsLoading(true);
-            /** Fetch the filtered inbox and its aggregate dashboard statistics together. */
+            /** Fetch the filtered queue and its aggregate dashboard statistics together. */
             const [ticketsRes, statsRes] = await Promise.all([
                 axios.get('/api/v1/tickets', {
                     params: {
                         request_status: statusFilter,
                         purpose: purposeFilter,
+                        sort_order: sortOrder,
                         _: Date.now() // Cache-busting timestamp parameter
                     }
                 }),
@@ -358,13 +368,12 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             /** Ticket records returned by the filtered inbox endpoint. */
             const newTickets = ticketsRes.data;
             if (prevCount > 0 && newTickets.length > prevCount) {
-                /** The API returns newest requests first, so the first item is newest. */
                 const latest = newTickets[0];
                 playNotificationSound();
                 if (showAlert && latest) {
                     showAlert({
                         title: 'New Request Received!',
-                        message: `Ticket ${latest.ticket_number} (${latest.client_name}) was added to the digital inbox.`,
+                        message: `Ticket ${latest.ticket_number} (${latest.client_name}) was added to the queue.`,
                         type: 'info'
                     });
                 }
@@ -374,23 +383,25 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             setTickets(newTickets);
             setStats(statsRes.data);
 
-            sessionStorage.setItem(`civicore_pending_tickets_${purposeFilter}_${statusFilter}`, JSON.stringify(ticketsRes.data));
+            sessionStorage.setItem(`civicore_pending_tickets_${purposeFilter}_${statusFilter}_${sortOrder}`, JSON.stringify(ticketsRes.data));
             sessionStorage.setItem('civicore_pending_stats', JSON.stringify(statsRes.data));
 
             if (ticketsRes.data.length > 0) {
                 if (selectedTicket) {
-                    /** Keep the selected record synchronized with refreshed server data. */
+                    /** Keep the selected record synchronized with refreshed server data without deselecting */
                     const matched = ticketsRes.data.find(t => t.id === selectedTicket.id);
-                    setSelectedTicket(matched || ticketsRes.data[0]);
+                    setSelectedTicket(matched || selectedTicket);
                 } else {
                     setSelectedTicket(ticketsRes.data[0]);
                 }
             } else {
-                setSelectedTicket(null);
+                if (!isVerifyOpen && !isIdPreviewOpen) {
+                    setSelectedTicket(null);
+                }
             }
         } catch (err) {
             console.error(err);
-            showAlert({ title: 'Error', message: 'Could not retrieve digital requests.', type: 'danger' });
+            showAlert({ title: 'Error', message: 'Could not retrieve tickets queue.', type: 'danger' });
         } finally {
             setIsLoading(false);
         }
@@ -413,22 +424,22 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 print_remarks: printRemarks
             });
             if (res.data.success) {
-                /** Apply the server-confirmed workflow state to the local selection. */
+                /** Apply the server-confirmed workflow state to the local selection immediately. */
                 const updatedTicket = {
                     ...selectedTicket,
                     document_id: docId,
                     request_status: 'ready_for_pickup'
                 };
                 setSelectedTicket(updatedTicket);
+                setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
                 setScannedData(prev => prev ? { ...prev, ...updatedTicket } : prev);
                 setIsPopupOpen(true);
                 showAlert({
                     title: 'File Attached!',
-                    message: `Ticket ${selectedTicket.ticket_number} was sent to the ready for printing queue.`,
+                    message: `Ticket ${selectedTicket.ticket_number} was linked and marked ready for release.`,
                     type: 'success'
                 });
                 fetchPendingTickets(false);
-                if (refreshCounter) refreshCounter();
             }
         } catch (err) {
             console.error(err);
@@ -587,7 +598,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
     };
 
-    /** Tickets matching the free-text search currently entered by staff. */
+    /** Tickets matching the free-text search currently entered by staff, with active sort order. */
     const filteredTickets = tickets.filter(t => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return true;
@@ -606,6 +617,13 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         if (t.details && JSON.stringify(t.details).toLowerCase().includes(query)) return true;
 
         return false;
+    }).sort((a, b) => {
+        if (a.queue_status === 'serving' && b.queue_status !== 'serving') return -1;
+        if (b.queue_status === 'serving' && a.queue_status !== 'serving') return 1;
+
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
     return (
@@ -621,28 +639,30 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
                 {/* Left: Pending Tickets List */}
-                <div className={`lg:col-span-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 shadow-sm flex-col h-full overflow-hidden ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`lg:col-span-1 bg-white/95 border border-slate-200/80 rounded-3xl p-5 shadow-sm flex-col h-full overflow-hidden ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
                     {/* Header Title Row */}
                     <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-150">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-xl bg-[#d4a574]/15 border border-[#d4a574]/30 flex items-center justify-center shrink-0">
-                                <InboxIcon className="w-5 h-5 text-[#b88752]" />
+                                <ClockIcon className="w-5 h-5 text-[#b88752]" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-base font-black text-slate-800 tracking-tight">Digital Inbox</h3>
+                                    <h3 className="text-base font-black text-slate-800 tracking-tight">Tickets Queue</h3>
                                     <span className="bg-[#d4a574]/20 text-[#a37947] px-2.5 py-0.5 rounded-full text-xs font-black leading-none">
-                                        {tickets.length}
+                                        {filteredTickets.length}
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-slate-400 font-medium">Pending online requests & check-ins</p>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                    {statusFilter === 'completed' ? 'Completed & officially released tickets' : 'Active requests waiting in queue'}
+                                </p>
                             </div>
                         </div>
                         
                         <button
                             onClick={() => fetchPendingTickets(false)}
                             className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 active:scale-95 cursor-pointer shadow-sm"
-                            title="Reload inbox"
+                            title="Reload tickets queue"
                         >
                             <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                         </button>
@@ -679,7 +699,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             />
                         </div>
 
-                        {/* Filters Row */}
+                        {/* Filters Row: Waiting vs Completed, and Purpose */}
                         <div className="grid grid-cols-2 gap-2">
                             <div className="relative">
                                 <select
@@ -687,9 +707,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     onChange={e => setStatusFilter(e.target.value)}
                                     className="w-full appearance-none pl-3 pr-7 py-2 text-xs font-black uppercase tracking-wider border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 cursor-pointer truncate"
                                 >
-                                    <option value="pending">Inbox</option>
-                                    <option value="ready_for_pickup">Waiting</option>
-                                    <option value="completed">Completed</option>
+                                    <option value="waiting">Waiting ({stats.waiting || tickets.length})</option>
+                                    <option value="completed">Completed ({stats.completed_today || 0})</option>
                                 </select>
                                 <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
@@ -708,6 +727,24 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
                         </div>
+
+                        {/* Sort Order Control: Clean Arrow Icon (Ascending vs Descending) */}
+                        <div className="flex items-center justify-between gap-2 px-1 pt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Queue Order:</span>
+                            <button
+                                type="button"
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                className="inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 hover:border-[#d4a574]/60 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#b88752] transition-all cursor-pointer shadow-xs active:scale-95"
+                                title={sortOrder === 'asc' ? 'Queue Order: Ascending / Oldest First (Click for Descending)' : 'Queue Order: Descending / Newest First (Click for Ascending)'}
+                                aria-label={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                            >
+                                {sortOrder === 'asc' ? (
+                                    <ArrowUpIcon className="w-4 h-4 text-[#b88752]" />
+                                ) : (
+                                    <ArrowDownIcon className="w-4 h-4 text-[#b88752]" />
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     {/* List Container */}
@@ -719,9 +756,11 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             </div>
                         ) : filteredTickets.length === 0 ? (
                             <div className="text-center py-20 text-slate-400">
-                                <InboxIcon className="w-10 h-10 mx-auto mb-2 opacity-20 text-slate-600" />
+                                <ClockIcon className="w-10 h-10 mx-auto mb-2 opacity-20 text-slate-600" />
                                 <p className="text-xs font-bold">No requests in queue</p>
-                                <p className="text-[10px] text-slate-400 mt-1">Pending online requests will appear here.</p>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    {statusFilter === 'completed' ? 'No completed tickets found.' : 'Requests waiting in queue will appear here.'}
+                                </p>
                             </div>
                         ) : (
                             filteredTickets.map(t => {
@@ -735,25 +774,39 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         : 'bg-rose-50 text-rose-700 border-rose-100';
 
                                 return (
-                                    <motion.div
+                                    <div
                                         key={t.id}
-                                        layoutId={`ticket-${t.id}`}
                                         onClick={() => {
                                             setSelectedTicket(t);
                                             setMobileView('detail');
                                         }}
-                                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                        className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
                                             isSelected
                                                 ? 'border-[#d4a574] bg-[#d4a574]/5 shadow-sm ring-1 ring-[#d4a574]/30'
                                                 : 'border-slate-150 bg-white hover:bg-slate-50'
                                         }`}
                                     >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <span className="text-[9px] font-mono font-black text-slate-400 tracking-wider">ONLINE SUBMISSION</span>
-                                                <h4 className="font-black text-slate-800 text-sm tracking-tight">{t.ticket_number}</h4>
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0">
+                                                <span className="text-[9px] font-mono font-black text-slate-400 tracking-wider uppercase block">
+                                                    {t.source === 'walk_in' ? 'WALK-IN TICKET' : 'ONLINE SUBMISSION'}
+                                                </span>
+                                                <h4 className="font-black text-slate-800 text-sm tracking-tight truncate">{t.ticket_number}</h4>
                                             </div>
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {t.request_status === 'ready_for_pickup' ? (
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                        Ready
+                                                    </span>
+                                                ) : t.request_status === 'completed' ? (
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-blue-50 text-blue-700 border-blue-200">
+                                                        Issued
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-amber-50 text-amber-700 border-amber-200">
+                                                        In Queue
+                                                    </span>
+                                                )}
                                                 <span className={`px-2 py-0.5 border rounded-full text-[8px] font-black uppercase ${badgeClass}`}>
                                                     {t.purpose}
                                                 </span>
@@ -781,7 +834,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                 {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
-                                    </motion.div>
+                                    </div>
                                 );
                             })
                         )}
@@ -791,13 +844,13 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 {/* Right: Selected Ticket Details (Spacious and Revamped layout) */}
                 <div className={`lg:col-span-2 flex-col h-full overflow-hidden ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
                     {!selectedTicket ? (
-                        <div className="flex-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 text-center shadow-sm">
+                        <div className="flex-1 bg-white/95 border border-slate-200/80 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 text-center shadow-sm">
                             <SparklesIcon className="w-12 h-12 text-[#d4a574] opacity-20 mb-3" />
                             <h4 className="font-black text-sm text-slate-700">Digital Request Processor</h4>
                             <p className="text-xs max-w-sm mt-1">Select an online submission ticket on the left panel to begin linking registry records.</p>
                         </div>
                     ) : (
-                        <div className="flex-1 bg-white/70 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
+                        <div className="flex-1 bg-white/95 border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
                             {/* Mobile Back to List Navigation Bar */}
                             <div className="lg:hidden flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 shrink-0">
                                 <button
@@ -887,6 +940,55 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             <span className="font-extrabold text-slate-800 text-sm truncate block" title={selectedTicket.email}>{selectedTicket.email || '—'}</span>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Authorization & Consent Verification */}
+                                <div className="space-y-2.5 bg-slate-50/50 p-4 border border-slate-150 rounded-2xl">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <ShieldCheckIcon className="w-3.5 h-3.5 text-indigo-500" /> Authorization & Consent Document
+                                        </h4>
+                                        {selectedTicket.consent_form_path ? (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                Document Attached
+                                            </span>
+                                        ) : (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                                Self / Direct Parent / Child
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {selectedTicket.consent_form_path ? (
+                                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-150 shadow-xs">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                                    <PaperClipIcon className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-black text-slate-800 truncate">
+                                                        Authorization Letter / Valid ID Scan
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-400 truncate">
+                                                        {selectedTicket.consent_form_path.split('/').pop()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsIdPreviewOpen(true)}
+                                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 active:scale-95"
+                                                title="Inspect Citizen ID or Authorization Letter"
+                                            >
+                                                <EyeIcon className="w-3.5 h-3.5" />
+                                                <span>View / Verify</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[11px] text-slate-500 italic">
+                                            No authorization letter attached. Requester declared direct relationship (Parent, Child, or Document Owner).
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Form Fields */}
@@ -1462,6 +1564,73 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     )
                 )}
             </>
+
+            {/* In-page Citizen ID / Authorization Letter Verification Modal */}
+            <AnimatePresence>
+                {isIdPreviewOpen && selectedTicket?.consent_form_path && (
+                    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 text-slate-900">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-100"
+                        >
+                            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                        <IdentificationIcon className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white">Citizen ID & Authorization Document</h4>
+                                        <p className="text-[11px] text-slate-400">Client: {selectedTicket.client_name} • Ticket: {selectedTicket.ticket_number}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsIdPreviewOpen(false)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                >
+                                    <XMarkIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-4 bg-slate-100 flex items-center justify-center min-h-[320px]">
+                                {selectedTicket.consent_form_path.toLowerCase().endsWith('.pdf') ? (
+                                    <iframe
+                                        src={`/api/v1/tickets/${selectedTicket.id}/consent-form#toolbar=0`}
+                                        title="Citizen ID / Authorization Document"
+                                        className="w-full h-[65vh] rounded-xl border border-slate-200 bg-white"
+                                    />
+                                ) : (
+                                    <img
+                                        src={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
+                                        alt="Citizen ID or Authorization Document"
+                                        className="max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 bg-white"
+                                    />
+                                )}
+                            </div>
+                            <div className="px-5 py-3.5 bg-white border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                                <span className="text-xs text-slate-500 font-medium">Verify that the document matches the certificate applicant.</span>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
+                                        download
+                                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all"
+                                    >
+                                        Download
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsIdPreviewOpen(false)}
+                                        className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        Done Reviewing
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Verify ID & Checkout Modal */}
             <AnimatePresence>

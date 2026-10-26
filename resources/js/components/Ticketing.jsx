@@ -19,7 +19,8 @@ import {
     LinkIcon,
     PrinterIcon,
     ArrowDownTrayIcon,
-    UsersIcon
+    UsersIcon,
+    PaperClipIcon
 } from '@heroicons/react/24/outline';
 import { useData } from './DataContext.jsx';
 import { useModal } from './ModalContext.jsx';
@@ -43,13 +44,14 @@ export default function Ticketing({ mode = 'portal' }) {
     const { token } = useParams();
     const navigate = useNavigate();
     const { showAlert } = useModal();
-    const { documents: globalDocs, refreshAll } = useData();
+    const { refreshAll } = useData();
 
     // ── Portal State ──────────────────────────────────────────────────────────
     const [clientName, setClientName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [purpose, setPurpose] = useState('birth');
+    const [consentFile, setConsentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // ── Portal Window helper (after 5 PM → ticket scheduled for tomorrow) ─────────
@@ -140,12 +142,24 @@ export default function Ticketing({ mode = 'portal' }) {
 
         setIsSubmitting(true);
         try {
-            const res = await axios.post('/api/public/tickets', {
-                client_name: clientName,
-                email,
-                phone,
-                purpose,
-                details
+            const formData = new FormData();
+            formData.append('client_name', clientName.trim());
+            if (email.trim()) formData.append('email', email.trim());
+            if (phone.trim()) formData.append('phone', phone.trim());
+            formData.append('purpose', purpose);
+
+            Object.entries(details).forEach(([key, val]) => {
+                if (val !== undefined && val !== null) {
+                    formData.append(`details[${key}]`, val);
+                }
+            });
+
+            if (consentFile) {
+                formData.append('consent_form', consentFile);
+            }
+
+            const res = await axios.post('/api/public/tickets', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             if (res.data.success) {
                 showAlert({ title: 'Ticket Generated', message: 'Your request has been queued.', type: 'success' });
@@ -432,16 +446,18 @@ export default function Ticketing({ mode = 'portal' }) {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-800">Email Address</label>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-slate-800">Email Address</label>
+                                        <span className="text-[10px] text-slate-400 font-semibold">(Optional)</span>
+                                    </div>
                                     <div className="relative">
                                         <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
                                             type="email"
-                                            required
                                             value={email}
                                             onChange={e => setEmail(e.target.value.slice(0, 100))}
                                             maxLength={100}
-                                            placeholder="juan@email.com"
+                                            placeholder="juan@email.com (optional)"
                                             className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
                                         />
                                     </div>
@@ -462,6 +478,70 @@ export default function Ticketing({ mode = 'portal' }) {
                                             placeholder="09123456789"
                                             className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
                                         />
+                                    </div>
+                                </div>
+
+                                {/* Consent / Authorization Document Upload */}
+                                <div className="md:col-span-3 space-y-2 pt-2 border-t border-slate-100">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <PaperClipIcon className="w-4 h-4 text-[#c49a67]" />
+                                            Authorization Letter & Valid ID
+                                            <span className="text-[10px] text-slate-400 font-normal">(Required if NOT parent or child)</span>
+                                        </label>
+                                        <span className="text-[10px] text-slate-400 font-semibold">PDF, JPG, PNG up to 10MB</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500">
+                                        Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
+                                    </p>
+                                    <div className="relative border-2 border-dashed border-slate-200 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 hover:bg-slate-50 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
+                                                <PaperClipIcon className="w-5 h-5 text-[#c49a67]" />
+                                            </div>
+                                            <div className="min-w-0 text-center sm:text-left">
+                                                {consentFile ? (
+                                                    <div>
+                                                        <div className="text-xs font-bold text-slate-900 truncate max-w-xs">{consentFile.name}</div>
+                                                        <div className="text-[10px] text-emerald-600 font-bold">{(consentFile.size / 1024 / 1024).toFixed(2)} MB • Ready to upload</div>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <div className="text-xs font-semibold text-slate-700">Choose file or drag & drop</div>
+                                                        <div className="text-[10px] text-slate-400">Scanned letter or photo of authorization & ID</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {consentFile && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConsentFile(null)}
+                                                    className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold cursor-pointer transition-all"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                            <label className="px-4 py-2 rounded-xl bg-[#1a2f4a] hover:bg-slate-800 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
+                                                <span>{consentFile ? 'Change File' : 'Browse File'}</span>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,image/png,image/jpeg,image/jpg"
+                                                    className="hidden"
+                                                    onChange={e => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            if (file.size > 10 * 1024 * 1024) {
+                                                                showAlert({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'danger' });
+                                                                return;
+                                                            }
+                                                            setConsentFile(file);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

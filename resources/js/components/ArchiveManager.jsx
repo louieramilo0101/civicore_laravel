@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     TrashIcon, ArrowPathIcon, ShieldCheckIcon, MagnifyingGlassIcon,
@@ -9,6 +9,7 @@ import { useData } from './DataContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
 import Pagination from './Pagination.jsx';
+import useDebounce from '../hooks/useDebounce.js';
 
 /** Manages archived records and restore or purge operations. */
 const ArchiveManager = () => {
@@ -33,6 +34,7 @@ const ArchiveManager = () => {
     const [isLoadingArchived, setIsLoadingArchived] = useState(() => !sessionStorage.getItem('civicore_archived_files'));
     const [isLoadingTickets, setIsLoadingTickets] = useState(() => !sessionStorage.getItem('civicore_archived_tickets'));
     const [archiveSearch, setArchiveSearch] = useState('');
+    const debouncedArchiveSearch = useDebounce(archiveSearch, 300);
     const [archiveTypeFilter, setArchiveTypeFilter] = useState('all');
     const [archiveSubTab, setArchiveSubTab] = useState('scans');
     const [selectedArchiveIds, setSelectedArchiveIds] = useState([]);
@@ -55,7 +57,7 @@ const ArchiveManager = () => {
         setIsLoadingArchived(true);
         try {
             const params = new URLSearchParams({
-                search: archiveSearch,
+                search: debouncedArchiveSearch,
                 per_page: '100'
             });
             if (archiveTypeFilter && archiveTypeFilter !== 'all') {
@@ -66,7 +68,7 @@ const ArchiveManager = () => {
                 const data = await res.json();
                 const files = data.data || [];
                 setArchivedFiles(files);
-                if (!archiveSearch && archiveTypeFilter === 'all') {
+                if (!debouncedArchiveSearch && archiveTypeFilter === 'all') {
                     try {
                         sessionStorage.setItem('civicore_archived_files', JSON.stringify(files));
                     } catch (e) {
@@ -79,7 +81,7 @@ const ArchiveManager = () => {
         } finally {
             setIsLoadingArchived(false);
         }
-    }, [archiveSearch, archiveTypeFilter]);
+    }, [debouncedArchiveSearch, archiveTypeFilter]);
 
     const fetchArchivedTickets = useCallback(async () => {
         setIsLoadingTickets(true);
@@ -107,23 +109,34 @@ const ArchiveManager = () => {
         fetchArchivedTickets();
     }, [fetchArchivedFiles, fetchArchivedTickets]);
 
-    // Separate archives based on status
-    const scansArchive = archivedFiles.filter(f => !['processed', 'issued', 'approved'].includes((f.status || '').toLowerCase()));
-    const registryArchive = archivedFiles.filter(f => ['processed', 'issued', 'approved'].includes((f.status || '').toLowerCase()));
+    // Separate archives based on status with memoization
+    const scansArchive = useMemo(() => {
+        return archivedFiles.filter(f => !['processed', 'issued', 'approved'].includes((f.status || '').toLowerCase()));
+    }, [archivedFiles]);
+
+    const registryArchive = useMemo(() => {
+        return archivedFiles.filter(f => ['processed', 'issued', 'approved'].includes((f.status || '').toLowerCase()));
+    }, [archivedFiles]);
 
     // Filter tickets based on search/type filters locally
-    const filteredArchivedTickets = archivedTickets.filter(ticket => {
-        const matchesSearch = ticket.client_name.toLowerCase().includes(archiveSearch.toLowerCase()) ||
-                              ticket.ticket_number.toLowerCase().includes(archiveSearch.toLowerCase());
-        const matchesType = archiveTypeFilter === 'all' || ticket.purpose === archiveTypeFilter;
-        return matchesSearch && matchesType;
-    });
+    const filteredArchivedTickets = useMemo(() => {
+        const query = (debouncedArchiveSearch || '').toLowerCase().trim();
+        return archivedTickets.filter(ticket => {
+            const matchesSearch = !query ||
+                (ticket.client_name || '').toLowerCase().includes(query) ||
+                (ticket.ticket_number || '').toLowerCase().includes(query);
+            const matchesType = archiveTypeFilter === 'all' || ticket.purpose === archiveTypeFilter;
+            return matchesSearch && matchesType;
+        });
+    }, [archivedTickets, debouncedArchiveSearch, archiveTypeFilter]);
 
-    const activeArchiveList = archiveSubTab === 'scans'
-        ? scansArchive
-        : archiveSubTab === 'registry'
-            ? registryArchive
-            : filteredArchivedTickets;
+    const activeArchiveList = useMemo(() => {
+        return archiveSubTab === 'scans'
+            ? scansArchive
+            : archiveSubTab === 'registry'
+                ? registryArchive
+                : filteredArchivedTickets;
+    }, [archiveSubTab, scansArchive, registryArchive, filteredArchivedTickets]);
 
     // Pagination States
     const [archivePage, setArchivePage] = useState(1);
@@ -132,7 +145,7 @@ const ArchiveManager = () => {
     // Reset pagination when search, type filter, or tab changes
     useEffect(() => {
         setArchivePage(1);
-    }, [archiveSearch, archiveTypeFilter, archiveSubTab]);
+    }, [debouncedArchiveSearch, archiveTypeFilter, archiveSubTab]);
 
     const totalArchivePages = Math.max(1, Math.ceil(activeArchiveList.length / archivePageSize));
     const safeArchivePage = Math.min(archivePage, totalArchivePages);

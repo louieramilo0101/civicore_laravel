@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import { 
     ClockIcon, 
     MegaphoneIcon, 
@@ -34,12 +35,8 @@ export default function Landing() {
     }, []);
 
     useEffect(() => {
-        fetch('/api/public/config', { cache: 'no-store' })
-            .then(res => {
-                if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
-                return res.json();
-            })
-            .then(data => setConfig(data))
+        axios.get('/api/public/config')
+            .then(res => setConfig(res.data))
             .catch(err => console.error(err));
     }, []);
 
@@ -68,9 +65,9 @@ export default function Landing() {
 
     return (
         <div className="relative overflow-visible pb-12 sm:pb-16 text-slate-100">
-            {/* Ambient Background Lighting FX */}
-            <div className="absolute top-0 right-[-5%] w-[55%] h-[65%] bg-[#d4a574]/10 blur-[150px] rounded-full pointer-events-none" />
-            <div className="absolute top-[20%] right-[10%] w-[35%] h-[40%] bg-indigo-500/10 blur-[130px] rounded-full pointer-events-none" />
+            {/* Ambient Background Lighting FX (GPU Accelerated Radial Gradients) */}
+            <div className="absolute top-0 right-[-5%] w-[60%] h-[70%] bg-[radial-gradient(ellipse_at_center,rgba(212,165,116,0.12)_0%,transparent_70%)] pointer-events-none" />
+            <div className="absolute top-[20%] right-[10%] w-[40%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)] pointer-events-none" />
 
             {/* Hero Section */}
             <section className="pt-2 sm:pt-4 md:pt-6 pb-12 sm:pb-16 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
@@ -100,14 +97,14 @@ export default function Landing() {
                         >
                             RECORDING.<br />
                             <div className="relative block overflow-hidden h-[1.1em] my-0.5 leading-none drop-shadow-md">
-                                <AnimatePresence initial={false}>
+                                <AnimatePresence initial={false} mode="wait">
                                     <motion.div
                                         key={DYNAMIC_WORDS[wordIndex]}
-                                        initial={{ y: '100%', opacity: 0, rotateX: -60 }}
-                                        animate={{ y: '0%', opacity: 1, rotateX: 0 }}
-                                        exit={{ y: '-100%', opacity: 0, rotateX: 60 }}
-                                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                                        className="absolute inset-0 flex items-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4a574] via-[#f3d0a2] to-[#d4a574] font-black whitespace-nowrap origin-bottom"
+                                        initial={{ y: '60%', opacity: 0 }}
+                                        animate={{ y: '0%', opacity: 1 }}
+                                        exit={{ y: '-60%', opacity: 0 }}
+                                        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                                        className="absolute inset-0 flex items-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4a574] via-[#f3d0a2] to-[#d4a574] font-black whitespace-nowrap"
                                     >
                                         {DYNAMIC_WORDS[wordIndex]}
                                     </motion.div>
@@ -142,10 +139,10 @@ export default function Landing() {
                         animate="visible"
                         className="lg:col-span-5 xl:col-span-5 w-full flex flex-col justify-center relative mt-8 lg:mt-0"
                     >
-                        {/* Dynamic Ambient Color Orbs */}
-                        <div className="absolute -top-16 -right-8 w-72 h-72 bg-[#d4a574]/20 rounded-full blur-[100px] pointer-events-none" />
-                        <div className="absolute top-1/2 -left-12 w-64 h-64 bg-indigo-500/15 rounded-full blur-[110px] pointer-events-none" />
-                        <div className="absolute -bottom-10 right-10 w-60 h-60 bg-amber-500/10 rounded-full blur-[90px] pointer-events-none" />
+                        {/* Dynamic Ambient Color Radial Orbs */}
+                        <div className="absolute -top-16 -right-8 w-72 h-72 bg-[radial-gradient(ellipse_at_center,rgba(212,165,116,0.18)_0%,transparent_70%)] pointer-events-none" />
+                        <div className="absolute top-1/2 -left-12 w-64 h-64 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12)_0%,transparent_70%)] pointer-events-none" />
+                        <div className="absolute -bottom-10 right-10 w-60 h-60 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none" />
 
                         {/* Content Container */}
                         <div className="relative z-10 space-y-4 max-w-md w-full ml-auto lg:mr-0 mr-auto">
@@ -223,7 +220,7 @@ export default function Landing() {
 
             {/* Section 2: Citizen Request Pathway (Aligned with Original Design System) */}
             <section className="pt-12 pb-20 sm:pt-16 sm:pb-24 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10">
-                <div className="absolute top-1/2 -right-12 w-64 h-64 bg-[#d4a574]/10 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute top-1/2 -right-12 w-64 h-64 bg-[radial-gradient(ellipse_at_center,rgba(212,165,116,0.1)_0%,transparent_70%)] pointer-events-none" />
                 <div className="w-full space-y-10 relative">
                     
                     <motion.div

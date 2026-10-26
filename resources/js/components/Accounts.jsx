@@ -10,10 +10,12 @@ import { useModal } from './ModalContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Avatar from './Avatar.jsx';
 import { AVATAR_LIBRARY } from './AvatarLibrary.js';
+import { useData } from './DataContext.jsx';
 
 /** Manages user accounts, roles, avatars, and password policy feedback. */
 const Accounts = () => {
     const { showAlert } = useModal();
+    const { refreshStats } = useData();
     const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
     const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('civicore_users'));
     const [users, setUsers] = useState(() => {
@@ -36,12 +38,35 @@ const Accounts = () => {
     });
     const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'details'
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled'
-    const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(true);
+    const [ticketLimitsEnabled, setTicketLimitsEnabled] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) {
+                const s = JSON.parse(cached);
+                if (s.ticket_limits_enabled !== undefined) {
+                    return s.ticket_limits_enabled === '1' || s.ticket_limits_enabled === 1 || s.ticket_limits_enabled === true;
+                }
+            }
+        } catch {}
+        return false;
+    });
     const [isUpdatingLimits, setIsUpdatingLimits] = useState(false);
 
     // OCR Engine Configuration State
-    const [ocrEngine, setOcrEngine] = useState('gemini');
-    const [ollamaModel, setOllamaModel] = useState('qwen2.5vl:3b');
+    const [ocrEngine, setOcrEngine] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) return JSON.parse(cached).ocr_engine || 'gemini';
+        } catch {}
+        return 'gemini';
+    });
+    const [ollamaModel, setOllamaModel] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_settings');
+            if (cached) return JSON.parse(cached).ollama_model || 'qwen2.5vl:3b';
+        } catch {}
+        return 'qwen2.5vl:3b';
+    });
     const [isUpdatingOcr, setIsUpdatingOcr] = useState(false);
     const [ocrStatusInfo, setOcrStatusInfo] = useState(null);
     const [isCheckingOcr, setIsCheckingOcr] = useState(false);
@@ -51,8 +76,9 @@ const Accounts = () => {
             const res = await fetch('/api/settings', { credentials: 'include' });
             const data = await res.json();
             if (data.settings) {
+                sessionStorage.setItem('civicore_settings', JSON.stringify(data.settings));
                 if (data.settings.ticket_limits_enabled !== undefined) {
-                    setTicketLimitsEnabled(data.settings.ticket_limits_enabled !== '0');
+                    setTicketLimitsEnabled(data.settings.ticket_limits_enabled === '1' || data.settings.ticket_limits_enabled === 1 || data.settings.ticket_limits_enabled === true);
                 }
                 if (data.settings.ocr_engine) {
                     setOcrEngine(data.settings.ocr_engine);
@@ -132,9 +158,17 @@ const Accounts = () => {
             });
             const data = await res.json();
             if (data.success) {
+                try {
+                    const currentSettings = JSON.parse(sessionStorage.getItem('civicore_settings') || '{}');
+                    currentSettings.ticket_limits_enabled = newVal ? '1' : '0';
+                    sessionStorage.setItem('civicore_settings', JSON.stringify(currentSettings));
+                } catch {}
+
                 showAlert({
-                    title: 'Settings Updated',
-                    message: newVal ? 'Ticket request rate limits are now ENABLED.' : 'Ticket request rate limits are now DISABLED for testing mode.',
+                    title: 'Limits Setting Updated',
+                    message: newVal
+                        ? 'Ticket request limits are now ENABLED. The anti-spam protection is active (1 per day & 3 per week).'
+                        : 'Ticket request limits are now TURNED OFF. Requesters can submit without restriction.',
                     type: 'success'
                 });
             }
@@ -165,12 +199,6 @@ const Accounts = () => {
 
     const [showNewUserPassword, setShowNewUserPassword] = useState(false);
     const [isAddingUser, setIsAddingUser] = useState(false);
-    const [requireVerification, setRequireVerification] = useState(false);
-    const [verificationStep, setVerificationStep] = useState('form'); // 'form' | 'otp'
-    const [verificationChannel, setVerificationChannel] = useState('mailtrap'); // 'mailtrap' | 'gmail'
-    const [otpCode, setOtpCode] = useState('');
-    const [isSendingCode, setIsSendingCode] = useState(false);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [changePasswordFormData, setChangePasswordFormData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -183,6 +211,9 @@ const Accounts = () => {
     const [deleteUserPassword, setDeleteUserPassword] = useState('');
     const [showDeleteUserPassword, setShowDeleteUserPassword] = useState(false);
     const [isDeletingUser, setIsDeletingUser] = useState(false);
+    const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false);
+    const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+    const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
     const [editProfileFormData, setEditProfileFormData] = useState({
@@ -265,6 +296,7 @@ const Accounts = () => {
                 setUsers(updatedUsers);
                 try {
                     sessionStorage.setItem('civicore_users', JSON.stringify(updatedUsers));
+                    sessionStorage.setItem('civicore_users_time', String(Date.now()));
                 } catch (e) {
                     console.warn('Failed to cache users:', e);
                 }
@@ -286,57 +318,7 @@ const Accounts = () => {
     const handleAddUser = async (e) => {
         e.preventDefault();
         if (!isStrongPassword(newUserFormData.password)) return;
-
-        if (requireVerification) {
-            // Step 1: Send OTP first
-            setIsSendingCode(true);
-            try {
-                const res = await fetch('/api/verification/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ email: newUserFormData.email, channel: verificationChannel })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setVerificationStep('otp');
-                    setOtpCode('');
-                } else {
-                    showAlert({ title: 'Email Error', message: data.error || 'Failed to send verification code.', type: 'error' });
-                }
-            } catch {
-                showAlert({ title: 'Network Error', message: 'Could not send verification email.', type: 'error' });
-            } finally {
-                setIsSendingCode(false);
-            }
-            return;
-        }
-
-        // No verification required — create directly
         await doCreateAccount();
-    };
-
-    const handleVerifyAndCreate = async (e) => {
-        e.preventDefault();
-        setIsVerifying(true);
-        try {
-            const res = await fetch('/api/verification/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email: newUserFormData.email, code: otpCode })
-            });
-            const data = await res.json();
-            if (data.success) {
-                await doCreateAccount();
-            } else {
-                showAlert({ title: 'Invalid Code', message: data.error || 'The code you entered is incorrect or expired.', type: 'error' });
-            }
-        } catch {
-            showAlert({ title: 'Network Error', message: 'Could not verify code.', type: 'error' });
-        } finally {
-            setIsVerifying(false);
-        }
     };
 
     const doCreateAccount = async () => {
@@ -351,13 +333,13 @@ const Accounts = () => {
             const data = await res.json();
             if (data.success) {
                 await fetchUsers(false);
+                sessionStorage.removeItem('civicore_stats');
+                if (refreshStats) refreshStats(true);
                 setIsAddUserModalOpen(false);
                 setNewUserFormData({ first_name: '', middle_name: '', last_name: '', email: '', role: 'Admin', password: '', avatar: null });
                 setNewUserAvatarPreview(null);
                 setIsNewUserAvatarLibraryOpen(false);
                 setShowNewUserPassword(false);
-                setVerificationStep('form');
-                setOtpCode('');
                 showAlert({
                     title: 'Account Created',
                     message: "Account has been created successfully!",
@@ -483,6 +465,8 @@ const Accounts = () => {
 
             if (toggleData.success) {
                 await fetchUsers(true); // Refresh and invalidate cache
+                sessionStorage.removeItem('civicore_stats');
+                if (refreshStats) refreshStats(true);
                 setIsDeleteUserModalOpen(false);
                 setDeleteUserPassword('');
                 showAlert({
@@ -511,9 +495,15 @@ const Accounts = () => {
     };
 
     useEffect(() => {
-        fetchUsers(!sessionStorage.getItem('civicore_users'));
-        fetchSettings();
-        fetchOcrStatus();
+        const cachedUsers = sessionStorage.getItem('civicore_users');
+        const lastFetchTime = Number(sessionStorage.getItem('civicore_users_time') || 0);
+        const isStale = Date.now() - lastFetchTime > 300000; // 5 min TTL
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+
+        // Only SuperAdmin has access to the full accounts list; Admins view personal profile
+        if (user.role === 'SuperAdmin' && (!cachedUsers || isStale)) {
+            fetchUsers(!cachedUsers);
+        }
     }, []);
 
     // Initialize Chart
@@ -631,101 +621,41 @@ const Accounts = () => {
                     </p>
                 </div>
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                        {/* Testing Mode Rate Limit Toggle */}
-                        <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="flex flex-col">
-                                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                                    Rate Limits (Testing Mode)
-                                </span>
-                                <span className="text-[10px] text-slate-500 font-medium">
-                                    {ticketLimitsEnabled ? '1/day & 3/week ENFORCED' : 'Limits OFF (Testing Mode)'}
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                disabled={isUpdatingLimits}
-                                onClick={() => handleToggleLimits(!ticketLimitsEnabled)}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                                title={ticketLimitsEnabled ? 'Click to disable limits for testing' : 'Click to enable limits'}
-                            >
-                                <span
-                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${ticketLimitsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
-                                />
-                            </button>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                        {/* Advanced Settings Button */}
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                setIsAdvancedSettingsOpen(true);
+                                if (!hasLoadedSettings) {
+                                    setIsLoadingSettings(true);
+                                    await Promise.allSettled([fetchSettings(), fetchOcrStatus()]);
+                                    setHasLoadedSettings(true);
+                                    setIsLoadingSettings(false);
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-slate-50 text-slate-700 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="Configure ticket limits and OCR engine in Advanced Settings"
+                        >
+                            <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600" />
+                            <span>Advanced Settings</span>
+                        </button>
 
-                        {/* OCR Engine Switcher (SuperAdmin only) */}
-                        <div className="flex items-center justify-between sm:justify-start gap-3 bg-white/80 backdrop-blur-md px-3.5 sm:px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-black text-slate-800">
-                                        OCR Engine
-                                    </span>
-                                    {ocrEngine === 'ollama' ? (
-                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full mr-1 ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                                            {ocrStatusInfo?.ollama?.online ? 'Offline / Private' : 'Ollama Offline'}
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                            <span className="w-1.5 h-1.5 rounded-full mr-1 bg-indigo-500"></span>
-                                            Cloud AI
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]">
-                                    {ocrEngine === 'ollama' ? `Local (${ollamaModel})` : 'Cloud AI'}
-                                </span>
-                            </div>
-
-                            {/* Switch Buttons */}
-                            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-                                <button
-                                    type="button"
-                                    disabled={isUpdatingOcr}
-                                    onClick={() => handleSwitchOcrEngine('gemini')}
-                                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                                        ocrEngine === 'gemini'
-                                            ? 'bg-white text-indigo-600 shadow-xs ring-1 ring-slate-200'
-                                             : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                    title="Switch to Cloud AI OCR"
-                                >
-                                    <CloudIcon className="w-3.5 h-3.5" />
-                                    <span>Cloud</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={isUpdatingOcr}
-                                    onClick={() => handleSwitchOcrEngine('ollama')}
-                                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                                        ocrEngine === 'ollama'
-                                            ? 'bg-emerald-600 text-white shadow-xs'
-                                            : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                    title="Switch to Local Ollama Qwen2.5-VL (100% Offline & Private)"
-                                >
-                                    <CpuChipIcon className="w-3.5 h-3.5" />
-                                    <span>Local</span>
-                                </button>
-                            </div>
-
-                            {/* Recheck Connection Button */}
-                            <button
-                                type="button"
-                                onClick={fetchOcrStatus}
-                                disabled={isCheckingOcr}
-                                title="Recheck local Ollama connection status"
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                            >
-                                <ArrowPathIcon className={`w-3.5 h-3.5 ${isCheckingOcr ? 'animate-spin text-indigo-600' : ''}`} />
-                            </button>
-                        </div>
+                        {/* Force Refresh Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                fetchUsers(true);
+                            }}
+                            className="p-2.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+                            title="Refresh Accounts"
+                        >
+                            <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
+                        </button>
 
                         <button
                             onClick={() => setIsAddUserModalOpen(true)}
-                            className="flex items-center justify-center gap-2 bg-[#0f172a] text-white hover:bg-slate-800 transition-colors px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm"
+                            className="flex items-center justify-center gap-2 bg-[#0f172a] text-white hover:bg-slate-800 transition-colors px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm cursor-pointer"
                         >
                             <PlusIcon className="w-4 h-4" /> New Account
                         </button>
@@ -1050,44 +980,7 @@ const Accounts = () => {
                             </button>
                         </div>
                         <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
-                            {verificationStep === 'otp' ? (
-                                <div className="p-6 space-y-6">
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                            <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                        </div>
-                                        <h4 className="text-lg font-black text-slate-800 mb-1">Check Your Email</h4>
-                                        <p className="text-sm text-slate-500">We sent a 6-digit code to</p>
-                                        <p className="text-sm font-bold text-indigo-600 mt-1">{newUserFormData.email}</p>
-                                    </div>
-
-                                    <form onSubmit={handleVerifyAndCreate} className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 text-center">Enter Verification Code</label>
-                                            <input
-                                                required
-                                                maxLength={6}
-                                                value={otpCode}
-                                                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                className="w-full text-center text-4xl font-black tracking-[0.5em] px-4 py-4 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-slate-800 bg-slate-50 transition-all"
-                                                placeholder="------"
-                                            />
-                                            <p className="text-center text-xs text-slate-400 mt-2">Code expires in 10 minutes</p>
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            disabled={isVerifying || otpCode.length < 6}
-                                            className="w-full py-3.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                            {isVerifying ? (
-                                                <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> VERIFYING...</>
-                                            ) : 'Verify & Create Account'}
-                                        </button>
-                                        <button type="button" onClick={() => setVerificationStep('form')} className="w-full py-2 text-slate-400 hover:text-slate-600 text-sm font-bold transition-colors">← Back to Form</button>
-                                    </form>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleAddUser} className="p-6 space-y-4">
+                            <form onSubmit={handleAddUser} className="p-6 space-y-4">
                                     {/* New User Avatar Picker */}
                                     <div className="flex flex-col items-center mb-6">
                                         <div className="relative group cursor-pointer" onClick={() => newUserFileInputRef.current.click()}>
@@ -1210,52 +1103,15 @@ const Accounts = () => {
                                         </div>
                                     </div>
 
-                                    {/* Email Verification Toggle */}
-                                    <div className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${requireVerification ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 border-slate-200'}`} onClick={() => setRequireVerification(!requireVerification)}>
-                                        <div>
-                                            <p className={`text-sm font-black ${requireVerification ? 'text-indigo-700' : 'text-slate-600'}`}>Require Email Verification</p>
-                                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{requireVerification ? 'A 6-digit code will be sent to the email above' : 'Account will be created immediately'}</p>
-                                        </div>
-                                        <div className={`relative w-12 h-6 rounded-full transition-all ${requireVerification ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${requireVerification ? 'left-7' : 'left-1'}`} />
-                                        </div>
-                                    </div>
-
-                                    {requireVerification && (
-                                        <div className="space-y-2.5 p-4 rounded-xl border border-indigo-100 bg-indigo-50/20 animate-in slide-in-from-top-2 duration-200">
-                                            <label className="block text-xs font-bold text-indigo-700 uppercase tracking-widest">Verification Mail Channel</label>
-                                            <div className="grid grid-cols-2 gap-2 mt-1.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setVerificationChannel('mailtrap')}
-                                                    className={`py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-1 ${verificationChannel === 'mailtrap' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                                >
-                                                    <EnvelopeIcon className="w-3.5 h-3.5" />
-                                                    Mailtrap (Dev)
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setVerificationChannel('gmail')}
-                                                    className={`py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${verificationChannel === 'gmail' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                                >
-                                                    Gmail (Prod)
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
                                     <div className="pt-2 flex gap-3">
-                                        <button type="button" disabled={isAddingUser || isSendingCode} onClick={() => setIsAddUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
-                                        <button type="submit" disabled={isAddingUser || isSendingCode} className="flex-1 py-3 bg-[#0f172a] text-[#d4a574] font-black rounded-xl hover:bg-slate-800 transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                                            {isSendingCode ? (
-                                                <><svg className="animate-spin h-4 w-4 text-[#d4a574]" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> SENDING CODE...</>
-                                            ) : isAddingUser ? (
+                                        <button type="button" disabled={isAddingUser} onClick={() => setIsAddUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
+                                        <button type="submit" disabled={isAddingUser} className="flex-1 py-3 bg-[#0f172a] text-[#d4a574] font-black rounded-xl hover:bg-slate-800 transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                                            {isAddingUser ? (
                                                 <><svg className="animate-spin h-4 w-4 text-[#d4a574]" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> CREATING...</>
-                                            ) : requireVerification ? 'Send Verification Code' : 'Create User'}
+                                            ) : 'Create User'}
                                         </button>
                                     </div>
                                 </form>
-                            )}
                         </div>
                     </motion.div>
                 </div>
@@ -1648,6 +1504,154 @@ const Accounts = () => {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+            {/* Advanced System Settings Modal (Limits & OCR Engine) */}
+            {isAdvancedSettingsOpen && (
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900">
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 flex flex-col"
+                    >
+                        <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-black text-white">Advanced System Settings</h3>
+                                    <p className="text-xs text-slate-400">Configure global request limits and OCR engine settings</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAdvancedSettingsOpen(false)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            >
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh]">
+                            {isLoadingSettings ? (
+                                <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+                                    <ArrowPathIcon className="w-7 h-7 animate-spin text-indigo-600" />
+                                    <p className="text-xs font-bold text-slate-500">Loading system settings...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Request Anti-Spam Limits */}
+                                    <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                                                    Turn on limits for requests
+                                                </div>
+                                                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                                                    {ticketLimitsEnabled
+                                                        ? 'Anti-Spam Limits Active (1 per day & 3 per week)'
+                                                        : 'Limits Disabled (Open requests without restrictions)'}
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                disabled={isUpdatingLimits}
+                                                onClick={() => handleToggleLimits(!ticketLimitsEnabled)}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                                                title={ticketLimitsEnabled ? 'Click to turn off request limits' : 'Click to turn on limits for requests'}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${ticketLimitsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+                                                />
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            Controls whether citizens are rate-limited when requesting certificates online to prevent bot spam.
+                                        </p>
+                                    </div>
+
+                                    {/* OCR Engine Switcher */}
+                                    <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                                                Document OCR Engine
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {ocrEngine === 'ollama' ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                                                        {ocrStatusInfo?.ollama?.online ? 'Ollama Online' : 'Ollama Offline'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-indigo-500" />
+                                                        Cloud AI
+                                                    </span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={fetchOcrStatus}
+                                                    disabled={isCheckingOcr}
+                                                    title="Recheck local Ollama connection"
+                                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                                                >
+                                                    <ArrowPathIcon className={`w-3.5 h-3.5 ${isCheckingOcr ? 'animate-spin text-indigo-600' : ''}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 pt-1">
+                                            <button
+                                                type="button"
+                                                disabled={isUpdatingOcr}
+                                                onClick={() => handleSwitchOcrEngine('gemini')}
+                                                className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                                                    ocrEngine === 'gemini'
+                                                        ? 'bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-400/20'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <CloudIcon className="w-5 h-5 text-indigo-600" />
+                                                <span className="text-xs font-black">Cloud AI Engine</span>
+                                                <span className="text-[10px] text-slate-400">Gemini 2.5 Flash</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                disabled={isUpdatingOcr}
+                                                onClick={() => handleSwitchOcrEngine('ollama')}
+                                                className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
+                                                    ocrEngine === 'ollama'
+                                                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-xs ring-1 ring-emerald-500/20'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                <CpuChipIcon className="w-5 h-5 text-emerald-600" />
+                                                <span className="text-xs font-black">Local Ollama</span>
+                                                <span className="text-[10px] text-slate-400">100% Offline ({ollamaModel})</span>
+                                            </button>
+                                        </div>
+
+                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                            Local Ollama runs completely offline on your server machine with zero cloud transmission for maximum privacy.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setIsAdvancedSettingsOpen(false)}
+                                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                            >
+                                Done
+                            </button>
                         </div>
                     </motion.div>
                 </div>

@@ -407,15 +407,16 @@ For scenarios where the web application or web server cannot be reached, use the
 | **1h** | Multi-Format Export Suite (`/reports`) | **Completed** | Custom CSV and Excel (`.xlsx`) export module with granular multi-parameter filtering. |
 | **1i** | Backup & Disaster Recovery Architecture | **Completed** | Multi-schedule automated backups, auto-pruning, pre-restore snapshots, and recovery CLI. |
 | **1j** | High-Aesthetic Responsive Pagination | **Completed** | Reusable `Pagination.jsx` component adopted across all primary data tables. |
+| **1k** | System Engine Reboot & Cache Purge | **Completed** | SuperAdmin on-demand system reboot console in Backup & Recovery (`/backups`) and `/api/system/restart` to flush framework caches, reset queue workers, flush OPcache, and purge client session memory. |
+| **1l** | Registry Data Pipeline Integrity | **Completed** | Scoped Export Reports and Geospatial Mapping strictly to verified Registry Database documents (`Processed`, `Issued`, `Active`), eliminating raw draft upload leakage. |
 
 ---
 
 ## Future Roadmap
 
 The following enhancements are staged for future releases:
-- **Production SMTP Mail Gateway**: Transition from local sandbox (Mailtrap) to production SMTP (Google Workspace / AWS SES) for live citizen OTP and ticket updates.
-- **SMS Gateway Integration**: Hooking automated SMS dispatch (Semaphore / Globe Labs) to the stored `phone` number when tickets move to *Serving* or *Issued*.
-- **Multi-Factor Authentication (MFA)**: Optional authenticator app (TOTP) enforcement for SuperAdmin and Registrar staff logins.
+- **Export Reports Secondary Statistics Bar Simplification / Removal**: Re-evaluating or removing the secondary vital indicators bar (`Gender Ratio`, `Barangays Covered`, `Timely Filings`, `Special Vital: Seniors • Weddings`) on the Export Reports page pending municipal registrar workflow requirements and final reporting guidelines.
+
 
 ---
 

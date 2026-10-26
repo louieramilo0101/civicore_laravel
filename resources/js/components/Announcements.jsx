@@ -68,8 +68,10 @@ export default function Announcements() {
     };
 
     useEffect(() => {
-        fetchAnnouncements();
-        fetchSettings();
+        const loadInitialData = async () => {
+            await Promise.allSettled([fetchAnnouncements(), fetchSettings()]);
+        };
+        loadInitialData();
     }, []);
 
     const handleSubmit = async (e) => {
@@ -95,18 +97,24 @@ export default function Announcements() {
 
     const toggleStatus = async (id, currentStatus) => {
         setTogglingId(id);
+        const nextStatus = !currentStatus;
+        // Optimistic update
+        setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_active: nextStatus } : a));
+
         try {
             const res = await fetch(`/api/announcements/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ is_active: !currentStatus })
+                body: JSON.stringify({ is_active: nextStatus })
             });
-            if (res.ok) {
-                await fetchAnnouncements();
+            if (!res.ok) {
+                // Revert if error
+                setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_active: currentStatus } : a));
             }
         } catch (e) {
             console.error(e);
+            setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_active: currentStatus } : a));
         } finally {
             setTogglingId(null);
         }
@@ -114,14 +122,20 @@ export default function Announcements() {
 
     const deleteAnnouncement = async (id) => {
         if (!window.confirm("Are you sure you want to permanently delete this announcement?")) return;
+        const previous = announcements;
+        // Optimistic remove
+        setAnnouncements(prev => prev.filter(a => a.id !== id));
         try {
-            await fetch(`/api/announcements/${id}`, {
+            const res = await fetch(`/api/announcements/${id}`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
-            fetchAnnouncements();
+            if (!res.ok) {
+                setAnnouncements(previous);
+            }
         } catch (e) {
             console.error(e);
+            setAnnouncements(previous);
         }
     };
 

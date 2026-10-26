@@ -128,25 +128,42 @@ class SettingController extends Controller
         $activeEngine = Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
         $activeModel = Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
 
-        // Check local Ollama status
-        $ollamaOnline = false;
-        $ollamaModels = [];
-        try {
-            $ollamaRes = \Illuminate\Support\Facades\Http::timeout(3)->get('http://127.0.0.1:11434/api/tags');
-            if ($ollamaRes->successful()) {
-                $ollamaOnline = true;
-                $data = $ollamaRes->json();
-                if (isset($data['models']) && is_array($data['models'])) {
-                    foreach ($data['models'] as $m) {
-                        if (!empty($m['name'])) {
-                            $ollamaModels[] = $m['name'];
+        // Check local Ollama status with fast connect timeout and short cache
+        $refresh = $request->boolean('refresh', false);
+        $cacheKey = 'ollama_status_probe';
+        if ($refresh) {
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        }
+
+        $ollamaProbe = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () {
+            $online = false;
+            $models = [];
+            // Quick TCP check first (takes < 1ms if port 11434 is closed on Windows localhost)
+            $socket = @fsockopen('127.0.0.1', 11434, $errno, $errstr, 0.1);
+            if (is_resource($socket)) {
+                fclose($socket);
+                try {
+                    $ollamaRes = \Illuminate\Support\Facades\Http::timeout(1)->get('http://127.0.0.1:11434/api/tags');
+                    if ($ollamaRes->successful()) {
+                        $online = true;
+                        $data = $ollamaRes->json();
+                        if (isset($data['models']) && is_array($data['models'])) {
+                            foreach ($data['models'] as $m) {
+                                if (!empty($m['name'])) {
+                                    $models[] = $m['name'];
+                                }
+                            }
                         }
                     }
+                } catch (\Throwable $e) {
+                    $online = false;
                 }
             }
-        } catch (\Throwable $e) {
-            $ollamaOnline = false;
-        }
+            return ['online' => $online, 'models' => $models];
+        });
+
+        $ollamaOnline = $ollamaProbe['online'];
+        $ollamaModels = $ollamaProbe['models'];
 
         // Check Gemini API Keys
         $geminiKeyCount = 0;
@@ -170,4 +187,61 @@ class SettingController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Restart application caches, queue workers, and clear system buffers.
+     * Accessible exclusively to SuperAdmin.
+     */
+    public function restartSystem(Request $request)
+    {
+        $userId = $request->session()->get('user_id');
+        $actor = $userId ? User::find($userId) : null;
+
+        if (!$actor || $actor->role !== 'SuperAdmin') {
+            return response()->json(['error' => 'Forbidden. SuperAdmin privileges required.'], 403);
+        }
+
+        try {
+            // 1. Clear framework caches
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            \Illuminate\Support\Facades\Artisan::call('view:clear');
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+
+            // 2. Restart background queue workers if running
+            try {
+                \Illuminate\Support\Facades\Artisan::call('queue:restart');
+            } catch (\Throwable $qe) {
+                // Ignore if queue table/worker not configured
+            }
+
+            // 3. Flush application Cache facade
+            \Illuminate\Support\Facades\Cache::flush();
+
+            // 4. Reset OPcache if available
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+
+            // 5. Log activity
+            \App\Models\ActivityLog::create([
+                'user_name'   => $actor->name ?? 'SuperAdmin',
+                'action'      => 'System Restart',
+                'record_type' => 'System',
+                'record_id'   => null,
+                'details'     => 'SuperAdmin triggered complete application cache flush and system restart.'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'System engine and caches restarted successfully.'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('System restart failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to restart system: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+
