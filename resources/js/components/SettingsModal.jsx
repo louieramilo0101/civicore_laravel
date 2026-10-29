@@ -6,12 +6,8 @@ import {
     MoonIcon,
     ComputerDesktopIcon,
     AdjustmentsHorizontalIcon,
-    LanguageIcon,
     EyeIcon,
     ArrowPathIcon,
-    CloudIcon,
-    CpuChipIcon,
-    ShieldCheckIcon,
     CheckIcon,
     InformationCircleIcon
 } from '@heroicons/react/24/outline';
@@ -36,90 +32,44 @@ export default function SettingsModal() {
         setReducedMotion,
         readingGuide,
         setReadingGuide,
-        lang,
-        setLang,
         resetAll,
         isSettingsOpen,
         closeSettings,
     } = useAccessibility();
 
-    const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'accessibility' | 'language' | 'system'
-
-    // Check if user is authenticated and is SuperAdmin for system settings
-    const userStr = typeof window !== 'undefined' ? (localStorage.getItem('user') || sessionStorage.getItem('user')) : null;
-    const user = userStr ? JSON.parse(userStr) : null;
-    const isSuperAdmin = user?.role === 'SuperAdmin';
+    const [activeTab, setActiveTab] = useState('appearance'); // 'appearance' | 'accessibility'
 
     if (!isSettingsOpen) return null;
 
     const t = {
-        en: {
-            title: 'System & Display Settings',
-            subtitle: 'Configure theme, visual accessibility, typography, and portal options.',
-            tabAppearance: 'Appearance & Theme',
-            tabAccessibility: 'Accessibility (PWD / Senior)',
-            tabLanguage: 'Language',
-            tabSystem: 'System Admin',
-            themeLabel: 'Color Theme',
-            themeDesc: 'Select your preferred visual mode for reducing eye fatigue.',
-            themeLight: 'Light Mode',
-            themeLightDesc: 'Crisp, high-clarity daylight theme',
-            themeDark: 'Dark Mode',
-            themeDarkDesc: 'Midnight navy for reduced eye strain',
-            themeSystem: 'System Sync',
-            themeSystemDesc: 'Automatically follows your OS preference',
-            fontScaleLabel: 'Text Size Scaling',
-            fontScaleDesc: 'Increase font size across all portals without breaking tables or layout.',
-            fontNormal: 'Normal (100%)',
-            fontLarge: 'Large (115%)',
-            fontXLarge: 'Extra Large (130%)',
-            highContrastLabel: 'High Contrast Mode (WCAG AAA)',
-            highContrastDesc: 'Boosts outline definition, border contrast, and text sharpness (7:1+ ratio).',
-            dyslexiaLabel: 'Dyslexia-Friendly Font (Lexend)',
-            dyslexiaDesc: 'Applies an anti-crowding typeface with widened spacing for reading comfort.',
-            readingGuideLabel: 'Reading Guide Line',
-            readingGuideDesc: 'Draws a focus bar tracking your cursor to help read long registry documents.',
-            reducedMotionLabel: 'Reduced Motion',
-            reducedMotionDesc: 'Disables card entry animations and carousel slide transitions.',
-            langLabel: 'Portal Language',
-            langDesc: 'Choose your default language for explanations, instructions, and navigation.',
-            resetBtn: 'Reset to Defaults',
-            doneBtn: 'Save & Close',
-        },
-        fil: {
-            title: 'Mga Setting at Aksibilidad',
-            subtitle: 'Isaayos ang tema, hitsura ng teksto, at mga opsyon para sa PWD at nakatatanda.',
-            tabAppearance: 'Hitsura at Tema',
-            tabAccessibility: 'Aksibilidad (PWD / Senior)',
-            tabLanguage: 'Wika',
-            tabSystem: 'Admin ng Sistema',
-            themeLabel: 'Kulay ng Tema',
-            themeDesc: 'Pumili ng angkop na tema para maiwasan ang pagkapagod ng mata.',
-            themeLight: 'Maliwanag',
-            themeLightDesc: 'Malinaw at angkop sa maliwanag na paligid',
-            themeDark: 'Madilim (Dark Mode)',
-            themeDarkDesc: 'Midnight navy upang hindi sumakit ang mata',
-            themeSystem: 'Awtomatiko sa Device',
-            themeSystemDesc: 'Sumusunod sa kasalukuyang tema ng iyong kompyuter o selpon',
-            fontScaleLabel: 'Sukat ng Titik (Font Size)',
-            fontScaleDesc: 'Palakihin ang mga titik sa buong portal nang maayos at madaling basahin.',
-            fontNormal: 'Karaniwan (100%)',
-            fontLarge: 'Malaki (115%)',
-            fontXLarge: 'Napakalaki (130%)',
-            highContrastLabel: 'Mataas na Contrast (WCAG AAA)',
-            highContrastDesc: 'Pinalalakas ang mga linya at talim ng kulay upang mas madaling mabasa ng may kapansanan sa paningin.',
-            dyslexiaLabel: 'Tekstong Angkop sa Dyslexia (Lexend)',
-            dyslexiaDesc: 'Gumagamit ng espesyal na font na may malawak na espasyo sa pagitan ng mga titik.',
-            readingGuideLabel: 'Gabay sa Pagbasa (Reading Ruler)',
-            readingGuideDesc: 'Naglalagay ng linyang sumusunod sa cursor para gabayan ang pagbasa ng mahahabang tala.',
-            reducedMotionLabel: 'Bawasan ang Galaw (Reduced Motion)',
-            reducedMotionDesc: 'Tinatanggal ang mga animation at slide carousel para maiwasan ang pagkahilo.',
-            langLabel: 'Pangunahing Wika',
-            langDesc: 'Pumili sa pagitan ng Ingles at Filipino para sa mga paliwanag.',
-            resetBtn: 'Ibalik sa Karaniwan',
-            doneBtn: 'I-save at Isara',
-        }
-    }[lang] || {};
+        title: 'System & Display Settings',
+        subtitle: 'Configure theme, visual accessibility, typography, and portal options.',
+        tabAppearance: 'Appearance & Theme',
+        tabAccessibility: 'Accessibility (PWD / Senior)',
+        themeLabel: 'Color Theme',
+        themeDesc: 'Select your preferred visual mode for reducing eye fatigue.',
+        themeLight: 'Light Mode',
+        themeLightDesc: 'Crisp, high-clarity daylight theme',
+        themeDark: 'Dark Mode',
+        themeDarkDesc: 'Midnight navy for reduced eye strain',
+        themeSystem: 'System Sync',
+        themeSystemDesc: 'Automatically follows your OS preference',
+        fontScaleLabel: 'Text Size Scaling',
+        fontScaleDesc: 'Increase font size across all portals without breaking tables or layout.',
+        fontNormal: 'Normal (100%)',
+        fontLarge: 'Large (115%)',
+        fontXLarge: 'Extra Large (130%)',
+        highContrastLabel: 'High Contrast Mode (WCAG AAA)',
+        highContrastDesc: 'Boosts outline definition, border contrast, and text sharpness (7:1+ ratio).',
+        dyslexiaLabel: 'Dyslexia-Friendly Font (Lexend)',
+        dyslexiaDesc: 'Applies an anti-crowding typeface with widened spacing for reading comfort.',
+        readingGuideLabel: 'Reading Guide Line',
+        readingGuideDesc: 'Draws a focus bar tracking your cursor to help read long registry documents.',
+        reducedMotionLabel: 'Reduced Motion',
+        reducedMotionDesc: 'Disables card entry animations and carousel slide transitions.',
+        resetBtn: 'Reset to Defaults',
+        doneBtn: 'Save & Close',
+    };
 
     return (
         <AnimatePresence>
@@ -183,19 +133,6 @@ export default function SettingsModal() {
                         >
                             <EyeIcon className="w-4 h-4" />
                             <span>{t.tabAccessibility}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('language')}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                                activeTab === 'language'
-                                    ? 'bg-white dark:bg-slate-800 text-[#bc8a59] dark:text-[#d4a574] shadow-xs border border-slate-200 dark:border-slate-700'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <LanguageIcon className="w-4 h-4" />
-                            <span>{t.tabLanguage}</span>
                         </button>
                     </div>
 
@@ -422,52 +359,6 @@ export default function SettingsModal() {
                                                 reducedMotion ? 'translate-x-5' : 'translate-x-0'
                                             }`}
                                         />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── Tab: Language ── */}
-                        {activeTab === 'language' && (
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">{t.langLabel}</h4>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.langDesc}</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setLang('en')}
-                                        className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                                            lang === 'en'
-                                                ? 'bg-amber-500/10 border-[#d4a574] ring-2 ring-[#d4a574]/40 text-slate-900 dark:text-white shadow-xs'
-                                                : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-black uppercase tracking-wider text-[#d4a574]">EN</span>
-                                            {lang === 'en' && <CheckIcon className="w-4 h-4 text-[#d4a574]" />}
-                                        </div>
-                                        <div className="font-extrabold text-sm">English</div>
-                                        <div className="text-[11px] text-slate-400 mt-0.5">Official Standard English</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setLang('fil')}
-                                        className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                                            lang === 'fil'
-                                                ? 'bg-amber-500/10 border-[#d4a574] ring-2 ring-[#d4a574]/40 text-slate-900 dark:text-white shadow-xs'
-                                                : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-black uppercase tracking-wider text-[#d4a574]">FIL</span>
-                                            {lang === 'fil' && <CheckIcon className="w-4 h-4 text-[#d4a574]" />}
-                                        </div>
-                                        <div className="font-extrabold text-sm">Filipino</div>
-                                        <div className="text-[11px] text-slate-400 mt-0.5">Tagalog para sa mamamayan</div>
                                     </button>
                                 </div>
                             </div>
