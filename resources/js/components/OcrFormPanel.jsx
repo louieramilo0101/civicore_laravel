@@ -29,31 +29,31 @@ export function computeAge(dobString) {
 // ── Parental Consent Modal ────────────────────────────────────────────────────
 /** Requests consent details when a certificate requires parental approval. */
 export const ParentalConsentModal = ({ onConfirm, onCancel }) => (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 leading-normal">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
         <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-amber-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-amber-100 dark:border-amber-900/50"
         >
             <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                    <ShieldExclamationIcon className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
+                    <ShieldExclamationIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                    <h3 className="font-bold text-slate-800 text-lg">Parental Consent Required</h3>
-                    <p className="text-xs text-slate-500">Subject appears to be under 18 years old</p>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Parental Consent Required</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Subject appears to be under 18 years old</p>
                 </div>
             </div>
 
-            <div className="bg-amber-50 rounded-xl p-4 mb-5 border border-amber-100 text-sm text-amber-800">
+            <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-4 mb-5 border border-amber-100 dark:border-amber-900/50 text-sm text-amber-800 dark:text-amber-300">
                 This document involves a minor. Please confirm that the necessary parental or guardian consent has been obtained before proceeding.
             </div>
 
             <div className="space-y-3 mb-5">
                 <label className="flex items-start gap-3 cursor-pointer group">
                     <input type="checkbox" id="consent-checkbox" className="mt-1 accent-amber-500 w-4 h-4 flex-shrink-0" />
-                    <span className="text-sm text-slate-700 group-hover:text-slate-900">
+                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">
                         I confirm that parental/guardian consent has been obtained and is on file.
                     </span>
                 </label>
@@ -62,7 +62,7 @@ export const ParentalConsentModal = ({ onConfirm, onCancel }) => (
             <div className="flex gap-3">
                 <button
                     onClick={onCancel}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                     Cancel
                 </button>
@@ -676,13 +676,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
      */
     /** Maps OCR confidence and validation state to a visual class. */
     const getConfidenceClass = (fieldKey, hasError) => {
-        if (hasAttemptedSubmit && hasError) return 'border-rose-500 bg-rose-50/40 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm';
+        if (hasAttemptedSubmit && hasError) return 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm';
         const meta = fieldConfidence[fieldKey];
-        if (!meta) return 'border-slate-200 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
+        if (!meta) return 'border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
         if (meta.low_confidence || meta.confidence < 0.65) {
-            return 'border-amber-300 bg-amber-50/30 focus:ring-amber-100 focus:border-amber-400 shadow-sm';
+            return 'border-amber-300 bg-amber-50/30 dark:bg-amber-950/20 focus:ring-amber-100 focus:border-amber-400 shadow-sm';
         }
-        return 'border-slate-200 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
+        return 'border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
     };
 
     /** Indicates whether a field needs manual review. */
@@ -992,20 +992,20 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col relative"
+                className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-5xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col relative"
             >
                 {/* Saving Overlay */}
                 <AnimatePresence>
                     {isSaving && (
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 z-[100] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center"
+                            className="absolute inset-0 z-[100] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center"
                         >
                             <div className="relative">
                                 <div className="w-24 h-24 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500" />
                                 <CloudArrowUpIcon className="w-10 h-10 text-indigo-500 absolute inset-0 m-auto animate-pulse" />
                             </div>
-                            <h3 className="mt-6 text-xl font-black text-slate-900 tracking-tight">Securing Data to Registry...</h3>
+                            <h3 className="mt-6 text-xl font-black text-slate-900 dark:text-white tracking-tight">Securing Data to Registry...</h3>
                             <p className="text-sm text-slate-400 mt-2">Almost there! We're syncing your changes now.</p>
 
                             {!isViewOnly && (
@@ -1020,15 +1020,15 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     )}
                 </AnimatePresence>
 
-                <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-8 py-3.5 sm:py-5 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md gap-3 shrink-0">
+                <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-8 py-3.5 sm:py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md gap-3 shrink-0">
                     <div className="flex items-center justify-between w-full md:w-auto">
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
                                 isManualEntry 
                                     ? 'bg-[#d4a574]/15 border border-[#d4a574]/30 text-[#d4a574]'
                                     : isEditMode
-                                        ? 'bg-indigo-50 border border-indigo-100 text-indigo-600'
-                                        : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
+                                        ? 'bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-800 text-indigo-600'
+                                        : 'bg-emerald-50 dark:bg-emerald-950 border border-emerald-100 dark:border-emerald-800 text-emerald-600'
                             }`}>
                                 {isManualEntry || isEditMode ? (
                                     <PencilSquareIcon className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -1037,7 +1037,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 )}
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight truncate sm:whitespace-normal">
+                                <h3 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight truncate sm:whitespace-normal">
                                     {isManualEntry 
                                         ? 'Manual Civil Registry Encoding' 
                                         : isEditMode 
@@ -1080,8 +1080,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     }}
                                     className={`flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none group shadow-xs ${
                                         isDummyMode
-                                            ? 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100/70'
-                                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 hover:bg-amber-100/70'
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                                     title={isDummyMode ? "Click to switch to Upload Scan" : "Click to switch to Dummy Data Mode"}
                                 >
@@ -1116,7 +1116,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         </div>
 
                         {(isManualEntry || isEditMode) && !isViewOnly && (
-                            <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl w-full sm:w-auto">
+                            <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-auto">
                                 {['birth', 'death', 'marriage'].map(t => (
                                     <button
                                         key={t}
@@ -1129,8 +1129,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         }}
                                         className={`px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${
                                             effectiveType === t
-                                                ? 'bg-[#0f172a] text-[#d4a574] shadow-md'
-                                                : 'text-slate-600 hover:text-slate-900 bg-white border border-slate-200'
+                                                ? 'bg-[#0f172a] dark:bg-slate-950 text-[#d4a574] shadow-md border border-[#d4a574]/40'
+                                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600'
                                         }`}
                                     >
                                         {t}
@@ -1199,15 +1199,15 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
                 {/* ── Mobile Tab Navigation (Only shown when there's an attached scan / upload dropzone) ── */}
                 {viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode)) && (
-                    <div className="lg:hidden flex items-center bg-slate-100/90 border-b border-slate-200 px-4 py-2 shrink-0">
-                        <div className="grid grid-cols-2 gap-1.5 w-full bg-slate-200/80 p-1 rounded-xl">
+                    <div className="lg:hidden flex items-center bg-slate-100/90 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0">
+                        <div className="grid grid-cols-2 gap-1.5 w-full bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-xl">
                             <button
                                 type="button"
                                 onClick={() => setMobileTab('form')}
                                 className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                                     mobileTab === 'form'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                             >
                                 <PencilSquareIcon className="w-4 h-4 text-indigo-600" />
@@ -1219,7 +1219,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer relative ${
                                     mobileTab === 'scan'
                                         ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                             >
                                 <PhotoIcon className={`w-4 h-4 ${mobileTab === 'scan' ? 'text-white' : 'text-indigo-600'}`} />
@@ -1236,18 +1236,18 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     {/* ── Left Pane: Reference Scan or Manual Upload Dropzone ── */}
                     {viewMode !== 'compare' && (
                         originalDocumentUrl ? (
-                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50 p-3 sm:p-4 flex-col shrink-0 ${
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${
                                 mobileTab === 'scan' ? 'flex flex-1 overflow-hidden' : 'hidden lg:flex'
                             }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
-                                    <div className="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl">
+                                    <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-xl">
                                         <button
                                             type="button"
                                             onClick={() => setLeftPreviewTab('picture')}
                                             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                                 leftPreviewTab === 'picture' 
-                                                    ? 'bg-white text-slate-900 shadow-sm font-black' 
-                                                    : 'text-slate-600 hover:text-slate-900'
+                                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-black' 
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                             }`}
                                         >
                                             📷 Uploaded Picture (A4)
@@ -1258,7 +1258,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                                 leftPreviewTab === 'pdf' 
                                                     ? 'bg-indigo-600 text-white shadow-sm font-black' 
-                                                    : 'text-slate-600 hover:text-slate-900'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                             }`}
                                         >
                                             📄 Live Certificate (PDF)
@@ -1268,13 +1268,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         href={leftPreviewTab === 'picture' ? `/api/documents/view-image/${activeDocId}` : `/api/documents/view/${activeDocId}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg font-bold uppercase transition-colors shrink-0"
+                                        className="text-[10px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg font-bold uppercase transition-colors shrink-0"
                                     >
                                         Open Fullscreen ↗
                                     </a>
                                 </div>
 
-                                <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex items-center justify-center p-1 shadow-sm">
+                                <div className="flex-1 rounded-xl bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 overflow-hidden relative flex items-center justify-center p-1 shadow-sm">
                                     {leftPreviewTab === 'picture' ? (
                                         <img
                                             src={`/api/documents/view-image/${activeDocId}?v=${file?.updated_at ? new Date(file.updated_at).getTime() : 1}`}
@@ -1309,16 +1309,16 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 </div>
                             </div>
                         ) : isManualEntry && !isDummyMode ? (
-                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/70 p-3 sm:p-4 flex-col shrink-0 ${
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${
                                 viewMode === 'template' ? 'hidden' : (mobileTab === 'scan' ? 'flex flex-1 overflow-y-auto' : 'hidden lg:flex')
                             }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs">
+                                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs">
                                             <PhotoIcon className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <h4 className="text-xs font-bold text-slate-800">Scanned Document</h4>
+                                            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Scanned Document</h4>
                                             <p className="text-[10px] text-slate-400">Attached picture / PDF scan</p>
                                         </div>
                                     </div>
@@ -1328,7 +1328,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                 <button
                                                     type="button"
                                                     onClick={handleReopenPostFx}
-                                                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                                                    className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
                                                     title="Open Post-FX Editor (Crop, Rotate, B&W)"
                                                 >
                                                     <SparklesIcon className="w-3.5 h-3.5" />
@@ -1338,7 +1338,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer"
+                                                className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer"
                                             >
                                                 Change
                                             </button>
@@ -1349,7 +1349,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     if (manualFilePreview) URL.revokeObjectURL(manualFilePreview);
                                                     setManualFilePreview(null);
                                                 }}
-                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                                className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 rounded-lg transition-colors cursor-pointer"
                                                 title="Remove file"
                                             >
                                                 <TrashIcon className="w-3.5 h-3.5" />
@@ -1358,7 +1358,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     )}
                                 </div>
 
-                                <div className="flex-1 rounded-xl bg-white border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center p-3 shadow-xs min-h-[300px]">
+                                <div className="flex-1 rounded-xl bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col items-center justify-center p-3 shadow-xs min-h-[300px]">
                                     {manualFile && manualFilePreview ? (
                                         <div className="w-full h-full flex flex-col">
                                             <div className="flex-1 rounded-lg overflow-hidden bg-slate-100 relative flex items-center justify-center">
@@ -1398,10 +1398,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                             }}
                                             className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center transition-all ${
                                                 isDraggingManual
-                                                    ? 'border-indigo-500 bg-indigo-50/50 scale-[0.99]'
+                                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[0.99]'
                                                     : errors._file
-                                                        ? 'border-rose-400 bg-rose-50/30'
-                                                        : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300'
+                                                        ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/20'
+                                                        : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
                                             }`}
                                         >
                                             <input
@@ -1415,17 +1415,17 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     }
                                                 }}
                                             />
-                                            <div className="w-14 h-14 rounded-2xl bg-white shadow-md border border-slate-100 flex items-center justify-center mb-3 text-indigo-500">
+                                            <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 shadow-md border border-slate-100 dark:border-slate-700 flex items-center justify-center mb-3 text-indigo-500">
                                                 <CloudArrowUpIcon className="w-7 h-7" />
                                             </div>
-                                            <p className="text-xs font-bold text-slate-800">Drop certificate scan or picture here</p>
-                                            <p className="text-[11px] text-slate-400 mt-1 mb-4">Supports JPG, PNG, WEBP, or PDF (up to 20 MB)</p>
+                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Drop certificate scan or picture here</p>
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 mb-4">Supports JPG, PNG, WEBP, or PDF (up to 20 MB)</p>
 
                                             <div className="flex items-center gap-2 w-full max-w-[240px]">
                                                 <button
                                                     type="button"
                                                     onClick={() => fileInputRef.current?.click()}
-                                                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                                                 >
                                                     <ArrowUpTrayIcon className="w-3.5 h-3.5" />
                                                     Browse File
@@ -1433,7 +1433,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsCameraOpen(true)}
-                                                    className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                                    className="py-2 px-3 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                                                     title="Capture with Camera"
                                                 >
                                                     <CameraIcon className="w-4 h-4 text-indigo-500" />
@@ -1494,24 +1494,24 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             </div>
                         )}
 
-                        <div className="flex p-1 bg-slate-100 rounded-xl w-full sm:w-fit gap-1 flex-wrap">
+                        <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full sm:w-fit gap-1 flex-wrap">
                             {!isManualEntry && (
                                 <button
                                     onClick={() => setViewMode('text')}
-                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'text' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'text' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
                                     Full Extracted Text
                                 </button>
                             )}
                             <button
                                 onClick={() => setViewMode('fields')}
-                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'fields' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'fields' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 {isManualEntry ? 'Structured Form Entry' : isEditMode ? 'Edit Form Fields' : 'Structured Fields'}
                             </button>
                             <button
                                 onClick={() => setViewMode('template')}
-                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'template' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'template' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 {isManualEntry && !isDummyMode
                                     ? 'Live Certificate View'
@@ -1563,7 +1563,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         isDirtyRef.current = true;
                                         setOcrText(e.target.value);
                                     }}
-                                    className="w-full h-[400px] p-4 text-sm font-mono border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all"
+                                    className="w-full h-[400px] p-4 text-sm font-mono border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all"
                                     placeholder="Edit the extracted text here..."
                                 />
                             </div>
@@ -1572,18 +1572,18 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         <div className={viewMode === 'fields' ? 'block space-y-5' : 'hidden'}>
                             {/* OCR Accuracy Disclaimer Banner */}
                             {!isManualEntry && (
-                                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-800 text-xs font-semibold shadow-xs">
-                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 shrink-0" />
+                                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-xs">
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                                     <span>⚠️ OCR results are not 100% accurate. Please verify all fields manually before submitting.</span>
                                 </div>
                             )}
 
                             {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
-                                <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-sm font-bold shadow-sm">
-                                    <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                <div className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-2xl text-rose-800 dark:text-rose-300 text-sm font-bold shadow-sm">
+                                    <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-black text-rose-900">Cannot Save: Required Fields Missing</p>
-                                        <p className="text-xs font-semibold text-rose-700 mt-0.5">
+                                        <p className="font-black text-rose-900 dark:text-rose-200">Cannot Save: Required Fields Missing</p>
+                                        <p className="text-xs font-semibold text-rose-700 dark:text-rose-300 mt-0.5">
                                             {errors._file
                                                 ? errors._file
                                                 : errors.barangay
@@ -1615,14 +1615,14 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     <div key={sIdx} className="space-y-4">
                                         {section.section && (
                                             <div className="flex items-center gap-3 mb-6">
-                                                <h4 className="text-base font-black text-slate-900 uppercase tracking-wider">{section.section}</h4>
-                                                <div className="flex-1 h-px bg-slate-100"></div>
+                                                <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">{section.section}</h4>
+                                                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
                                             </div>
                                         )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                                             {section.fields.map(field => (
                                                 <div key={field.key} className={field.width || 'sm:col-span-1'}>
-                                                    <label className={`block text-[11px] font-black uppercase tracking-widest mb-2.5 transition-colors ${hasAttemptedSubmit && errors[field.key] ? 'text-rose-500' : 'text-slate-500'}`}>
+                                                    <label className={`block text-[11px] font-black uppercase tracking-widest mb-2.5 transition-colors ${hasAttemptedSubmit && errors[field.key] ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'}`}>
                                                         {field.label} {field.required && <span className="text-rose-400">*</span>}
                                                     </label>
                                                     {field.type === 'select' ? (
@@ -1646,7 +1646,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                                 }
                                                                                 clearError(field.key);
                                                                             }}
-                                                                            className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white focus:outline-none focus:ring-4 transition-all ${getConfidenceClass(field.key, errors[field.key])}`}
+                                                                            className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all ${getConfidenceClass(field.key, errors[field.key])}`}
                                                                         >
                                                                             <option value="">Select…</option>
                                                                             {!isStandardOption && rawVal && rawVal !== 'Others' && (
@@ -1666,7 +1666,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                                         setFormData(p => ({ ...p, [field.key]: textVal }));
                                                                                         clearError(field.key);
                                                                                     }}
-                                                                                    className="w-full px-3.5 py-2 text-[14px] font-medium border border-indigo-200 rounded-xl bg-indigo-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all placeholder:text-slate-400 text-slate-700"
+                                                                                    className="w-full px-3.5 py-2 text-[14px] font-medium border border-indigo-200 dark:border-indigo-800 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/30 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
                                                                                 />
                                                                             </div>
                                                                         )}
@@ -1709,7 +1709,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                 }}
                                                                 rows={3}
                                                                 placeholder={field.placeholder || `…`}
-                                                                className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white focus:outline-none focus:ring-4 transition-all placeholder-slate-300 ${getConfidenceClass(field.key, errors[field.key])}`}
+                                                                className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all placeholder-slate-300 dark:placeholder-slate-500 ${getConfidenceClass(field.key, errors[field.key])}`}
                                                             />
                                                             {hasAttemptedSubmit && errors[field.key] && (
                                                                 <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
@@ -1850,7 +1850,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                     }}
                                                                     required={field.required}
                                                                     placeholder={field.placeholder || `…`}
-                                                                    className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white focus:outline-none focus:ring-4 transition-all placeholder-slate-300 ${getConfidenceClass(field.key, errors[field.key])}`}
+                                                                    className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all placeholder-slate-300 dark:placeholder-slate-500 ${getConfidenceClass(field.key, errors[field.key])}`}
                                                                 />
                                                                 {isLowConf(field.key) && (
                                                                     <span
@@ -1877,142 +1877,190 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         </div>
 
                         <div className={viewMode === 'template' ? 'block space-y-4' : 'hidden'}>
-                            {isManualEntry && !isDummyMode ? (
+                            {/* If a manual scan/capture was provided, or if an original document exists, prioritize showing the actual document */}
+                            {manualFile && manualFilePreview ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                                Captured Document Preview
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                Live view of the captured physical document.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {(manualFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(manualFile.name || '')) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleReopenPostFx}
+                                                    className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                                                    title="Open Post-FX Editor (Crop, Rotate, B&W)"
+                                                >
+                                                    <SparklesIcon className="w-4 h-4 text-indigo-500" />
+                                                    <span>Adjust Post-FX</span>
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                            >
+                                                Change Scan
+                                            </button>
+                                            <a
+                                                href={manualFilePreview}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-[10px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl font-bold uppercase transition-colors shrink-0"
+                                            >
+                                                Open Fullscreen ↗
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-inner flex flex-col p-3">
+                                        <div className="flex-1 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center min-h-[500px]">
+                                            {manualFile.type === 'application/pdf' || manualFile.name?.toLowerCase().endsWith('.pdf') ? (
+                                                <iframe
+                                                    src={manualFilePreview}
+                                                    title="Uploaded Document Scan PDF"
+                                                    className="w-full h-[620px] border-0 rounded-xl bg-white"
+                                                />
+                                            ) : (
+                                                <img
+                                                    src={manualFilePreview}
+                                                    alt="Uploaded Scanned Document"
+                                                    className="w-full h-auto max-h-[720px] object-contain rounded-xl"
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
+                                            <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-sm flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                                📄 {manualFile.name}
+                                            </span>
+                                            <span className="font-mono text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 font-bold">
+                                                {(manualFile.size / 1024).toFixed(0)} KB
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : isManualEntry && !isDummyMode ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                                                 Uploaded Document Preview
                                             </p>
-                                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                                 Live view of the scanned physical document attached to this registry record.
                                             </p>
                                         </div>
-                                        {manualFile && (
-                                            <div className="flex items-center gap-2">
-                                                {(manualFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(manualFile.name || '')) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleReopenPostFx}
-                                                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
-                                                        title="Open Post-FX Editor (Crop, Rotate, B&W)"
-                                                    >
-                                                        <SparklesIcon className="w-4 h-4 text-indigo-500" />
-                                                        <span>Adjust Post-FX</span>
-                                                    </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-                                                >
-                                                    Change Scan
-                                                </button>
-                                                {manualFilePreview && (
-                                                    <a
-                                                        href={manualFilePreview}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-xl font-bold uppercase transition-colors shrink-0"
-                                                    >
-                                                        Open Fullscreen ↗
-                                                    </a>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {manualFile && manualFilePreview ? (
-                                        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-inner flex flex-col p-3">
-                                            <div className="flex-1 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-[500px]">
-                                                {manualFile.type === 'application/pdf' || manualFile.name?.toLowerCase().endsWith('.pdf') ? (
-                                                    <iframe
-                                                        src={manualFilePreview}
-                                                        title="Uploaded Document Scan PDF"
-                                                        className="w-full h-[620px] border-0 rounded-xl bg-white"
-                                                    />
-                                                ) : (
-                                                    <img
-                                                        src={manualFilePreview}
-                                                        alt="Uploaded Scanned Document"
-                                                        className="w-full h-auto max-h-[720px] object-contain rounded-xl"
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-                                                <span className="font-bold text-slate-700 truncate max-w-sm flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                                                    📄 {manualFile.name}
-                                                </span>
-                                                <span className="font-mono text-[11px] bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg text-slate-600 font-bold">
-                                                    {(manualFile.size / 1024).toFixed(0)} KB
-                                                </span>
-                                            </div>
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        onDragOver={(e) => { e.preventDefault(); setIsDraggingManual(true); }}
+                                        onDragLeave={() => setIsDraggingManual(false)}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingManual(false);
+                                            const dropped = e.dataTransfer.files?.[0];
+                                            if (dropped) handleFileSelect(dropped);
+                                        }}
+                                        className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[420px] ${
+                                            isDraggingManual
+                                                ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20'
+                                                : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:border-slate-400 dark:hover:border-slate-600'
+                                        }`}
+                                    >
+                                        <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 shadow-xs">
+                                            <PhotoIcon className="w-8 h-8" />
                                         </div>
-                                    ) : (
-                                        <div
-                                            onClick={() => fileInputRef.current?.click()}
-                                            onDragOver={(e) => { e.preventDefault(); setIsDraggingManual(true); }}
-                                            onDragLeave={() => setIsDraggingManual(false)}
-                                            onDrop={(e) => {
-                                                e.preventDefault();
-                                                setIsDraggingManual(false);
-                                                const dropped = e.dataTransfer.files?.[0];
-                                                if (dropped) handleFileSelect(dropped);
-                                            }}
-                                            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[420px] ${
-                                                isDraggingManual
-                                                    ? 'border-indigo-500 bg-indigo-50/60'
-                                                    : 'border-slate-300 bg-slate-50 hover:bg-slate-100/70 hover:border-slate-400'
-                                            }`}
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No Document Scan Attached Yet</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-sm">
+                                            In Upload Scan mode, click or drop a certificate picture or PDF scan to preview your uploaded document here.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                                            className="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
                                         >
-                                            <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4 shadow-xs">
-                                                <PhotoIcon className="w-8 h-8" />
-                                            </div>
-                                            <p className="text-sm font-bold text-slate-700">No Document Scan Attached Yet</p>
-                                            <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                                                In Upload Scan mode, click or drop a certificate picture or PDF scan to preview your uploaded document here.
+                                            Select Scanned Document
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : originalDocumentUrl ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                                Captured Scan / Document View
                                             </p>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                                                className="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
-                                            >
-                                                Select Scanned Document
-                                            </button>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                Viewing the original uploaded or captured document.
+                                            </p>
                                         </div>
-                                    )}
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={`/api/documents/view-image/${activeDocId}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-[10px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl font-bold uppercase transition-colors shrink-0"
+                                            >
+                                                Open Fullscreen ↗
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-inner flex flex-col p-3">
+                                        <div className="flex-1 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center min-h-[500px]">
+                                            <img
+                                                src={`/api/documents/view-image/${activeDocId}?v=${file?.updated_at ? new Date(file.updated_at).getTime() : 1}`}
+                                                alt="Captured Certificate"
+                                                className="w-full h-auto max-h-[720px] object-contain rounded-xl"
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    const iframe = document.createElement('iframe');
+                                                    iframe.src = `/api/documents/view/${activeDocId}`;
+                                                    iframe.className = "w-full h-[620px] border-0 rounded-xl bg-white";
+                                                    e.target.parentNode.appendChild(iframe);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 <>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
                                                 Template Overlay Preview
                                             </p>
-                                            <p className="text-[11px] text-slate-500 mt-1">
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                                                 Professional layout using calibrated clean templates.
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-3 bg-slate-100 p-1 rounded-xl">
+                                        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                                             <button
                                                 type="button"
                                                 onClick={() => setShowDiagnosticBoxes(false)}
-                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showDiagnosticBoxes ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                             >
                                                 Clean View
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowDiagnosticBoxes(true)}
-                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showDiagnosticBoxes ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showDiagnosticBoxes ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                                             >
                                                 Diagnostic Grid
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-inner">
+                                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-inner">
                                         <div className="relative w-full overflow-hidden" style={{ minHeight: '600px' }}>
                                             <img
                                                 src={`/api/templates/preview?file=${matchedTemplate?.file_path || effectiveType}&type=${effectiveType}`}
@@ -2093,13 +2141,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     </div>
 
                                     {ocrResult?.field_confidence && (
-                                        <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                            <p className="text-xs font-bold text-slate-700 mb-2">Extraction Confidence</p>
+                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Extraction Confidence</p>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {Object.entries(ocrResult.field_confidence).map(([key, meta]) => (
-                                                    <div key={key} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-center justify-between gap-2">
-                                                        <span className="font-semibold text-slate-700">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`font-bold ${meta?.validation_passed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    <div key={key} className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs flex items-center justify-between gap-2">
+                                                        <span className="font-semibold text-slate-700 dark:text-slate-300">{fieldLabelMap[key] || key}</span>
+                                                        <span className={`font-bold ${meta?.validation_passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                                             {Math.round(Number(meta?.confidence || 0) * 100)}%
                                                         </span>
                                                     </div>
@@ -2113,22 +2161,22 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
                         {viewMode === 'compare' && duplicateData && (
                             <div className="space-y-6">
-                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                                        <ExclamationTriangleIcon className="w-5 h-5 text-amber-600" />
+                                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center shrink-0">
+                                        <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-amber-800 uppercase tracking-wide">Duplicate Registry Comparison</h4>
-                                        <p className="text-xs text-amber-700 mt-0.5">Please review side-by-side details carefully. Fields with differences are highlighted in amber.</p>
+                                        <h4 className="text-sm font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide">Duplicate Registry Comparison</h4>
+                                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">Please review side-by-side details carefully. Fields with differences are highlighted in amber.</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Left side: Uploaded/Current Record */}
-                                    <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 space-y-4">
-                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60">
+                                    <div className="bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 space-y-4">
+                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60">
                                             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                            <h5 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Current Extracted Data (Incoming)</h5>
+                                            <h5 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">Current Extracted Data (Incoming)</h5>
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
@@ -2137,9 +2185,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                 const isDifferent = String(currentVal).toLowerCase().trim() !== String(existingVal).toLowerCase().trim();
 
                                                 return (
-                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 border-amber-300/60 shadow-sm' : 'bg-white border-slate-100'}`}>
+                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300/60 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}>
                                                         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900' : 'text-slate-800'}`}>
+                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'}`}>
                                                             {currentVal}
                                                         </span>
                                                     </div>
@@ -2149,10 +2197,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     </div>
 
                                     {/* Right side: Existing Master Entry */}
-                                    <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 space-y-4">
-                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60">
+                                    <div className="bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 space-y-4">
+                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60">
                                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                            <h5 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Master Registry Entry (Existing)</h5>
+                                            <h5 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">Master Registry Entry (Existing)</h5>
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
@@ -2161,9 +2209,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                 const isDifferent = String(currentVal).toLowerCase().trim() !== String(existingVal).toLowerCase().trim();
 
                                                 return (
-                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 border-amber-300/60 shadow-sm' : 'bg-white border-slate-100'}`}>
+                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300/60 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}>
                                                         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900' : 'text-slate-800'}`}>
+                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'}`}>
                                                             {existingVal}
                                                         </span>
                                                     </div>
@@ -2175,11 +2223,11 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             </div>
                         )}
 
-                        <div className="pt-6 border-t border-slate-100">
+                        <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                             {isViewOnly ? (
                                 <button
                                     onClick={onClose}
-                                    className="w-full py-4 rounded-xl font-extrabold text-base shadow-lg transition-all flex items-center justify-center gap-3 cursor-pointer bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200"
+                                    className="w-full py-4 rounded-xl font-extrabold text-base shadow-lg transition-all flex items-center justify-center gap-3 cursor-pointer bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200 dark:shadow-none"
                                 >
                                     <XMarkIcon className="w-6 h-6" />
                                     Close Professional Preview
@@ -2188,7 +2236,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 <button
                                     onClick={handleSubmit}
                                     disabled={isSaving}
-                                    className={`w-full py-4 rounded-xl font-extrabold text-base shadow-lg transition-all flex items-center justify-center gap-3 cursor-pointer ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#0f172a] hover:bg-slate-800 text-white shadow-slate-200'}`}
+                                    className={`w-full py-4 rounded-xl font-extrabold text-base shadow-lg transition-all flex items-center justify-center gap-3 cursor-pointer ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#0f172a] hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white shadow-slate-200 dark:shadow-none'}`}
                                 >
                                     {isSaving ? (
                                         <>
