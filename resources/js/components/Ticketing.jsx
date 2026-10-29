@@ -417,26 +417,26 @@ export default function Ticketing({ mode = 'portal' }) {
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.06)]"
+                    className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.06)]"
                 >
                     <div className="text-center space-y-3 mb-10">
                         <div className="w-16 h-16 bg-[#d4a574]/15 rounded-2xl flex items-center justify-center mx-auto border border-[#d4a574]/30 shadow-sm text-3xl">
                             <TicketIcon className="w-8 h-8 text-[#d4a574]" />
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Online Document Request</h2>
-                        <p className="text-slate-700 text-sm max-w-md mx-auto font-medium">Skip the lines. Queue your document copy request online and get a real-time tracking QR code.</p>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Online Document Request</h2>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm max-w-md mx-auto font-medium">Skip the lines. Queue your document copy request online and get a real-time tracking QR code.</p>
                     </div>
 
                     <form onSubmit={handlePortalSubmit} className="space-y-8">
                         {/* Phase 1: Contact Details */}
                         <div className="space-y-6">
-                            <h3 className="text-lg font-black text-slate-900 border-b border-slate-200 pb-3 flex items-center gap-2">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
                                 <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">1</span>
                                 Contact Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-800">Your Full Name</label>
+                                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Your Full Name</label>
                                     <div className="relative">
                                         <UserIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
@@ -446,14 +446,14 @@ export default function Ticketing({ mode = 'portal' }) {
                                             onChange={e => setClientName(sanitizeName(e.target.value).slice(0, 50))}
                                             maxLength={50}
                                             placeholder="Juan Santos"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
+                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-bold text-slate-800">Email Address</label>
-                                        <span className="text-[10px] text-slate-400 font-semibold">(Optional)</span>
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Email Address</label>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">(Optional)</span>
                                     </div>
                                     <div className="relative">
                                         <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -463,12 +463,12 @@ export default function Ticketing({ mode = 'portal' }) {
                                             onChange={e => setEmail(e.target.value.slice(0, 100))}
                                             maxLength={100}
                                             placeholder="juan@email.com (optional)"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
+                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-800">Phone Number</label>
+                                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Phone Number</label>
                                     <div className="relative">
                                         <PhoneIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
@@ -481,7 +481,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                             }}
                                             maxLength={11}
                                             placeholder="09123456789"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 rounded-2xl bg-white focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 placeholder-slate-400"
+                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                                         />
                                     </div>
                                 </div>
@@ -494,7 +494,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                             Authorization Letter & Valid ID
                                             <span className="text-[10px] text-slate-400 font-normal">(Required if NOT parent or child)</span>
                                         </label>
-                                        <span className="text-[10px] text-slate-400 font-semibold">PDF, JPG, PNG up to 10MB</span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">PDF, JPG, PNG up to 10MB</span>
                                     </div>
                                     <p className="text-[11px] text-slate-500">
                                         Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
@@ -554,7 +554,7 @@ export default function Ticketing({ mode = 'portal' }) {
 
                         {/* Phase 2: Purpose */}
                         <div className="space-y-6">
-                            <h3 className="text-lg font-black text-slate-900 border-b border-slate-200 pb-3 flex items-center gap-2">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
                                 <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">2</span>
                                 Document Type & Purpose
                             </h3>
@@ -569,7 +569,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                         onClick={() => setPurpose(item.id)}
                                         className={`p-5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between h-36 ${purpose === item.id
                                             ? 'border-[#d4a574] bg-[#d4a574]/10 shadow-sm'
-                                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50'
+                                            : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100/50 dark:hover:bg-slate-600/50'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start">
@@ -577,8 +577,8 @@ export default function Ticketing({ mode = 'portal' }) {
                                             {purpose === item.id && <span className="w-5 h-5 rounded-full bg-[#d4a574] flex items-center justify-center text-[#0f172a] text-xs font-black">✓</span>}
                                         </div>
                                         <div>
-                                            <p className="font-black text-slate-900 text-sm">{item.label}</p>
-                                            <p className="text-[11px] text-slate-700 font-medium mt-1">{item.desc}</p>
+                                            <p className="font-black text-slate-900 dark:text-white text-sm">{item.label}</p>
+                                            <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium mt-1">{item.desc}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -586,8 +586,8 @@ export default function Ticketing({ mode = 'portal' }) {
                         </div>
 
                         {/* Phase 3: Details */}
-                        <div className="space-y-6 bg-slate-100/40 p-6 rounded-3xl border border-slate-200">
-                            <h3 className="text-md font-black text-slate-900 flex items-center gap-2">
+                        <div className="space-y-6 bg-slate-100/40 dark:bg-slate-700/30 p-6 rounded-3xl border border-slate-200 dark:border-slate-600">
+                            <h3 className="text-md font-black text-slate-900 dark:text-white flex items-center gap-2">
                                 <DocumentTextIcon className="w-5 h-5 text-[#d4a574]" />
                                 Provide Registry Information (To Speed Up Processing)
                             </h3>
@@ -603,32 +603,32 @@ export default function Ticketing({ mode = 'portal' }) {
                             {purpose === 'birth' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">First Name (on Certificate)</label>
-                                        <input type="text" required value={details.first_name} onChange={e => handleDetailChange('first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">First Name (on Certificate)</label>
+                                        <input type="text" required value={details.first_name} onChange={e => handleDetailChange('first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Middle Name (on Certificate)</label>
-                                        <input type="text" required value={details.middle_name} onChange={e => handleDetailChange('middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Middle Name (on Certificate)</label>
+                                        <input type="text" required value={details.middle_name} onChange={e => handleDetailChange('middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Last Name (on Certificate)</label>
-                                        <input type="text" required value={details.last_name} onChange={e => handleDetailChange('last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Last Name (on Certificate)</label>
+                                        <input type="text" required value={details.last_name} onChange={e => handleDetailChange('last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Date of Birth</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Birth</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-xs font-bold text-slate-800">Place of Birth (City/Hospital)</label>
-                                        <input type="text" required value={details.place_of_birth} onChange={e => handleDetailChange('place_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Birth (City/Hospital)</label>
+                                        <input type="text" required value={details.place_of_birth} onChange={e => handleDetailChange('place_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Father's Full Name</label>
-                                        <input type="text" required value={details.father_name} onChange={e => handleDetailChange('father_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Father's Full Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Father's Full Name</label>
+                                        <input type="text" required value={details.father_name} onChange={e => handleDetailChange('father_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Father's Full Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Mother's Full Maiden Name</label>
-                                        <input type="text" required value={details.mother_name} onChange={e => handleDetailChange('mother_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Mother's Maiden Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Mother's Full Maiden Name</label>
+                                        <input type="text" required value={details.mother_name} onChange={e => handleDetailChange('mother_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Mother's Maiden Name" />
                                     </div>
                                 </div>
                             )}
@@ -636,24 +636,24 @@ export default function Ticketing({ mode = 'portal' }) {
                             {purpose === 'death' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Deceased First Name</label>
-                                        <input type="text" required value={details.deceased_first_name} onChange={e => handleDetailChange('deceased_first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased First Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased First Name</label>
+                                        <input type="text" required value={details.deceased_first_name} onChange={e => handleDetailChange('deceased_first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased First Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Deceased Middle Name</label>
-                                        <input type="text" required value={details.deceased_middle_name} onChange={e => handleDetailChange('deceased_middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Middle Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Middle Name</label>
+                                        <input type="text" required value={details.deceased_middle_name} onChange={e => handleDetailChange('deceased_middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Middle Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Deceased Last Name</label>
-                                        <input type="text" required value={details.deceased_last_name} onChange={e => handleDetailChange('deceased_last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Last Name" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Last Name</label>
+                                        <input type="text" required value={details.deceased_last_name} onChange={e => handleDetailChange('deceased_last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Date of Death</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Death</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-xs font-bold text-slate-800">Place of Death</label>
-                                        <input type="text" required value={details.place_of_death} onChange={e => handleDetailChange('place_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Death</label>
+                                        <input type="text" required value={details.place_of_death} onChange={e => handleDetailChange('place_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                 </div>
                             )}
@@ -662,25 +662,25 @@ export default function Ticketing({ mode = 'portal' }) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* Husband */}
                                     <div className="space-y-3 border-r border-slate-200 pr-4">
-                                        <h4 className="text-xs font-bold text-slate-800">Husband Details</h4>
-                                        <input type="text" required value={details.husband_first_name} onChange={e => handleDetailChange('husband_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
-                                        <input type="text" required value={details.husband_middle_name} onChange={e => handleDetailChange('husband_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Husband Details</h4>
+                                        <input type="text" required value={details.husband_first_name} onChange={e => handleDetailChange('husband_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                        <input type="text" required value={details.husband_middle_name} onChange={e => handleDetailChange('husband_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                        <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     {/* Wife */}
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-800">Wife Details</h4>
-                                        <input type="text" required value={details.wife_first_name} onChange={e => handleDetailChange('wife_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
-                                        <input type="text" required value={details.wife_middle_name} onChange={e => handleDetailChange('wife_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm mb-2 text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Wife Details</h4>
+                                        <input type="text" required value={details.wife_first_name} onChange={e => handleDetailChange('wife_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                        <input type="text" required value={details.wife_middle_name} onChange={e => handleDetailChange('wife_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                        <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Date of Marriage</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 focus:border-[#d4a574] focus:outline-none" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Marriage</label>
+                                        <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800">Place of Marriage</label>
-                                        <input type="text" required value={details.place_of_marriage} onChange={e => handleDetailChange('place_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Marriage</label>
+                                        <input type="text" required value={details.place_of_marriage} onChange={e => handleDetailChange('place_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
                                     </div>
                                 </div>
                             )}

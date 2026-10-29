@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   // Authored template locations scanned for utility classes.
   content: [
     "./resources/**/*.jsx",
