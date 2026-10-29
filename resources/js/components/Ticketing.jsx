@@ -770,13 +770,13 @@ export default function Ticketing({ mode = 'portal' }) {
                                     <h2 className="text-2xl font-black text-white tracking-tight print:text-slate-900">Civil Registry Queue Ticket</h2>
                                     <p className="text-slate-400 text-xs mt-1 print:text-slate-500">{formattedDate}</p>
                                 </div>
-                                <div className="bg-white p-3 rounded-2xl shadow-lg print:shadow-none border border-slate-100 shrink-0 w-[128px] h-[128px] flex items-center justify-center overflow-hidden">
+                                <div className="bg-white p-3 rounded-2xl shadow-lg print:shadow-none border border-slate-100 shrink-0 w-[140px] h-[140px] flex items-center justify-center overflow-hidden">
                                     <QRCodeCanvas
-                                        value={ticket?.ticket_number || ''}
-                                        size={110}
+                                        value={trackingUrl}
+                                        size={124}
                                         bgColor="#ffffff"
                                         fgColor="#0f172a"
-                                        includeMargin={true}
+                                        includeMargin={false}
                                         level="M"
                                     />
                                 </div>
