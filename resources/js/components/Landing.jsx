@@ -85,56 +85,56 @@ const TRANSLATIONS = {
             'NAGPAPAHALAGA.',
             'NAGLILINGKOD.'
         ],
-        eyebrowOffice: 'Tanggapan ng Rehistro Sibil ng Bayan',
+        eyebrowOffice: 'Tanggapan ng Civil Registrar',
         eyebrowTown: 'Naic, Cavite',
         headlineTop: 'PAGTATALA.',
         headlineBottom: 'PAGLILINGKOD.',
-        heroSubtitle: 'Ang sentralisadong tanggapan para sa pagpapatunay at pamamahala ng mga talaang sibil — Kapanganakan, Kasal, at Kamatayan — para sa Bayan ng Naic.',
+        heroSubtitle: 'Opisyal na tanggapan para sa pagkuha at pagproseso ng Birth Certificate, Marriage Contract, at Death Certificate sa Bayan ng Naic.',
         onlineRequestBtn: 'Mag-request Online',
-        onlineRequestTooltip: 'Magsimula ng opisyal na kahilingan sa rehistro sibil online',
-        announcementLabel: 'Aktibong Pabatid',
+        onlineRequestTooltip: 'Mag-request ng dokumento online',
+        announcementLabel: 'Mga Anunsyo',
         announcementNotice: 'Pabatid',
-        hoursLabel: 'Oras ng Tanggapan',
-        hoursLocation: 'Tanggapan ng Rehistro Sibil • Munisipyo ng Naic',
-        hoursTooltip: 'Opisyal na iskedyul at release counter ng tanggapan',
-        pathwayBadge: 'Gabay para sa Mamamayan',
-        pathwayTitle: 'Paraan ng Paghingi ng Dokumento',
-        pathwaySubtitle: 'Paano nire-request, sinusuri, at opisyal na inilalabas ang mga talaang sibil.',
+        hoursLabel: 'Oras ng Serbisyo',
+        hoursLocation: 'Civil Registrar Office • Munisipyo ng Naic',
+        hoursTooltip: 'Iskedyul ng opisina at pagkuha ng dokumento',
+        pathwayBadge: 'Gabay sa Pag-request',
+        pathwayTitle: 'Paano Kumuha ng Dokumento',
+        pathwaySubtitle: 'Simpleng hakbang para mag-request, magpa-verify, at kumuha ng inyong mga dokumento.',
         steps: [
             {
                 number: '01',
-                title: 'Magsumite ng Kahilingan Online',
-                desc: 'Pumili ng uri ng sertipiko, ipasok ang mga detalye ng nakatala, at kumuha ng agarang digital reference ticket na may tracking QR code.'
+                title: 'Mag-fill out Online',
+                desc: 'Piliin ang dokumentong kailangan, ilagay ang inyong detalye, at kunin ang digital ticket na may QR code.'
             },
             {
                 number: '02',
-                title: 'Pagsusuri sa Rehistro Sibil',
-                desc: 'Susuriin ng mga kawani ng munisipyo ang mga aklat ng rehistro sibil, patutunayan ang mga tala, at ihahanda ang opisyal na sertipikasyon.'
+                title: 'Pag-check ng Records',
+                desc: 'Hahanapin at iche-check ng mga kawani ng munisipyo ang inyong rekord para ihanda ang opisyal na kopya.'
             },
             {
                 number: '03',
-                title: 'Personal na Pagkuha',
-                desc: 'Ipakita ang ticket code sa counter ng Tanggapan ng Rehistro Sibil para sa pagbabayad at paglabas ng sertipikadong dokumento.'
+                title: 'Pagkuha sa Munisipyo',
+                desc: 'Ipakita ang ticket QR code sa Civil Registrar counter para magbayad at kunin ang inyong dokumento.'
             }
         ],
-        docsBadge: 'Mga Serbisyong Sibil',
-        docsTitle: 'Mga Dokumentong Sibil',
-        docsSubtitle: 'Opisyal na mga sibil na dokumentong nakatala at inilalabas alinsunod sa Batas Blg. 3753.',
+        docsBadge: 'Mga Serbisyo',
+        docsTitle: 'Mga Dokumentong Makukuha',
+        docsSubtitle: 'Mga opisyal na dokumentong sibil na inilalabas ng tanggapan.',
         birthForm: 'LCR Form 102',
-        birthTitle: 'Katibayan ng Kapanganakan (Live Birth)',
-        birthDesc: 'Opisyal na tala ng kapanganakan sa nasasakupan ng munisipyo. Para sa regular na pagpapatala, certified true copy, legitimation, at karagdagang ulat.',
-        birthBtn: 'Kumuha ng Rekord ng Kapanganakan',
+        birthTitle: 'Birth Certificate (Kapanganakan)',
+        birthDesc: 'Para sa kopya ng Certificate of Live Birth, certified true copy, legitimation, at late registration.',
+        birthBtn: 'Kumuha ng Birth Certificate',
         marriageForm: 'LCR Form 101',
-        marriageTitle: 'Katibayan ng Kasal (Certificate of Marriage)',
-        marriageDesc: 'Sertipikadong tala ng kasal na idinaos sa Naic, endorsement ng lisensya sa kasal, at legal na transkripsyon.',
-        marriageBtn: 'Kumuha ng Rekord ng Kasal',
-        deathForm: 'LCR Form 103 • Katibayan ng Kamatayan',
-        deathTitle: 'Talaan ng Kamatayan at Pagpapalibing',
-        deathDesc: 'Mabilis na pagpoproseso para sa tala ng kamatayan, permit sa paglilipat ng labi, at legal na sertipikasyon ng arkibo.',
-        deathBtn: 'Kumuha ng Rekord ng Kamatayan',
-        prevAnnouncement: 'Nakaraang pabatid',
-        nextAnnouncement: 'Susunod na pabatid',
-        langSwitchTooltip: 'Palitan ang wika sa Ingles o Filipino'
+        marriageTitle: 'Marriage Contract (Kasal)',
+        marriageDesc: 'Para sa kopya ng Certificate of Marriage, lisensya sa kasal, at rehistro ng kasal na ginanap sa Naic.',
+        marriageBtn: 'Kumuha ng Marriage Contract',
+        deathForm: 'LCR Form 103 • Death Certificate',
+        deathTitle: 'Death Certificate (Kamatayan)',
+        deathDesc: 'Para sa kopya ng Death Certificate, permit sa pagpapalibing, at paglilipat ng labi.',
+        deathBtn: 'Kumuha ng Death Certificate',
+        prevAnnouncement: 'Nakaraang anunsyo',
+        nextAnnouncement: 'Susunod na anunsyo',
+        langSwitchTooltip: 'Palitan ang wika sa English o Filipino'
     }
 };
 
