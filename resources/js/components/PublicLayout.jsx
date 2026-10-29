@@ -150,8 +150,8 @@ export default function PublicLayout({ children }) {
                 {children}
             </main>
 
-            {/* Fixed Dark Mode + Accessibility Buttons — bottom-right (not shown on Landing page "/") */}
-            {location.pathname !== '/' && (
+            {/* Fixed Dark Mode + Accessibility Buttons — bottom-right (only shown on /ticket-request and ticket pages) */}
+            {(location.pathname.startsWith('/ticket-request') || location.pathname.startsWith('/ticket-status') || location.pathname.startsWith('/ticket/')) && (
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
                     <button
                         type="button"
