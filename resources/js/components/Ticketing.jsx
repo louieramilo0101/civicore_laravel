@@ -558,11 +558,35 @@ export default function Ticketing({ mode = 'portal' }) {
                                 <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">2</span>
                                 Document Type & Purpose
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            {/* Mobile View: Compact Dropdown */}
+                            <div className="md:hidden space-y-2">
+                                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                    Select Document Type
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        value={purpose}
+                                        onChange={e => setPurpose(e.target.value)}
+                                        className="w-full px-4 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#d4a574] focus:ring-4 focus:ring-[#d4a574]/10 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="" disabled>-- Choose Document Type --</option>
+                                        <option value="birth">Birth Certificate (Live Birth)</option>
+                                        <option value="death">Death Certificate</option>
+                                        <option value="marriage">Marriage Contract</option>
+                                    </select>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        ▼
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Desktop / Tablet View: Visual Cards */}
+                            <div className="hidden md:grid md:grid-cols-3 gap-4">
                                 {[
-                                    { id: 'birth', label: 'Birth Certificate', icon: <UserIcon className="w-8 h-8 text-slate-700" />, desc: 'Copy of Certificate of Live Birth' },
-                                    { id: 'death', label: 'Death Certificate', icon: <DocumentTextIcon className="w-8 h-8 text-slate-700" />, desc: 'Copy of Certificate of Death' },
-                                    { id: 'marriage', label: 'Marriage Contract', icon: <UsersIcon className="w-8 h-8 text-slate-700" />, desc: 'Copy of Certificate of Marriage' }
+                                    { id: 'birth', label: 'Birth Certificate', icon: <UserIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Live Birth' },
+                                    { id: 'death', label: 'Death Certificate', icon: <DocumentTextIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Death' },
+                                    { id: 'marriage', label: 'Marriage Contract', icon: <UsersIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Marriage' }
                                 ].map(item => (
                                     <div
                                         key={item.id}
