@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --color-primary: #0f172a;
     --color-gold: #d4a574;
@@ -13,8 +15,61 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        @apply bg-slate-50 text-slate-900 antialiased;
+        @apply bg-slate-50 text-slate-900 antialiased dark:bg-[#0b1120] dark:text-slate-100;
         font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ── Accessibility: Font Scaling ── */
+    html.font-scale-lg {
+        font-size: 115% !important;
+    }
+    html.font-scale-xl {
+        font-size: 130% !important;
+    }
+
+    /* ── Accessibility: Dyslexia-Friendly Font (Lexend) ── */
+    html.dyslexia-font body,
+    html.dyslexia-font button,
+    html.dyslexia-font input,
+    html.dyslexia-font select,
+    html.dyslexia-font textarea,
+    html.dyslexia-font p,
+    html.dyslexia-font h1,
+    html.dyslexia-font h2,
+    html.dyslexia-font h3,
+    html.dyslexia-font h4,
+    html.dyslexia-font h5,
+    html.dyslexia-font h6,
+    html.dyslexia-font span,
+    html.dyslexia-font div {
+        font-family: 'Lexend', 'Comic Sans MS', sans-serif !important;
+        letter-spacing: 0.03em !important;
+        word-spacing: 0.06em !important;
+    }
+
+    /* ── Accessibility: High Contrast Mode (WCAG AAA 7:1+) ── */
+    html.high-contrast {
+        filter: contrast(120%);
+    }
+    html.high-contrast.dark body {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+    }
+    html.high-contrast.dark .bg-white,
+    html.high-contrast.dark .bg-slate-900,
+    html.high-contrast.dark .bg-slate-800 {
+        background-color: #0a0a0a !important;
+        border-color: #d4a574 !important;
+    }
+
+    /* ── Accessibility: Reduced Motion ── */
+    html.reduced-motion *,
+    html.reduced-motion *::before,
+    html.reduced-motion *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
     }
 
     /* Global Interactive Elements Cursor Fix */
@@ -37,6 +92,54 @@
     [disabled],
     .cursor-not-allowed {
         cursor: not-allowed !important;
+    }
+
+    /* ── Comprehensive Dark Mode Defaults ── */
+    html.dark {
+        color-scheme: dark;
+    }
+
+    html.dark select option {
+        background-color: #0f172a;
+        color: #f1f5f9;
+    }
+
+    /* Seamless scrollbar in dark mode */
+    html.dark ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    html.dark ::-webkit-scrollbar-track {
+        background: #0f172a;
+    }
+    html.dark ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+    }
+    html.dark ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
+
+    /* Leaflet OpenStreetMap Dark Mode Tile Adaptation */
+    html.dark .leaflet-tile-pane {
+        filter: brightness(0.65) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.75);
+    }
+    html.dark .leaflet-container {
+        background: #090d16 !important;
+    }
+    html.dark .leaflet-bar a {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        border-bottom-color: #334155 !important;
+    }
+    html.dark .leaflet-bar a:hover {
+        background-color: #334155 !important;
+    }
+    html.dark .leaflet-popup-content-wrapper,
+    html.dark .leaflet-popup-tip {
+        background: #0f172a !important;
+        color: #f8fafc !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
     }
 }
 

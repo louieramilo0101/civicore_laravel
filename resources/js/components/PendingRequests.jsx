@@ -639,16 +639,16 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
                 {/* Left: Pending Tickets List */}
-                <div className={`lg:col-span-1 bg-white/95 border border-slate-200/80 rounded-3xl p-5 shadow-sm flex-col h-full overflow-hidden ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`lg:col-span-1 bg-white/95 border border-slate-200/80 rounded-3xl p-5 shadow-sm flex-col h-full overflow-hidden dark:bg-slate-900/90 dark:border-slate-800 ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
                     {/* Header Title Row */}
-                    <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-150">
+                    <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-150 dark:border-slate-800">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-xl bg-[#d4a574]/15 border border-[#d4a574]/30 flex items-center justify-center shrink-0">
                                 <ClockIcon className="w-5 h-5 text-[#b88752]" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-base font-black text-slate-800 tracking-tight">Tickets Queue</h3>
+                                    <h3 className="text-base font-black text-slate-800 tracking-tight dark:text-slate-100">Tickets Queue</h3>
                                     <span className="bg-[#d4a574]/20 text-[#a37947] px-2.5 py-0.5 rounded-full text-xs font-black leading-none">
                                         {filteredTickets.length}
                                     </span>
@@ -661,7 +661,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                         
                         <button
                             onClick={() => fetchPendingTickets(false)}
-                            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 active:scale-95 cursor-pointer shadow-sm"
+                            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 active:scale-95 cursor-pointer shadow-sm dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
                             title="Reload tickets queue"
                         >
                             <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -695,7 +695,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 placeholder="Search by ticket #, client, or document..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20"
+                                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20"
                             />
                         </div>
 
@@ -705,7 +705,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 <select
                                     value={statusFilter}
                                     onChange={e => setStatusFilter(e.target.value)}
-                                    className="w-full appearance-none pl-3 pr-7 py-2 text-xs font-black uppercase tracking-wider border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 cursor-pointer truncate"
+                                    className="w-full appearance-none pl-3 pr-7 py-2 text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 cursor-pointer truncate"
                                 >
                                     <option value="waiting">Waiting ({stats.waiting || tickets.length})</option>
                                     <option value="completed">Completed ({stats.completed_today || 0})</option>
@@ -717,7 +717,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 <select
                                     value={purposeFilter}
                                     onChange={e => setPurposeFilter(e.target.value)}
-                                    className="w-full appearance-none pl-3 pr-7 py-2 text-xs font-black uppercase tracking-wider border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 cursor-pointer truncate"
+                                    className="w-full appearance-none pl-3 pr-7 py-2 text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 cursor-pointer truncate"
                                 >
                                     <option value="all">All Purposes</option>
                                     <option value="birth">Birth</option>
@@ -730,11 +730,11 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
                         {/* Sort Order Control: Clean Arrow Icon (Ascending vs Descending) */}
                         <div className="flex items-center justify-between gap-2 px-1 pt-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Queue Order:</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Queue Order:</span>
                             <button
                                 type="button"
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                className="inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 hover:border-[#d4a574]/60 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#b88752] transition-all cursor-pointer shadow-xs active:scale-95"
+                                className="inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#d4a574]/60 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-[#b88752] transition-all cursor-pointer shadow-xs active:scale-95"
                                 title={sortOrder === 'asc' ? 'Queue Order: Ascending / Oldest First (Click for Descending)' : 'Queue Order: Descending / Newest First (Click for Ascending)'}
                                 aria-label={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                             >
@@ -782,32 +782,32 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         }}
                                         className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
                                             isSelected
-                                                ? 'border-[#d4a574] bg-[#d4a574]/5 shadow-sm ring-1 ring-[#d4a574]/30'
-                                                : 'border-slate-150 bg-white hover:bg-slate-50'
+                                                ? 'border-[#d4a574] bg-[#d4a574]/5 dark:bg-[#d4a574]/10 shadow-sm ring-1 ring-[#d4a574]/30'
+                                                : 'border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                                         }`}
                                     >
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="min-w-0">
-                                                <span className="text-[9px] font-mono font-black text-slate-400 tracking-wider uppercase block">
+                                                <span className="text-[9px] font-mono font-black text-slate-400 dark:text-slate-500 tracking-wider uppercase block">
                                                     {t.source === 'walk_in' ? 'WALK-IN TICKET' : 'ONLINE SUBMISSION'}
                                                 </span>
-                                                <h4 className="font-black text-slate-800 text-sm tracking-tight truncate">{t.ticket_number}</h4>
+                                                <h4 className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight truncate">{t.ticket_number}</h4>
                                             </div>
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 {t.request_status === 'ready_for_pickup' ? (
-                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50">
                                                         Ready
                                                     </span>
                                                 ) : t.request_status === 'completed' ? (
-                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-blue-50 text-blue-700 border-blue-200">
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50">
                                                         Issued
                                                     </span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-amber-50 text-amber-700 border-amber-200">
+                                                    <span className="px-2 py-0.5 border rounded-full text-[8px] font-black uppercase bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50">
                                                         In Queue
                                                     </span>
                                                 )}
-                                                <span className={`px-2 py-0.5 border rounded-full text-[8px] font-black uppercase ${badgeClass}`}>
+                                                <span className={`px-2 py-0.5 border rounded-full text-[8px] font-black uppercase ${badgeClass} dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200`}>
                                                     {t.purpose}
                                                 </span>
                                                 {t.request_status !== 'completed' && (
@@ -818,19 +818,19 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                             setMobileView('detail');
                                                             setIsDeclineOpen(true);
                                                         }}
-                                                        className="p-1 border border-rose-200 rounded hover:bg-rose-600 text-rose-500 hover:text-white transition-all cursor-pointer"
+                                                        className="p-1.5 text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-800 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
                                                         title="Decline Request"
                                                     >
-                                                        <XMarkIcon className="w-3 h-3" />
+                                                        <XMarkIcon className="w-3.5 h-3.5" />
                                                     </button>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-center text-xs">
-                                            <div className="font-semibold text-slate-600 truncate max-w-[16ch]">
+                                            <div className="font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[16ch]">
                                                 {t.client_name}
                                             </div>
-                                            <span className="text-[10px] text-slate-400 font-mono">
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                                                 {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
@@ -844,19 +844,19 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 {/* Right: Selected Ticket Details (Spacious and Revamped layout) */}
                 <div className={`lg:col-span-2 flex-col h-full overflow-hidden ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
                     {!selectedTicket ? (
-                        <div className="flex-1 bg-white/95 border border-slate-200/80 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 text-center shadow-sm">
+                        <div className="flex-1 bg-white/95 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-12 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-center shadow-sm">
                             <SparklesIcon className="w-12 h-12 text-[#d4a574] opacity-20 mb-3" />
-                            <h4 className="font-black text-sm text-slate-700">Digital Request Processor</h4>
+                            <h4 className="font-black text-sm text-slate-700 dark:text-slate-300">Digital Request Processor</h4>
                             <p className="text-xs max-w-sm mt-1">Select an online submission ticket on the left panel to begin linking registry records.</p>
                         </div>
                     ) : (
-                        <div className="flex-1 bg-white/95 border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
+                        <div className="flex-1 bg-white/95 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
                             {/* Mobile Back to List Navigation Bar */}
-                            <div className="lg:hidden flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 shrink-0">
+                            <div className="lg:hidden flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => setMobileView('list')}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors cursor-pointer shadow-sm"
                                 >
                                     <ArrowLeftIcon className="w-4 h-4" />
                                     <span>Back to Requests</span>
@@ -866,18 +866,18 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </span>
                             </div>
                             {/* Title Block */}
-                            <div className="border-b border-slate-100 pb-3 mb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3 shrink-0">
+                            <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3 shrink-0">
                                 <div>
                                     <span className="text-[10px] font-mono font-black text-[#c49a67] tracking-widest bg-[#d4a574]/10 px-3 py-1 rounded-lg">ONLINE TICKET DETAILS</span>
-                                    <h2 className="text-xl font-black text-slate-800 tracking-tight mt-1">{selectedTicket.ticket_number}</h2>
-                                    <p className="text-[11px] text-slate-400 mt-0.5">Submitted: {new Date(selectedTicket.created_at).toLocaleString()}</p>
+                                    <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight mt-1">{selectedTicket.ticket_number}</h2>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Submitted: {new Date(selectedTicket.created_at).toLocaleString()}</p>
                                 </div>
                                 <span className={`px-4 py-1 border rounded-full text-xs font-black uppercase tracking-wider text-center self-start sm:self-auto ${
                                     selectedTicket.purpose === 'birth'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-100'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50'
                                         : selectedTicket.purpose === 'death'
-                                            ? 'bg-slate-100 text-slate-600 border-slate-200'
-                                            : 'bg-rose-50 text-rose-700 border-rose-100'
+                                            ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                            : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
                                 }`}>
                                     {selectedTicket.purpose} Certificate
                                 </span>
@@ -886,18 +886,18 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             {/* Info Segments */}
                             <div className="space-y-3 flex-1">
                                 {selectedTicket.request_status === 'ready_for_pickup' && (
-                                    <div className="bg-indigo-50 border border-indigo-150 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
+                                    <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-150 dark:border-indigo-800/50 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
                                         <div className="flex items-center gap-3">
                                             <div className="w-9 h-9 bg-indigo-550 text-white rounded-xl flex items-center justify-center text-xs font-black shadow-md shadow-indigo-200 shrink-0">
                                                 Doc
                                             </div>
                                             <div>
-                                                <p className="text-xs text-indigo-900 font-black leading-none">{selectedTicket.document?.name || 'Linked Record'}</p>
-                                                <p className="text-[10px] text-indigo-500 mt-1 font-bold">READY FOR PICKUP · Waiting for Lobby QR Scan Check-in</p>
+                                                <p className="text-xs text-indigo-900 dark:text-indigo-200 font-black leading-none">{selectedTicket.document?.name || 'Linked Record'}</p>
+                                                <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-1 font-bold">READY FOR PICKUP · Waiting for Lobby QR Scan Check-in</p>
                                             </div>
                                         </div>
                                         {selectedTicket.document_id && (
-                                            <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white border border-indigo-150 hover:bg-slate-50 text-indigo-750 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
+                                            <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-indigo-150 dark:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-750 dark:text-indigo-300 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
                                                 View PDF
                                             </a>
                                         )}
@@ -905,18 +905,18 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 )}
 
                                 {selectedTicket.request_status === 'completed' && (
-                                    <div className="bg-emerald-50 border border-emerald-150 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
+                                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-150 dark:border-emerald-800/50 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
                                         <div className="flex items-center gap-3">
                                             <div className="w-9 h-9 bg-emerald-550 text-white rounded-xl flex items-center justify-center text-xs font-black shadow-md shadow-emerald-200 shrink-0">
                                                 ✓
                                             </div>
                                             <div>
-                                                <p className="text-xs text-emerald-900 font-black leading-none">{selectedTicket.document?.name || 'Issued Record'}</p>
-                                                <p className="text-[10px] text-emerald-500 mt-1 font-bold">COMPLETED & ISSUED · Checked Out</p>
+                                                <p className="text-xs text-emerald-900 dark:text-emerald-200 font-black leading-none">{selectedTicket.document?.name || 'Issued Record'}</p>
+                                                <p className="text-[10px] text-emerald-500 dark:text-emerald-400 mt-1 font-bold">COMPLETED & ISSUED · Checked Out</p>
                                             </div>
                                         </div>
                                         {selectedTicket.document_id && (
-                                            <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white border border-emerald-150 hover:bg-slate-50 text-emerald-750 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
+                                            <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-150 dark:border-emerald-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-emerald-750 dark:text-emerald-300 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
                                                 View PDF
                                             </a>
                                         )}
@@ -924,52 +924,52 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 )}
 
                                 {/* Requester Details */}
-                                <div className="space-y-2 bg-slate-50/50 p-4 border border-slate-150 rounded-2xl">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Requester Information</h4>
+                                <div className="space-y-2 bg-slate-50/50 dark:bg-slate-800/50 p-4 border border-slate-150 dark:border-slate-700 rounded-2xl">
+                                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Requester Information</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                                         <div>
-                                            <span className="text-slate-400 block text-[11px] mb-0.5">Client Name</span>
-                                            <span className="font-extrabold text-slate-800 text-sm">{selectedTicket.client_name}</span>
+                                            <span className="text-slate-400 dark:text-slate-500 block text-[11px] mb-0.5">Client Name</span>
+                                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">{selectedTicket.client_name}</span>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400 block text-[11px] mb-0.5">Phone Number</span>
-                                            <span className="font-extrabold text-slate-800 text-sm">{selectedTicket.phone || '—'}</span>
+                                            <span className="text-slate-400 dark:text-slate-500 block text-[11px] mb-0.5">Phone Number</span>
+                                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">{selectedTicket.phone || '—'}</span>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400 block text-[11px] mb-0.5">Email Address</span>
-                                            <span className="font-extrabold text-slate-800 text-sm truncate block" title={selectedTicket.email}>{selectedTicket.email || '—'}</span>
+                                            <span className="text-slate-400 dark:text-slate-500 block text-[11px] mb-0.5">Email Address</span>
+                                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm truncate block" title={selectedTicket.email}>{selectedTicket.email || '—'}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Authorization & Consent Verification */}
-                                <div className="space-y-2.5 bg-slate-50/50 p-4 border border-slate-150 rounded-2xl">
+                                <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-800/50 p-4 border border-slate-150 dark:border-slate-700 rounded-2xl">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                        <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                                             <ShieldCheckIcon className="w-3.5 h-3.5 text-indigo-500" /> Authorization & Consent Document
                                         </h4>
                                         {selectedTicket.consent_form_path ? (
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                                 Document Attached
                                             </span>
                                         ) : (
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                                                 Self / Direct Parent / Child
                                             </span>
                                         )}
                                     </div>
 
                                     {selectedTicket.consent_form_path ? (
-                                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-150 shadow-xs">
+                                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-150 dark:border-emerald-800/50 shadow-xs">
                                             <div className="flex items-center gap-2.5 min-w-0">
-                                                <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                                                     <PaperClipIcon className="w-4 h-4" />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <div className="text-xs font-black text-slate-800 truncate">
+                                                    <div className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
                                                         Authorization Letter / Valid ID Scan
                                                     </div>
-                                                    <div className="text-[10px] text-slate-400 truncate">
+                                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
                                                         {selectedTicket.consent_form_path.split('/').pop()}
                                                     </div>
                                                 </div>
@@ -985,40 +985,40 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             </button>
                                         </div>
                                     ) : (
-                                        <p className="text-[11px] text-slate-500 italic">
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
                                             No authorization letter attached. Requester declared direct relationship (Parent, Child, or Document Owner).
                                         </p>
                                     )}
                                 </div>
 
                                 {/* Form Fields */}
-                                <div className="space-y-3 bg-slate-50/50 p-4 border border-slate-150 rounded-2xl">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registry Document Fields</h4>
+                                <div className="space-y-3 bg-slate-50/50 dark:bg-slate-800/50 p-4 border border-slate-150 dark:border-slate-700 rounded-2xl">
+                                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Registry Document Fields</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
                                         {selectedTicket.purpose === 'birth' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Child's Name</span><span className="font-black text-slate-700">{[selectedTicket.details?.first_name, selectedTicket.details?.middle_name, selectedTicket.details?.last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Birth</span><span className="font-bold text-slate-700">{selectedTicket.details?.date_of_birth}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Birth</span><span className="font-bold text-slate-700">{selectedTicket.details?.place_of_birth}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Father's Name</span><span className="font-bold text-slate-700">{selectedTicket.details?.father_name || '—'}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400">Mother's Name</span><span className="font-bold text-slate-700">{selectedTicket.details?.mother_name || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Child's Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.first_name, selectedTicket.details?.middle_name, selectedTicket.details?.last_name].filter(Boolean).join(' ')}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_birth}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_birth}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Father's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.father_name || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Mother's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.mother_name || '—'}</span></div>
                                             </>
                                         )}
 
                                         {selectedTicket.purpose === 'death' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Deceased Name</span><span className="font-black text-slate-700">{[selectedTicket.details?.deceased_first_name, selectedTicket.details?.deceased_middle_name, selectedTicket.details?.deceased_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Death</span><span className="font-bold text-slate-700">{selectedTicket.details?.date_of_death}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Death</span><span className="font-bold text-slate-700">{selectedTicket.details?.place_of_death}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Deceased Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.deceased_first_name, selectedTicket.details?.deceased_middle_name, selectedTicket.details?.deceased_last_name].filter(Boolean).join(' ')}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_death}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_death}</span></div>
                                             </>
                                         )}
 
                                         {selectedTicket.purpose === 'marriage' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-indigo-400" /> Husband</span><span className="font-black text-slate-700">{[selectedTicket.details?.husband_first_name, selectedTicket.details?.husband_middle_name, selectedTicket.details?.husband_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-pink-400" /> Wife</span><span className="font-black text-slate-700">{[selectedTicket.details?.wife_first_name, selectedTicket.details?.wife_middle_name, selectedTicket.details?.wife_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Marriage Date</span><span className="font-bold text-slate-700">{selectedTicket.details?.date_of_marriage}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 pb-1.5"><span className="text-slate-400 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Marriage Place</span><span className="font-bold text-slate-700">{selectedTicket.details?.place_of_marriage}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-indigo-400" /> Husband</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.husband_first_name, selectedTicket.details?.husband_middle_name, selectedTicket.details?.husband_last_name].filter(Boolean).join(' ')}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-pink-400" /> Wife</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.wife_first_name, selectedTicket.details?.wife_middle_name, selectedTicket.details?.wife_last_name].filter(Boolean).join(' ')}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Marriage Date</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_marriage}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Marriage Place</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_marriage}</span></div>
                                             </>
                                         )}
                                     </div>
@@ -1031,7 +1031,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     This request has been verified and the document was officially issued.
                                 </div>
                             ) : (
-                                <div className="border-t border-slate-150 pt-3 mt-3 flex flex-col sm:flex-row gap-3 shrink-0">
+                                <div className="border-t border-slate-150 dark:border-slate-800 pt-3 mt-3 flex flex-col sm:flex-row gap-3 shrink-0">
                                     <button
                                         onClick={() => setIsAttachOpen(true)}
                                         className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -1042,7 +1042,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     {selectedTicket.request_status === 'ready_for_pickup' && (
                                         <button
                                             onClick={handleDirectIssue}
-                                            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                                         >
                                             <CheckCircleIcon className="w-4 h-4" />
                                             Verify ID & Issue
@@ -1051,7 +1051,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <button
                                         onClick={handleDeclineRequest}
                                         disabled={deletingId === selectedTicket.id}
-                                        className="px-5 py-3 bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                        className="px-5 py-3 bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-800 rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm active:scale-95"
                                     >
                                         {deletingId === selectedTicket.id ? (
                                             <ArrowPathIcon className="w-4 h-4 animate-spin" />
@@ -1354,7 +1354,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             initial={{ opacity: 0, scale: 0.96, y: 12 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.96, y: 12 }}
-                            className="bg-white rounded-3xl shadow-2xl shadow-slate-950/30 w-full max-w-md relative overflow-hidden border border-white/80"
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-950/30 w-full max-w-md relative overflow-hidden border border-white/80 dark:border-slate-800"
                         >
                             <div className="bg-[#0f172a] px-6 py-5 text-white">
                                 <div className="flex items-start justify-between gap-4">
@@ -1380,8 +1380,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-5 bg-slate-50">
-                                <p className="text-xs text-slate-600 leading-relaxed text-center font-medium">
+                            <div className="p-6 space-y-5 bg-slate-50 dark:bg-slate-900/90">
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-center font-medium">
                                     Snap a photo of the queue ticket using your camera, select a saved image, or enter the ticket number below.
                                 </p>
 
@@ -1404,19 +1404,19 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         type="button"
                                         disabled={isDecodingPhoto}
                                         onClick={() => galleryInputRef.current?.click()}
-                                        className="p-4 rounded-2xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-bold flex flex-col items-center justify-center gap-2 shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+                                        className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold flex flex-col items-center justify-center gap-2 shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
                                     >
-                                        <PhotoIcon className="w-7 h-7 text-slate-600" />
+                                        <PhotoIcon className="w-7 h-7 text-slate-600 dark:text-slate-300" />
                                         <div className="text-center">
                                             <span className="block text-xs font-black">Upload Photo</span>
-                                            <span className="block text-[10px] text-slate-400 font-medium">Choose image file</span>
+                                            <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium">Choose image file</span>
                                         </div>
                                     </button>
                                 </div>
 
                                 {/* Decoding Spinner */}
                                 {isDecodingPhoto && (
-                                    <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center gap-3 text-indigo-700">
+                                    <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-3 text-indigo-700 dark:text-indigo-300">
                                         <ArrowPathIcon className="w-5 h-5 animate-spin" />
                                         <span className="text-xs font-bold">Scanning image for QR code...</span>
                                     </div>
@@ -1424,16 +1424,16 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
                                 {/* Error Alert */}
                                 {scannerError && (
-                                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center">
+                                    <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/50 p-4 text-center">
                                         <ExclamationTriangleIcon className="w-6 h-6 mx-auto text-rose-500 mb-1.5" />
-                                        <p className="text-xs font-bold text-rose-700">{scannerError}</p>
+                                        <p className="text-xs font-bold text-rose-700 dark:text-rose-300">{scannerError}</p>
                                     </div>
                                 )}
 
                                 {/* Divider */}
                                 <div className="relative flex items-center justify-center my-1">
-                                    <div className="border-t border-slate-200 w-full" />
-                                    <span className="bg-slate-50 px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 absolute">
+                                    <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
+                                    <span className="bg-slate-50 dark:bg-slate-900 px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 absolute">
                                         Or Type / Barcode Gun
                                     </span>
                                 </div>
@@ -1452,7 +1452,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             value={manualTicketInput}
                                             onChange={(e) => setManualTicketInput(e.target.value)}
                                             placeholder="e.g. T-2026-0001 or scan barcode gun"
-                                            className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                            className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                                         />
                                         <button
                                             type="submit"
@@ -1593,35 +1593,35 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <XMarkIcon className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="flex-1 overflow-auto p-4 bg-slate-100 flex items-center justify-center min-h-[320px]">
+                            <div className="flex-1 overflow-auto p-4 bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[320px]">
                                 {selectedTicket.consent_form_path.toLowerCase().endsWith('.pdf') ? (
                                     <iframe
                                         src={`/api/v1/tickets/${selectedTicket.id}/consent-form#toolbar=0`}
                                         title="Citizen ID / Authorization Document"
-                                        className="w-full h-[65vh] rounded-xl border border-slate-200 bg-white"
+                                        className="w-full h-[65vh] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                                     />
                                 ) : (
                                     <img
                                         src={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
                                         alt="Citizen ID or Authorization Document"
-                                        className="max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 bg-white"
+                                        className="max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                                     />
                                 )}
                             </div>
-                            <div className="px-5 py-3.5 bg-white border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                                <span className="text-xs text-slate-500 font-medium">Verify that the document matches the certificate applicant.</span>
+                            <div className="px-5 py-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verify that the document matches the certificate applicant.</span>
                                 <div className="flex items-center gap-2">
                                     <a
                                         href={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
                                         download
-                                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all"
+                                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all"
                                     >
                                         Download
                                     </a>
                                     <button
                                         type="button"
                                         onClick={() => setIsIdPreviewOpen(false)}
-                                        className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                                        className="px-4 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition-all cursor-pointer"
                                     >
                                         Done Reviewing
                                     </button>
@@ -1635,15 +1635,15 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             {/* Verify ID & Checkout Modal */}
             <AnimatePresence>
                 {isVerifyOpen && selectedTicket && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 leading-normal">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100"
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 dark:border-slate-800"
                         >
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                                <h3 className="font-extrabold text-slate-800 text-lg flex items-center gap-1.5">
+                            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+                                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-1.5">
                                     <IdentificationIcon className="w-6 h-6 text-[#d4a574]" /> Final Verification
                                 </h3>
                                 <button onClick={() => setIsVerifyOpen(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer">
@@ -1652,16 +1652,16 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             </div>
 
                             <div className="space-y-4 mb-6">
-                                <p className="text-xs text-slate-500 leading-relaxed">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                     Please verify the citizen's physical identification card (e.g. National ID, Driver's License) matches the requester profile before final checkout.
                                 </p>
 
-                                <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl text-xs space-y-2">
-                                    <div className="flex justify-between"><span className="text-slate-400">Client Name:</span><span className="font-extrabold text-slate-800">{selectedTicket.client_name}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 truncate max-w-[18ch]">{selectedTicket.document?.name}</span></div>
+                                <div className="bg-slate-50 dark:bg-slate-800/60 p-4 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs space-y-2">
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Client Name:</span><span className="font-extrabold text-slate-800 dark:text-slate-100">{selectedTicket.client_name}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.name}</span></div>
                                 </div>
 
-                                <div className="border border-amber-100 bg-amber-50/40 p-3 rounded-xl flex gap-2 items-start text-[10px] text-amber-700">
+                                <div className="border border-amber-100 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/30 p-3 rounded-xl flex gap-2 items-start text-[10px] text-amber-700 dark:text-amber-300">
                                     <ExclamationTriangleIcon className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                                     <span>Proceeding will complete this ticket request, mark it as completed, and remove it from active queue columns.</span>
                                 </div>
@@ -1670,7 +1670,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setIsVerifyOpen(false)}
-                                    className="flex-1 py-3 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-255 transition-all cursor-pointer"
+                                    className="flex-1 py-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-255 dark:hover:bg-slate-700 transition-all cursor-pointer"
                                 >
                                     Cancel
                                 </button>

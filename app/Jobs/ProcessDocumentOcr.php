@@ -189,8 +189,10 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // Normalize Python fields to match React form fields
             $extractedFields = $this->normalizePythonFields($extractedFields);
 
-            // 5. Always Run PHP Anchor Parser Fallback + Merge
-            if (!empty($ocrText)) {
+            // 5. Run PHP Anchor Parser Fallback only if ocrText is actual non-JSON plain text
+            $trimmedOcr = trim($ocrText);
+            $isJsonOcr = (str_starts_with($trimmedOcr, '{') && str_ends_with($trimmedOcr, '}')) || (str_starts_with($trimmedOcr, '[') && str_ends_with($trimmedOcr, ']'));
+            if (!empty($ocrText) && !$isJsonOcr) {
                 $parser = new \App\Services\OcrParserService();
                 $parsedData = $parser->parseText($ocrText);
                 $phpFields = $parsedData['extracted_fields'] ?? [];
@@ -275,10 +277,14 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // 1.5 seconds delay to allow UI to render the validation step
             usleep(1500000);
 
+            // Compute clean personName from extracted fields immediately so the queue table and registry show the actual citizen/couple name
+            $computedPersonName = $this->buildFullName($extractedFields, $detectedType);
+
             // Update database record with final values and status = extracted
             DB::table('documents')->where('id', $this->documentId)->update([
                 'ocr_text' => $ocrText,
                 'detected_type' => $detectedType,
+                'personName' => !empty($computedPersonName) ? $computedPersonName : ($doc->personName ?? ''),
                 'extracted_fields' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
                 'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
                 'status' => 'extracted',
@@ -357,6 +363,61 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
         // Cleanup intermediate keys
         unset($fields['full_name'], $fields['date_of_birth'], $fields['place_of_birth'], $fields['mother_full_name'], $fields['father_full_name']);
 
+        // Purge any accidental JSON dumps or stringified JSON remnants from field values
+        foreach ($fields as $key => $val) {
+            if (is_string($val)) {
+                $trimmed = trim($val);
+                if (str_contains($trimmed, 'is_valid_document') || (str_starts_with($trimmed, '{') && str_contains($trimmed, '":'))) {
+                    $fields[$key] = null;
+                }
+            }
+        }
+
         return $fields;
+    }
+
+    /**
+     * Builds clean person or couple full name from extracted fields.
+     */
+    private function buildFullName(?array $fields, ?string $type): ?string
+    {
+        if (!$fields) return null;
+
+        $cleanPart = function ($val) {
+            if (!$val || !is_string($val)) return '';
+            $trimmed = trim($val);
+            if (str_contains($trimmed, '{') || str_contains($trimmed, '}') || str_contains($trimmed, '":') || str_contains($trimmed, 'is_valid_document')) {
+                return '';
+            }
+            return strtoupper($trimmed);
+        };
+
+        if ($type === 'marriage' || $type === 'marriage_license') {
+            $hLast = $cleanPart($fields['husband_last_name'] ?? '');
+            $hFirst = $cleanPart($fields['husband_first_name'] ?? '');
+            $hMiddle = $cleanPart($fields['husband_middle_name'] ?? '');
+            $hSuffix = $cleanPart($fields['husband_suffix'] ?? '');
+            $hParts = array_filter([$hLast ? "{$hLast}," : '', $hFirst, $hMiddle, $hSuffix]);
+            $hName = implode(' ', $hParts);
+
+            $wLast = $cleanPart($fields['wife_last_name'] ?? '');
+            $wFirst = $cleanPart($fields['wife_first_name'] ?? '');
+            $wMiddle = $cleanPart($fields['wife_middle_name'] ?? '');
+            $wSuffix = $cleanPart($fields['wife_suffix'] ?? '');
+            $wParts = array_filter([$wLast ? "{$wLast}," : '', $wFirst, $wMiddle, $wSuffix]);
+            $wName = implode(' ', $wParts);
+
+            $joined = implode(' & ', array_filter([$hName, $wName]));
+            return $joined ? strtoupper($joined) : null;
+        }
+
+        $last = $cleanPart($fields['last_name'] ?? $fields['child_last_name'] ?? $fields['deceased_last_name'] ?? '');
+        $first = $cleanPart($fields['first_name'] ?? $fields['child_first_name'] ?? $fields['deceased_first_name'] ?? '');
+        $middle = $cleanPart($fields['middle_name'] ?? $fields['child_middle_name'] ?? $fields['deceased_middle_name'] ?? '');
+        $suffix = $cleanPart($fields['suffix'] ?? '');
+
+        $parts = array_filter([$last ? "{$last}," : '', $first, $middle, $suffix]);
+        $name = implode(' ', $parts);
+        return $name ? strtoupper($name) : null;
     }
 }

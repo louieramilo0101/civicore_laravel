@@ -126,6 +126,16 @@ class OcrParserService
             return ['detected_type' => $detectedType, 'extracted_fields' => $fields];
         }
 
+        // Guard: If rawText is already structured JSON (e.g. from Gemini or Ollama Vision output),
+        // do not run plain-text regex anchors on it, as doing so will extract raw JSON keys/values.
+        $trimmed = trim($rawText);
+        if ((str_starts_with($trimmed, '{') && str_ends_with($trimmed, '}')) || (str_starts_with($trimmed, '[') && str_ends_with($trimmed, ']'))) {
+            $decoded = json_decode($trimmed, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return ['detected_type' => $detectedType, 'extracted_fields' => []];
+            }
+        }
+
         // ── 1. Detect Type ───────────────────────────────────────────────────
         $lower = strtolower($rawText);
         if (preg_match('/live\s*birth|birth\s*certificate/i', $rawText)) {
@@ -307,6 +317,10 @@ class OcrParserService
     private function clean(string $key, string $val): string
     {
         $val = trim(preg_replace('/^[|\-=.:]+/', '', $val));
+        // Reject any value that contains JSON characters or fragments
+        if (str_contains($val, '{') || str_contains($val, '}') || str_contains($val, '":') || str_contains($val, 'is_valid_document')) {
+            return '';
+        }
         if (str_contains($key, 'name')) return ucwords(strtolower(preg_replace('/\b\d+\b/', '', $val)));
         return $val;
     }

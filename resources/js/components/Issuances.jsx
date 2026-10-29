@@ -143,30 +143,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                         </div>
                     )}
 
-                    {/* Temporary Download Actions for Dummy Data & Certificate Testing */}
-                    <button
-                        type="button"
-                        onClick={handleDownloadJson}
-                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 text-slate-300 hover:text-white border border-white/10 rounded-xl text-xs font-semibold tracking-wider transition-all cursor-pointer"
-                        title="Download Dummy Data JSON"
-                    >
-                        <DocumentTextIcon className="w-4 h-4 text-slate-400" />
-                        <span>JSON Data</span>
-                    </button>
-
-                    <a
-                        href={downloadUrl}
-                        download={`${(cert.name || 'certificate').replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => onDownload?.()}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-black tracking-wider uppercase rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
-                        title="Download Certificate File"
-                    >
-                        <ArrowDownTrayIcon className="w-4 h-4" />
-                        <span>Download</span>
-                    </a>
-
+                    {/* Action Buttons */}
                     <div className="w-px h-6 bg-white/10 mx-1" />
 
                     <button
@@ -399,9 +376,12 @@ const Issuances = () => {
         // Use Number() to ensure type consistency across database drivers
         const issuedDocIds = new Set(rawIssuances.map(i => i.document_id ? Number(i.document_id) : null).filter(id => id !== null));
 
+        // Only include official registry documents uploaded/processed by the civil registry (exclude citizen ticket requests)
+        const registryIssuances = rawIssuances.filter(i => !i.ticket_number);
+
         const combined = [
             // Finalized Issuances (The main records)
-            ...rawIssuances.map(i => {
+            ...registryIssuances.map(i => {
                 const linkedDoc = rawDocuments.find(d => Number(d.id) === Number(i.document_id));
                 const rawType = (i.type || 'birth').toLowerCase();
                 const type = rawType === 'unknown' ? 'birth' : rawType;
@@ -582,31 +562,44 @@ const Issuances = () => {
     };
 
     const buildPersonName = (fields, type) => {
-        if (!fields) return '';
-        if (type === 'marriage') {
-            const hLast = (fields.husband_last_name || '').toUpperCase().trim();
-            const hFirst = (fields.husband_first_name || '').toUpperCase().trim();
-            const hMiddle = (fields.husband_middle_name || '').toUpperCase().trim();
-            const hSuffix = (fields.husband_suffix || '').toUpperCase().trim();
+        if (!fields || typeof fields !== 'object') return '';
+
+        const cleanPart = (val) => {
+            if (!val || typeof val !== 'string') return '';
+            const t = val.trim();
+            if (t.includes('{') || t.includes('}') || t.includes('":') || t.includes('is_valid_document')) {
+                return '';
+            }
+            return t.toUpperCase();
+        };
+
+        const docType = (type || '').toLowerCase();
+        if (docType === 'marriage' || docType === 'marriage_license') {
+            const hLast = cleanPart(fields.husband_last_name);
+            const hFirst = cleanPart(fields.husband_first_name);
+            const hMiddle = cleanPart(fields.husband_middle_name);
+            const hSuffix = cleanPart(fields.husband_suffix);
             const hName = [hLast ? `${hLast},` : '', hFirst, hMiddle, hSuffix].filter(Boolean).join(' ');
 
-            const wLast = (fields.wife_last_name || '').toUpperCase().trim();
-            const wFirst = (fields.wife_first_name || '').toUpperCase().trim();
-            const wMiddle = (fields.wife_middle_name || '').toUpperCase().trim();
-            const wSuffix = (fields.wife_suffix || '').toUpperCase().trim();
+            const wLast = cleanPart(fields.wife_last_name);
+            const wFirst = cleanPart(fields.wife_first_name);
+            const wMiddle = cleanPart(fields.wife_middle_name);
+            const wSuffix = cleanPart(fields.wife_suffix);
             const wName = [wLast ? `${wLast},` : '', wFirst, wMiddle, wSuffix].filter(Boolean).join(' ');
 
             const joined = [hName, wName].filter(Boolean).join(' & ');
-            return (joined || fields.personName || '').toUpperCase();
+            const fallback = cleanPart(fields.personName);
+            return (joined || fallback || '').toUpperCase();
         }
 
-        const last = (fields.last_name || fields.deceased_last_name || '').toUpperCase().trim();
-        const first = (fields.first_name || fields.deceased_first_name || '').toUpperCase().trim();
-        const middle = (fields.middle_name || fields.deceased_middle_name || '').toUpperCase().trim();
-        const suffix = (fields.suffix || '').toUpperCase().trim();
+        const last = cleanPart(fields.last_name || fields.child_last_name || fields.deceased_last_name);
+        const first = cleanPart(fields.first_name || fields.child_first_name || fields.deceased_first_name);
+        const middle = cleanPart(fields.middle_name || fields.child_middle_name || fields.deceased_middle_name);
+        const suffix = cleanPart(fields.suffix);
 
         const nameParts = [last ? `${last},` : '', first, middle, suffix].filter(Boolean).join(' ');
-        return (nameParts || fields.personName || fields.full_name || fields.deceased_name || '').toUpperCase();
+        const fallback = cleanPart(fields.personName || fields.full_name || fields.deceased_name);
+        return (nameParts || fallback || '').toUpperCase();
     };
 
     const saveEdit = async ({ fields, ocr_text, parentalConsent, detectedType }) => {
@@ -1223,13 +1216,13 @@ const Issuances = () => {
             </AnimatePresence>
 
             {/* ── Issuance Dashboard Panel (Overview / Per Category / Top Issued) ────────────────── */}
-            <motion.div variants={itemVariants} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80 overflow-hidden">
+            <motion.div variants={itemVariants} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                 {/* Dashboard Tab Header */}
-                <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white gap-2">
+                <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 gap-2">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 pr-3 border-r border-slate-200/80 hidden md:flex shrink-0">
+                        <div className="flex items-center gap-2 pr-3 border-r border-slate-200/80 dark:border-slate-700 hidden md:flex shrink-0">
                             <ChartBarIcon className="w-5 h-5 text-[#d4a574]" />
-                            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Analytics & Stats</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Analytics & Stats</span>
                         </div>
                         <div className="grid grid-cols-3 gap-1 w-full sm:flex sm:w-auto">
                             {[
@@ -1245,8 +1238,8 @@ const Issuances = () => {
                                     }}
                                     className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${
                                         dashboardTab === tab.key && !isAnalyticsCollapsed
-                                            ? 'bg-slate-900 text-[#d4a574] shadow-xs'
-                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                                            ? 'bg-slate-900 text-[#d4a574] dark:bg-slate-800 dark:text-[#d4a574] dark:border dark:border-[#d4a574]/40 shadow-xs'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                                     }`}
                                 >
                                     <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 hidden sm:inline-block" />
@@ -1260,7 +1253,7 @@ const Issuances = () => {
                         <button
                             type="button"
                             onClick={() => setIsAnalyticsCollapsed(prev => !prev)}
-                            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
                             title={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
                             aria-label={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
                         >
@@ -1268,9 +1261,9 @@ const Issuances = () => {
                                 {isAnalyticsCollapsed ? 'Show Stats' : 'Hide Stats'}
                             </span>
                             {isAnalyticsCollapsed ? (
-                                <ChevronDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+                                <ChevronDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-400" />
                             ) : (
-                                <ChevronUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+                                <ChevronUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-400" />
                             )}
                         </button>
                     </div>
@@ -1288,49 +1281,49 @@ const Issuances = () => {
 
                 {/* Tab 1: Overview */}
                 {dashboardTab === 'overview' && (
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {isLoading ? (
                             <SkeletonLoader type="cards" rows={1} />
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                                 {/* Master Database */}
-                                <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl shadow-lg overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                                <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-2xl shadow-sm border border-slate-700/60 overflow-hidden group hover:scale-[1.01] transition-transform duration-200">
                                     <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-white/5 rounded-full" />
                                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Master Database</p>
-                                    <h3 className="text-4xl font-black text-white tracking-tighter">{certificates.length}</h3>
-                                    <p className="text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
-                                    <div className="absolute bottom-4 right-4 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
+                                    <h3 className="text-3xl font-black text-white tracking-tighter">{certificates.length}</h3>
+                                    <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
+                                    <div className="absolute bottom-4 right-4 w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center">
                                         <DocumentMinusIcon className="w-5 h-5 text-slate-400" />
                                     </div>
                                 </div>
                                 {/* Birth Records */}
-                                <div className="relative bg-white border border-[#d4a574]/20 p-6 rounded-2xl shadow-sm overflow-hidden group hover:scale-[1.02] hover:shadow-md transition-all duration-300">
+                                <div className="relative bg-white dark:bg-slate-900/90 border border-[#d4a574]/30 dark:border-[#d4a574]/20 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
                                     <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-[#d4a574]/5 rounded-full" />
                                     <p className="text-[#d4a574] text-[10px] font-black uppercase tracking-widest mb-1">Birth Records</p>
-                                    <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length}</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Live Birth Certs</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300">
-                                        <UserIcon className="w-10 h-10" />
+                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length}</h3>
+                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Live Birth Certs</p>
+                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                        <UserIcon className="w-9 h-9" />
                                     </div>
                                 </div>
                                 {/* Death Records */}
-                                <div className="relative bg-white border border-rose-100 p-6 rounded-2xl shadow-sm overflow-hidden group hover:scale-[1.02] hover:shadow-md transition-all duration-300">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-rose-50/50 rounded-full" />
+                                <div className="relative bg-white dark:bg-slate-900/90 border border-rose-200/80 dark:border-rose-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-rose-50/50 dark:bg-rose-950/20 rounded-full" />
                                     <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">Death Records</p>
-                                    <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'death').length}</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Death Certificates</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300">
-                                        <DocumentTextIcon className="w-10 h-10" />
+                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'death').length}</h3>
+                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Death Certificates</p>
+                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                        <DocumentTextIcon className="w-9 h-9" />
                                     </div>
                                 </div>
                                 {/* Marriage Records */}
-                                <div className="relative bg-white border border-indigo-100 p-6 rounded-2xl shadow-sm overflow-hidden group hover:scale-[1.02] hover:shadow-md transition-all duration-300">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-indigo-50/50 rounded-full" />
+                                <div className="relative bg-white dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-full" />
                                     <p className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-1">Marriage Records</p>
-                                    <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length}</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Marriage Certificates</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300">
-                                        <UsersIcon className="w-10 h-10" />
+                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length}</h3>
+                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Marriage Certificates</p>
+                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                        <UsersIcon className="w-9 h-9" />
                                     </div>
                                 </div>
                             </div>
@@ -1350,9 +1343,9 @@ const Issuances = () => {
                     const pendingApprovalCount = certificates.filter(c => c.status === 'Pending Approval').length;
 
                     const categories = [
-                        { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10', bar: 'bg-[#d4a574]', emoji: 'BR' },
-                        { label: 'Death Certificates', count: deathCount, color: '#f43f5e', bg: 'bg-rose-50', bar: 'bg-rose-500', emoji: 'DC' },
-                        { label: 'Marriage Certificates', count: marriageCount, color: '#6366f1', bg: 'bg-indigo-50', bar: 'bg-indigo-500', emoji: 'MC' },
+                        { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/5', bar: 'bg-[#d4a574]', emoji: 'BR' },
+                        { label: 'Death Certificates', count: deathCount, color: '#f43f5e', bg: 'bg-rose-50 dark:bg-rose-950/30', bar: 'bg-rose-500', emoji: 'DC' },
+                        { label: 'Marriage Certificates', count: marriageCount, color: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/30', bar: 'bg-indigo-500', emoji: 'MC' },
                     ];
 
                     // SVG Donut Chart calculations
@@ -1371,20 +1364,20 @@ const Issuances = () => {
                         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Left: Progress bars */}
                             <div className="space-y-5">
-                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Certificate Type Breakdown</h4>
+                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Certificate Type Breakdown</h4>
                                 {categories.map(cat => (
                                     <div key={cat.label}>
                                         <div className="flex items-center justify-between mb-1.5">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">{cat.emoji}</span>
-                                                <span className="text-sm font-bold text-slate-700">{cat.label}</span>
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{cat.label}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xl font-black text-slate-800">{cat.count}</span>
-                                                <span className="text-[10px] text-slate-400 font-bold">{total > 0 ? Math.round((cat.count / total) * 100) : 0}%</span>
+                                                <span className="text-xl font-black text-slate-800 dark:text-slate-100">{cat.count}</span>
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{total > 0 ? Math.round((cat.count / total) * 100) : 0}%</span>
                                             </div>
                                         </div>
-                                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                             <div
                                                 className={`h-full ${cat.bar} rounded-full transition-all duration-700`}
                                                 style={{ width: `${total > 0 ? (cat.count / total) * 100 : 0}%` }}
@@ -1393,17 +1386,17 @@ const Issuances = () => {
                                     </div>
                                 ))}
 
-                                <div className="pt-4 border-t border-slate-100 mt-4">
-                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
+                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
                                     <div className="grid grid-cols-2 gap-3">
                                         {[
-                                            { label: 'Issued', count: issuedCount, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-100' },
-                                            { label: 'Approved', count: approvedCount, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-                                            { label: 'Active', count: pendingCount, color: 'text-slate-600', bg: 'bg-slate-50 border-slate-100' },
-                                            { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+                                            { label: 'Issued', count: issuedCount, color: 'text-indigo-600 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' },
+                                            { label: 'Approved', count: approvedCount, color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
+                                            { label: 'Active', count: pendingCount, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700' },
+                                            { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
                                         ].map(s => (
                                             <div key={s.label} className={`p-3 rounded-xl border ${s.bg} flex items-center justify-between`}>
-                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{s.label}</span>
+                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</span>
                                                 <span className={`text-lg font-black ${s.color}`}>{s.count}</span>
                                             </div>
                                         ))}
@@ -1413,11 +1406,11 @@ const Issuances = () => {
 
                             {/* Right: SVG Donut Chart */}
                             <div className="flex flex-col items-center justify-center">
-                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Distribution</h4>
+                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Distribution</h4>
                                 <div className="relative w-48 h-48">
                                     <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
                                         {total === 0 ? (
-                                            <circle cx="60" cy="60" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="16" />
+                                            <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="16" />
                                         ) : (
                                             donutSegments.map((seg, i) => (
                                                 <circle
@@ -1434,15 +1427,15 @@ const Issuances = () => {
                                         )}
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-3xl font-black text-slate-800">{total - 1}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                                        <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total - 1}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</span>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-3 mt-4">
                                     {categories.map(cat => (
                                         <div key={cat.label} className="flex items-center gap-1.5">
                                             <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.color }} />
-                                            <span className="text-[10px] font-bold text-slate-600">{cat.label.replace(' Certificates', '')}</span>
+                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{cat.label.replace(' Certificates', '')}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -1477,9 +1470,9 @@ const Issuances = () => {
                     const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
                     const mostActiveType = birthCount >= deathCount && birthCount >= marriageCount ? 'Birth'
                         : deathCount >= marriageCount ? 'Death' : 'Marriage';
-                    const mostActiveTypeColor = mostActiveType === 'Birth' ? 'text-[#d4a574] bg-[#d4a574]/10 border-[#d4a574]/20'
-                        : mostActiveType === 'Death' ? 'text-rose-500 bg-rose-50 border-rose-100'
-                        : 'text-indigo-500 bg-indigo-50 border-indigo-100';
+                    const mostActiveTypeColor = mostActiveType === 'Birth' ? 'text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/5 border-[#d4a574]/20'
+                        : mostActiveType === 'Death' ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50'
+                        : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50';
                     const mostActiveTypeEmoji = mostActiveType === 'Birth' ? 'BR' : mostActiveType === 'Death' ? 'DC' : 'MC';
 
                     // Most recently issued
@@ -1492,7 +1485,7 @@ const Issuances = () => {
                         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Left: Top 5 Barangays */}
                             <div>
-                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
+                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
                                 {top5.length === 0 ? (
                                     <div className="text-center text-slate-400 py-8">
                                         <p className="text-sm font-semibold">No barangay data available</p>
@@ -1503,18 +1496,18 @@ const Issuances = () => {
                                             <div key={brgy.name} className="flex items-center gap-3 group">
                                                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
                                                     idx === 0 ? 'bg-amber-400 text-white shadow-md shadow-amber-200'
-                                                    : idx === 1 ? 'bg-slate-300 text-slate-700'
+                                                    : idx === 1 ? 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
                                                     : idx === 2 ? 'bg-orange-300 text-white'
-                                                    : 'bg-slate-100 text-slate-500'
+                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                                                 }`}>
                                                     {idx + 1}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-sm font-bold text-slate-700 truncate pr-2">{brgy.name}</span>
-                                                        <span className="text-sm font-black text-slate-800 shrink-0">{brgy.total}</span>
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate pr-2">{brgy.name}</span>
+                                                        <span className="text-sm font-black text-slate-800 dark:text-slate-100 shrink-0">{brgy.total}</span>
                                                     </div>
-                                                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                                         <div
                                                             className="h-full bg-gradient-to-r from-[#d4a574] to-[#c49060] rounded-full transition-all duration-700"
                                                             style={{ width: `${(brgy.total / maxBrgyTotal) * 100}%` }}
@@ -1535,43 +1528,43 @@ const Issuances = () => {
                             {/* Right: Most Active Type + Recent Issued */}
                             <div className="space-y-5">
                                 <div>
-                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Most Active Document Type</h4>
+                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Most Active Document Type</h4>
                                     <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border font-black text-sm ${mostActiveTypeColor}`}>
                                         <span className="text-2xl">{mostActiveTypeEmoji}</span>
                                         {mostActiveType} Certificates
                                     </div>
                                 </div>
 
-                                <div className="pt-4 border-t border-slate-100">
-                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Recently Issued</h4>
+                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Recently Issued</h4>
                                     {recentIssued.length === 0 ? (
                                         <p className="text-sm text-slate-400 font-medium">No issued records yet.</p>
                                     ) : (
                                         <div className="space-y-2">
                                             {recentIssued.map(cert => (
-                                                <div key={cert.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div key={cert.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${
                                                         (cert.type || '').toLowerCase() === 'birth' ? 'bg-[#d4a574]/10 text-[#d4a574]'
-                                                        : (cert.type || '').toLowerCase() === 'death' ? 'bg-rose-50 text-rose-500'
-                                                        : 'bg-indigo-50 text-indigo-500'
+                                                        : (cert.type || '').toLowerCase() === 'death' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
+                                                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500'
                                                     }`}>
                                                         {(cert.type || '').toLowerCase() === 'birth' ? 'BR' : (cert.type || '').toLowerCase() === 'death' ? 'DC' : 'MC'}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-slate-800 truncate">{cert.name}</p>
-                                                        <p className="text-[10px] text-slate-400 font-medium">{cert.number} · {cert.barangay}</p>
+                                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{cert.name}</p>
+                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{cert.number} · {cert.barangay}</p>
                                                     </div>
-                                                    <span className="ml-auto text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Issued</span>
+                                                    <span className="ml-auto text-[9px] font-black text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Issued</span>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="pt-4 border-t border-slate-100">
-                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Coverage</h4>
-                                    <p className="text-sm text-slate-600 font-medium">
-                                        <span className="font-black text-slate-800">{rankList.length}</span> of <span className="font-black text-slate-800">30</span> barangays have records
+                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Coverage</h4>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                        <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays have records
                                     </p>
                                 </div>
                             </div>
@@ -1584,20 +1577,20 @@ const Issuances = () => {
             </motion.div>
 
             {/* ── Main Section Tab Bar ──────────────────────────────────────────────── */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-1 bg-slate-100 p-1.5 rounded-xl w-full sm:w-fit sm:flex sm:space-x-1">
-                <button onClick={() => setActiveTab('database')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'database' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Master Database</button>
-                <button onClick={() => setActiveTab('history')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'history' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Activity Log History</button>
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900/80 p-1.5 rounded-xl w-full sm:w-fit sm:flex sm:space-x-1 border border-slate-200/60 dark:border-slate-800">
+                <button onClick={() => setActiveTab('database')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'database' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-[#d4a574] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Master Database</button>
+                <button onClick={() => setActiveTab('history')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-[#d4a574] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Activity Log History</button>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden">
+            <motion.div variants={itemVariants} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                 {activeTab === 'database' ? (
                     <>
-                        <div className="p-3.5 sm:p-6 border-b border-slate-100 bg-slate-50/30 space-y-3 sm:space-y-4">
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3 sm:space-y-4">
                             <div className="flex flex-col lg:flex-row justify-between gap-3 sm:gap-4">
                                 <div className="relative max-w-md w-full flex items-center gap-2">
                                     <div className="relative flex-1">
                                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" placeholder="Search by Cert No, Name or Barangay..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] text-xs sm:text-sm transition-all shadow-xs" />
+                                        <input type="text" placeholder="Search by Cert No, Name or Barangay..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] text-xs sm:text-sm transition-all shadow-xs" />
                                     </div>
                                     <button
                                         onClick={() => {
@@ -1605,7 +1598,7 @@ const Issuances = () => {
                                             setIsScanSearchOpen(true);
                                         }}
                                         title="Scan Document to Search (Camera/OCR)"
-                                        className="p-2 bg-slate-100 hover:bg-[#d4a574]/20 text-slate-600 hover:text-[#d4a574] border border-slate-200 rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs flex items-center justify-center shrink-0"
+                                        className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-[#d4a574]/20 text-slate-600 dark:text-slate-300 hover:text-[#d4a574] border border-slate-200 dark:border-slate-700 rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs flex items-center justify-center shrink-0"
                                     >
                                         <CameraIcon className="w-4 h-4" />
                                     </button>
@@ -1615,28 +1608,28 @@ const Issuances = () => {
                                     {(selectedType !== 'all' || selectedBarangay !== 'all' || selectedEncoder !== 'all' || searchTerm !== '') && (
                                         <button
                                             onClick={resetFilters}
-                                            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 border border-rose-100 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 group shrink-0"
+                                            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-rose-500 hover:text-white bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-500 border border-rose-100 dark:border-rose-900/40 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 group shrink-0"
                                         >
                                             <XMarkIcon className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
                                             Reset Filters
                                         </button>
                                     )}
-                                    <div className="grid grid-cols-4 sm:flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+                                    <div className="grid grid-cols-4 sm:flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto border border-slate-200/50 dark:border-slate-700">
                                         {['all', 'birth', 'death', 'marriage'].map(type => (
-                                            <button key={type} onClick={() => setSelectedType(type)} className={`px-2 sm:px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${selectedType === type ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{type}</button>
+                                            <button key={type} onClick={() => setSelectedType(type)} className={`px-2 sm:px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${selectedType === type ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{type}</button>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-slate-100/60">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-slate-100/60 dark:border-slate-800">
                                 <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline">Barangay</label>
                                         <select
                                             value={selectedBarangay}
                                             onChange={(e) => setSelectedBarangay(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
                                         >
                                             <option value="all">All Barangays</option>
                                             {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
@@ -1648,7 +1641,7 @@ const Issuances = () => {
                                         <select
                                             value={selectedEncoder}
                                             onChange={(e) => setSelectedEncoder(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
                                         >
                                             <option value="all">All Encoders</option>
                                             {uniqueEncoders.map(enc => <option key={enc} value={enc}>{enc}</option>)}
@@ -1666,11 +1659,11 @@ const Issuances = () => {
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-200">
+                                    <tr className="bg-slate-50 dark:bg-slate-950/70 text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-200 dark:border-slate-800">
                                         <th className="p-4 pl-6 w-10">
                                             <input
                                                 type="checkbox"
-                                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                                className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
                                                 checked={filteredCertificates.length > 0 && filteredCertificates.every(c => selectedIds.includes(c.id))}
                                                 onChange={() => toggleSelectAll(filteredCertificates.map(c => c.id))}
                                             />
@@ -1682,23 +1675,23 @@ const Issuances = () => {
                                         <th className="p-4 pr-6 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                     {isLoading ? (
                                         <tr><td colSpan="6"><SkeletonLoader type="table" rows={8} /></td></tr>
                                     ) : filteredCertificates.length === 0 ? (
                                         <tr><td colSpan="6" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
                                     ) : (
                                         paginatedCertificates.map((cert) => (
-                                            <tr key={cert.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.includes(cert.id) ? 'bg-indigo-50/30' : ''}`}>
+                                            <tr key={cert.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group ${selectedIds.includes(cert.id) ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : ''}`}>
                                                 <td className="p-4 pl-6">
                                                     <input
                                                         type="checkbox"
-                                                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
                                                         checked={selectedIds.includes(cert.id)}
                                                         onChange={() => toggleSelect(cert.id)}
                                                     />
                                                 </td>
-                                                <td className="p-4"><span className="font-bold text-slate-800 text-sm tracking-tight">{cert.number}</span></td>
+                                                <td className="p-4"><span className="font-bold text-slate-800 dark:text-slate-100 text-sm tracking-tight">{cert.number}</span></td>
                                                 <td className="p-4">
                                                     {(() => {
                                                         const t = (cert.type || '').toLowerCase();
@@ -1710,23 +1703,23 @@ const Issuances = () => {
                                                         );
                                                     })()}
                                                 </td>
-                                                <td className="p-4 font-semibold text-slate-700 text-sm">{cert.name}</td>
-                                                <td className="p-4 text-slate-500 text-xs font-medium">{cert.barangay}</td>
+                                                <td className="p-4 font-semibold text-slate-700 dark:text-slate-200 text-sm">{cert.name}</td>
+                                                <td className="p-4 text-slate-500 dark:text-slate-400 text-xs font-medium">{cert.barangay}</td>
                                                 <td className="p-4 pr-6 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => handleAction('View', cert)}
                                                             title="View Document"
-                                                            className="p-2 text-indigo-600 bg-indigo-50/80 hover:bg-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 hover:border-indigo-600 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                            className="p-2 text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:text-white rounded-xl transition-all border border-emerald-100 dark:border-emerald-900/50 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                         >
-                                                            <EyeIcon className="w-4 h-4 text-indigo-600 group-hover/btn:text-white transition-colors" />
+                                                            <EyeIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(cert)}
                                                             title="Delete Record"
-                                                            className="p-2 text-rose-600 bg-rose-50/80 hover:bg-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 hover:border-rose-600 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                            className="p-2 text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 dark:hover:bg-rose-800 hover:text-white rounded-xl transition-all border border-rose-100 dark:border-rose-900/50 cursor-pointer shadow-sm active:scale-95 group/btn"
                                                         >
-                                                            <TrashIcon className="w-4 h-4 text-rose-600 group-hover/btn:text-white transition-colors" />
+                                                            <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-300 group-hover/btn:text-white transition-colors" />
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1738,7 +1731,7 @@ const Issuances = () => {
                         </div>
 
                         {/* Mobile View: Clean Card List (Zero side-scrolling, 100% width) */}
-                        <div className="md:hidden divide-y divide-slate-100">
+                        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                             {isLoading ? (
                                 <div className="p-4"><SkeletonLoader type="table" rows={4} /></div>
                             ) : filteredCertificates.length === 0 ? (
@@ -1750,28 +1743,28 @@ const Issuances = () => {
                                 paginatedCertificates.map((cert) => {
                                     const t = (cert.type || '').toLowerCase();
                                     const colorClass = t === 'birth' 
-                                        ? 'bg-[#d4a574]/10 text-[#d4a574] border-[#d4a574]/30' 
+                                        ? 'bg-[#d4a574]/10 dark:bg-[#d4a574]/20 text-[#d4a574] border-[#d4a574]/30' 
                                         : t === 'death' 
-                                            ? 'bg-rose-50 text-rose-600 border-rose-200' 
-                                            : 'bg-indigo-50 text-indigo-600 border-indigo-200';
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900/50' 
+                                            : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50';
 
                                     return (
                                         <div
                                             key={cert.id}
-                                            className={`p-3 sm:p-4 transition-colors space-y-1.5 sm:space-y-2 ${selectedIds.includes(cert.id) ? 'bg-indigo-50/40' : 'bg-white hover:bg-slate-50/60'}`}
+                                            className={`p-3 sm:p-4 transition-colors space-y-1.5 sm:space-y-2 ${selectedIds.includes(cert.id) ? 'bg-indigo-50/40 dark:bg-indigo-950/40' : 'bg-white dark:bg-slate-900/90 hover:bg-slate-50/60 dark:hover:bg-slate-800/50'}`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                     <input
                                                         type="checkbox"
-                                                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                                        className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                                                         checked={selectedIds.includes(cert.id)}
                                                         onChange={() => toggleSelect(cert.id)}
                                                     />
                                                     <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${colorClass}`}>
                                                         {cert.type}
                                                     </span>
-                                                    <span className="font-mono font-bold text-xs text-slate-800 truncate">
+                                                    <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
                                                         {cert.number}
                                                     </span>
                                                 </div>
@@ -1780,14 +1773,14 @@ const Issuances = () => {
                                                     <button
                                                         onClick={() => handleAction('View', cert)}
                                                         title="View Document"
-                                                        className="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition-all border border-indigo-200 cursor-pointer shadow-xs active:scale-95"
+                                                        className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:text-white rounded-lg transition-all border border-emerald-100 dark:border-emerald-900/50 cursor-pointer shadow-xs active:scale-95"
                                                     >
                                                         <EyeIcon className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(cert)}
                                                         title="Delete Record"
-                                                        className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-200 cursor-pointer shadow-xs active:scale-95"
+                                                        className="p-1.5 text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 dark:hover:bg-rose-800 hover:text-white rounded-lg transition-all border border-rose-100 dark:border-rose-900/50 cursor-pointer shadow-xs active:scale-95"
                                                     >
                                                         <TrashIcon className="w-3.5 h-3.5" />
                                                     </button>
@@ -1795,8 +1788,8 @@ const Issuances = () => {
                                             </div>
 
                                             <div className="pl-5.5 flex flex-col gap-0.5">
-                                                <p className="font-bold text-xs sm:text-sm text-slate-800 leading-tight">{cert.name}</p>
-                                                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                <p className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-tight">{cert.name}</p>
+                                                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
                                                     <span>📍</span>
                                                     <span>{cert.barangay}</span>
                                                 </p>
@@ -1822,28 +1815,28 @@ const Issuances = () => {
                     </>
                 ) : (
                     <div className="p-0">
-                        <div className="p-3.5 sm:p-6 border-b border-slate-100 bg-slate-50/10">
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/40">
                             {/* Top Row: Title & Action */}
                             <div className="flex justify-between items-center gap-3 mb-3 sm:mb-6">
                                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shadow-xs shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-500 shadow-xs shrink-0">
                                         <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 tracking-tight leading-tight truncate">Document Activity History</h3>
-                                        <p className="hidden sm:block text-[11px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Tracking document attachments, views, and deletions</p>
+                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight leading-tight truncate">Document Activity History</h3>
+                                        <p className="hidden sm:block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold uppercase tracking-wider">Tracking document attachments, views, and deletions</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <div className="bg-slate-100/60 px-2.5 py-1 rounded-lg border border-slate-200/50">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tabular-nums">
+                                    <div className="bg-slate-100/60 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
+                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest tabular-nums">
                                             {filteredLogs.length} Entries
                                         </span>
                                     </div>
                                     <button
                                         onClick={fetchActivityLogs}
                                         disabled={logsLoading}
-                                        className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5"
+                                        className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5"
                                         title="Refresh Log"
                                     >
                                         <ArrowPathIcon className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
@@ -1853,7 +1846,7 @@ const Issuances = () => {
                             </div>
 
                             {/* Filter Row: Search & Dropdowns */}
-                            <div className="space-y-2.5 sm:space-y-3 pt-3 sm:pt-4 border-t border-slate-200/50">
+                            <div className="space-y-2.5 sm:space-y-3 pt-3 sm:pt-4 border-t border-slate-200/50 dark:border-slate-800">
                                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3 items-center">
                                     {/* Search Field (Always visible) */}
                                     <div className="sm:col-span-6 lg:col-span-5 relative">
@@ -1863,7 +1856,7 @@ const Issuances = () => {
                                             placeholder="Recipient name, action, or details..."
                                             value={historySearch}
                                             onChange={(e) => setHistorySearch(e.target.value)}
-                                            className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                            className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
                                         />
                                     </div>
 
@@ -1872,7 +1865,7 @@ const Issuances = () => {
                                         <select
                                             value={historyActionFilter}
                                             onChange={(e) => setHistoryActionFilter(e.target.value)}
-                                            className="flex-1 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-2 px-2.5 cursor-pointer transition-all outline-none"
+                                            className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-2 px-2.5 cursor-pointer transition-all outline-none"
                                         >
                                             <option value="all">All Document Actions</option>
                                             <option value="Document Attached">Attached to Ticket</option>
@@ -1886,8 +1879,8 @@ const Issuances = () => {
                                             onClick={() => setShowAdvancedLogsFilter(prev => !prev)}
                                             className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                                                 showAdvancedLogsFilter || historyUserFilter !== 'all' || historyStartDate || historyEndDate
-                                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-extrabold'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                                    ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-extrabold'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                             }`}
                                             title="Toggle advanced filters (Staff, Date Range)"
                                         >
@@ -1911,14 +1904,14 @@ const Issuances = () => {
                                             transition={{ duration: 0.2 }}
                                             className="overflow-hidden pt-1"
                                         >
-                                            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                                            <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 rounded-xl border border-slate-200/60 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                                                 {/* Staff Selection */}
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">Encoder / Staff</label>
                                                     <select
                                                         value={historyUserFilter}
                                                         onChange={(e) => setHistoryUserFilter(e.target.value)}
-                                                        className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none"
+                                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none"
                                                     >
                                                         <option value="all">Any Staff member</option>
                                                         {uniqueEncoders.map(u => <option key={u} value={u}>{u}</option>)}
@@ -1933,7 +1926,7 @@ const Issuances = () => {
                                                             type="date"
                                                             value={historyStartDate}
                                                             onChange={(e) => setHistoryStartDate(e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
@@ -1942,7 +1935,7 @@ const Issuances = () => {
                                                             type="date"
                                                             value={historyEndDate}
                                                             onChange={(e) => setHistoryEndDate(e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                                         />
                                                     </div>
                                                 </div>
@@ -1953,8 +1946,8 @@ const Issuances = () => {
 
                                 {/* Active Filters & Clear */}
                                 {(historySearch || historyActionFilter !== 'all' || historyUserFilter !== 'all' || historyStartDate || historyEndDate) && (
-                                    <div className="flex items-center justify-between bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/50 animate-in fade-in">
-                                        <p className="text-[10px] font-bold text-indigo-600 pl-2">Filtering results...</p>
+                                    <div className="flex items-center justify-between bg-indigo-50/50 dark:bg-indigo-950/40 p-2 rounded-xl border border-indigo-100/50 dark:border-indigo-900/50 animate-in fade-in">
+                                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 pl-2">Filtering results...</p>
                                         <button
                                             onClick={() => {
                                                 setHistorySearch('');
@@ -1963,7 +1956,7 @@ const Issuances = () => {
                                                 setHistoryStartDate('');
                                                 setHistoryEndDate('');
                                             }}
-                                            className="text-[10px] font-black text-rose-500 hover:text-white hover:bg-rose-500 px-2.5 py-1 rounded-lg border border-rose-200 hover:border-rose-500 uppercase tracking-widest transition-all cursor-pointer"
+                                            className="text-[10px] font-black text-rose-500 hover:text-white hover:bg-rose-500 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:border-rose-500 uppercase tracking-widest transition-all cursor-pointer"
                                         >
                                             Clear All Filters
                                         </button>
@@ -1975,9 +1968,9 @@ const Issuances = () => {
                         {logsLoading ? (
                             <div className="p-6"><SkeletonLoader type="table" rows={10} /></div>
                         ) : filteredLogs.length === 0 ? (
-                            <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-100 m-6 rounded-3xl">
+                            <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-100 dark:border-slate-800 m-6 rounded-3xl">
                                 <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 opacity-10 text-slate-500" />
-                                <p className="font-bold text-slate-600">No document activity logged yet</p>
+                                <p className="font-bold text-slate-600 dark:text-slate-300">No document activity logged yet</p>
                                 <p className="text-xs mt-1">Actions like attaching to a ticket, viewing, and deleting documents will appear here.</p>
                             </div>
                         ) : (
@@ -1986,7 +1979,7 @@ const Issuances = () => {
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-widest font-black border-b border-slate-100">
+                                            <tr className="bg-slate-50/50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-100 dark:border-slate-800">
                                                 <th className="p-4 pl-8">Timestamp</th>
                                                 <th className="p-4">Encoder</th>
                                                 <th className="p-4">Action</th>
@@ -1994,16 +1987,16 @@ const Issuances = () => {
                                                 <th className="p-4 pr-8">Log Details</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-50">
+                                        <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
                                             {paginatedLogs.map((log) => {
                                                 const badge = getActionBadge(log.action);
                                                 return (
-                                                    <tr key={log.id} className="hover:bg-slate-50/30 transition-colors">
-                                                        <td className="p-4 pl-8 font-bold text-slate-400 text-[10px] tabular-nums tracking-tighter">
+                                                    <tr key={log.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                                        <td className="p-4 pl-8 font-bold text-slate-400 dark:text-slate-500 text-[10px] tabular-nums tracking-tighter">
                                                             {new Date(log.created_at).toLocaleString()}
                                                         </td>
                                                         <td className="p-4">
-                                                            <span className="text-xs font-black text-slate-700 uppercase tracking-tight bg-slate-100 px-2 py-0.5 rounded">
+                                                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                                                                 {log.user_name}
                                                             </span>
                                                         </td>
@@ -2014,11 +2007,11 @@ const Issuances = () => {
                                                             </span>
                                                         </td>
                                                         <td className="p-4">
-                                                            <span className="text-[10px] font-bold text-slate-500 font-mono">
+                                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono">
                                                                 {log.record_type} #{log.record_id}
                                                             </span>
                                                         </td>
-                                                        <td className="p-4 pr-8 text-xs font-medium text-slate-600">
+                                                        <td className="p-4 pr-8 text-xs font-medium text-slate-600 dark:text-slate-300">
                                                             {log.details}
                                                         </td>
                                                     </tr>
@@ -2029,29 +2022,29 @@ const Issuances = () => {
                                 </div>
 
                                 {/* Mobile Card View */}
-                                <div className="md:hidden divide-y divide-slate-100">
+                                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                                     {paginatedLogs.map((log) => {
                                         const badge = getActionBadge(log.action);
                                         return (
-                                            <div key={log.id} className="p-4 space-y-2 bg-white">
+                                            <div key={log.id} className="p-4 space-y-2 bg-white dark:bg-slate-900/90">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${badge.classes}`}>
                                                         <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
                                                         {badge.label}
                                                     </span>
-                                                    <span className="font-bold text-slate-400 text-[10px] tabular-nums">
+                                                    <span className="font-bold text-slate-400 dark:text-slate-500 text-[10px] tabular-nums">
                                                         {new Date(log.created_at).toLocaleString()}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs">
-                                                    <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                                    <span className="font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">
                                                         {log.user_name}
                                                     </span>
-                                                    <span className="font-mono text-slate-500 text-[11px]">
+                                                    <span className="font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                                                         {log.record_type} #{log.record_id}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-slate-600 font-medium">
+                                                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
                                                     {log.details}
                                                 </p>
                                             </div>
@@ -2117,19 +2110,10 @@ const Issuances = () => {
                                 {isBarMinimized ? (
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-4">Selection active</span>
                                 ) : (
-                                    <>
-                                        <button onClick={handleBulkIssue} className="flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 cursor-pointer">
-                                            <CheckCircleIcon className="w-4 h-4" />
-                                            Mass Issue
-                                        </button>
-                                        <button onClick={handleBulkDownload} className="flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl transition-all shadow-lg shadow-indigo-900/20 active:scale-95 cursor-pointer">
-                                            <ArrowDownTrayIcon className="w-4 h-4" />
-                                            Download
-                                        </button>
-                                        <button onClick={handleBulkDelete} className="p-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl transition-all shadow-lg shadow-rose-900/20 active:scale-95 cursor-pointer">
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
-                                    </>
+                                    <button onClick={handleBulkDelete} className="flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest bg-rose-500 hover:bg-rose-600 text-white rounded-2xl transition-all shadow-lg shadow-rose-900/20 active:scale-95 cursor-pointer" title="Delete Selected Records">
+                                        <TrashIcon className="w-4 h-4" />
+                                        <span>Delete ({selectedIds.length})</span>
+                                    </button>
                                 )}
                             </div>
                         </div>

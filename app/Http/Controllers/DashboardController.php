@@ -20,8 +20,8 @@ class DashboardController extends Controller
             $activeDocuments = DB::table('documents')->whereNull('deleted_at');
             $activeIssuances = DB::table('issuances')->whereNull('deleted_at');
 
-        // Master count of finalized/approved documents (issuances)
-        $totalDocuments = DB::table('issuances')->whereNull('deleted_at')->count();
+        // Master count of finalized/approved documents (issuances uploaded by the registry, excluding attached ticket copies)
+        $totalDocuments = DB::table('issuances')->whereNull('deleted_at')->whereNull('ticket_number')->count();
 
         $totalIssuances = (clone $activeIssuances)
             ->where(DB::raw('LOWER(status)'), 'issued')
@@ -40,10 +40,11 @@ class DashboardController extends Controller
         // Active system users count (excludes disabled accounts)
         $usersCount = DB::table('users')->where('is_active', 1)->count();
 
-        // Count type groupings only for finalized/approved documents using certificate_type
+        // Count type groupings only for finalized/approved documents using certificate_type (excluding ticket copies)
         $docTypes = DB::table('issuances')
             ->selectRaw("COALESCE(certificate_type, 'birth') as type_group, COUNT(*) as count")
             ->whereNull('deleted_at')
+            ->whereNull('ticket_number')
             ->groupBy('type_group')
             ->get();
 
@@ -53,19 +54,22 @@ class DashboardController extends Controller
             $chartData['data'][] = (int) $docType->count;
         }
 
-        // Dedicated counts for stats cards
+        // Dedicated counts for stats cards (excluding ticket requests)
         $birthsCount = DB::table('issuances')
             ->whereNull('deleted_at')
+            ->whereNull('ticket_number')
             ->where('certificate_type', 'birth')
             ->count();
 
         $deathsCount = DB::table('issuances')
             ->whereNull('deleted_at')
+            ->whereNull('ticket_number')
             ->where('certificate_type', 'death')
             ->count();
 
         $marriagesCount = DB::table('issuances')
             ->whereNull('deleted_at')
+            ->whereNull('ticket_number')
             ->where('certificate_type', 'marriage')
             ->count();
 
@@ -82,18 +86,21 @@ class DashboardController extends Controller
 
             $trendBirths[] = DB::table('issuances')
                 ->whereNull('deleted_at')
+                ->whereNull('ticket_number')
                 ->where('certificate_type', 'birth')
                 ->whereBetween('created_at', [$start, $end])
                 ->count();
 
             $trendDeaths[] = DB::table('issuances')
                 ->whereNull('deleted_at')
+                ->whereNull('ticket_number')
                 ->where('certificate_type', 'death')
                 ->whereBetween('created_at', [$start, $end])
                 ->count();
 
             $trendMarriages[] = DB::table('issuances')
                 ->whereNull('deleted_at')
+                ->whereNull('ticket_number')
                 ->where('certificate_type', 'marriage')
                 ->whereBetween('created_at', [$start, $end])
                 ->count();

@@ -477,10 +477,10 @@ export default function Reports() {
                     <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-widest mb-1">
                         <TableCellsIcon className="w-4 h-4" /> Data Analytics & Export Center
                     </div>
-                    <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                         Civil Registry Reports & Data Export
                     </h1>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                         Export official Master Registry records and Client Procured Issuances to CSV or Excel spreadsheets.
                     </p>
                 </div>
@@ -488,7 +488,7 @@ export default function Reports() {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button
                         onClick={fetchPreviewData}
-                        className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95"
+                        className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95"
                     >
                         <ArrowPathIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`} />
                         <span className="hidden sm:inline">Refresh Preview</span>
@@ -518,15 +518,15 @@ export default function Reports() {
             </div>
 
             {/* Data Source Selector Tabs - 3 column responsive layout */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 border border-slate-200/80 shadow-xs">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
                 <div className="grid grid-cols-3 gap-1 sm:gap-1.5 w-full">
                     <button
                         type="button"
                         onClick={() => setDataSource('internal')}
                         className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'internal'
-                                ? 'bg-[#1a2f4a] text-white shadow-md shadow-slate-900/10'
-                                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                ? 'bg-[#1a2f4a] dark:bg-slate-800 text-white dark:text-[#d4a574] shadow-md border dark:border-[#d4a574]/30'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
                         <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -540,7 +540,7 @@ export default function Reports() {
                         className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'procured'
                                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
                         <TicketIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -553,8 +553,8 @@ export default function Reports() {
                         onClick={() => setDataSource('all')}
                         className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
                             dataSource === 'all'
-                                ? 'bg-slate-900 text-white shadow-md'
-                                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
                         <CircleStackIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -565,18 +565,18 @@ export default function Reports() {
             </div>
 
             {/* Quick Metrics Bar - Collapsible to preserve mobile space */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-all text-slate-800 dark:text-slate-100">
                 {/* Header / Toggle Row */}
-                <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50/90 to-white border-b border-slate-100 gap-2">
+                <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 border-b border-slate-100 dark:border-slate-800 gap-2">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
                             <TableCellsIcon className="w-4 h-4" />
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs sm:text-sm font-black text-slate-800 tracking-tight truncate">
+                            <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight truncate">
                                 Data Summary & Statistics
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40 shrink-0">
                                 {totalCount} Records
                             </span>
                         </div>
@@ -585,17 +585,17 @@ export default function Reports() {
                     <button
                         type="button"
                         onClick={() => setIsStatsCollapsed(prev => !prev)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 text-xs font-bold"
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 text-xs font-bold"
                         title={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
                         aria-label={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
                     >
-                        <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
                             {isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}
                         </span>
                         {isStatsCollapsed ? (
-                            <ChevronDownIcon className="w-4 h-4 text-slate-500" />
+                            <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                         ) : (
-                            <ChevronUpIcon className="w-4 h-4 text-slate-500" />
+                            <ChevronUpIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                         )}
                     </button>
                 </div>
@@ -610,138 +610,108 @@ export default function Reports() {
                             transition={{ duration: 0.25, ease: 'easeInOut' }}
                             className="overflow-hidden"
                         >
-                            <div className="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-slate-50/30">
+                            <div className="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-slate-50/30 dark:bg-slate-950/40">
                                 {/* Total Card */}
-                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
                                         <TableCellsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{totalCount}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{totalCount}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
                                             {dataSource === 'procured' ? 'Procured' : dataSource === 'internal' ? 'Uploaded' : 'Total'}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Birth Card */}
-                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-[#d4a574] shrink-0">
+                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-[#d4a574] shrink-0">
                                         <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.birth}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Birth Certs</div>
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.birth}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Birth Certs</div>
                                     </div>
                                 </div>
 
                                 {/* Death Card */}
-                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center text-rose-500 shrink-0">
                                         <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.death}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Death Certs</div>
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.death}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Death Certs</div>
                                     </div>
                                 </div>
 
                                 {/* Marriage Card */}
-                                <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200/70 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-500 shrink-0">
                                         <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 leading-tight">{typeCounts.marriage}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Marriage</div>
+                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.marriage}</div>
+                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Marriage</div>
                                     </div>
                                 </div>
 
                                 {/* Dynamic Smart Category Breakdown */}
-                                <div className="col-span-2 lg:col-span-4 bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200/80 shadow-xs">
+                                <div className="col-span-2 lg:col-span-4 bg-white dark:bg-slate-900/90 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs">
                                     {selectedDocTypes.length === 1 && selectedDocTypes[0] === 'birth' ? (
                                         /* Mode 1: Births Only */
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 text-sky-800 border border-sky-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80" title="Male births count">
-                                                <span className="font-black text-sky-600">Male Births:</span>
-                                                <span className="font-extrabold text-sky-950 tabular-nums">
-                                                    {smartMetrics.birthMale} {typeCounts.birth > 0 ? `(${Math.round((smartMetrics.birthMale / typeCounts.birth) * 100)}%)` : ''}
-                                                </span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Timely vs. Delayed registrations">
+                                                <span className="font-black text-amber-700 dark:text-amber-400">Registration:</span>
+                                                <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.birthTimely} Timely • {smartMetrics.birthDelayed} Delayed</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-pink-50/90 text-pink-800 border border-pink-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-pink-100/80" title="Female births count">
-                                                <span className="font-black text-pink-600">Female Births:</span>
-                                                <span className="font-extrabold text-pink-950 tabular-nums">
-                                                    {smartMetrics.birthFemale} {typeCounts.birth > 0 ? `(${Math.round((smartMetrics.birthFemale / typeCounts.birth) * 100)}%)` : ''}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Timely vs. Delayed registrations">
-                                                <span className="font-black text-amber-700">Registration:</span>
-                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.birthTimely} Timely • {smartMetrics.birthDelayed} Delayed</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Hospital/Clinic delivery vs Home delivery">
-                                                <span className="font-black text-emerald-600">Facility:</span>
-                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.birthHospital} Facility • {smartMetrics.birthHome} Home</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Hospital/Clinic delivery vs Home delivery">
+                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Facility:</span>
+                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.birthHospital} Facility • {smartMetrics.birthHome} Home</span>
                                             </div>
                                         </div>
                                     ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'death' ? (
                                         /* Mode 2: Deaths Only */
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-rose-50/90 text-rose-800 border border-rose-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-rose-100/80" title="Senior citizen deaths (Age 60 and above)">
-                                                <span className="font-black text-rose-600">Seniors (≥60):</span>
-                                                <span className="font-extrabold text-rose-950 tabular-nums">{smartMetrics.seniorDeaths} of {typeCounts.death}</span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-rose-50/90 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/80 dark:border-rose-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-rose-100/80 dark:hover:bg-rose-900/60" title="Senior citizen deaths (Age 60 and above)">
+                                                <span className="font-black text-rose-600 dark:text-rose-400">Seniors (≥60):</span>
+                                                <span className="font-extrabold text-rose-950 dark:text-rose-100 tabular-nums">{smartMetrics.seniorDeaths} of {typeCounts.death}</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Deceased whose usual residence was Naic municipality">
-                                                <span className="font-black text-indigo-600">Resident Deaths:</span>
-                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.residentDeaths} of {typeCounts.death}</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Deceased whose usual residence was Naic municipality">
+                                                <span className="font-black text-indigo-600 dark:text-indigo-400">Resident Deaths:</span>
+                                                <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.residentDeaths} of {typeCounts.death}</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Natural causes vs external causes">
-                                                <span className="font-black text-emerald-600">Manner of Death:</span>
-                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.naturalDeaths} Natural • {typeCounts.death - smartMetrics.naturalDeaths} External</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs sm:text-[13px] transition-all hover:bg-slate-100/80" title="Gender breakdown of deceased individuals">
-                                                <span className="font-black text-slate-600">Gender Ratio:</span>
-                                                <span className="font-extrabold text-slate-950 tabular-nums">{smartMetrics.deathMale} Male • {smartMetrics.deathFemale} Female</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Natural causes vs external causes">
+                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Manner of Death:</span>
+                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.naturalDeaths} Natural • {typeCounts.death - smartMetrics.naturalDeaths} External</span>
                                             </div>
                                         </div>
                                     ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'marriage' ? (
                                         /* Mode 3: Marriages Only */
                                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Civil ceremonies officiated by Mayor or Judge">
-                                                <span className="font-black text-amber-700">Civil Weddings:</span>
-                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.civilMarriages} of {typeCounts.marriage}</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Civil ceremonies officiated by Mayor or Judge">
+                                                <span className="font-black text-amber-700 dark:text-amber-400">Civil Weddings:</span>
+                                                <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.civilMarriages} of {typeCounts.marriage}</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Religious ceremonies in churches or chapels">
-                                                <span className="font-black text-indigo-600">Church Weddings:</span>
-                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.churchMarriages} of {typeCounts.marriage}</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Religious ceremonies in churches or chapels">
+                                                <span className="font-black text-indigo-600 dark:text-indigo-400">Church Weddings:</span>
+                                                <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.churchMarriages} of {typeCounts.marriage}</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Total marriages registered in Naic">
-                                                <span className="font-black text-emerald-600">Solemnized in Naic:</span>
-                                                <span className="font-extrabold text-emerald-950 tabular-nums">{typeCounts.marriage} Weddings</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Total marriages registered in Naic">
+                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Solemnized in Naic:</span>
+                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{typeCounts.marriage} Weddings</span>
                                             </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 text-sky-800 border border-sky-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80" title="All marriage records certified">
-                                                <span className="font-black text-sky-600">Certified Status:</span>
-                                                <span className="font-extrabold text-sky-950 tabular-nums">{typeCounts.marriage > 0 ? '100% Registered' : '0 Registered'}</span>
+                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 border border-sky-200/80 dark:border-sky-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80 dark:hover:bg-sky-900/60" title="All marriage records certified">
+                                                <span className="font-black text-sky-600 dark:text-sky-400">Certified Status:</span>
+                                                <span className="font-extrabold text-sky-950 dark:text-sky-100 tabular-nums">{typeCounts.marriage > 0 ? '100% Registered' : '0 Registered'}</span>
                                             </div>
                                         </div>
                                     ) : (
                                         /* Mode 4: All / Multiple Categories Combined */
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 text-indigo-800 border border-indigo-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80" title="Gender distribution across civil records">
-                                                <span className="font-black text-indigo-600">Gender Ratio:</span>
-                                                <span className="font-extrabold text-indigo-950 tabular-nums">{smartMetrics.totalMales} Male • {smartMetrics.totalFemales} Female</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-[#d4a574]/15 text-[#8f6333] border border-[#d4a574]/30 font-bold text-xs sm:text-[13px] transition-all hover:bg-[#d4a574]/25" title="Naic barangays represented in these records">
-                                                <span className="font-black text-[#8f6333]">Barangays:</span>
-                                                <span className="font-extrabold text-slate-900 tabular-nums">{smartMetrics.distinctBarangays} Covered</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 text-emerald-800 border border-emerald-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80" title="Timely registered vs delayed registration">
-                                                <span className="font-black text-emerald-600">Timely Filings:</span>
-                                                <span className="font-extrabold text-emerald-950 tabular-nums">{smartMetrics.timelyTotal} Timely • {smartMetrics.delayedTotal} Delayed</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 text-amber-900 border border-amber-200/80 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80" title="Senior deaths and civil ceremonies summary">
-                                                <span className="font-black text-amber-700">Special Vital:</span>
-                                                <span className="font-extrabold text-amber-950 tabular-nums">{smartMetrics.seniorDeaths} Seniors • {smartMetrics.civilMarriages + smartMetrics.churchMarriages} Weddings</span>
-                                            </div>
+                                        <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Total active records selected">
+                                            <span className="font-black text-indigo-600 dark:text-indigo-400">Total Filtered:</span>
+                                            <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{totalCount} Records</span>
                                         </div>
                                     )}
                                 </div>
@@ -752,19 +722,19 @@ export default function Reports() {
             </div>
 
             {/* Main Report Configuration Card */}
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-4 sm:space-y-6">
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-6 text-slate-800 dark:text-slate-100">
                 
                 {/* Top Quick Settings: Period Dropdown + Document Types Checklist */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100 dark:border-slate-800">
                     
                     {/* Period Selector (Month / 6 Months / Year / All Time / Custom) */}
                     <div className="lg:col-span-5 space-y-3">
                         <div className="flex items-center justify-between">
-                            <label className="block text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <CalendarIcon className="w-4 h-4 text-indigo-600" /> Export Timeframe
+                            <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Export Timeframe
                             </label>
                             {effectiveDates.from && (
-                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                     {effectiveDates.from} to {effectiveDates.to}
                                 </span>
                             )}
@@ -781,7 +751,7 @@ export default function Reports() {
                                         setIsAdvancedOpen(true);
                                     }
                                 }}
-                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all cursor-pointer"
+                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all cursor-pointer"
                             >
                                 <option value="all">All Time (All available records)</option>
                                 <option value="month">Specific Month (Only months with records)</option>
@@ -796,11 +766,11 @@ export default function Reports() {
                             <motion.div 
                                 initial={{ opacity: 0, y: -6 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="pt-2 space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80"
+                                className="pt-2 space-y-2.5 bg-slate-50/80 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800"
                             >
-                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
                                     <span>Select Month in {selectedYear}:</span>
-                                    <span className="text-[10px] text-slate-400">
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
                                         Grey = No records
                                     </span>
                                 </div>
@@ -823,8 +793,8 @@ export default function Reports() {
                                                     isSelected && hasRecords
                                                         ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/30'
                                                         : hasRecords
-                                                        ? 'bg-white hover:bg-indigo-50 hover:text-indigo-700 text-slate-800 font-bold border border-slate-200 shadow-sm cursor-pointer'
-                                                        : 'bg-slate-100/60 text-slate-300 border border-slate-200/40 cursor-not-allowed select-none'
+                                                        ? 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer'
+                                                        : 'bg-slate-100/60 dark:bg-slate-800/40 text-slate-300 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800/50 cursor-not-allowed select-none'
                                                 }`}
                                                 title={hasRecords ? `${m.name} ${selectedYear}: ${count} record(s)` : `${m.name} ${selectedYear}: No records recorded`}
                                             >
@@ -833,8 +803,8 @@ export default function Reports() {
                                                     isSelected && hasRecords 
                                                         ? 'text-indigo-100' 
                                                         : hasRecords 
-                                                        ? 'text-indigo-600 font-black' 
-                                                        : 'text-slate-300'
+                                                        ? 'text-indigo-600 dark:text-indigo-400 font-black' 
+                                                        : 'text-slate-300 dark:text-slate-600'
                                                 }`}>
                                                     {hasRecords ? `${count} rec` : '0'}
                                                 </span>
@@ -876,13 +846,13 @@ export default function Reports() {
                                 onClick={() => toggleDocType('birth')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('birth')
-                                        ? 'bg-amber-50/50 border-[#d4a574] text-slate-900 shadow-sm ring-1 ring-[#d4a574]/20'
-                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                                        ? 'bg-amber-50/50 dark:bg-amber-950/30 border-[#d4a574] text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-[#d4a574]/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('birth') ? 'bg-[#d4a574] text-white' : 'bg-slate-100 text-slate-400'
+                                        selectedDocTypes.includes('birth') ? 'bg-[#d4a574] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                                     }`}>
                                         <UserIcon className="w-4 h-4" />
                                     </div>
@@ -895,7 +865,7 @@ export default function Reports() {
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('birth')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-[#d4a574] focus:ring-[#d4a574] cursor-pointer"
+                                    className="w-4 h-4 rounded text-[#d4a574] focus:ring-[#d4a574] cursor-pointer dark:bg-slate-950"
                                 />
                             </div>
 
@@ -904,13 +874,13 @@ export default function Reports() {
                                 onClick={() => toggleDocType('death')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('death')
-                                        ? 'bg-rose-50/50 border-rose-400 text-slate-900 shadow-sm ring-1 ring-rose-400/20'
-                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                                        ? 'bg-rose-50/50 dark:bg-rose-950/30 border-rose-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-rose-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('death') ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'
+                                        selectedDocTypes.includes('death') ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                                     }`}>
                                         <DocumentTextIcon className="w-4 h-4" />
                                     </div>
@@ -923,7 +893,7 @@ export default function Reports() {
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('death')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer dark:bg-slate-950"
                                 />
                             </div>
 
@@ -932,13 +902,13 @@ export default function Reports() {
                                 onClick={() => toggleDocType('marriage')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('marriage')
-                                        ? 'bg-indigo-50/50 border-indigo-400 text-slate-900 shadow-sm ring-1 ring-indigo-400/20'
-                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                                        ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-indigo-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('marriage') ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
+                                        selectedDocTypes.includes('marriage') ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                                     }`}>
                                         <UsersIcon className="w-4 h-4" />
                                     </div>
@@ -951,7 +921,7 @@ export default function Reports() {
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('marriage')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer dark:bg-slate-950"
                                 />
                             </div>
 
@@ -970,14 +940,14 @@ export default function Reports() {
                         onClick={() => setIsAdvancedOpen(prev => !prev)}
                         className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
                             isAdvancedOpen || activeAdvancedFilterCount > 0
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-sm'
+                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                         }`}
                     >
-                        <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600" />
+                        <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         <span>Advanced Filter Settings</span>
                         {activeAdvancedFilterCount > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center">
+                            <span className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">
                                 {activeAdvancedFilterCount}
                             </span>
                         )}
@@ -992,7 +962,7 @@ export default function Reports() {
                         <button
                             type="button"
                             onClick={resetAdvancedFilters}
-                            className="text-xs font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+                            className="text-xs font-bold text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1 cursor-pointer"
                         >
                             <XMarkIcon className="w-4 h-4" /> Reset Filters
                         </button>
@@ -1009,8 +979,8 @@ export default function Reports() {
                             transition={{ duration: 0.25 }}
                             className="pt-2"
                         >
-                            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
-                                <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                            <div className="bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+                                <div className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                                     Granular Filters & Search
                                 </div>
 
@@ -1018,7 +988,7 @@ export default function Reports() {
                                     
                                     {/* Search by Name or Registry No */}
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                                             Search Keyword
                                         </label>
                                         <div className="relative">
@@ -1028,20 +998,20 @@ export default function Reports() {
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 placeholder="Name, registry no..."
-                                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm placeholder-slate-400 dark:placeholder-slate-500"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Barangay Filter */}
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                                             Barangay
                                         </label>
                                         <select
                                             value={barangay}
                                             onChange={(e) => setBarangay(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm cursor-pointer"
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm cursor-pointer"
                                         >
                                             <option value="all">All Barangays (Entire Municipality)</option>
                                             {BARANGAY_LIST.map((b) => (
@@ -1052,7 +1022,7 @@ export default function Reports() {
 
                                     {/* Custom Date From */}
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                                             <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered From
                                         </label>
                                         <input
@@ -1062,13 +1032,13 @@ export default function Reports() {
                                                 setDateFrom(e.target.value);
                                                 if (period !== 'custom') setPeriod('custom');
                                             }}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                                         />
                                     </div>
 
                                     {/* Custom Date To */}
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                                             <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered To
                                         </label>
                                         <input
@@ -1078,7 +1048,7 @@ export default function Reports() {
                                                 setDateTo(e.target.value);
                                                 if (period !== 'custom') setPeriod('custom');
                                             }}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                                         />
                                     </div>
 
@@ -1097,17 +1067,17 @@ export default function Reports() {
             </div>
 
             {/* Live Records Preview Table */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
                     <div>
-                        <h3 className="text-base font-bold text-slate-900">Live Data Export Preview</h3>
-                        <p className="text-xs text-slate-400">
-                            <strong className="text-slate-700">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Registry Database (Approved Records)'}</strong>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Live Data Export Preview</h3>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                            <strong className="text-slate-700 dark:text-slate-300">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Registry Database (Approved Records)'}</strong>
                             {' • '}Categories: ({selectedDocTypes.join(', ')})
                             {effectiveDates.from ? ` • Between ${effectiveDates.from} and ${effectiveDates.to}` : ''}
                         </p>
                     </div>
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3.5 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
                         Previewing {previewRecords.length} records
                     </span>
                 </div>
@@ -1116,61 +1086,61 @@ export default function Reports() {
                     <div className="p-6"><SkeletonLoader type="table" rows={6} /></div>
                 ) : previewRecords.length === 0 ? (
                     <div className="p-12 text-center text-slate-400">
-                        <TableCellsIcon className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                        <p className="text-sm font-bold text-slate-600">No matching registry records found</p>
-                        <p className="text-xs text-slate-400 mt-1">Try selecting other months or adjust your document categories above</p>
+                        <TableCellsIcon className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No matching registry records found</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try selecting other months or adjust your document categories above</p>
                     </div>
                 ) : (
                     <>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-50/80 text-slate-400 text-[10px] uppercase tracking-widest border-b border-slate-100">
+                                    <tr className="bg-slate-50/80 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                                         {dataSource === 'all' && (
-                                            <th className="px-4 py-3.5 font-black text-slate-500">Record Scope</th>
+                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Record Scope</th>
                                         )}
-                                        <th className="px-6 py-3.5 font-black text-slate-500">ID / Reg No.</th>
+                                        <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">ID / Reg No.</th>
                                         {dataSource !== 'internal' && (
-                                            <th className="px-4 py-3.5 font-black text-slate-500">Ticket #</th>
+                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Ticket #</th>
                                         )}
-                                        <th className="px-4 py-3.5 font-black text-slate-500">Category</th>
-                                        <th className="px-6 py-3.5 font-black text-slate-500">Person / Client Name</th>
-                                        <th className="px-4 py-3.5 font-black text-slate-500">
+                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Category</th>
+                                        <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">Person / Client Name</th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">
                                             {dataSource === 'procured' ? 'Issuance Date' : 'Event Date'}
                                         </th>
-                                        <th className="px-4 py-3.5 font-black text-slate-500">Barangay</th>
+                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs text-slate-700 dark:text-slate-200 font-medium">
                                     {paginatedReports.map((doc) => {
                                         const ef = typeof doc.extracted_fields === 'string' ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
                                         const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
                                         const isProcured = doc._source === 'procured';
 
                                         return (
-                                            <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 transition-colors">
+                                            <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                                                 {dataSource === 'all' && (
                                                     <td className="px-4 py-4">
                                                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
                                                             isProcured
-                                                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50'
+                                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                                                         }`}>
                                                             {isProcured ? 'Procured' : 'Registry'}
                                                         </span>
                                                     </td>
                                                 )}
-                                                <td className="px-6 py-4 font-mono font-bold text-slate-900">
-                                                    #{doc.id} <span className="text-[11px] text-slate-400 block font-sans font-normal">{regNo}</span>
+                                                <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                    #{doc.id} <span className="text-[11px] text-slate-400 dark:text-slate-500 block font-sans font-normal">{regNo}</span>
                                                 </td>
                                                 {dataSource !== 'internal' && (
-                                                    <td className="px-4 py-4 font-mono font-bold text-slate-800 text-xs">
+                                                    <td className="px-4 py-4 font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
                                                         {isProcured && doc.ticket_number ? (
-                                                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300">
                                                                 {doc.ticket_number}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-slate-300 font-normal select-none">—</span>
+                                                            <span className="text-slate-300 dark:text-slate-600 font-normal select-none">—</span>
                                                         )}
                                                     </td>
                                                 )}
@@ -1185,13 +1155,13 @@ export default function Reports() {
                                                         );
                                                     })()}
                                                 </td>
-                                                <td className="px-6 py-4 font-bold text-slate-900">
+                                                <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                                                     {doc.personName || doc.name || 'N/A'}
                                                 </td>
-                                                <td className="px-4 py-4 text-slate-600">
+                                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                                                     {doc.issuanceDate || doc.date || 'N/A'}
                                                 </td>
-                                                <td className="px-4 py-4 text-slate-600">
+                                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                                                     {doc.barangay || 'N/A'}
                                                 </td>
                                             </tr>

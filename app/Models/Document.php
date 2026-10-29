@@ -148,34 +148,49 @@ class Document extends Model
      */
     public function getExtractedPersonName()
     {
-        if (!$this->extracted_data) {
+        $data = $this->extracted_data ?: $this->extracted_fields;
+        if (!$data || !is_array($data)) {
             return null;
         }
 
-        $data = $this->extracted_data;
-        
-        if ($this->type === 'marriage' && isset($data['husband_last_name'])) {
-            $h = trim(($data['husband_last_name'] ?? '') . ', ' . 
-                      ($data['husband_first_name'] ?? '') . ' ' . 
-                      ($data['husband_middle_name'] ?? '') . ' ' . 
-                      ($data['husband_suffix'] ?? ''));
-            $w = trim(($data['wife_last_name'] ?? '') . ', ' . 
-                      ($data['wife_first_name'] ?? '') . ' ' . 
-                      ($data['wife_middle_name'] ?? '') . ' ' . 
-                      ($data['wife_suffix'] ?? ''));
+        $clean = function ($val) {
+            if (!$val || !is_string($val)) return '';
+            $trimmed = trim($val);
+            if (str_contains($trimmed, '{') || str_contains($trimmed, '}') || str_contains($trimmed, '":') || str_contains($trimmed, 'is_valid_document')) {
+                return '';
+            }
+            return $trimmed;
+        };
+
+        if (($this->type === 'marriage' || $this->type === 'marriage_license') && (isset($data['husband_last_name']) || isset($data['wife_last_name']))) {
+            $hLast = $clean($data['husband_last_name'] ?? '');
+            $hFirst = $clean($data['husband_first_name'] ?? '');
+            $hMiddle = $clean($data['husband_middle_name'] ?? '');
+            $hSuffix = $clean($data['husband_suffix'] ?? '');
+            $hParts = array_filter([$hLast ? "{$hLast}," : '', $hFirst, $hMiddle, $hSuffix]);
+            $h = implode(' ', $hParts);
+
+            $wLast = $clean($data['wife_last_name'] ?? '');
+            $wFirst = $clean($data['wife_first_name'] ?? '');
+            $wMiddle = $clean($data['wife_middle_name'] ?? '');
+            $wSuffix = $clean($data['wife_suffix'] ?? '');
+            $wParts = array_filter([$wLast ? "{$wLast}," : '', $wFirst, $wMiddle, $wSuffix]);
+            $w = implode(' ', $wParts);
+
             return trim("$h & $w", " &");
         }
 
         // Default for Birth/Death
-        $last = $data['last_name'] ?? '';
-        $first = $data['first_name'] ?? '';
-        $middle = $data['middle_name'] ?? '';
-        $suffix = $data['suffix'] ?? '';
+        $last = $clean($data['last_name'] ?? $data['child_last_name'] ?? $data['deceased_last_name'] ?? '');
+        $first = $clean($data['first_name'] ?? $data['child_first_name'] ?? $data['deceased_first_name'] ?? '');
+        $middle = $clean($data['middle_name'] ?? $data['child_middle_name'] ?? $data['deceased_middle_name'] ?? '');
+        $suffix = $clean($data['suffix'] ?? '');
 
         if (!$last && !$first) {
             return null;
         }
 
-        return trim("$last, $first $middle $suffix");
+        $parts = array_filter([$last ? "{$last}," : '', $first, $middle, $suffix]);
+        return implode(' ', $parts);
     }
 }

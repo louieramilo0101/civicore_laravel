@@ -40,6 +40,8 @@ class IssuanceController extends Controller
         }
         if ($source === 'procured' || $request->query('procured') === '1') {
             $conditions[] = "(i.or_number IS NOT NULL OR i.requested_by IS NOT NULL OR i.print_remarks IS NOT NULL OR (i.ticket_number IS NOT NULL AND i.ticket_number NOT LIKE 'T-2026-0%'))";
+        } elseif ($source === 'registry' || $request->query('registry') === '1') {
+            $conditions[] = "i.ticket_number IS NULL";
         }
 
         if (!empty($conditions)) {

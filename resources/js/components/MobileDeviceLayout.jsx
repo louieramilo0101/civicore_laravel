@@ -15,8 +15,10 @@ import {
     XMarkIcon,
     ArrowRightOnRectangleIcon,
     QrCodeIcon,
-    CircleStackIcon
+    CircleStackIcon,
+    AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
+import { useAccessibility } from './AccessibilityContext.jsx';
 import { useData } from './DataContext.jsx';
 import SaveToasts from './SaveToasts.jsx';
 import ActionCenter from './ActionCenter.jsx';
@@ -29,6 +31,7 @@ const MobileDeviceLayout = ({ children }) => {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const { openSettings } = useAccessibility();
 
     // Auto-hiding Navigation Bar & Header State
     const [isNavVisible, setIsNavVisible] = useState(true);
@@ -241,6 +244,18 @@ const MobileDeviceLayout = ({ children }) => {
                                         </Link>
                                     );
                                 })}
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDrawerOpen(false);
+                                        openSettings();
+                                    }}
+                                    className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all cursor-pointer"
+                                >
+                                    <AdjustmentsHorizontalIcon className="w-5 h-5 text-[#d4a574]" />
+                                    <span>Settings & Accessibility</span>
+                                </button>
                             </div>
 
                             {/* Drawer Footer User Profile & Logout */}
@@ -284,22 +299,34 @@ const MobileDeviceLayout = ({ children }) => {
                                 <p className="text-xs text-slate-400 mt-1 font-mono">{user.email}</p>
                             </div>
 
-                            <div className="pt-2 border-t border-slate-800 flex gap-2">
-                                <button
-                                    onClick={() => setShowProfileModal(false)}
-                                    className="flex-1 py-2.5 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-700"
-                                >
-                                    Close
-                                </button>
+                            <div className="pt-2 border-t border-slate-800 flex flex-col gap-2">
                                 <button
                                     onClick={() => {
                                         setShowProfileModal(false);
-                                        handleLogout();
+                                        openSettings();
                                     }}
-                                    className="flex-1 py-2.5 bg-rose-600 text-white font-black text-xs rounded-xl hover:bg-rose-700"
+                                    className="w-full py-2.5 bg-slate-800 text-[#d4a574] font-bold text-xs rounded-xl hover:bg-slate-700 flex items-center justify-center gap-2 cursor-pointer"
                                 >
-                                    Sign Out
+                                    <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                                    <span>Settings & Accessibility</span>
                                 </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowProfileModal(false)}
+                                        className="flex-1 py-2.5 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-700"
+                                    >
+                                        Close
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileModal(false);
+                                            handleLogout();
+                                        }}
+                                        className="flex-1 py-2.5 bg-rose-600 text-white font-black text-xs rounded-xl hover:bg-rose-700"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </div>

@@ -11,8 +11,11 @@ import {
     TableCellsIcon,
     TicketIcon,
     TrashIcon,
-    CircleStackIcon
+    CircleStackIcon,
+    UserCircleIcon,
+    AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
+import { useAccessibility } from './AccessibilityContext.jsx';
 import { useData } from './DataContext.jsx';
 import SaveToasts from './SaveToasts.jsx';
 import ActionCenter from './ActionCenter.jsx';
@@ -24,6 +27,7 @@ const Layout = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const { openSettings } = useAccessibility();
 
     // Detect screen width for dedicated Mobile / Tablet device layout
     const [isMobileDevice, setIsMobileDevice] = useState(() => {
@@ -88,7 +92,15 @@ const Layout = ({ children }) => {
     };
 
     return (
-        <div className="h-screen w-screen bg-slate-50 flex relative overflow-hidden">
+        <div className="h-screen w-screen bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 flex relative overflow-hidden">
+            {/* Accessible Skip Link */}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999999] focus:px-4 focus:py-2.5 focus:bg-[#d4a574] focus:text-slate-950 focus:font-black focus:text-xs focus:rounded-xl focus:shadow-2xl focus:outline-none"
+            >
+                Skip to main content / Lumaktaw sa nilalaman
+            </a>
+
             {/* Ambient Background Radial Glows (Zero-CPU/GPU-accelerated) */}
             <div className="fixed top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)] pointer-events-none z-0"></div>
             <div className="fixed bottom-[-10%] right-[-5%] w-[35%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05)_0%,transparent_70%)] pointer-events-none z-0"></div>
@@ -157,49 +169,83 @@ const Layout = ({ children }) => {
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 bg-transparent h-screen relative z-10 w-full overflow-hidden">
                 {/* Top Bar - Desktop */}
-                <header className="flex items-center justify-between h-[3.75rem] px-6 bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm/50 backdrop-blur-md bg-white/90">
-                    <h1 id="pageTitle" className="text-xl font-bold text-slate-800 tracking-tight">
+                <header className="flex items-center justify-between h-[3.75rem] px-6 bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs backdrop-blur-md bg-white/90 dark:bg-[#0f172a]/90">
+                    <h1 id="pageTitle" className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                         {menuItems.find(m => m.path === location.pathname)?.label || 'Dashboard'}
                     </h1>
 
-                    {/* Header Profile Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowProfileMenu(!showProfileMenu)}
-                            className="cursor-pointer flex items-center gap-4 focus:outline-none group group-hover:border-transparent"
-                        >
-                            <div className="flex flex-col text-right">
-                                <span className="text-sm font-semibold text-slate-700 leading-none group-hover:text-slate-900 transition-colors">{user.name || 'User'}</span>
-                                <span className="text-xs text-slate-500 mt-1 font-medium">{user.role || 'Admin'}</span>
-                            </div>
-                            <Avatar name={user.name} src={user.avatar} size={10} className="shadow-md ring-2 ring-white group-hover:ring-[#d4a574] transition-all" />
-                        </button>
+                    {/* Right Header Action Items */}
+                    <div className="flex items-center gap-3">
+                        <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1" />
 
-                        {/* Dropdown Menu */}
-                        {showProfileMenu && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setShowProfileMenu(false)}
-                                ></div>
-                                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg shadow-slate-200/50 ring-1 ring-slate-100 z-50 overflow-hidden transform opacity-100 scale-100 transition-all origin-top-right">
-                                    <div className="p-1.5">
-                                        <button
-                                            onClick={handleLogout}
-                                            className="cursor-pointer w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                                            Sign Out
-                                        </button>
-                                    </div>
+                        {/* Header Profile Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                className="cursor-pointer flex items-center gap-4 focus:outline-none group group-hover:border-transparent"
+                            >
+                                <div className="flex flex-col text-right">
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-none group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{user.name || 'User'}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{user.role || 'Admin'}</span>
                                 </div>
-                            </>
-                        )}
+                                <Avatar name={user.name} src={user.avatar} size={10} className="shadow-md ring-2 ring-white dark:ring-slate-800 group-hover:ring-[#d4a574] transition-all" />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {showProfileMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowProfileMenu(false)}
+                                    ></div>
+                                    <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/40 ring-1 ring-slate-200 dark:ring-slate-800 z-50 overflow-hidden transform opacity-100 scale-100 transition-all origin-top-right border border-slate-100 dark:border-slate-800">
+                                        {/* Profile Info Header */}
+                                        <div className="px-4 py-3 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                            <p className="text-xs font-black text-slate-900 dark:text-white leading-tight line-clamp-1">{user.name}</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono line-clamp-1">{user.email || user.role}</p>
+                                        </div>
+
+                                        <div className="p-1.5 space-y-0.5">
+                                            <Link
+                                                to="/accounts"
+                                                onClick={() => setShowProfileMenu(false)}
+                                                className="cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                                            >
+                                                <UserCircleIcon className="w-4 h-4 text-indigo-500" />
+                                                <span>Account Profile</span>
+                                            </Link>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowProfileMenu(false);
+                                                    openSettings();
+                                                }}
+                                                className="cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                                            >
+                                                <AdjustmentsHorizontalIcon className="w-4 h-4 text-[#d4a574]" />
+                                                <span>Settings & Accessibility</span>
+                                            </button>
+
+                                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                                            <button
+                                                onClick={handleLogout}
+                                                className="cursor-pointer w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                                <span>Sign Out</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <div className="flex-1 p-5 overflow-x-hidden overflow-y-auto relative w-full h-[calc(100vh-3.75rem)]">
+                <div id="main-content" tabIndex="-1" className="flex-1 p-5 overflow-x-hidden overflow-y-auto relative w-full h-[calc(100vh-3.75rem)] focus:outline-none">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={location.pathname}

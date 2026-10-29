@@ -4,18 +4,20 @@ import {
     UserIcon, ShieldCheckIcon, AdjustmentsHorizontalIcon,
     AtSymbolIcon, TagIcon, PlusIcon, KeyIcon, TrashIcon, CheckCircleIcon,
     ExclamationTriangleIcon, EyeIcon, EyeSlashIcon, XMarkIcon, CameraIcon, EnvelopeIcon,
-    NoSymbolIcon, UserGroupIcon, ArrowLeftIcon, CpuChipIcon, CloudIcon, ArrowPathIcon
+    NoSymbolIcon, UserGroupIcon, ArrowLeftIcon, CpuChipIcon, CloudIcon, ArrowPathIcon, SunIcon
 } from '@heroicons/react/24/outline';
 import { useModal } from './ModalContext.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Avatar from './Avatar.jsx';
 import { AVATAR_LIBRARY } from './AvatarLibrary.js';
 import { useData } from './DataContext.jsx';
+import { useAccessibility } from './AccessibilityContext.jsx';
 
 /** Manages user accounts, roles, avatars, and password policy feedback. */
 const Accounts = () => {
     const { showAlert } = useModal();
     const { refreshStats } = useData();
+    const { openSettings } = useAccessibility();
     const sanitizeName = (val) => val ? val.replace(/[^a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]/g, '') : '';
     const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('civicore_users'));
     const [users, setUsers] = useState(() => {
@@ -622,6 +624,17 @@ const Accounts = () => {
                 </div>
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
                     <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                        {/* Accessibility & Display Settings Button */}
+                        <button
+                            type="button"
+                            onClick={openSettings}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="Configure theme, font size, and accessibility options"
+                        >
+                            <SunIcon className="w-4 h-4 text-amber-500" />
+                            <span>Display & Accessibility</span>
+                        </button>
+
                         {/* Advanced Settings Button */}
                         <button
                             type="button"
@@ -634,10 +647,10 @@ const Accounts = () => {
                                     setIsLoadingSettings(false);
                                 }
                             }}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-slate-50 text-slate-700 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
                             title="Configure ticket limits and OCR engine in Advanced Settings"
                         >
-                            <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600" />
+                            <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                             <span>Advanced Settings</span>
                         </button>
 
@@ -647,7 +660,7 @@ const Accounts = () => {
                             onClick={() => {
                                 fetchUsers(true);
                             }}
-                            className="p-2.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+                            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/90 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                             title="Refresh Accounts"
                         >
                             <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
@@ -700,28 +713,28 @@ const Accounts = () => {
                 {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
                     <motion.div
                         variants={itemVariants}
-                        className={`lg:col-span-4 bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col h-[520px] sm:h-[560px] lg:h-[600px] ${
+                        className={`lg:col-span-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col h-[520px] sm:h-[560px] lg:h-[600px] text-slate-800 dark:text-slate-100 ${
                             mobileTab === 'details' ? 'hidden lg:flex' : 'flex'
                         }`}
                     >
-                        <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50/50 space-y-2.5">
+                        <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5">
                             <div className="relative w-full">
                                 <input
                                     type="text"
                                     placeholder="Search employees..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="block w-full pl-4 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] sm:text-sm transition-all"
+                                    className="block w-full pl-4 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] sm:text-sm transition-all"
                                 />
                             </div>
-                            <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl">
+                            <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-700">
                                 <button
                                     type="button"
                                     onClick={() => setStatusFilter('all')}
                                     className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all ${
                                         statusFilter === 'all'
-                                            ? 'bg-white text-slate-800 shadow-sm'
-                                             : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                     }`}
                                 >
                                     All ({users.length})
@@ -762,23 +775,28 @@ const Accounts = () => {
                                             setSelectedUser(user);
                                             setMobileTab('details');
                                         }}
-                                        className={`group flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all border ${selectedUser?.id === user.id
-                                                ? 'border-slate-200 bg-slate-50 shadow-sm'
-                                                : 'border-transparent hover:bg-slate-50/50'
-                                            } ${user.is_active === false ? 'opacity-75 bg-slate-50/70' : ''}`}
+                                        className={`group flex items-center gap-3.5 p-3 rounded-xl cursor-pointer transition-all border ${selectedUser?.id === user.id
+                                                ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shadow-sm'
+                                                : 'border-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/40'
+                                            } ${user.is_active === false ? 'opacity-80 bg-slate-50/70 dark:bg-slate-800/50' : ''}`}
                                     >
-                                        <div className="relative">
-                                            <Avatar name={user.name} src={user.avatar} size="12" />
-                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${user.is_active !== false ? 'bg-emerald-500' : 'bg-rose-400'}`} title={user.is_active !== false ? 'Active' : 'Disabled'}></div>
-                                        </div>
-                                        <div className="flex-1 overflow-hidden">
+                                        <Avatar name={user.name} src={user.avatar} size="11" />
+                                        <div className="flex-1 overflow-hidden min-w-0">
                                             <div className="flex items-center justify-between gap-1">
-                                                <h4 className="font-bold text-slate-800 text-sm truncate">{user.name}</h4>
-                                                {user.is_active === false && (
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0">Disabled</span>
+                                                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{user.name}</h4>
+                                                {user.is_active !== false ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 shrink-0">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                                        Disabled
+                                                    </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{user.role}</p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">{user.role}</p>
                                         </div>
                                     </div>
                                 ))
@@ -806,7 +824,7 @@ const Accounts = () => {
                 >
 
                     {/* Selected User Details Card */}
-                    <div className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden relative">
+                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden relative text-slate-800 dark:text-slate-100">
                         {/* Mobile Top Back Button bar (SuperAdmin only on phone) */}
                         {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && (
                             <div className="lg:hidden px-3.5 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-white">
@@ -866,65 +884,67 @@ const Accounts = () => {
                                 {/* Details Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-800 mb-1">{selectedUser.name}</h3>
+                                        <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-1">{selectedUser.name}</h3>
                                         <div className="flex items-center gap-2 mb-6 text-sm">
                                             {selectedUser.is_active !== false ? (
-                                                <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-100 text-[10px] uppercase tracking-wider">
-                                                    <CheckCircleIcon className="w-3.5 h-3.5" /> Active Account
+                                                <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 text-[11px] uppercase tracking-wider">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                    Active Account
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-1 text-rose-600 font-bold bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200 text-[10px] uppercase tracking-wider">
-                                                    <NoSymbolIcon className="w-3.5 h-3.5" /> Account Disabled
+                                                <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-[11px] uppercase tracking-wider">
+                                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                                    Account Disabled
                                                 </span>
                                             )}
                                         </div>
 
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 dark:text-indigo-400 flex items-center justify-center shrink-0">
                                                     <AtSymbolIcon className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Email Address</p>
-                                                    <p className="text-sm font-semibold text-slate-700">{selectedUser.email}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">Email Address</p>
+                                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedUser.email}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+                                                <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-500 dark:text-orange-400 flex items-center justify-center shrink-0">
                                                     <TagIcon className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">System Role</p>
-                                                    <p className="text-sm font-semibold text-slate-700">{selectedUser.role}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">System Role</p>
+                                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedUser.role}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col justify-center gap-3">
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Security & Actions</p>
-                                        <button onClick={() => setIsChangePasswordModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-all group cursor-pointer">
-                                            <span className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                                    <div className="bg-slate-50 dark:bg-slate-950/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex flex-col justify-center gap-3">
+                                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Security & Actions</p>
+                                        <button onClick={() => setIsChangePasswordModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 transition-all group cursor-pointer">
+                                            <span className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                                 <KeyIcon className="w-5 h-5 text-slate-400 group-hover:text-[#d4a574] transition-colors" /> Change Password
                                             </span>
-                                            <span className="text-slate-300 group-hover:text-slate-500">→</span>
+                                            <span className="text-slate-300 dark:text-slate-500 group-hover:text-slate-500">→</span>
                                         </button>
                                         {/* Only SuperAdmin can disable other accounts. SuperAdmin cannot disable themselves. */}
                                         {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' && selectedUser?.id !== JSON.parse(sessionStorage.getItem('user') || '{}').id && (
                                             selectedUser.is_active !== false ? (
-                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-red-200 rounded-xl hover:border-red-300 hover:bg-red-50/40 transition-all group cursor-pointer">
-                                                    <span className="flex items-center gap-3 text-sm font-semibold text-red-700">
+                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white dark:bg-slate-800/90 border border-red-200 dark:border-red-900/60 rounded-xl hover:border-red-300 dark:hover:border-red-800 hover:bg-red-50/40 dark:hover:bg-red-950/30 transition-all group cursor-pointer">
+                                                    <span className="flex items-center gap-3 text-sm font-semibold text-red-700 dark:text-red-400">
                                                         <NoSymbolIcon className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" /> Disable Account
                                                     </span>
-                                                    <span className="text-red-300 group-hover:text-red-500">→</span>
+                                                    <span className="text-red-300 dark:text-red-500 group-hover:text-red-500">→</span>
                                                 </button>
                                             ) : (
-                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white border border-emerald-200 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/30 transition-all group cursor-pointer">
-                                                    <span className="flex items-center gap-3 text-sm font-semibold text-emerald-700">
+                                                <button onClick={() => setIsDeleteUserModalOpen(true)} className="flex items-center justify-between w-full p-3 bg-white dark:bg-slate-800/90 border border-emerald-200 dark:border-emerald-900/60 rounded-xl hover:border-emerald-300 dark:hover:border-emerald-800 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/30 transition-all group cursor-pointer">
+                                                    <span className="flex items-center gap-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                                                         <CheckCircleIcon className="w-5 h-5 text-emerald-500 group-hover:text-emerald-600 transition-colors" /> Re-enable Account
                                                     </span>
-                                                    <span className="text-emerald-300 group-hover:text-emerald-500">→</span>
+                                                    <span className="text-emerald-300 dark:text-emerald-500 group-hover:text-emerald-500">→</span>
                                                 </button>
                                             )
                                         )}
@@ -1644,7 +1664,19 @@ const Accounts = () => {
                             )}
                         </div>
 
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsAdvancedSettingsOpen(false);
+                                    openSettings();
+                                }}
+                                className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
+                                title="Open Display & Accessibility settings"
+                            >
+                                <SunIcon className="w-4 h-4" />
+                                <span>Display &amp; Accessibility…</span>
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setIsAdvancedSettingsOpen(false)}

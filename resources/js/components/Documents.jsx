@@ -16,6 +16,7 @@ import { useData } from './DataContext.jsx';
 import CameraModal from './CameraModal.jsx';
 import ActionConfirmModal from './ActionConfirmModal.jsx';
 import Pagination from './Pagination.jsx';
+import Tooltip from './Tooltip.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 import useDebounce from '../hooks/useDebounce.js';
 
@@ -659,31 +660,44 @@ const Documents = () => {
 
     /** Builds the display name appropriate to a certificate type. */
     const buildPersonName = (fields, type) => {
-        if (!fields) return '';
-        if (type === 'marriage') {
-            const hLast = (fields.husband_last_name || '').toUpperCase().trim();
-            const hFirst = (fields.husband_first_name || '').toUpperCase().trim();
-            const hMiddle = (fields.husband_middle_name || '').toUpperCase().trim();
-            const hSuffix = (fields.husband_suffix || '').toUpperCase().trim();
+        if (!fields || typeof fields !== 'object') return '';
+
+        const cleanPart = (val) => {
+            if (!val || typeof val !== 'string') return '';
+            const t = val.trim();
+            if (t.includes('{') || t.includes('}') || t.includes('":') || t.includes('is_valid_document')) {
+                return '';
+            }
+            return t.toUpperCase();
+        };
+
+        const docType = (type || '').toLowerCase();
+        if (docType === 'marriage' || docType === 'marriage_license') {
+            const hLast = cleanPart(fields.husband_last_name);
+            const hFirst = cleanPart(fields.husband_first_name);
+            const hMiddle = cleanPart(fields.husband_middle_name);
+            const hSuffix = cleanPart(fields.husband_suffix);
             const hName = [hLast ? `${hLast},` : '', hFirst, hMiddle, hSuffix].filter(Boolean).join(' ');
 
-            const wLast = (fields.wife_last_name || '').toUpperCase().trim();
-            const wFirst = (fields.wife_first_name || '').toUpperCase().trim();
-            const wMiddle = (fields.wife_middle_name || '').toUpperCase().trim();
-            const wSuffix = (fields.wife_suffix || '').toUpperCase().trim();
+            const wLast = cleanPart(fields.wife_last_name);
+            const wFirst = cleanPart(fields.wife_first_name);
+            const wMiddle = cleanPart(fields.wife_middle_name);
+            const wSuffix = cleanPart(fields.wife_suffix);
             const wName = [wLast ? `${wLast},` : '', wFirst, wMiddle, wSuffix].filter(Boolean).join(' ');
 
             const joined = [hName, wName].filter(Boolean).join(' & ');
-            return (joined || fields.personName || '').toUpperCase();
+            const fallback = cleanPart(fields.personName);
+            return (joined || fallback || '').toUpperCase();
         }
 
-        const last = (fields.last_name || fields.child_last_name || fields.deceased_last_name || '').toUpperCase().trim();
-        const first = (fields.first_name || fields.child_first_name || fields.deceased_first_name || '').toUpperCase().trim();
-        const middle = (fields.middle_name || fields.child_middle_name || fields.deceased_middle_name || '').toUpperCase().trim();
-        const suffix = (fields.suffix || '').toUpperCase().trim();
+        const last = cleanPart(fields.last_name || fields.child_last_name || fields.deceased_last_name);
+        const first = cleanPart(fields.first_name || fields.child_first_name || fields.deceased_first_name);
+        const middle = cleanPart(fields.middle_name || fields.child_middle_name || fields.deceased_middle_name);
+        const suffix = cleanPart(fields.suffix);
 
         const nameParts = [last ? `${last},` : '', first, middle, suffix].filter(Boolean).join(' ');
-        return (nameParts || fields.personName || '').toUpperCase();
+        const fallback = cleanPart(fields.personName || fields.full_name);
+        return (nameParts || fallback || '').toUpperCase();
     };
 
     const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, force = false }) => {
@@ -947,7 +961,7 @@ const Documents = () => {
         if (s === 'checking') {
             return (
                 <span
-                    className="relative inline-flex items-center overflow-hidden rounded-full border text-[10px] font-extrabold uppercase tracking-tight bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
+                    className="relative inline-flex items-center overflow-hidden rounded-full border text-[10px] font-extrabold uppercase tracking-tight bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300 shadow-sm"
                     style={{
                         minWidth: '96px',
                         height: '24px',
@@ -969,6 +983,8 @@ const Documents = () => {
                 : isProcessing ? (file.batch_total > 1 ? `OCR Working ${file.batch_processed ?? 1}/${file.batch_total}` : 'OCR Working…')
                     : 'Uploading…';
 
+            const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
             // Solid fill colors
             const fillGradient = isPending
                 ? 'linear-gradient(90deg, #f97316, #fb923c, #fdba74)'  // orange
@@ -976,17 +992,23 @@ const Documents = () => {
                     ? 'linear-gradient(90deg, #6366f1, #818cf8, #a5b4fc)' // indigo
                     : 'linear-gradient(90deg, #94a3b8, #cbd5e1)';
 
-            const trackBg = isPending ? '#fff7ed'
-                : isProcessing ? '#eef2ff'
-                    : '#f8fafc';
+            const trackBg = isPending 
+                ? (isDark ? '#431407' : '#fff7ed')
+                : isProcessing 
+                    ? (isDark ? '#1e1b4b' : '#eef2ff')
+                    : (isDark ? '#0f172a' : '#f8fafc');
 
-            const borderColor = isPending ? '#fed7aa'
-                : isProcessing ? '#c7d2fe'
-                    : '#e2e8f0';
+            const borderColor = isPending 
+                ? (isDark ? '#7c2d12' : '#fed7aa')
+                : isProcessing 
+                    ? (isDark ? '#3730a3' : '#c7d2fe')
+                    : (isDark ? '#334155' : '#e2e8f0');
 
-            const textColor = isPending ? '#9a3412'
-                : isProcessing ? '#3730a3'
-                    : '#475569';
+            const textColor = isPending 
+                ? (isDark ? '#fdba74' : '#9a3412')
+                : isProcessing 
+                    ? (isDark ? '#c7d2fe' : '#3730a3')
+                    : (isDark ? '#cbd5e1' : '#475569');
 
             const animName = isPending ? 'ocr-pending-fill' : 'ocr-active-fill';
 
@@ -1010,7 +1032,7 @@ const Documents = () => {
                         }}
                     />
                     {/* Label on top */}
-                    <span className="relative z-10" style={{ color: textColor }}>{label}</span>
+                    <span className="relative z-10 font-black" style={{ color: textColor }}>{label}</span>
                 </span>
             );
         }
@@ -1020,10 +1042,10 @@ const Documents = () => {
             return (
                 <motion.span
                     initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-tight bg-amber-50 text-amber-700 border-amber-200 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)] animate-pulse"
+                    className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-tight bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)] animate-pulse"
                     title="Potential duplicate in Master Registry"
                 >
-                    <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     Duplicate
                 </motion.span>
             );
@@ -1036,11 +1058,11 @@ const Documents = () => {
         else if (s === 'stopped') labelStr = 'Stopped';
 
         const terminalCls = {
-            processed: 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]',
-            extracted: 'bg-blue-50 text-blue-700 border-blue-100 shadow-[0_0_12px_-4px_rgba(59,130,246,0.3)]',
-            failed: 'bg-rose-50 text-rose-700 border-rose-100',
-            stopped: 'bg-slate-100 text-slate-500 border-slate-300',
-        }[s] || 'bg-slate-100 text-slate-500 border-slate-200';
+            processed: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50 shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]',
+            extracted: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800/50 shadow-[0_0_12px_-4px_rgba(59,130,246,0.3)]',
+            failed: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800/50',
+            stopped: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700',
+        }[s] || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
 
         return (
             <motion.span
@@ -1233,18 +1255,18 @@ const Documents = () => {
                     {/* ── Left: Upload Panel ──────────────────────────────── */}
                     <motion.div
                         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-white/60 backdrop-blur-xl rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60"
+                        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100"
                     >
-                        <h2 className="text-xl font-bold text-slate-800 mb-1">Upload Document</h2>
-                        <p className="text-xs text-slate-500 mb-5">Select type, then drag & drop or click to upload</p>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Upload Document</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Select type, then drag & drop or click to upload</p>
 
                         <div className="space-y-2.5 mb-5">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Document Category</label>
                             {docTypes.map(doc => {
                                 const tColors = {
                                     birth: 'border-[#d4a574] bg-[#d4a574]/5 text-[#d4a574] ring-[#d4a574]/30',
-                                    death: 'border-rose-500 bg-rose-50 text-rose-500 ring-rose-500/30',
-                                    marriage: 'border-indigo-500 bg-indigo-50 text-indigo-500 ring-indigo-500/30'
+                                    death: 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-500 ring-rose-500/30',
+                                    marriage: 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 ring-indigo-500/30'
                                 }[doc.type] || 'border-slate-500 bg-slate-50 text-slate-500 ring-slate-500/30';
 
                                 const isSelected = selectedDocType === doc.type;
@@ -1253,14 +1275,14 @@ const Documents = () => {
                                     <div key={doc.type} onClick={() => setSelectedDocType(doc.type)}
                                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${isSelected
                                             ? `${tColors.split(' ')[0]} ${tColors.split(' ')[1]} shadow-sm`
-                                            : 'border-transparent bg-slate-50 hover:bg-slate-100'
+                                            : 'border-transparent bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800'
                                             }`}>
-                                        <div className={`w-9 h-9 flex items-center justify-center rounded-lg bg-white shadow-sm ${isSelected ? `ring-1 ${tColors.split(' ')[3]}` : ''}`}>
+                                        <div className={`w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 shadow-sm ${isSelected ? `ring-1 ${tColors.split(' ')[3]}` : ''}`}>
                                             {doc.icon}
                                         </div>
                                         <div>
-                                            <div className={`font-semibold text-sm ${isSelected ? tColors.split(' ')[2] : 'text-slate-700'}`}>{doc.name}</div>
-                                            <div className="text-xs text-slate-400">{doc.desc}</div>
+                                            <div className={`font-semibold text-sm ${isSelected ? tColors.split(' ')[2] : 'text-slate-700 dark:text-slate-200'}`}>{doc.name}</div>
+                                            <div className="text-xs text-slate-400 dark:text-slate-500">{doc.desc}</div>
                                         </div>
                                     </div>
                                 );
@@ -1271,18 +1293,18 @@ const Documents = () => {
                             <div {...getRootProps()}
                                 className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl cursor-pointer text-center transition-all ${isDragActive || dragging
                                     ? 'border-[#d4a574] bg-[#d4a574]/5'
-                                    : 'border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300'
+                                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
                                     }`}>
                                 <input {...getInputProps()} />
-                                <CloudArrowUpIcon className={`w-10 h-10 mb-2 ${isDragActive ? 'text-[#d4a574]' : 'text-slate-300'}`} />
-                                <p className="text-sm font-semibold text-slate-600 mb-0.5">Drop file here or click</p>
-                                <p className="text-xs text-slate-400">PDF, JPG, PNG, TIFF, DOCX — max 10 MB</p>
+                                <CloudArrowUpIcon className={`w-10 h-10 mb-2 ${isDragActive ? 'text-[#d4a574]' : 'text-slate-300 dark:text-slate-600'}`} />
+                                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-0.5">Drop file here or click</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-500">PDF, JPG, PNG, TIFF, DOCX — max 10 MB</p>
                             </div>
 
                             <div className="relative mt-5">
                                 <button
                                     onClick={() => setIsCameraOpen(true)}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm active:scale-95 transition-all"
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95 transition-all"
                                 >
                                     <CameraIcon className="w-5 h-5 text-indigo-500" />
                                     Use Device Camera
@@ -1298,7 +1320,7 @@ const Documents = () => {
                             <div className="relative mt-3">
                                 <button
                                     onClick={handleManualRegistration}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#0f172a] text-[#d4a574] rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-sm active:scale-95 transition-all"
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#0f172a] dark:bg-slate-800 text-[#d4a574] border border-[#d4a574]/30 rounded-xl font-bold text-sm hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95 transition-all"
                                 >
                                     Manual Registration
                                 </button>
@@ -1311,10 +1333,10 @@ const Documents = () => {
                     {/* ── Right Panel: Tabs & Tables ─────────────────────── */}
                     <motion.div
                         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
-                        className="lg:col-span-2 bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col overflow-hidden"
+                        className="lg:col-span-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden text-slate-800 dark:text-slate-100"
                     >
                         {/* Tab Switcher */}
-                        <div className="flex items-center bg-slate-100/50 p-1.5 gap-1 border-b border-slate-100">
+                        <div className="flex items-center bg-slate-100/70 dark:bg-slate-950/60 p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800">
                             {[
                                 { id: 'queue', label: 'Document Queue', count: queueFiles.length, icon: BoltIcon, show: true },
                                 { id: 'history', label: 'Submission History', count: historyFiles.length, icon: CheckCircleIcon, show: true }
@@ -1323,13 +1345,13 @@ const Documents = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === tab.id
-                                        ? 'bg-white text-slate-800 shadow-sm border border-slate-200'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+                                        ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm border border-slate-200 dark:border-slate-700'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-800/50'
                                         }`}
                                 >
                                     <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-indigo-500' : 'text-slate-400'}`} />
                                     {tab.label}
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                                         {tab.count}
                                     </span>
                                 </button>
@@ -1341,36 +1363,36 @@ const Documents = () => {
                         {activeTab === 'queue' ? (
                             <>
                                 {/* Queue Header */}
-                                <div className="p-5 border-b border-slate-100 flex flex-col gap-3 bg-slate-50/50">
+                                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-3 bg-slate-50/50 dark:bg-slate-950/40">
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-800">Active Queue</h3>
-                                        <p className="text-xs text-slate-400 mt-0.5">Documents waiting for extraction or approval</p>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Active Queue</h3>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Documents waiting for extraction or approval</p>
                                     </div>
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <div className="relative">
                                             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                             <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)}
                                                 placeholder="Search Queue…"
-                                                className="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 w-36"
+                                                className="pl-8 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 w-36"
                                             />
                                         </div>
                                         {queueFiles.filter(f => f.status?.toLowerCase() === 'extracted').length > 0 && (
                                             <button onClick={bulkApprove}
-                                                className="text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white px-3 py-2 rounded-lg border border-emerald-100 transition-all flex items-center gap-1.5 shadow-sm">
+                                                className="text-xs font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:text-white px-3 py-2 rounded-lg border border-emerald-100 dark:border-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm">
                                                 <CheckCircleIcon className="w-3.5 h-3.5" />
                                                 Approve All
                                             </button>
                                         )}
                                         {queueFiles.some(f => ['pending', 'failed', 'uploaded'].includes(f.status?.toLowerCase())) && (
                                             <button onClick={bulkProcess}
-                                                className="text-xs font-bold text-[#d4a574] bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-2 rounded-lg border border-[#d4a574]/20 transition-all flex items-center gap-1.5 disabled:opacity-50">
+                                                className="text-xs font-bold text-[#d4a574] dark:text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/15 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-2 rounded-lg border border-[#d4a574]/20 dark:border-[#d4a574]/30 transition-all flex items-center gap-1.5 disabled:opacity-50">
                                                 <CloudArrowUpIcon className="w-3.5 h-3.5" />
                                                 Process All
                                             </button>
                                         )}
                                         {selectedIds.length > 0 && (
                                             <button onClick={bulkDeleteSelected}
-                                                className="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg border border-rose-100 transition-all flex items-center gap-1.5 shadow-sm">
+                                                className="text-xs font-bold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 dark:hover:bg-rose-800 hover:text-white px-3 py-2 rounded-lg border border-rose-100 dark:border-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm">
                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                 Delete Selected ({selectedIds.length})
                                             </button>
@@ -1393,27 +1415,27 @@ const Documents = () => {
                                         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
                                         <table className="w-full text-left border-collapse table-auto">
                                             <thead>
-                                                <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
-                                                    <th className="px-3 py-2.5 font-black text-slate-500 w-10">
+                                                <tr className="bg-slate-50/70 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400 w-10">
                                                         <input
                                                             type="checkbox"
-                                                            className="rounded border-slate-300 text-[#d4a574] focus:ring-[#d4a574]/30"
+                                                            className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
                                                             checked={selectedIds.length === filteredQueue.length && filteredQueue.length > 0}
                                                             onChange={() => toggleSelectAll(filteredQueue)}
                                                         />
                                                     </th>
-                                                    <th className="px-3 py-2.5 font-black text-slate-500">Document</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500 w-16">Type</th>
-                                                    <th className="px-2 py-2.5 text-center font-black text-slate-500">Status</th>
-                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500 w-28">Actions</th>
+                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Document</th>
+                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400 w-16">Type</th>
+                                                    <th className="px-2 py-2.5 text-center font-black text-slate-500 dark:text-slate-400">Status</th>
+                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400 w-28">Actions</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-50">
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                                 {paginatedQueue.map(file => (
-                                                    <tr key={file.id} className="hover:bg-slate-50/60 transition-colors">
+                                                    <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                                                         {file.isDeleted ? (
                                                             <td colSpan="6" className="p-4 text-center">
-                                                                <span className="text-sm text-slate-500 mr-3">Document temporarily deleted.</span>
+                                                                <span className="text-sm text-slate-500 dark:text-slate-400 mr-3">Document temporarily deleted.</span>
                                                                 <button onClick={() => undoDelete(file.id)} className="text-xs font-bold text-[#d4a574] border border-[#d4a574]/30 bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-1.5 rounded-lg transition-colors">Undo</button>
                                                             </td>
                                                         ) : (
@@ -1421,7 +1443,7 @@ const Documents = () => {
                                                                 <td className="px-3 py-2.5">
                                                                     <input
                                                                         type="checkbox"
-                                                                        className="rounded border-slate-300 text-[#d4a574] focus:ring-[#d4a574]/30"
+                                                                        className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
                                                                         checked={selectedIds.includes(file.id)}
                                                                         onChange={() => toggleSelect(file.id)}
                                                                     />
@@ -1429,16 +1451,27 @@ const Documents = () => {
                                                                 <td className="px-3 py-2.5">
                                                                     <div className="flex items-center">
                                                                         <div className="min-w-0">
-                                                                            <p
-                                                                                className="text-[11px] font-bold text-slate-800 truncate max-w-[22ch] hover:text-[#d4a574] cursor-pointer transition-colors"
-                                                                                title={file.name}
-                                                                                onClick={() => setPreviewFile(file)}
-                                                                            >
-                                                                                {file.name}
-                                                                            </p>
-                                                                            <p className="text-[9px] text-slate-400 font-medium truncate uppercase tracking-tighter">
-                                                                                {file.extracted_fields?.full_name || file.personName || `${file.size || ''} · ${file.encoded_by || 'Unknown'}`}
-                                                                            </p>
+                                                                            {(() => {
+                                                                                const extractedName = buildPersonName(file.extracted_fields, file.detected_type || file.type);
+                                                                                const cleanPersonName = file.personName && !file.personName.includes('{') ? file.personName : '';
+                                                                                const titleName = extractedName || cleanPersonName || file.name;
+                                                                                const hasActualName = Boolean(extractedName || cleanPersonName);
+
+                                                                                return (
+                                                                                    <>
+                                                                                        <p
+                                                                                            className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[24ch] hover:text-[#d4a574] cursor-pointer transition-colors"
+                                                                                            title={titleName}
+                                                                                            onClick={() => setPreviewFile(file)}
+                                                                                        >
+                                                                                            {titleName}
+                                                                                        </p>
+                                                                                        <p className="text-[9px] text-slate-400 font-medium truncate uppercase tracking-tighter">
+                                                                                            {hasActualName ? `${file.name} · ${file.size || ''}` : `${file.size || ''} · ${file.encoded_by || 'Unknown'}`}
+                                                                                        </p>
+                                                                                    </>
+                                                                                );
+                                                                            })()}
                                                                         </div>
                                                                     </div>
                                                                 </td>
@@ -1457,50 +1490,62 @@ const Documents = () => {
                                                                 <td className="px-3 py-2.5 text-right">
                                                                     <div className="flex items-center justify-end gap-1 px-1">
                                                                         {['pending', 'processing'].includes(file.status?.toLowerCase()) && (
-                                                                            <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-amber-600 bg-amber-50/80 hover:bg-amber-600 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                                title="Stop Processing">
-                                                                                <StopIcon className="w-4 h-4 text-amber-600 group-hover/btn:text-white transition-colors" />
-                                                                            </button>
+                                                                            <Tooltip content="Stop Processing" position="left">
+                                                                                <button onClick={() => toggleOcrStatus(file.id, file.status)}
+                                                                                    className="p-2.5 text-amber-600 bg-amber-50/80 dark:bg-amber-950/50 dark:border-amber-900/50 dark:text-amber-300 hover:bg-amber-600 dark:hover:bg-amber-800 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                    aria-label="Stop Processing">
+                                                                                    <StopIcon className="w-4 h-4 text-amber-600 dark:text-amber-300 group-hover/btn:text-white transition-colors" />
+                                                                                </button>
+                                                                            </Tooltip>
                                                                         )}
 
                                                                         {['stopped', 'failed', 'uploaded'].includes(file.status?.toLowerCase()) && (
-                                                                            <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                className="p-2.5 text-sky-600 bg-sky-50/80 hover:bg-sky-600 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                                title="Resume / Retry Processing">
-                                                                                <PlayIcon className="w-4 h-4 text-sky-600 group-hover/btn:text-white transition-colors" />
-                                                                            </button>
+                                                                            <Tooltip content="Resume / Retry Processing" position="left">
+                                                                                <button onClick={() => toggleOcrStatus(file.id, file.status)}
+                                                                                    className="p-2.5 text-sky-600 bg-sky-50/80 dark:bg-sky-950/50 dark:border-sky-900/50 dark:text-sky-300 hover:bg-sky-600 dark:hover:bg-sky-800 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                    aria-label="Resume / Retry Processing">
+                                                                                    <PlayIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 group-hover/btn:text-white transition-colors" />
+                                                                                </button>
+                                                                            </Tooltip>
                                                                         )}
 
                                                                         {['extracted', 'processed'].includes(file.status?.toLowerCase()) && (
-                                                                            <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
-                                                                                className="p-2.5 text-indigo-600 bg-indigo-50/80 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
-                                                                                title={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
-                                                                                <PencilSquareIcon className="w-4 h-4 text-indigo-600 group-hover/btn:text-white transition-colors" />
-                                                                            </button>
+                                                                            <Tooltip content={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'} position="left">
+                                                                                <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
+                                                                                    className="p-2.5 text-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 dark:border-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-800 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                                                    aria-label={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
+                                                                                    <PencilSquareIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-300 group-hover/btn:text-white transition-colors" />
+                                                                                </button>
+                                                                            </Tooltip>
                                                                         )}
 
                                                                         {file.status?.toLowerCase() === 'extracted' && (
                                                                             file.has_duplicate ? (
-                                                                                <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
-                                                                                    className="p-2.5 text-slate-400 bg-slate-100 border border-slate-200 rounded-xl cursor-pointer"
-                                                                                    title="Direct Approve Blocked (Potential Duplicate)">
-                                                                                    <CheckCircleIcon className="w-4 h-4 text-slate-400" />
-                                                                                </button>
+                                                                                <Tooltip content="Direct Approve Blocked (Potential Duplicate)" position="left">
+                                                                                    <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
+                                                                                        className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                        aria-label="Direct Approve Blocked (Potential Duplicate)">
+                                                                                        <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                    </button>
+                                                                                </Tooltip>
                                                                             ) : (
-                                                                                <button onClick={() => approveRecord(file.id)}
-                                                                                    className="p-2.5 text-emerald-600 bg-emerald-50/80 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
-                                                                                    title="Direct Approve">
-                                                                                    <CheckCircleIcon className="w-4 h-4 text-emerald-600 group-hover/btn:text-white transition-colors" />
-                                                                                </button>
+                                                                                <Tooltip content="Direct Approve & Issue Record" position="left">
+                                                                                    <button onClick={() => approveRecord(file.id)}
+                                                                                        className="p-2.5 text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                                                        aria-label="Direct Approve & Issue Record">
+                                                                                        <CheckCircleIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
+                                                                                    </button>
+                                                                                </Tooltip>
                                                                             )
                                                                         )}
 
-                                                                        <button onClick={() => removeFile(file.id)}
-                                                                            className="p-2.5 text-rose-600 bg-rose-50/80 hover:bg-rose-600 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                            title="Delete Document">
-                                                                            <TrashIcon className="w-4 h-4 text-rose-600 group-hover/btn:text-white transition-colors" />
-                                                                        </button>
+                                                                        <Tooltip content="Delete Document" position="left">
+                                                                            <button onClick={() => removeFile(file.id)}
+                                                                                className="p-2.5 text-rose-600 bg-rose-50/80 dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 hover:bg-rose-600 dark:hover:bg-rose-800 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                aria-label="Delete Document">
+                                                                                <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-300 group-hover/btn:text-white transition-colors" />
+                                                                            </button>
+                                                                        </Tooltip>
                                                                     </div>
                                                                 </td>
                                                             </>
@@ -1527,7 +1572,7 @@ const Documents = () => {
                         ) : activeTab === 'history' ? (
                             <>
                                 {/* History Filters */}
-                                <div className="p-4 bg-slate-50/80 border-b border-slate-100 space-y-3">
+                                <div className="p-4 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 space-y-3">
                                     <div className="flex flex-wrap gap-3 items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="relative">
@@ -1536,13 +1581,13 @@ const Documents = () => {
                                                     value={historySearch}
                                                     onChange={e => setHistorySearch(e.target.value)}
                                                     placeholder="Search history by name..."
-                                                    className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-64 shadow-sm"
+                                                    className="pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-64 shadow-sm"
                                                 />
                                             </div>
-                                            <div className="h-6 w-px bg-slate-200 mx-1" />
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filters:</span>
+                                            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Filters:</span>
                                         </div>
-                                        <div className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                                        <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
                                             Showing {filteredHistory.length} of {historyFiles.length} records
                                         </div>
                                     </div>
@@ -1552,7 +1597,7 @@ const Documents = () => {
                                         <select
                                             value={historyFilters.dateRange}
                                             onChange={e => setHistoryFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-                                            className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                                            className="text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
                                         >
                                             <option value="all">Any Date</option>
                                             <option value="today">Today</option>
@@ -1565,7 +1610,7 @@ const Documents = () => {
                                         <select
                                             value={historyFilters.type}
                                             onChange={e => setHistoryFilters(prev => ({ ...prev, type: e.target.value }))}
-                                            className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm capitalize"
+                                            className="text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm capitalize"
                                         >
                                             <option value="all">All Types</option>
                                             <option value="birth">Birth Certificate</option>
@@ -1577,7 +1622,7 @@ const Documents = () => {
                                         <select
                                             value={historyFilters.staff}
                                             onChange={e => setHistoryFilters(prev => ({ ...prev, staff: e.target.value }))}
-                                            className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                                            className="text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
                                         >
                                             <option value="all">All Staff</option>
                                             {staffList.map(name => (
@@ -1589,7 +1634,7 @@ const Documents = () => {
                                         <select
                                             value={historyFilters.barangay}
                                             onChange={e => setHistoryFilters(prev => ({ ...prev, barangay: e.target.value }))}
-                                            className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                                            className="text-xs font-semibold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
                                         >
                                             <option value="all">All Barangays</option>
                                             {barangayList.map(brgy => (
@@ -1639,61 +1684,61 @@ const Documents = () => {
                                         <div className="overflow-x-auto flex-1">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
-                                                <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100">
-                                                    <th className="px-3 py-2.5 font-black text-slate-500">Person / Document</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500">Barangay</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500">Process Date</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500">Staff / Admin</th>
-                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500">Record</th>
+                                                <tr className="bg-slate-50/50 dark:bg-slate-950/70 text-slate-400 dark:text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Person / Document</th>
+                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
+                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Process Date</th>
+                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Staff / Admin</th>
+                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400">Record</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-50">
+                                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                                 {paginatedHistory.map(file => {
                                                     const dateObj = new Date(file.created_at);
                                                     return (
-                                                        <tr key={file.id} className="hover:bg-slate-50/60 transition-colors group">
+                                                        <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors group">
                                                             <td className="px-3 py-3">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 text-blue-500' :
-                                                                        file.type === 'death' ? 'bg-slate-100 text-slate-600' :
-                                                                            'bg-rose-50 text-rose-500'
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500' :
+                                                                        file.type === 'death' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' :
+                                                                            'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
                                                                         }`}>
                                                                         <DocumentIcon className="w-5 h-5" />
                                                                     </div>
                                                                     <div className="min-w-0">
-                                                                        <p className="text-[11px] font-bold text-slate-800 truncate max-w-[20ch]">
+                                                                        <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[20ch]">
                                                                             {(!file.personName || file.personName.toLowerCase().includes('unnamed')) ? file.name : file.personName}
                                                                         </p>
-                                                                        <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1.5">
+                                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate flex items-center gap-1.5">
                                                                             <span className="uppercase tracking-tighter">{file.detected_type || file.type}</span>
-                                                                            <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                                                            <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                                                                             <span className="truncate max-w-[15ch]">{file.name}</span>
                                                                         </p>
                                                                     </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-2 py-3">
-                                                                <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                                                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-[#d4a574]" />
                                                                     {file.barangay || '—'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-2 py-3">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[11px] font-bold text-slate-700 tabular-nums">
+                                                                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 tabular-nums">
                                                                         {file.created_at ? new Date(file.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                                                     </span>
-                                                                    <span className="text-[10px] text-slate-400 font-medium tabular-nums">
+                                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">
                                                                         {file.created_at ? new Date(file.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                                                                     </span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-2 py-3">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-slate-200">
+                                                                    <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                                                                         {file.encoded_by ? file.encoded_by.charAt(0).toUpperCase() : '?'}
                                                                     </div>
-                                                                    <span className="text-[11px] font-bold text-slate-600 truncate max-w-[10ch]">{file.encoded_by || 'Unknown'}</span>
+                                                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[10ch]">{file.encoded_by || 'Unknown'}</span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-3 py-3 text-right">
@@ -1706,7 +1751,7 @@ const Documents = () => {
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => handleRequestToPrint(file)}
-                                                                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 rounded-lg transition-all"
+                                                                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-all"
                                                                             >
                                                                                 Request to Print
                                                                             </button>

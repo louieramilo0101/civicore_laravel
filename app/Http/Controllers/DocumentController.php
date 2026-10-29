@@ -65,17 +65,27 @@ class DocumentController extends Controller
         $whereClause = " WHERE " . implode(" AND ", $conditions);
         
         // Get total count
-        $countQuery = "SELECT COUNT(*) as total FROM documents d LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause;
+        $countQuery = "SELECT COUNT(DISTINCT d.id) as total FROM documents d" . $whereClause;
         $totalResult = DB::select($countQuery, $params);
         $total = $totalResult[0]->total;
         
-        // Get paginated results without loading binary content.
+        // Get paginated results without duplicate row inflation from 1-to-many joins
         $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
                          COALESCE(t.ticket_number, i.ticket_number) as ticket_number,
                          i.certNumber as certNumber
                   FROM documents d
-                  LEFT JOIN tickets t ON t.document_id = d.id
-                  LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
+                  LEFT JOIN (
+                      SELECT document_id, MIN(ticket_number) as ticket_number
+                      FROM tickets
+                      WHERE deleted_at IS NULL
+                      GROUP BY document_id
+                  ) t ON t.document_id = d.id
+                  LEFT JOIN (
+                      SELECT document_id, MIN(certNumber) as certNumber, MIN(ticket_number) as ticket_number
+                      FROM issuances
+                      WHERE deleted_at IS NULL
+                      GROUP BY document_id
+                  ) i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
         
@@ -531,7 +541,11 @@ class DocumentController extends Controller
         $barangay        = $request->input('barangay', '');
         $status          = $request->input('status', 'Extracted');
         $parentalConsent = $request->input('parental_consent', false);
-        $detectedType    = $request->input('detectedType');
+        $detectedType    = $request->input('detectedType') ?: $request->input('type');
+        if (empty($detectedType)) {
+            $docTypeInDb = DB::table('documents')->where('id', $id)->value('type');
+            $detectedType = $docTypeInDb ?: 'birth';
+        }
 
         // Backend validation and normalization of civil registry fields
         if (is_array($extractedFields)) {
@@ -737,20 +751,29 @@ class DocumentController extends Controller
      */
     private function buildFullName($fields, $type)
     {
-        if (!$fields) return null;
+        if (!$fields || !is_array($fields)) return null;
 
-        if ($type === 'marriage') {
-            $hLast = strtoupper(trim($fields['husband_last_name'] ?? ''));
-            $hFirst = strtoupper(trim($fields['husband_first_name'] ?? ''));
-            $hMiddle = strtoupper(trim($fields['husband_middle_name'] ?? ''));
-            $hSuffix = strtoupper(trim($fields['husband_suffix'] ?? ''));
+        $cleanPart = function ($val) {
+            if (!$val || !is_string($val)) return '';
+            $trimmed = trim($val);
+            if (str_contains($trimmed, '{') || str_contains($trimmed, '}') || str_contains($trimmed, '":') || str_contains($trimmed, 'is_valid_document')) {
+                return '';
+            }
+            return strtoupper($trimmed);
+        };
+
+        if ($type === 'marriage' || $type === 'marriage_license') {
+            $hLast = $cleanPart($fields['husband_last_name'] ?? '');
+            $hFirst = $cleanPart($fields['husband_first_name'] ?? '');
+            $hMiddle = $cleanPart($fields['husband_middle_name'] ?? '');
+            $hSuffix = $cleanPart($fields['husband_suffix'] ?? '');
             $hParts = array_filter([$hLast ? "{$hLast}," : '', $hFirst, $hMiddle, $hSuffix]);
             $hName = implode(' ', $hParts);
 
-            $wLast = strtoupper(trim($fields['wife_last_name'] ?? ''));
-            $wFirst = strtoupper(trim($fields['wife_first_name'] ?? ''));
-            $wMiddle = strtoupper(trim($fields['wife_middle_name'] ?? ''));
-            $wSuffix = strtoupper(trim($fields['wife_suffix'] ?? ''));
+            $wLast = $cleanPart($fields['wife_last_name'] ?? '');
+            $wFirst = $cleanPart($fields['wife_first_name'] ?? '');
+            $wMiddle = $cleanPart($fields['wife_middle_name'] ?? '');
+            $wSuffix = $cleanPart($fields['wife_suffix'] ?? '');
             $wParts = array_filter([$wLast ? "{$wLast}," : '', $wFirst, $wMiddle, $wSuffix]);
             $wName = implode(' ', $wParts);
 
@@ -758,10 +781,10 @@ class DocumentController extends Controller
             return $joined ? strtoupper($joined) : null;
         }
 
-        $last = strtoupper(trim($fields['last_name'] ?? $fields['child_last_name'] ?? $fields['deceased_last_name'] ?? ''));
-        $first = strtoupper(trim($fields['first_name'] ?? $fields['child_first_name'] ?? $fields['deceased_first_name'] ?? ''));
-        $middle = strtoupper(trim($fields['middle_name'] ?? $fields['child_middle_name'] ?? $fields['deceased_middle_name'] ?? ''));
-        $suffix = strtoupper(trim($fields['suffix'] ?? ''));
+        $last = $cleanPart($fields['last_name'] ?? $fields['child_last_name'] ?? $fields['deceased_last_name'] ?? '');
+        $first = $cleanPart($fields['first_name'] ?? $fields['child_first_name'] ?? $fields['deceased_first_name'] ?? '');
+        $middle = $cleanPart($fields['middle_name'] ?? $fields['child_middle_name'] ?? $fields['deceased_middle_name'] ?? '');
+        $suffix = $cleanPart($fields['suffix'] ?? '');
 
         $parts = array_filter([$last ? "{$last}," : '', $first, $middle, $suffix]);
         $name = implode(' ', $parts);
@@ -774,11 +797,27 @@ class DocumentController extends Controller
      */
     private function performSave($request, $id, $extractedFields, $ocrText, $personName, $barangay, $status, $parentalConsent, $detectedType = null)
     {
-        // Re-calculate personName if it wasn't explicitly provided or if generic placeholder (safety for main update call)
-        if (empty($personName) || $personName === 'Document Data') {
+        if (empty($detectedType)) {
+            $docTypeInDb = DB::table('documents')->where('id', $id)->value('type');
+            $detectedType = $docTypeInDb ?: 'birth';
+        }
+
+        // Sanitize any extractedFields that accidentally contain stringified JSON
+        if (is_array($extractedFields)) {
+            foreach ($extractedFields as $k => $v) {
+                if (is_string($v) && (str_contains($v, 'is_valid_document') || (str_starts_with(trim($v), '{') && str_contains($v, '":')))) {
+                    $extractedFields[$k] = null;
+                }
+            }
+        }
+
+        // Re-calculate personName if it wasn't explicitly provided, if generic placeholder, or if it contains JSON fragments
+        if (empty($personName) || $personName === 'Document Data' || str_contains($personName, '{') || str_contains($personName, 'is_valid_document')) {
             $computedName = $this->buildFullName($extractedFields, $detectedType);
             if (!empty($computedName)) {
                 $personName = $computedName;
+            } elseif (str_contains($personName, '{')) {
+                $personName = 'Document Record';
             }
         }
 
@@ -1683,7 +1722,12 @@ class DocumentController extends Controller
             $query = "SELECT d.id, d.name, d.type, d.date, d.status, d.personName, d.barangay, d.extracted_fields, d.encoded_by, d.created_at,
                              i.certNumber
                       FROM documents d
-                      LEFT JOIN issuances i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT 5000";
+                      LEFT JOIN (
+                          SELECT document_id, MIN(certNumber) as certNumber
+                          FROM issuances
+                          WHERE deleted_at IS NULL
+                          GROUP BY document_id
+                      ) i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT 5000";
 
             $docRecords = DB::select($query, $params);
             foreach ($docRecords as $r) {

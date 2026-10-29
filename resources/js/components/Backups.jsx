@@ -235,11 +235,11 @@ const Backups = () => {
             {/* Page Header */}
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-3">
                         <CircleStackIcon className="w-7 h-7 sm:w-8 sm:h-8 text-[#d4a574]" />
                         System Backup & Recovery
                     </h2>
-                    <p className="text-slate-500 font-medium text-xs sm:text-sm mt-1">
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm mt-1">
                         Automated data backups, safe archives, and easy system recovery.
                     </p>
                 </div>
@@ -247,14 +247,14 @@ const Backups = () => {
                     <button
                         onClick={() => fetchBackups(true)}
                         disabled={isLoading}
-                        className="p-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
+                        className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
                         title="Refresh List"
                     >
                         <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin text-[#d4a574]' : ''}`} />
                     </button>
                     <button
                         onClick={() => setIsRestartModalOpen(true)}
-                        className="px-4 py-2.5 bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 text-slate-700 hover:text-amber-800 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer group active:scale-95"
+                        className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 text-slate-700 dark:text-slate-200 hover:text-amber-800 dark:hover:text-amber-300 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer group active:scale-95"
                         title="Reboot system engine & flush application caches"
                     >
                         <ArrowPathIcon className="w-4 h-4 text-amber-500 group-hover:rotate-180 transition-transform duration-500" />
@@ -284,7 +284,7 @@ const Backups = () => {
             </motion.div>
 
             {/* Privacy & Non-Download Notice Banner */}
-            <motion.div variants={itemVariants} className="p-3.5 sm:p-4 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 shadow-sm flex items-start sm:items-center gap-3">
+            <motion.div variants={itemVariants} className="p-3.5 sm:p-4 bg-slate-900 dark:bg-slate-900/90 text-slate-100 rounded-2xl border border-slate-800 shadow-sm flex items-start sm:items-center gap-3">
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-[#d4a574]">
                     <LockClosedIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
@@ -296,54 +296,54 @@ const Backups = () => {
 
             {/* Stat Cards */}
             <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div className="bg-white/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Backups</span>
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Backups</span>
                         <ArchiveBoxIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                     </div>
-                    <p className="text-lg sm:text-2xl font-black text-slate-800 mt-1.5 sm:mt-2">{stats.total_count}</p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1 truncate">Archives on host</p>
+                    <p className="text-lg sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1.5 sm:mt-2">{stats.total_count}</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 sm:mt-1 truncate">Archives on host</p>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Storage</span>
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Storage</span>
                         <CircleStackIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                     </div>
-                    <p className="text-lg sm:text-2xl font-black text-slate-800 mt-1.5 sm:mt-2 truncate">{stats.total_size}</p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1 truncate">Database + files</p>
+                    <p className="text-lg sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1.5 sm:mt-2 truncate">{stats.total_size}</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 sm:mt-1 truncate">Database + files</p>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Latest Backup</span>
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Latest Backup</span>
                         <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                     </div>
-                    <p className="text-xs sm:text-base font-black text-slate-800 mt-1.5 sm:mt-2 truncate">
+                    <p className="text-xs sm:text-base font-black text-slate-800 dark:text-slate-100 mt-1.5 sm:mt-2 truncate">
                         {stats.latest_at || 'None yet'}
                     </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1 truncate">Ready to restore</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 sm:mt-1 truncate">Ready to restore</p>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Schedule</span>
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Schedule</span>
                         <CalendarDaysIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#d4a574]" />
                     </div>
-                    <p className="text-xs sm:text-base font-black text-emerald-600 mt-1.5 sm:mt-2 flex items-center gap-1.5 truncate">
+                    <p className="text-xs sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-1.5 sm:mt-2 flex items-center gap-1.5 truncate">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         Daily 2:00 AM
                     </p>
-                    <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5 sm:mt-1 truncate">Automated tiering</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 sm:mt-1 truncate">Automated tiering</p>
                 </div>
             </motion.div>
 
             {/* Backups List Table */}
-            <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+            <motion.div variants={itemVariants} className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div>
-                        <h3 className="font-bold text-slate-800 text-sm sm:text-base">Saved Backups</h3>
-                        <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Chronological record of system data packages.</p>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base">Saved Backups</h3>
+                        <p className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 mt-0.5">Chronological record of system data packages.</p>
                     </div>
                 </div>
 
@@ -354,9 +354,9 @@ const Backups = () => {
                         </div>
                     ) : backups.length === 0 ? (
                         <div className="p-8 sm:p-12 text-center">
-                            <CircleStackIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                            <h4 className="font-bold text-slate-700 text-base">No Backups Found</h4>
-                            <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-4">
+                            <CircleStackIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 text-base">No Backups Found</h4>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-sm mx-auto mt-1 mb-4">
                                 Create an immediate backup above or wait for the scheduled daily backup at 2:00 AM.
                             </p>
                             <button
@@ -369,27 +369,27 @@ const Backups = () => {
                     ) : (
                         <>
                             {/* Mobile Card View (Zero sidescroll on phones) */}
-                            <div className="block md:hidden divide-y divide-slate-100">
+                            <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                                 {paginatedBackups.map((b) => (
-                                    <div key={b.filename} className="p-4 space-y-2.5 hover:bg-slate-50/50 transition-colors">
+                                    <div key={b.filename} className="p-4 space-y-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                                         <div className="flex items-center justify-between gap-2">
                                             <div>{getTypeBadge(b.type, b.is_safety)}</div>
-                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                                 {b.size_human}
                                             </span>
                                         </div>
                                         <div>
-                                            <p className="font-mono text-xs text-slate-700 break-all leading-snug">
+                                            <p className="font-mono text-xs text-slate-700 dark:text-slate-300 break-all leading-snug">
                                                 {b.filename}
                                             </p>
-                                            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
                                                 <ClockIcon className="w-3.5 h-3.5 text-slate-400 inline" />
                                                 {b.created_at}
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => handleOpenRestoreModal(b)}
-                                            className="w-full py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                            className="w-full py-2 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                         >
                                             <ArrowPathIcon className="w-3.5 h-3.5" />
                                             Restore This Backup
@@ -402,7 +402,7 @@ const Backups = () => {
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] uppercase tracking-wider font-bold text-slate-400">
+                                        <tr className="bg-slate-50/70 dark:bg-slate-950/70 border-b border-slate-100 dark:border-slate-800 text-[11px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-400">
                                             <th className="py-3 px-5">Type / Label</th>
                                             <th className="py-3 px-5">Archive File</th>
                                             <th className="py-3 px-5">Size</th>
@@ -410,25 +410,25 @@ const Backups = () => {
                                             <th className="py-3 px-5 text-right">Recovery Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-700">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200">
                                         {paginatedBackups.map((b) => (
-                                            <tr key={b.filename} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={b.filename} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                                                 <td className="py-3.5 px-5">
                                                     {getTypeBadge(b.type, b.is_safety)}
                                                 </td>
-                                                <td className="py-3.5 px-5 font-mono text-xs text-slate-600">
+                                                <td className="py-3.5 px-5 font-mono text-xs text-slate-600 dark:text-slate-300">
                                                     {b.filename}
                                                 </td>
-                                                <td className="py-3.5 px-5 text-xs font-semibold text-slate-500">
+                                                <td className="py-3.5 px-5 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                     {b.size_human}
                                                 </td>
-                                                <td className="py-3.5 px-5 text-xs text-slate-500">
+                                                <td className="py-3.5 px-5 text-xs text-slate-500 dark:text-slate-400">
                                                     {b.created_at}
                                                 </td>
                                                 <td className="py-3.5 px-5 text-right">
                                                     <button
                                                         onClick={() => handleOpenRestoreModal(b)}
-                                                        className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                        className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                     >
                                                         Restore This Backup
                                                     </button>
@@ -464,7 +464,7 @@ const Backups = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden relative border border-rose-100"
+                            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden relative border border-rose-100 dark:border-rose-900/50"
                         >
                             <div className="h-20 bg-gradient-to-r from-rose-900 to-rose-700 p-6 flex items-center justify-between border-b border-rose-800">
                                 <h3 className="text-xl font-black text-white flex items-center gap-2">
@@ -482,14 +482,14 @@ const Backups = () => {
                             </div>
 
                             <form onSubmit={handleRestoreSubmit} className="p-6 space-y-4">
-                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                                    <p className="text-sm font-semibold text-amber-900">
+                                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2">
+                                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                                         You are about to roll back the system to:
                                     </p>
-                                    <p className="font-mono text-xs font-bold text-slate-800 bg-white/80 p-2 rounded-lg border border-amber-200 truncate">
+                                    <p className="font-mono text-xs font-bold text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 p-2 rounded-lg border border-amber-200 dark:border-amber-800 truncate">
                                         {selectedBackupForRestore.filename} ({selectedBackupForRestore.created_at})
                                     </p>
-                                    <div className="pt-1 flex items-start gap-2 text-xs text-amber-800">
+                                    <div className="pt-1 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
                                         <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                                         <span>
                                             <strong>Automatic Undo Protection:</strong> The system will immediately create an <em>Automatic Safety Copy</em> of current live data before this backup is restored, allowing you to undo this action at any time.
@@ -498,8 +498,8 @@ const Backups = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                                        Type <span className="text-rose-600 font-mono">RESTORE</span> to confirm <span className="text-rose-500">*</span>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                                        Type <span className="text-rose-600 dark:text-rose-400 font-mono">RESTORE</span> to confirm <span className="text-rose-500">*</span>
                                     </label>
                                     <input
                                         required
@@ -507,12 +507,12 @@ const Backups = () => {
                                         value={restoreConfirmText}
                                         onChange={(e) => setRestoreConfirmText(e.target.value)}
                                         placeholder="RESTORE"
-                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-bold text-slate-800 bg-slate-50 focus:bg-white transition-colors"
+                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                         Your SuperAdmin Password <span className="text-rose-500 text-lg leading-none">*</span>
                                     </label>
                                     <div className="relative">
@@ -521,13 +521,13 @@ const Backups = () => {
                                             type={showRestorePassword ? 'text' : 'password'}
                                             value={restorePassword}
                                             onChange={(e) => setRestorePassword(e.target.value)}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors pr-10"
                                             placeholder="••••••••"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowRestorePassword(!showRestorePassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                                         >
                                             {showRestorePassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                                         </button>
@@ -539,7 +539,7 @@ const Backups = () => {
                                         type="button"
                                         disabled={isRestoring}
                                         onClick={() => setIsRestoreModalOpen(false)}
-                                        className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50"
+                                        className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>

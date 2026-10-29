@@ -171,51 +171,51 @@ export default function Announcements() {
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 max-w-7xl mx-auto pb-12">
             <motion.div variants={itemVariants} className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-3">
                         <MegaphoneIcon className="w-8 h-8 text-indigo-500" />
                         System Announcements
                     </h2>
-                    <p className="text-slate-500 font-medium text-sm mt-1">
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm mt-1">
                         Manage active alerts broadcasting to the public portal and adjust system operations.
                     </p>
                 </div>
             </motion.div>
 
             {/* Navigation Tabs */}
-            <motion.div variants={itemVariants} className="flex gap-4 border-b border-slate-200 mb-8">
+            <motion.div variants={itemVariants} className="flex gap-4 border-b border-slate-200 dark:border-slate-800 mb-8">
                 <button
                     onClick={() => setActiveTab('broadcasts')}
-                    className={`pb-4 px-2 font-bold text-sm tracking-wide transition-colors relative ${activeTab === 'broadcasts' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`pb-4 px-2 font-bold text-sm tracking-wide transition-colors relative ${activeTab === 'broadcasts' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                 >
                     <span className="flex items-center gap-2">
                         <MegaphoneIcon className="w-4 h-4" /> Broadcasts Feed
                     </span>
-                    {activeTab === 'broadcasts' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+                    {activeTab === 'broadcasts' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
                 </button>
                 <button
                     onClick={() => setActiveTab('settings')}
-                    className={`pb-4 px-2 font-bold text-sm tracking-wide transition-colors relative ${activeTab === 'settings' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`pb-4 px-2 font-bold text-sm tracking-wide transition-colors relative ${activeTab === 'settings' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                 >
                     <span className="flex items-center gap-2">
                         <ShieldCheckIcon className="w-4 h-4" /> Operating Hours
                     </span>
-                    {activeTab === 'settings' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+                    {activeTab === 'settings' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400" />}
                 </button>
             </motion.div>
 
             <AnimatePresence mode="wait">
                 {activeTab === 'broadcasts' && (
                     <motion.div key="broadcasts" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-8">
-                        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200">
+                        <div className="bg-white dark:bg-slate-900/90 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800">
                             <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-start md:items-end">
                                 <div className="flex-1 w-full">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Publish New Announcement</label>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Publish New Announcement</label>
                                     <input
                                         type="text"
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
                                         placeholder="e.g., The system will undergo maintenance at 10:00 PM."
-                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-700 transition-colors"
+                                        className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
                                     />
                                 </div>
                                 <button
@@ -230,46 +230,46 @@ export default function Announcements() {
                         </div>
 
                         <div className="space-y-4">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-2">Broadcast History</h3>
+                            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2 px-2">Broadcast History</h3>
                             {loadingAnnouncements ? (
                                 <div className="space-y-3">
                                     {[...Array(3)].map((_, i) => (
-                                        <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-slate-50 p-6 flex justify-between items-center gap-6">
+                                        <div key={i} className="animate-pulse rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-6 flex justify-between items-center gap-6">
                                             <div className="flex-1 space-y-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-3 w-12 bg-slate-200 rounded-full" />
-                                                    <div className="h-2.5 w-24 bg-slate-200 rounded-full" />
+                                                    <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                                                    <div className="h-2.5 w-24 bg-slate-200 dark:bg-slate-700 rounded-full" />
                                                 </div>
-                                                <div className={`h-4 bg-slate-200 rounded-full ${i === 0 ? 'w-3/4' : i === 1 ? 'w-5/6' : 'w-2/3'}`} />
+                                                <div className={`h-4 bg-slate-200 dark:bg-slate-700 rounded-full ${i === 0 ? 'w-3/4' : i === 1 ? 'w-5/6' : 'w-2/3'}`} />
                                             </div>
                                             <div className="flex items-center gap-3 shrink-0">
-                                                <div className="h-8 w-16 bg-slate-200 rounded-lg" />
-                                                <div className="h-8 w-8 bg-slate-200 rounded-lg" />
+                                                <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg" />
+                                                <div className="h-8 w-8 bg-slate-200 dark:bg-slate-700 rounded-lg" />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : announcements.length === 0 ? (
-                                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 font-medium">
+                                <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 font-medium">
                                     No announcements broadcasted yet.
                                 </div>
                             ) : (
                                 <AnimatePresence>
                                     {announcements.map((ann) => (
-                                        <motion.div key={ann.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`p-6 rounded-2xl border ${ann.is_active ? 'bg-indigo-50/50 border-indigo-100 shadow-sm' : 'bg-white border-slate-200 opacity-60'} flex justify-between items-center gap-6 group`}>
+                                        <motion.div key={ann.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`p-6 rounded-2xl border ${ann.is_active ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/50 shadow-sm' : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-60'} flex justify-between items-center gap-6 group`}>
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 text-xs font-bold mb-2">
-                                                    {ann.is_active ? <span className="text-emerald-500 flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> LIVE</span> : <span className="text-slate-400 flex items-center gap-1"><XCircleIcon className="w-4 h-4" /> HIDDEN</span>}
-                                                    <span className="text-slate-300">•</span>
-                                                    <span className="text-slate-400">{new Date(ann.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })}</span>
+                                                    {ann.is_active ? <span className="text-emerald-500 flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> LIVE</span> : <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1"><XCircleIcon className="w-4 h-4" /> HIDDEN</span>}
+                                                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                                                    <span className="text-slate-400 dark:text-slate-500">{new Date(ann.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })}</span>
                                                 </div>
-                                                <p className={`text-lg font-medium tracking-tight ${ann.is_active ? 'text-indigo-950' : 'text-slate-600'}`}>{ann.message}</p>
+                                                <p className={`text-lg font-medium tracking-tight ${ann.is_active ? 'text-indigo-950 dark:text-indigo-200' : 'text-slate-600 dark:text-slate-300'}`}>{ann.message}</p>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <button 
                                                     disabled={togglingId === ann.id}
                                                     onClick={() => toggleStatus(ann.id, ann.is_active)} 
-                                                    className={`px-4 py-2 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 min-w-[100px] ${ann.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} disabled:opacity-70 disabled:cursor-not-allowed`}
+                                                    className={`px-4 py-2 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 min-w-[100px] ${ann.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60'} disabled:opacity-70 disabled:cursor-not-allowed`}
                                                 >
                                                     {togglingId === ann.id ? (
                                                         <>
@@ -280,7 +280,7 @@ export default function Announcements() {
                                                         ann.is_active ? 'Hide' : 'Set Live'
                                                     )}
                                                 </button>
-                                                <button onClick={() => deleteAnnouncement(ann.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                                <button onClick={() => deleteAnnouncement(ann.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors">
                                                     <TrashIcon className="w-5 h-5" />
                                                 </button>
                                             </div>
@@ -294,20 +294,20 @@ export default function Announcements() {
 
                 {activeTab === 'settings' && (
                     <motion.div key="settings" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-8">
-                        <div className="bg-white p-8 md:p-10 rounded-[2.5rem] border-2 border-slate-300 shadow-sm flex flex-col relative">
+                        <div className="bg-white dark:bg-slate-900/90 p-8 md:p-10 rounded-[2.5rem] border-2 border-slate-300 dark:border-slate-800 shadow-sm flex flex-col relative">
                             <div className="mb-8">
-                                <h3 className="font-black text-slate-950 text-2xl tracking-tight leading-none mb-2 text-indigo-600 flex items-center gap-3">
+                                <h3 className="font-black text-slate-950 dark:text-slate-100 text-2xl tracking-tight leading-none mb-2 text-indigo-600 dark:text-indigo-400 flex items-center gap-3">
                                     <ShieldCheckIcon className="w-8 h-8 text-indigo-500" />
                                     Operating Hours Setting
                                 </h3>
-                                <p className="text-[12px] text-slate-600 font-bold uppercase tracking-widest mt-3">Configure standard operational variables.</p>
+                                <p className="text-[12px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mt-3">Configure standard operational variables.</p>
                             </div>
 
                             <form onSubmit={handleSaveSettings} className="space-y-6">
                                 <div>
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                                        <label className="block text-sm font-bold text-slate-700">Detailed Operating Hours</label>
-                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Click preset to quick-fill:</span>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Detailed Operating Hours</label>
+                                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Click preset to quick-fill:</span>
                                     </div>
 
                                     {/* Quick Preset Buttons */}
@@ -322,7 +322,7 @@ export default function Announcements() {
                                                 key={preset}
                                                 type="button"
                                                 onClick={() => setSettings({ ...settings, opening_hours: preset })}
-                                                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 border border-slate-200 transition-colors text-slate-600 cursor-pointer"
+                                                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 border border-slate-200 dark:border-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"
                                             >
                                                 + {preset}
                                             </button>
@@ -334,9 +334,9 @@ export default function Announcements() {
                                         value={settings.opening_hours} 
                                         onChange={e => setSettings({...settings, opening_hours: e.target.value})}
                                         placeholder="e.g. Monday — Friday: 8:00 AM - 5:00 PM"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-colors text-slate-800 text-sm"
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-colors text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm"
                                     />
-                                    <p className="text-xs text-slate-500 mt-2">This displays directly on the public Homepage and Contact Directories. You can pick a preset above or type any custom schedule.</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">This displays directly on the public Homepage and Contact Directories. You can pick a preset above or type any custom schedule.</p>
                                 </div>
 
                                 <div className="flex items-center gap-4">

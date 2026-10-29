@@ -1,17 +1,17 @@
-# Graph Report - civicore_laravel  (2026-10-15)
+# Graph Report - civicore_laravel  (2026-10-29)
 
 ## Corpus Check
-- 597 files · ~713,400 words
+- 607 files · ~723,660 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 27 file(s) not represented in the graph (top: (none) 16, .bat 3, .css 3)
+- Unclassified: 28 file(s) not represented in the graph (top: (none) 16, .bat 4, .css 3)
 
 ## Summary
-- 3197 nodes · 5257 edges · 541 communities (89 shown, 452 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 134 edges (avg confidence: 0.87)
+- 3242 nodes · 5383 edges · 550 communities (97 shown, 453 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 135 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d166f7e2`
+- Built from commit: `3c352c21`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,7 +28,7 @@
 - Issuances.jsx
 - api.php
 - updateElements
-- OcrFormPanel.jsx
+- BirthCertificateConfig.js
 - n
 - app.jsx
 - Illuminate\Support\Facades\DB
@@ -39,18 +39,17 @@
 - Illuminate\Database\Schema\Blueprint
 - tn
 - leaflet.js
-- TicketController.php
 - ro
 - .update
-- react
-- s
-- ua
+- framer-motion
+- .getDataset
+- oo
 - ProcessDocumentOcr.php
 - ._computeLabelItems
 - Closure
 - IssuanceController
 - TicketConfirmation
-- useData
+- react
 - a
 - l
 - Illuminate\Database\Eloquent\Model
@@ -58,18 +57,18 @@
 - devDependencies
 - u
 - CiviCORE - Civic Document Management & Civil Registry Platform
-- 3. Core Modules & Implementation Details
+- CiviCORE - Comprehensive System Architecture & Engineering Documentation
 - Illuminate\Support\Facades\Schema
 - Illuminate\Database\Migrations\Migration
 - .getDatasetMeta
-- User
+- UserController.php
 - hs
 - DocumentController.php
 - F
 - OcrParserService
 - UserFactory.php
 - CameraModal.jsx
-- preprocessUploadFile
+- Issuances.jsx
 - CertificatePdfGeneratorService
 - BackupController
 - Illuminate\Foundation\Testing\RefreshDatabase
@@ -77,11 +76,11 @@
 - PageTransition.jsx
 - composer.json
 - scripts
-- p
+- e
 - m
 - PrintApprovalTest
 - require-dev
-- .buildOrUpdateControllers
+- i
 - bi
 - ManualRegistrationDuplicateTest
 - AuthController
@@ -100,7 +99,7 @@
 - 0001_01_01_000000_create_users_table.php
 - 2026_04_09_000721_add_avatar_to_users_table.php
 - TestCase
-- vite.config.js
+- Carbon\Carbon
 - CertificatePdfTest
 - DocumentArchiveTest
 - AppServiceProvider
@@ -133,18 +132,19 @@
 - Database Directory (`database/`) Overview
 - Status: ✅ Complete
 - Icon Migration: Emojis to Heroicons
+- CiviCORE Hybrid Deployment Guide (Vercel + Local System)
 - 2026_10_15_000001_add_consent_form_path_to_tickets_table.php
-- Data Flow Diagram (DFD)
+- OcrFormPanel.jsx
 - Routes Directory (`routes/`) Overview
 - TODO Index
 - Status: 🔄 In Progress
 - 2026_03_24_000001_create_documents_table.php
 - 2026_03_24_000003_create_barangays_table.php
-- Bootstrap and Config Directories Overview
+- .config
 - ProcessDocumentOcr.php
 - OcrFormPanel.jsx
 - api.php
-- allowScripts
+- 2. The Data Flow: "How does data move through the system?"
 - scripts
 - ActivityLogController.php
 - AnnouncementController.php
@@ -529,17 +529,26 @@
 - roi_profiles.json
 - sworn statement that advice of parents or guardian has been asked.pdf
 - test
-- i
-- @testing-library/jest-dom
+- bo
+- m
+- vercel.json
+- Dashboard.jsx
+- 2. React Components (`resources/js/components/`)
+- So
+- 3. Core Modules & Implementation Details
+- CiviCORE Project Roadmap
+- 4. API Endpoints Reference
+- Key Defense Talking Points:
+- DatePickerInput.jsx
 
 ## God Nodes (most connected - your core abstractions)
 1. `tn` - 127 edges
 2. `n()` - 59 edges
-3. `react` - 51 edges
-4. `s()` - 45 edges
-5. `@heroicons/react` - 42 edges
-6. `framer-motion` - 42 edges
-7. `DocumentController` - 33 edges
+3. `react` - 57 edges
+4. `@heroicons/react` - 46 edges
+5. `framer-motion` - 46 edges
+6. `s()` - 45 edges
+7. `DocumentController` - 38 edges
 8. `o()` - 32 edges
 9. `i()` - 30 edges
 10. `ho()` - 30 edges
@@ -549,81 +558,81 @@
   defense_materials/system_architecture_and_data_flow.md → app/Http/Controllers/DocumentController.php
 - `Step B: The AI Extraction (Laravel to Python/Gemini)` --references--> `OcrParserService`  [INFERRED]
   defense_materials/system_architecture_and_data_flow.md → app/Services/OcrParserService.php
-- `3.4 User Account Management & Zero Data Loss Policy (`UserController.php`, `Accounts.jsx`)` --references--> `AuthController`  [INFERRED]
-  docs/SYSTEM_DOCUMENTATION.md → app/Http/Controllers/AuthController.php
-- `3. The Ticketing System Flow` --references--> `TicketConfirmation`  [INFERRED]
-  defense_materials/system_architecture_and_data_flow.md → app/Mail/TicketConfirmation.php
-- `How to Explain This DFD to the Panel:` --references--> `Documents()`  [INFERRED]
-  defense_materials/data_flow_diagram.md → resources/js/components/Documents.jsx
+- `3.1 Dual-Engine AI OCR Pipeline (`OcrFormPanel.jsx`, `ocr_server.py`, `SettingController.php`)` --references--> `normalizeDateToYMD()`  [INFERRED]
+  docs/SYSTEM_DOCUMENTATION.md → resources/js/components/OcrFormPanel.jsx
+- `10. Standardization & Data Integrity Rules` --references--> `normalizeDateToYMD()`  [INFERRED]
+  README.md → resources/js/components/OcrFormPanel.jsx
+- `Key Defense Talking Points:` --references--> `OcrFormPanel()`  [INFERRED]
+  defense_materials/file_breakdowns/resources/js/components/Mapping.jsx.md → resources/js/components/OcrFormPanel.jsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (541 total, 452 thin omitted)
+## Communities (550 total, 453 thin omitted)
 
 ### Community 0 - "chart.js"
 Cohesion: 0.04
-Nodes (26): at(), beforeUpdate(), Bt(), buildLookupTable(), cn(), Ft(), getDecimalForValue(), getValueForPixel() (+18 more)
+Nodes (30): beforeLayout(), Bt(), buildLookupTable(), cn(), et(), Ft(), getDecimalForValue(), getValueForPixel() (+22 more)
 
 ### Community 1 - "xt"
 Cohesion: 0.10
-Nodes (5): an(), as(), on, ts(), xt
+Nodes (6): an(), as(), on, rs(), ts(), xt
 
 ### Community 2 - ".update"
-Cohesion: 0.08
-Nodes (20): afterDraw(), afterEvent(), afterUpdate(), Ba(), Bi(), Ci(), configure(), Fi() (+12 more)
+Cohesion: 0.07
+Nodes (23): afterDraw(), afterEvent(), afterUpdate(), Ba(), Bi(), Ci(), configure(), Ee() (+15 more)
 
 ### Community 3 - "DocumentController"
-Cohesion: 0.09
-Nodes (5): DocumentController, DocumentPdfConverterService, DocumentController.php, Key Defense Talking Points:, Purpose & Strategy
+Cohesion: 0.08
+Nodes (6): DocumentController, DocumentPdfConverterService, DocumentController.php, Key Defense Talking Points:, Purpose & Strategy, DocumentOcrNameExtractionTest
 
 ### Community 5 - "jt"
 Cohesion: 0.07
 Nodes (13): ce(), color(), de, dt(), he(), It(), jt(), kt() (+5 more)
 
 ### Community 6 - "ho"
-Cohesion: 0.09
-Nodes (8): _generate(), _getTimestampsForTable(), ho(), init(), lt(), nt(), rn(), Vo()
+Cohesion: 0.10
+Nodes (7): _generate(), _getTimestampsForTable(), ho(), init(), nt(), rn(), Vo()
 
 ### Community 7 - "package.json"
-Cohesion: 0.10
-Nodes (20): private, $schema, type, babel-jest, @babel/preset-env, @babel/preset-react, boring-avatars, concurrently (+12 more)
+Cohesion: 0.07
+Nodes (27): allowScripts, esbuild@0.28.2, protobufjs@7.6.6, unrs-resolver@1.12.2, private, $schema, type, babel-jest (+19 more)
 
 ### Community 8 - "BackupService"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (6): BackupCommand, CleanupExpiredTokens, ListBackupsCommand, PruneBackupsCommand, RestoreCommand, BackupService
 
 ### Community 9 - "o"
-Cohesion: 0.19
-Nodes (3): Ae(), o(), So
+Cohesion: 0.14
+Nodes (5): Ae(), Ie(), o(), ra(), ze()
 
 ### Community 10 - "Issuances.jsx"
 Cohesion: 0.19
-Nodes (17): react-dom, Accounts(), ActionConfirmModal(), ArchiveManager(), Backups(), DocumentPreviewModal(), Documents(), IssuancePreviewModal() (+9 more)
+Nodes (16): react, react-dom, ActionConfirmModal(), ArchiveManager(), AttachDocumentModal(), Backups(), DocumentPreviewModal(), Documents() (+8 more)
 
 ### Community 11 - "api.php"
-Cohesion: 0.07
-Nodes (8): ActivityLogController, Controller, DashboardController, OcrController, PublicController, SettingController, TemplateController, VerificationController
+Cohesion: 0.08
+Nodes (8): ActivityLogController, BarangayController, Controller, DashboardController, OcrController, PublicController, TemplateController, VerificationController
 
 ### Community 12 - "updateElements"
 Cohesion: 0.10
-Nodes (20): aa(), Bn(), _calculateBarIndexPixels(), _calculateBarValuePixels(), _getAxis(), _getAxisCount(), getFirstScaleIdForIndexAxis(), getLabelAndValue() (+12 more)
+Nodes (21): aa(), Bn(), _calculateBarIndexPixels(), _calculateBarValuePixels(), _getAxis(), _getAxisCount(), getBasePixel(), getFirstScaleIdForIndexAxis() (+13 more)
 
-### Community 13 - "OcrFormPanel.jsx"
-Cohesion: 0.06
-Nodes (48): Key Defense Talking Points:, Mapping.jsx, Purpose & Strategy, CiviCORE Project Roadmap, Phase 1: Planning & Architecture Design, Phase 2: Core Development (The Foundation), Phase 3: AI OCR Integration (The Brain), Phase 4: Public Portal & Ticketing (The Expansion) (+40 more)
+### Community 13 - "BirthCertificateConfig.js"
+Cohesion: 0.23
+Nodes (14): BirthConfig, BirthTemplateOverlayFields, DeathConfig, DeathTemplateOverlayFields, MarriageConfig, MarriageTemplateOverlayFields, CITIZENSHIP_OPTIONS, COUNTRY_OPTIONS (+6 more)
 
 ### Community 14 - "n"
-Cohesion: 0.08
-Nodes (10): Be(), fn(), g(), gn(), g(), n(), ne(), numeric() (+2 more)
+Cohesion: 0.14
+Nodes (5): fn(), gn(), n(), parseObjectData(), resolveDataElementOptions()
 
 ### Community 15 - "app.jsx"
-Cohesion: 0.10
-Nodes (18): App(), getUser(), isAuthenticated(), ProtectedRoute(), root, ScrollToTop(), AboutPortal(), ProfileCard() (+10 more)
+Cohesion: 0.12
+Nodes (15): App(), getUser(), isAuthenticated(), ProtectedRoute(), root, ScrollToTop(), AboutPortal(), ProfileCard() (+7 more)
 
-### Community 16 - "Illuminate\Support\Facades\DB"
-Cohesion: 0.07
-Nodes (6): AnnouncementController, BarangayController, Announcement, DashboardSeeder, DatabaseSeeder, DummyDataSeeder
+### Community 17 - "TicketController"
+Cohesion: 0.14
+Nodes (4): {closure#3}(), {closure#4}(), TicketController, 3. The Ticketing System Flow
 
 ### Community 18 - "sn"
 Cohesion: 0.13
@@ -631,71 +640,63 @@ Nodes (3): addElements(), en, sn
 
 ### Community 19 - ".getProps"
 Cohesion: 0.11
-Nodes (23): ai(), average(), dataset(), getCenterPoint(), ha(), hi(), index(), inRange() (+15 more)
+Nodes (23): ai(), average(), beforeDraw(), dataset(), draw(), fo(), getCenterPoint(), getMaxOverflow() (+15 more)
 
 ### Community 20 - "i"
-Cohesion: 0.08
-Nodes (32): b(), bs(), ct(), dn(), e(), ei(), et(), fe() (+24 more)
+Cohesion: 0.13
+Nodes (14): bs(), ct(), es(), Fs(), ge(), is(), ks(), ms() (+6 more)
 
 ### Community 21 - "Illuminate\Database\Schema\Blueprint"
 Cohesion: 0.16
 Nodes (14): {closure#1}(), {closure#2}(), {closure#3}(), {closure#4}(), {closure#5}(), {closure#6}(), {closure#1}(), {closure#2}() (+6 more)
 
-### Community 22 - "tn"
-Cohesion: 0.10
-Nodes (3): Ie(), tn, ze()
-
 ### Community 23 - "leaflet.js"
 Cohesion: 0.08
-Nodes (6): a(), Ci(), l(), me(), x(), ze()
-
-### Community 24 - "TicketController.php"
-Cohesion: 0.12
-Nodes (3): {closure#3}(), {closure#4}(), {closure#9}()
+Nodes (9): a(), Ci(), ei(), ii(), l(), me(), ri(), x() (+1 more)
 
 ### Community 25 - "ro"
-Cohesion: 0.11
-Nodes (11): ao(), co(), da(), Do(), eo(), getBasePixel(), inXRange(), inYRange() (+3 more)
+Cohesion: 0.10
+Nodes (13): ao(), co(), da(), Do(), eo(), ha(), inXRange(), inYRange() (+5 more)
 
-### Community 27 - "react"
-Cohesion: 0.11
-Nodes (18): axios, framer-motion, @heroicons/react, html5-qrcode, react, AttachDocumentModal(), Barangays(), DECADES (+10 more)
-
-### Community 28 - "s"
-Cohesion: 0.07
-Nodes (23): beforeLayout(), bo, ge(), getRange(), Go(), H(), _i(), is() (+15 more)
-
-### Community 29 - "ua"
+### Community 27 - "framer-motion"
 Cohesion: 0.15
-Nodes (15): beforeDatasetDraw(), beforeDatasetsDraw(), ca, ea(), fa(), ga(), ia(), ma() (+7 more)
+Nodes (13): framer-motion, react-router-dom, AccessibilityContext, AccessibilityProvider(), ReadingGuideOverlay(), useAccessibility(), AccessibilityWidget(), BARANGAY_LIST (+5 more)
+
+### Community 28 - ".getDataset"
+Cohesion: 0.13
+Nodes (3): beforeUpdate(), initialize(), xn()
+
+### Community 29 - "oo"
+Cohesion: 0.09
+Nodes (19): beforeDatasetDraw(), beforeDatasetsDraw(), ca, ea(), fa(), ga(), ia(), io() (+11 more)
 
 ### Community 30 - "ProcessDocumentOcr.php"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (7): ProcessDocumentOcr, ProcessImageOcrJob, 1. Frontend: The User Interface (React + Vite), 2. Backend: The Application Logic & Queues (PHP + Laravel), 3. The OCR Engine: Dual-Engine AI & Image Processing (Python + Ollama), CiviCORE OCR Architecture & Technology Stack, Summary of the Data Flow
 
 ### Community 32 - "Closure"
-Cohesion: 0.26
-Nodes (5): AdminRoleMiddleware, RequireSessionAuth, SuperAdminRoleMiddleware, 3.4 User Account Management & Zero Data Loss Policy (`UserController.php`, `Accounts.jsx`), 4. Account Security & Soft-Disable Architecture (Zero Data Loss)
+Cohesion: 0.13
+Nodes (6): AdminRoleMiddleware, RequireSessionAuth, SuperAdminRoleMiddleware, User, 3.4 User Account Management & Zero Data Loss Policy (`UserController.php`, `Accounts.jsx`), 4. Account Security & Soft-Disable Architecture (Zero Data Loss)
 
 ### Community 34 - "TicketConfirmation"
-Cohesion: 0.23
-Nodes (3): TicketConfirmation, TicketDeclinedMail, VerificationCodeMail
+Cohesion: 0.14
+Nodes (4): TicketConfirmation, TicketDeclinedMail, VerificationCodeMail, Ticket
 
-### Community 35 - "useData"
-Cohesion: 0.25
-Nodes (12): react-router-dom, ActionCenter(), AnimatedCounter(), AnimatedStatCard(), Avatar(), Dashboard(), DataContext, useData() (+4 more)
+### Community 35 - "react"
+Cohesion: 0.24
+Nodes (13): @heroicons/react, Accounts(), ActionCenter(), Avatar(), AVATAR_LIBRARY, DataContext, useData(), Layout() (+5 more)
 
 ### Community 36 - "a"
-Cohesion: 0.09
-Nodes (16): a(), beforeDraw(), determineDataLimits(), Di(), draw(), fo(), getMaxOverflow(), io() (+8 more)
+Cohesion: 0.14
+Nodes (11): a(), determineDataLimits(), Di(), g(), g(), m(), p(), pi() (+3 more)
 
 ### Community 37 - "l"
-Cohesion: 0.18
-Nodes (12): buildTicks(), l(), ii(), mo(), parse(), parseArrayData(), parseObjectData(), parsePrimitiveData() (+4 more)
+Cohesion: 0.10
+Nodes (20): buildTicks(), getRange(), l(), _i(), ii(), ji(), jn(), label() (+12 more)
 
 ### Community 38 - "Illuminate\Database\Eloquent\Model"
-Cohesion: 0.07
-Nodes (10): ActivityLog, Document, DocumentHistoryLog, DocumentOcrPage, Issuance, Setting, Ticket, VerificationCode (+2 more)
+Cohesion: 0.08
+Nodes (9): ActivityLog, Document, DocumentHistoryLog, DocumentOcrPage, Issuance, Setting, VerificationCode, Entity Relationship Diagram (ERD) (+1 more)
 
 ### Community 39 - "dependencies"
 Cohesion: 0.12
@@ -706,16 +707,16 @@ Cohesion: 0.13
 Nodes (15): devDependencies, axios, babel-jest, @babel/preset-env, @babel/preset-react, concurrently, jest, jest-environment-jsdom (+7 more)
 
 ### Community 41 - "u"
-Cohesion: 0.13
-Nodes (5): addBox(), ke(), reset(), start(), u()
+Cohesion: 0.19
+Nodes (6): addBox(), removeBox(), reset(), start(), stop(), u()
 
 ### Community 42 - "CiviCORE - Civic Document Management & Civil Registry Platform"
-Cohesion: 0.06
-Nodes (35): 1. Clone the Repository, 1. Dual-Engine OCR Pipeline: Google Gemini AI & Local Ollama (Qwen2.5-VL), 2. Install Dependencies, 2. Scanned Image Post-Processing Studio (`ImagePostFxModal.jsx`), 3. Automated Backup & Disaster Recovery Architecture, 3. Local Ollama AI Installation & Setup (Offline Vision OCR), 4. Environment Configuration, 5. Citizen QR Ticketing & Queue Management (+27 more)
+Cohesion: 0.05
+Nodes (36): 10. Standardization & Data Integrity Rules, 1. Clone the Repository, 1. Dual-Engine OCR Pipeline: Google Gemini AI & Local Ollama (Qwen2.5-VL), 2. Install Dependencies, 2. Scanned Image Post-Processing Studio (`ImagePostFxModal.jsx`), 3. Automated Backup & Disaster Recovery Architecture, 3. Local Ollama AI Installation & Setup (Offline Vision OCR), 4. Environment Configuration (+28 more)
 
-### Community 43 - "3. Core Modules & Implementation Details"
-Cohesion: 0.08
-Nodes (24): 1. System Overview, 2.1 Backend Architecture, 2.2 Frontend Architecture, 2.3 OCR & AI Vision Architecture, 2. Technology Stack & Key Dependencies, 3.2 Scanned Image Post-Processing Studio (`ImagePostFxModal.jsx`), 3.3 Automated Backup & Disaster Recovery Architecture (`BackupService.php`, `Backups.jsx`), 3.5 Unified High-Aesthetic Pagination System (`Pagination.jsx`) (+16 more)
+### Community 43 - "CiviCORE - Comprehensive System Architecture & Engineering Documentation"
+Cohesion: 0.17
+Nodes (11): 1. System Overview, 2.1 Backend Architecture, 2.2 Frontend Architecture, 2.3 OCR & AI Vision Architecture, 2. Technology Stack & Key Dependencies, 5.1 Air-Gapped Storage & Data Protection, 5.2 Zero Data Loss Account Deactivation, 5.3 Disaster Recovery Runbook (+3 more)
 
 ### Community 44 - "Illuminate\Support\Facades\Schema"
 Cohesion: 0.15
@@ -725,25 +726,25 @@ Nodes (3): {closure#1}(), {closure#1}(), {closure#1}()
 Cohesion: 0.15
 Nodes (3): {closure#1}(), {closure#1}(), {closure#1}()
 
-### Community 46 - ".getDatasetMeta"
-Cohesion: 0.15
-Nodes (5): afterDatasetsUpdate(), es(), generateLabels(), onClick(), ra()
-
 ### Community 49 - "DocumentController.php"
-Cohesion: 0.17
-Nodes (5): {closure#1}(), {closure#3}(), {closure#5}(), {closure#6}(), {closure#7}()
+Cohesion: 0.16
+Nodes (5): {closure#1}(), {closure#4}(), {closure#6}(), {closure#7}(), {closure#8}()
 
 ### Community 50 - "F"
-Cohesion: 0.24
-Nodes (12): F(), G(), h(), j(), k(), ke(), ne(), e() (+4 more)
+Cohesion: 0.20
+Nodes (14): K(), li(), F(), G(), h(), j(), k(), ke() (+6 more)
 
 ### Community 53 - "CameraModal.jsx"
 Cohesion: 0.38
 Nodes (8): CameraModal(), CAPTURE_PROFILES, createCaptureEngine(), detectCaptureEnvironment(), detectDocumentCorners(), ensureOpenCvLoaded(), sortPoints(), ImagePostFxModal()
 
-### Community 54 - "preprocessUploadFile"
-Cohesion: 0.38
-Nodes (10): applyGrayscaleAndContrast(), canvasToBlob(), computeBlurScore(), computeBrightnessScore(), detectDeviceType(), getLongEdgeScale(), getOutputMimeType(), loadImageFromFile() (+2 more)
+### Community 54 - "Issuances.jsx"
+Cohesion: 0.13
+Nodes (19): Data Flow Diagram (DFD), How to Explain This DFD to the Panel:, Level 0 DFD: Context Diagram, Level 1 DFD: Sub-Process Breakdown, axios, IssuancePreviewModal(), Issuances(), NAIC_BARANGAYS (+11 more)
+
+### Community 59 - "Illuminate\Http\Request"
+Cohesion: 0.20
+Nodes (3): AnnouncementController, SettingController, UserController
 
 ### Community 61 - "composer.json"
 Cohesion: 0.22
@@ -753,25 +754,25 @@ Nodes (8): description, keywords, license, minimum-stability, name, prefer-stabl
 Cohesion: 0.22
 Nodes (9): scripts, dev, post-autoload-dump, post-create-project-cmd, post-root-package-install, post-update-cmd, pre-package-uninstall, setup (+1 more)
 
-### Community 63 - "p"
-Cohesion: 0.22
-Nodes (9): Ae(), be(), De(), ei(), Ie(), ii(), p(), pe() (+1 more)
+### Community 63 - "e"
+Cohesion: 0.13
+Nodes (17): at(), b(), dn(), e(), ei(), fe(), gi(), je() (+9 more)
 
 ### Community 64 - "m"
-Cohesion: 0.24
-Nodes (11): at(), d(), ht(), Li(), m(), v(), ve(), W() (+3 more)
+Cohesion: 0.25
+Nodes (9): at(), d(), ht(), i(), Li(), Mi(), v(), W() (+1 more)
 
 ### Community 66 - "require-dev"
 Cohesion: 0.25
 Nodes (8): require-dev, fakerphp/faker, laravel/pail, laravel/pint, laravel/sail, mockery/mockery, nunomaduro/collision, phpunit/phpunit
 
+### Community 67 - "i"
+Cohesion: 0.17
+Nodes (3): ke(), Pn(), i()
+
 ### Community 68 - "bi"
 Cohesion: 0.25
 Nodes (8): bi(), c(), e(), hi(), Pi(), Qe(), Ti(), u()
-
-### Community 70 - "AuthController"
-Cohesion: 0.17
-Nodes (9): AuthController, 1. The Tech Stack: "Why did we use these technologies?", 2. The Data Flow: "How does data move through the system?", 4. Authentication & Security (Login Flow), Step A: The Upload (React to Laravel), Step B: The AI Extraction (Laravel to Python/Gemini), Step C: The Verification (Laravel to React), Step D: Saving the Data (React to Laravel to Database) (+1 more)
 
 ### Community 71 - "Database Schema & Flow (civicore_new)"
 Cohesion: 0.18
@@ -794,12 +795,12 @@ Cohesion: 0.29
 Nodes (4): files, fs, path, targetClasses
 
 ### Community 77 - "Jt"
-Cohesion: 0.25
-Nodes (8): Ee(), Jt(), Le(), O(), Qt(), Re(), $t(), te()
+Cohesion: 0.22
+Nodes (9): Ae(), Ie(), Jt(), Le(), O(), Qt(), Re(), $t() (+1 more)
 
 ### Community 78 - "Mapping.jsx"
-Cohesion: 0.60
-Nodes (4): getNormalizedType(), Mapping(), normalizeBrgy(), staticBarangays
+Cohesion: 0.38
+Nodes (6): boring-avatars, leaflet, getNormalizedType(), Mapping(), normalizeBrgy(), staticBarangays
 
 ### Community 79 - "Application Directory (`app/`) Overview"
 Cohesion: 0.22
@@ -817,9 +818,9 @@ Nodes (6): require, barryvdh/laravel-dompdf, laravel/framework, laravel/tinker, 
 Cohesion: 0.33
 Nodes (3): {closure#1}(), {closure#2}(), {closure#3}()
 
-### Community 86 - "vite.config.js"
-Cohesion: 0.25
-Nodes (5): laravel-vite-plugin, @tailwindcss/vite, vite, @vitejs/plugin-react, localIp
+### Community 86 - "Carbon\Carbon"
+Cohesion: 0.21
+Nodes (3): DashboardSeeder, DatabaseSeeder, DummyDataSeeder
 
 ### Community 90 - "psr-4"
 Cohesion: 0.40
@@ -830,8 +831,8 @@ Cohesion: 0.25
 Nodes (7): Current Status:, Description, Next Steps:, Notes:, Status: 🔄 In Progress / ⏳ Pending / ✅ Complete, Steps to Complete:, Task: [Task Name Here]
 
 ### Community 105 - "Accounts.jsx"
-Cohesion: 0.21
-Nodes (7): AlertModal(), buttonColors, colors, icons, AVATAR_LIBRARY, ModalContext, ModalProvider()
+Cohesion: 0.17
+Nodes (13): html-to-image, qrcode.react, AlertModal(), buttonColors, colors, icons, Login(), ModalContext (+5 more)
 
 ### Community 108 - "Status: 🔄 In Progress"
 Cohesion: 0.25
@@ -873,9 +874,13 @@ Nodes (5): Current Status:, Next Steps:, Status: ✅ Complete, Steps Completed:,
 Cohesion: 0.33
 Nodes (5): Components to Update, Icon Mappings, Icon Migration: Emojis to Heroicons, Plan, Progress
 
-### Community 143 - "Data Flow Diagram (DFD)"
-Cohesion: 0.40
-Nodes (4): Data Flow Diagram (DFD), How to Explain This DFD to the Panel:, Level 0 DFD: Context Diagram, Level 1 DFD: Sub-Process Breakdown
+### Community 141 - "CiviCORE Hybrid Deployment Guide (Vercel + Local System)"
+Cohesion: 0.25
+Nodes (7): Architecture Summary, CiviCORE Hybrid Deployment Guide (Vercel + Local System), Plan A: Default (Cloudflare Tunnel to Local Laragon), Plan B: Cloud Database Fallback (24/7 Availability), Security Guards, Step 1: Deploy Frontend to Vercel, Step 2: Start Your Local Backend & Cloudflare Tunnel
+
+### Community 143 - "OcrFormPanel.jsx"
+Cohesion: 0.23
+Nodes (14): Step D: Saving the Data (React to Laravel to Database), computeAge(), FIELD_CONFIG, findClosestBarangay(), getFieldMaxLength(), getInitialFormData(), normalizeBrgyString(), normalizeDateToYMD() (+6 more)
 
 ### Community 144 - "Routes Directory (`routes/`) Overview"
 Cohesion: 0.40
@@ -889,9 +894,9 @@ Nodes (4): All TODO Lists, Folder Structure, How to Add New TODO, TODO Index
 Cohesion: 0.40
 Nodes (4): Files to Edit:, Issues to Fix:, Status: 🔄 In Progress, TODO: Fix Dashboard and UI Issues
 
-### Community 149 - "Bootstrap and Config Directories Overview"
-Cohesion: 0.50
-Nodes (3): 1. The `bootstrap/` Directory, 2. The `config/` Directory, Bootstrap and Config Directories Overview
+### Community 149 - ".config"
+Cohesion: 0.25
+Nodes (4): {closure#9}(), 1. The `bootstrap/` Directory, 2. The `config/` Directory, Bootstrap and Config Directories Overview
 
 ### Community 150 - "ProcessDocumentOcr.php"
 Cohesion: 0.50
@@ -905,37 +910,73 @@ Nodes (3): Key Defense Talking Points:, OcrFormPanel.jsx, Purpose & Strategy
 Cohesion: 0.50
 Nodes (3): api.php, Key Defense Talking Points:, Purpose & Strategy
 
-### Community 154 - "allowScripts"
-Cohesion: 0.50
-Nodes (4): allowScripts, esbuild@0.28.2, protobufjs@7.6.6, unrs-resolver@1.12.2
+### Community 154 - "2. The Data Flow: "How does data move through the system?""
+Cohesion: 0.29
+Nodes (6): 1. The Tech Stack: "Why did we use these technologies?", 2. The Data Flow: "How does data move through the system?", Step A: The Upload (React to Laravel), Step B: The AI Extraction (Laravel to Python/Gemini), Step C: The Verification (Laravel to React), System Architecture & Data Flow Guide
 
 ### Community 155 - "scripts"
-Cohesion: 0.50
-Nodes (4): scripts, build, dev, test
+Cohesion: 0.40
+Nodes (5): scripts, build, build:vercel, dev, test
 
-### Community 539 - "i"
-Cohesion: 1.00
-Nodes (3): i(), Mi(), zi()
+### Community 539 - "bo"
+Cohesion: 0.14
+Nodes (6): Be(), bo, H(), ne(), numeric(), xo()
+
+### Community 540 - "m"
+Cohesion: 0.31
+Nodes (9): be(), De(), m(), p(), pe(), ve(), xe(), ye() (+1 more)
+
+### Community 541 - "vercel.json"
+Cohesion: 0.40
+Nodes (4): buildCommand, cleanUrls, outputDirectory, rewrites
+
+### Community 542 - "Dashboard.jsx"
+Cohesion: 0.23
+Nodes (5): AnimatedCounter(), AnimatedStatCard(), Barangays(), Dashboard(), LoadingSpinner()
+
+### Community 543 - "2. React Components (`resources/js/components/`)"
+Cohesion: 0.18
+Nodes (10): 1. Base Structure, 2. React Components (`resources/js/components/`), A. Core Layout & Context, B. Main Pages & The Component Flow, C. Public Queueing System Components, D. Utilities & UI Polish, D. Utility Modals & Security Overlays, *Defense Tip for `resources/`:* (+2 more)
+
+### Community 544 - "So"
+Cohesion: 0.20
+Nodes (3): j(), ko(), So
+
+### Community 545 - "3. Core Modules & Implementation Details"
+Cohesion: 0.25
+Nodes (8): 3.1 Dual-Engine AI OCR Pipeline (`OcrFormPanel.jsx`, `ocr_server.py`, `SettingController.php`), 3.2 Scanned Image Post-Processing Studio (`ImagePostFxModal.jsx`), 3.3 Automated Backup & Disaster Recovery Architecture (`BackupService.php`, `Backups.jsx`), 3.5 Unified High-Aesthetic Pagination System (`Pagination.jsx`), 3.6 Citizen QR Code Ticketing & Queue Management (`PendingRequests.jsx`, `TicketScannerModal.jsx`), 3.7 Geospatial Demographic Mapping Dashboard (`Mapping.jsx`), 3.8 Custom Reporting & Export Suite (`Reports.jsx`), 3. Core Modules & Implementation Details
+
+### Community 546 - "CiviCORE Project Roadmap"
+Cohesion: 0.29
+Nodes (6): CiviCORE Project Roadmap, Phase 1: Planning & Architecture Design, Phase 2: Core Development (The Foundation), Phase 3: AI OCR Integration (The Brain), Phase 4: Public Portal & Ticketing (The Expansion), Phase 5: Polish, Security & Deployment (The Final Stretch)
+
+### Community 547 - "4. API Endpoints Reference"
+Cohesion: 0.33
+Nodes (6): 4.1 Authentication & Profile, 4.2 Document & OCR Operations, 4.3 QR Ticketing & Queue Management, 4.4 User & Role Management, 4.5 System Backup & Disaster Recovery, 4. API Endpoints Reference
+
+### Community 548 - "Key Defense Talking Points:"
+Cohesion: 0.50
+Nodes (3): Key Defense Talking Points:, Mapping.jsx, Purpose & Strategy
 
 ## Knowledge Gaps
 - **11 isolated node(s):** `@babel/preset-env`, `@babel/preset-react`, `babel-jest`, `concurrently`, `jest` (+6 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1415 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **452 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1433 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **453 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `OcrFormPanel()` connect `OcrFormPanel.jsx` to `useData`, `Issuances.jsx`, `DocumentController`, `CameraModal.jsx`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
+- **Why does `OcrFormPanel()` connect `OcrFormPanel.jsx` to `CiviCORE Project Roadmap`, `DocumentController`, `Key Defense Talking Points:`, `react`, `Issuances.jsx`, `CameraModal.jsx`, `Issuances.jsx`, `2. React Components (`resources/js/components/`)`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
 - **What connects `@babel/preset-env`, `@babel/preset-react`, `babel-jest` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `chart.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.037292025243832475 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.038295038295038296 - nodes in this community are weakly interconnected._
 - **Why does `Key Defense Talking Points:` connect `DocumentController` to `OcrFormPanel.jsx`?**
-  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Should `xt` be split into smaller, more focused modules?**
-  _Cohesion score 0.10160427807486631 - nodes in this community are weakly interconnected._
-- **Why does `tn` connect `tn` to `chart.js`, `.buildOrUpdateControllers`, `a`, `l`, `ho`, `o`, `u`, `.getDatasetMeta`, `sn`, `.getProps`, `i`, `ro`, `.update`, `s`, `._computeLabelItems`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+  _Cohesion score 0.09747899159663866 - nodes in this community are weakly interconnected._
+- **Why does `tn` connect `tn` to `chart.js`, `So`, `i`, `a`, `l`, `ho`, `u`, `o`, `.getDatasetMeta`, `sn`, `.getProps`, `i`, `ro`, `.update`, `bo`, `e`, `._computeLabelItems`?**
+  _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Should `.update` be split into smaller, more focused modules?**
-  _Cohesion score 0.07826546800634585 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07319347319347319 - nodes in this community are weakly interconnected._

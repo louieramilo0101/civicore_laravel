@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Bars3Icon, 
-    XMarkIcon 
+import {
+    Bars3Icon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 
 /** Provides the shared shell for unauthenticated portal pages. */
@@ -24,6 +24,14 @@ export default function PublicLayout({ children }) {
 
     return (
         <div className="min-h-screen flex flex-col bg-[#0f172a] relative overflow-hidden font-sans">
+            {/* Accessible Skip Link for Keyboard / Screen Reader Users */}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999999] focus:px-4 focus:py-2.5 focus:bg-[#d4a574] focus:text-slate-950 focus:font-black focus:text-xs focus:rounded-xl focus:shadow-2xl focus:outline-none"
+            >
+                Skip to main content / Lumaktaw sa nilalaman
+            </a>
+
             {/* Background Effects */}
             <div
                 className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -105,11 +113,10 @@ export default function PublicLayout({ children }) {
                                         key={link.path}
                                         to={link.path}
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                                            isActive
+                                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${isActive
                                                 ? 'bg-[#d4a574]/15 text-[#d4a574] border border-[#d4a574]/30'
                                                 : 'text-slate-300 hover:text-white hover:bg-white/5'
-                                        }`}
+                                            }`}
                                     >
                                         <span>{link.name}</span>
                                         {isActive && (
@@ -134,7 +141,7 @@ export default function PublicLayout({ children }) {
             </AnimatePresence>
 
             {/* Main Content */}
-            <main className="flex-1 relative z-10">
+            <main id="main-content" className="flex-1 relative z-10 focus:outline-none">
                 {children}
             </main>
 

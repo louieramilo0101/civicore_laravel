@@ -564,27 +564,27 @@ const Mapping = () => {
                             <MapPinIcon className="w-5 h-5 text-white" />
                         </span>
                         <div>
-                            <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight">
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-tight">
                                 Geospatial Analytics
                             </h2>
-                            <p className="text-slate-500 font-medium text-xs sm:text-sm hidden sm:block">Live distribution of civil records across Naic barangays.</p>
+                            <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm hidden sm:block">Live distribution of civil records across Naic barangays.</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => fetchData()}
-                            className="flex items-center gap-2 bg-[#0f172a] text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shrink-0"
+                            className="flex items-center gap-2 bg-[#0f172a] dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shrink-0 border border-transparent dark:border-slate-700"
                         >
                             <ArrowPathIcon className={`w-4 h-4 transition-transform duration-500 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
                             <span>Refresh</span>
                         </button>
                     </div>
                 </div>
-                <p className="text-slate-500 font-medium text-xs sm:hidden -mt-1 ml-1">Live distribution of civil records across Naic barangays.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:hidden -mt-1 ml-1">Live distribution of civil records across Naic barangays.</p>
 
                 {/* Filter Bar */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-2.5 sm:p-3 flex flex-wrap items-center gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mr-1">
+                <div className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-2.5 sm:p-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">
                         <CalendarDaysIcon className="w-3.5 h-3.5 text-[#d4a574]" />
                         Period
                     </div>
@@ -604,7 +604,7 @@ const Mapping = () => {
                                 className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                                     quickFilter === key
                                         ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-sm shadow-slate-800/15'
-                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300'
                                 }`}
                             >
                                 {label}
@@ -612,7 +612,7 @@ const Mapping = () => {
                         ))}
 
                         {/* Divider */}
-                        <div className="w-px h-5 bg-slate-200 mx-1 hidden sm:block" />
+                        <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
 
                         {/* Custom Range Toggle */}
                         <button
@@ -620,7 +620,7 @@ const Mapping = () => {
                             className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                                 quickFilter === 'custom'
                                     ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-sm shadow-[#d4a574]/20'
-                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
                             }`}
                         >
                             <CalendarDaysIcon className="w-3.5 h-3.5" />
@@ -635,9 +635,9 @@ const Mapping = () => {
                     {quickFilter !== 'all' && (
                         <button
                             onClick={clearFilter}
-                            className="ml-auto flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                            className="ml-auto flex items-center gap-1 text-xs font-bold text-slate-400 dark:text-slate-500 hover:text-rose-500 transition-colors cursor-pointer"
                         >
-                            <span className="w-4 h-4 rounded-full bg-slate-100 hover:bg-rose-50 flex items-center justify-center text-[10px] font-black transition-colors">×</span>
+                            <span className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 flex items-center justify-center text-[10px] font-black transition-colors">×</span>
                             Clear
                         </button>
                     )}
@@ -651,40 +651,40 @@ const Mapping = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.18 }}
-                            className="bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/60 p-4 flex flex-wrap items-end gap-4"
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 p-4 flex flex-wrap items-end gap-4"
                         >
                             <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From</label>
+                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">From</label>
                                 <input
                                     type="date"
                                     id="date-from"
                                     value={dateFrom}
                                     onChange={e => setDateFrom(e.target.value)}
                                     max={dateTo || undefined}
-                                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
+                                    className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
                                 />
                             </div>
                             <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To</label>
+                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">To</label>
                                 <input
                                     type="date"
                                     id="date-to"
                                     value={dateTo}
                                     onChange={e => setDateTo(e.target.value)}
                                     min={dateFrom || undefined}
-                                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
+                                    className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
                                 />
                             </div>
                             <button
                                 onClick={applyCustomRange}
                                 disabled={!dateFrom || !dateTo}
-                                className="flex items-center gap-2 bg-[#d4a574] hover:bg-[#c49060] disabled:bg-slate-200 disabled:text-slate-400 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-md shadow-[#d4a574]/20"
+                                className="flex items-center gap-2 bg-[#d4a574] hover:bg-[#c49060] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-md shadow-[#d4a574]/20"
                             >
                                 Apply Range
                             </button>
                             <button
                                 onClick={() => setShowDatePicker(false)}
-                                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer px-2 py-2"
+                                className="text-sm font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer px-2 py-2"
                             >
                                 Cancel
                             </button>
@@ -694,9 +694,9 @@ const Mapping = () => {
             </motion.div>
 
             {/* Top Stat Cards – Tabbed Panel */}
-            <motion.div variants={itemVariants} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden">
+            <motion.div variants={itemVariants} className="bg-white/70 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-slate-800 overflow-hidden">
                 {/* Tab switcher & Collapse Toggle */}
-                <div className="flex items-center justify-between border-b border-slate-100 px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-0 gap-2 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-0 gap-2 flex-wrap sm:flex-nowrap">
                     <div className="flex items-center gap-1">
                         {[
                             { key: 'records', label: 'Records Overview', shortLabel: 'Overview', icon: <ChartBarIcon className="w-4 h-4" /> },
@@ -711,7 +711,7 @@ const Mapping = () => {
                                 className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest border-b-2 transition-all cursor-pointer ${
                                     statsMode === tab.key
                                         ? 'border-[#d4a574] text-[#d4a574]'
-                                        : 'border-transparent text-slate-400 hover:text-slate-600'
+                                        : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                                 }`}
                             >
                                 <span>{tab.icon}</span>
@@ -725,17 +725,17 @@ const Mapping = () => {
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:flex items-center gap-1.5">
                             {quickFilter !== 'all' ? `Filtered · ${filteredApiData.length} records` : `All Time · ${filteredApiData.length} records`}
                             {unmappedCount > 0 && (
-                                <span className="text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                <span className="text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/50">
                                     {unmappedCount} Unmapped
                                 </span>
                             )}
                         </span>
                         <button
                             onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             title={isStatsCollapsed ? 'Show statistics' : 'Hide statistics'}
                         >
-                            <span className="text-[11px] text-slate-500 font-semibold">{isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}</span>
                             <ChevronDownIcon className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isStatsCollapsed ? '' : 'rotate-180'}`} />
                         </button>
                     </div>
@@ -756,27 +756,27 @@ const Mapping = () => {
                                 ) : statsMode === 'records' ? (
                                     /* ── Tab 1: Records Overview ── */
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 sm:gap-3">
-                                        <div className="bg-emerald-50 border border-emerald-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                            <p className="text-emerald-600 text-[10px] font-black uppercase tracking-wider mb-1">Uploaded Docs</p>
-                                            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600">{stats.totalDocs}</h3>
-                                            <p className="text-[9px] text-emerald-400 font-bold mt-1">Total in database</p>
+                                        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider mb-1">Uploaded Docs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">{stats.totalDocs}</h3>
+                                            <p className="text-[9px] text-emerald-400 dark:text-emerald-500/80 font-bold mt-1">Total in database</p>
                                         </div>
-                                        <div className="bg-[#d4a574]/10 border border-[#d4a574]/20 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                            <p className="text-[#c49060] text-[10px] font-black uppercase tracking-wider mb-1">Birth Certs</p>
+                                        <div className="bg-[#d4a574]/10 dark:bg-[#d4a574]/15 border border-[#d4a574]/20 dark:border-[#d4a574]/30 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-[#c49060] dark:text-[#d4a574] text-[10px] font-black uppercase tracking-wider mb-1">Birth Certs</p>
                                             <h3 className="text-2xl sm:text-3xl font-black text-[#d4a574]">{stats.birthCount}</h3>
-                                            <p className="text-[9px] text-[#d4a574]/60 font-bold mt-1">Live birth records</p>
+                                            <p className="text-[9px] text-[#d4a574]/60 dark:text-[#d4a574]/70 font-bold mt-1">Live birth records</p>
                                         </div>
-                                        <div className="bg-rose-50 border border-rose-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                            <p className="text-rose-500 text-[10px] font-black uppercase tracking-wider mb-1">Death Certs</p>
-                                            <h3 className="text-2xl sm:text-3xl font-black text-rose-500">{stats.deathCount}</h3>
-                                            <p className="text-[9px] text-rose-300 font-bold mt-1">Death certificates</p>
+                                        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/40 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-rose-500 dark:text-rose-400 text-[10px] font-black uppercase tracking-wider mb-1">Death Certs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-rose-500 dark:text-rose-400">{stats.deathCount}</h3>
+                                            <p className="text-[9px] text-rose-300 dark:text-rose-500/80 font-bold mt-1">Death certificates</p>
                                         </div>
-                                        <div className="bg-indigo-50 border border-indigo-100 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
-                                            <p className="text-indigo-500 text-[10px] font-black uppercase tracking-wider mb-1">Marriage Certs</p>
-                                            <h3 className="text-2xl sm:text-3xl font-black text-indigo-500">{stats.marriageCount}</h3>
-                                            <p className="text-[9px] text-indigo-300 font-bold mt-1">Marriage records</p>
+                                        <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 p-3 sm:p-4 rounded-2xl flex flex-col justify-center hover:scale-[1.02] transition-transform">
+                                            <p className="text-indigo-500 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider mb-1">Marriage Certs</p>
+                                            <h3 className="text-2xl sm:text-3xl font-black text-indigo-500 dark:text-indigo-400">{stats.marriageCount}</h3>
+                                            <p className="text-[9px] text-indigo-300 dark:text-indigo-500/80 font-bold mt-1">Marriage records</p>
                                         </div>
-                                        <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col justify-center relative overflow-hidden hover:scale-[1.02] transition-transform">
+                                        <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col justify-center relative overflow-hidden hover:scale-[1.02] transition-transform border border-slate-700/50">
                                             <div className="absolute right-[-10%] top-[-10%] w-24 h-24 bg-[#d4a574]/10 rounded-full blur-xl"></div>
                                             <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Top Barangay</p>
                                             <h3 className="text-base sm:text-lg font-black text-white truncate">{stats.mostActiveBrgy}</h3>
@@ -802,9 +802,9 @@ const Mapping = () => {
                                     const mostIssuedBrgy = Object.entries(brgyIssuedCounts).sort((a,b) => b[1]-a[1])[0];
 
                                     const categories = [
-                                        { label: 'Birth Issued',    count: issuedBirth,    color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]',     bg: 'bg-[#d4a574]/10  border-[#d4a574]/20',  emoji: <UserIcon className="w-5 sm:w-6 h-5 sm:h-6 text-[#d4a574]" /> },
-                                        { label: 'Death Issued',    count: issuedDeath,    color: 'text-rose-500',  barColor: 'bg-rose-500',       bg: 'bg-rose-50 border-rose-100',            emoji: <DocumentTextIcon className="w-5 sm:w-6 h-5 sm:h-6 text-rose-500" /> },
-                                        { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500', barColor: 'bg-indigo-500',    bg: 'bg-indigo-50 border-indigo-100',         emoji: <UsersIcon className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-500" /> },
+                                        { label: 'Birth Issued',    count: issuedBirth,    color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]',     bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/15 border-[#d4a574]/20 dark:border-[#d4a574]/30',  emoji: <UserIcon className="w-5 sm:w-6 h-5 sm:h-6 text-[#d4a574]" /> },
+                                        { label: 'Death Issued',    count: issuedDeath,    color: 'text-rose-500 dark:text-rose-400',  barColor: 'bg-rose-500',       bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/40',            emoji: <DocumentTextIcon className="w-5 sm:w-6 h-5 sm:h-6 text-rose-500 dark:text-rose-400" /> },
+                                        { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500 dark:text-indigo-400', barColor: 'bg-indigo-500',    bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/40',         emoji: <UsersIcon className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-500 dark:text-indigo-400" /> },
                                     ];
 
                                     return (
@@ -813,18 +813,18 @@ const Mapping = () => {
                                             {categories.map(cat => (
                                                 <div key={cat.label} className={`border p-3 sm:p-4 rounded-2xl flex flex-col gap-2 hover:scale-[1.02] transition-transform ${cat.bg}`}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{cat.label}</span>
+                                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{cat.label}</span>
                                                         <span className="text-base sm:text-lg">{cat.emoji}</span>
                                                     </div>
                                                     <h3 className={`text-3xl sm:text-4xl font-black tracking-tighter ${cat.color}`}>{cat.count}</h3>
                                                     {/* Progress bar relative to highest category */}
-                                                    <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mt-auto">
+                                                    <div className="h-1.5 bg-white/60 dark:bg-slate-800 rounded-full overflow-hidden mt-auto">
                                                         <div
                                                             className={`h-full ${cat.barColor} rounded-full transition-all duration-700`}
                                                             style={{ width: `${(cat.count / maxCount) * 100}%` }}
                                                         />
                                                     </div>
-                                                    <p className="text-[9px] font-bold text-slate-400">
+                                                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
                                                         {totalIssued > 0 ? Math.round((cat.count / totalIssued) * 100) : 0}% of total issued
                                                     </p>
                                                 </div>
@@ -832,15 +832,15 @@ const Mapping = () => {
 
                                             {/* Total + Most Issued Barangay */}
                                             <div className="grid grid-cols-2 sm:grid-cols-1 gap-2.5 sm:gap-3 col-span-1 sm:col-span-2 md:col-span-1">
-                                                <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col justify-center relative overflow-hidden flex-1 hover:scale-[1.02] transition-transform">
+                                                <div className="bg-gradient-to-br from-[#0f172a] to-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col justify-center relative overflow-hidden flex-1 hover:scale-[1.02] transition-transform border border-slate-700/50">
                                                     <div className="absolute right-[-10%] top-[-10%] w-16 h-16 bg-[#d4a574]/10 rounded-full blur-xl"></div>
                                                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Total Issued</p>
                                                     <h3 className="text-2xl sm:text-3xl font-black text-white">{totalIssued}</h3>
                                                 </div>
-                                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col justify-center flex-1 hover:scale-[1.02] transition-transform">
-                                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-0.5">Top Barangay</p>
-                                                    <p className="text-xs sm:text-sm font-black text-slate-800 truncate">{mostIssuedBrgy ? mostIssuedBrgy[0] : 'N/A'}</p>
-                                                    {mostIssuedBrgy && <p className="text-[9px] text-slate-400 font-bold">{mostIssuedBrgy[1]} issued</p>}
+                                                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 p-3 rounded-2xl flex flex-col justify-center flex-1 hover:scale-[1.02] transition-transform">
+                                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider mb-0.5">Top Barangay</p>
+                                                    <p className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">{mostIssuedBrgy ? mostIssuedBrgy[0] : 'N/A'}</p>
+                                                    {mostIssuedBrgy && <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{mostIssuedBrgy[1]} issued</p>}
                                                 </div>
                                             </div>
                                         </div>
@@ -862,10 +862,10 @@ const Mapping = () => {
                         exit={{ opacity: 0, y: -6, height: 0 }}
                         className="flex items-center gap-2 -mt-2 overflow-hidden"
                     >
-                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-[#d4a574]/10 to-[#d4a574]/5 border border-[#d4a574]/25 rounded-full text-xs font-bold text-[#c49060]">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-[#d4a574]/10 to-[#d4a574]/5 border border-[#d4a574]/25 rounded-full text-xs font-bold text-[#c49060] dark:text-[#d4a574]">
                             <CalendarDaysIcon className="w-3.5 h-3.5" />
                             <span>Showing:</span>
-                            <span className="text-[#0f172a] font-black">
+                            <span className="text-[#0f172a] dark:text-white font-black">
                                 {quickFilter === 'today' ? 'Today' :
                                  quickFilter === 'week' ? 'This Week' :
                                  quickFilter === 'month' ? 'This Month' :
@@ -873,15 +873,15 @@ const Mapping = () => {
                                  quickFilter === 'custom' ? `${dateFrom} → ${dateTo}` : ''}
                             </span>
                             <span className="text-slate-400 font-medium">·</span>
-                            <span className="text-slate-500 font-semibold">{filteredApiData.length} record{filteredApiData.length !== 1 ? 's' : ''}</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold">{filteredApiData.length} record{filteredApiData.length !== 1 ? 's' : ''}</span>
                             {unmappedCount > 0 && (
-                                <span className="text-amber-500 font-semibold text-[10px] bg-amber-50 px-1.5 rounded-sm border border-amber-100 ml-1">
+                                <span className="text-amber-500 dark:text-amber-400 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/60 px-1.5 rounded-sm border border-amber-100 dark:border-amber-800/60 ml-1">
                                     {unmappedCount} Unmapped
                                 </span>
                             )}
                             <button
                                 onClick={clearFilter}
-                                className="ml-1 w-4 h-4 rounded-full bg-[#d4a574]/20 hover:bg-rose-100 hover:text-rose-500 flex items-center justify-center text-[11px] font-black text-[#d4a574] transition-all cursor-pointer"
+                                className="ml-1 w-4 h-4 rounded-full bg-[#d4a574]/20 hover:bg-rose-100 dark:hover:bg-rose-950/50 hover:text-rose-500 flex items-center justify-center text-[11px] font-black text-[#d4a574] transition-all cursor-pointer"
                                 title="Clear filter"
                             >×</button>
                         </span>
@@ -893,7 +893,7 @@ const Mapping = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
                 {/* Map Section - 2 columns */}
-                <motion.div variants={itemVariants} className="lg:col-span-2 relative bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-1 flex flex-col overflow-hidden h-[400px] sm:h-[450px] lg:h-[480px]">
+                <motion.div variants={itemVariants} className="lg:col-span-2 relative bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-slate-800 p-1 flex flex-col overflow-hidden h-[400px] sm:h-[450px] lg:h-[480px]">
                     {/* Floating Map Controls */}
                     <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[1001] flex flex-col gap-1.5 sm:gap-2">
                         <button
@@ -901,7 +901,7 @@ const Mapping = () => {
                                 setShowRatioMode(!showRatioMode);
                                 if (showHeatmap) setShowHeatmap(false);
                             }}
-                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showRatioMode ? 'bg-[#d4a574] text-white border-[#d4a574]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showRatioMode ? 'bg-[#d4a574] text-white border-[#d4a574]' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                             title={showRatioMode ? "Switch to Standard View" : "Switch to Demographic Ratio Mode"}
                         >
                             <DocumentChartBarIcon className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -911,14 +911,14 @@ const Mapping = () => {
                                 setShowHeatmap(!showHeatmap);
                                 if (showRatioMode) setShowRatioMode(false);
                             }}
-                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showHeatmap ? 'bg-rose-500 text-white border-rose-400' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                            className={`p-2 sm:p-2.5 rounded-xl shadow-lg border transition-all cursor-pointer ${showHeatmap ? 'bg-rose-500 text-white border-rose-400' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                             title={showHeatmap ? "Switch to Pin View" : "Switch to Heatmap View"}
                         >
                             <FireIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         </button>
                         <button
                             onClick={resetMapView}
-                            className="bg-white p-2 sm:p-2.5 rounded-xl text-slate-600 shadow-lg border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
+                            className="bg-white dark:bg-slate-800 p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-200 shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
                             title="Reset Map View"
                         >
                             <ArrowsPointingOutIcon className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -926,8 +926,8 @@ const Mapping = () => {
                     </div>
 
                     {/* Legend Overlay */}
-                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[1001] bg-white/95 backdrop-blur-md p-2.5 sm:p-3 rounded-xl shadow-lg border border-white/60 min-w-[130px] sm:min-w-[145px]">
-                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[1001] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 sm:p-3 rounded-xl shadow-lg border border-white/60 dark:border-slate-800 min-w-[130px] sm:min-w-[145px]">
+                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 sm:mb-2">
                             {showRatioMode ? 'Demographic Ratio' : 'Legend'}
                         </p>
                         <div className="space-y-1 sm:space-y-1.5">
@@ -935,60 +935,60 @@ const Mapping = () => {
                                 <>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#10b981]"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">High Growth (&gt;1.2)</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">High Growth (&gt;1.2)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#6366f1]"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Balanced (0.8-1.2)</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Balanced (0.8-1.2)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-rose-500"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">High Mortality (&lt;0.8)</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">High Mortality (&lt;0.8)</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">No Records</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">No Records</span>
                                     </div>
                                 </>
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#d4a574]"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Births</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Births</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-rose-500"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Deaths</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Deaths</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-indigo-500"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">Marriages</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Marriages</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#0f172a] opacity-40"></span>
-                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700">No Records</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">No Records</span>
                                     </div>
                                 </>
                             )}
                         </div>
                     </div>
 
-                    <div id="mapContainer" className="w-full h-full rounded-xl bg-slate-100 z-0"></div>
+                    <div id="mapContainer" className="w-full h-full rounded-xl bg-slate-100 dark:bg-slate-950 z-0"></div>
                 </motion.div>
 
                 {/* Right Panel Segment - Charts or Barangay Distribution */}
-                <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-3.5 sm:p-5 flex flex-col h-[400px] sm:h-[450px] lg:h-[480px]">
+                <motion.div variants={itemVariants} className="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-slate-800 p-3.5 sm:p-5 flex flex-col h-[400px] sm:h-[450px] lg:h-[480px]">
                     {/* Tab Switcher */}
-                    <div className="flex bg-slate-100/60 p-1 gap-1 rounded-xl mb-4">
+                    <div className="flex bg-slate-100/60 dark:bg-slate-800/80 p-1 gap-1 rounded-xl mb-4">
                         <button
                             onClick={() => setRightPanelTab('charts')}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'charts' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'charts' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setRightPanelTab('barangay')}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'barangay' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${rightPanelTab === 'barangay' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
                             By Barangay
                         </button>
@@ -997,11 +997,11 @@ const Mapping = () => {
                     {rightPanelTab === 'charts' ? (
                         <>
                             <div className="mb-4">
-                                <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                                     <DocumentChartBarIcon className="w-4 h-4 text-[#d4a574]" />
                                     Monthly Trajectory
                                 </h3>
-                                <p className="text-[10px] text-slate-500 font-medium">6-month document processing trends</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">6-month document processing trends</p>
                             </div>
                             <div className="flex-1 relative w-full overflow-hidden">
                                 {isLoading ? (
@@ -1017,14 +1017,14 @@ const Mapping = () => {
                         <div className="flex flex-col flex-1 overflow-hidden">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                                         <MapPinIcon className="w-4 h-4 text-[#d4a574]" />
                                         By Barangay
                                     </h3>
-                                    <p className="text-[10px] text-slate-500 font-medium">Click any row to locate on map</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Click any row to locate on map</p>
                                 </div>
                                 {barangayRankings.length > 10 && (
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-lg">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
                                         {showAllBarangays ? barangayRankings.length : Math.min(10, barangayRankings.length)} of {barangayRankings.length}
                                     </span>
                                 )}
@@ -1032,12 +1032,12 @@ const Mapping = () => {
 
                             {isLoading ? (
                                 <div className="space-y-1.5">
-                                    {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />)}
+                                    {[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />)}
                                 </div>
                             ) : barangayRankings.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-                                    <MapPinIcon className="w-8 h-8 text-slate-200 mb-2" />
-                                    <p className="text-xs text-slate-400 font-semibold">No barangay records yet</p>
+                                    <MapPinIcon className="w-8 h-8 text-slate-200 dark:text-slate-700 mb-2" />
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">No barangay records yet</p>
                                 </div>
                             ) : (() => {
                                 const rankings = barangayRankings;
@@ -1049,21 +1049,21 @@ const Mapping = () => {
                                             <button
                                                 key={brgy.name}
                                                 onClick={() => locateBarangay(brgy.name)}
-                                                className="w-full text-left p-2.5 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-white hover:border-[#d4a574]/30 hover:shadow-sm transition-all cursor-pointer group/brgy shrink-0"
+                                                className="w-full text-left p-2.5 rounded-xl bg-slate-50/60 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 hover:border-[#d4a574]/30 hover:shadow-sm transition-all cursor-pointer group/brgy shrink-0"
                                             >
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0 ${
                                                             idx === 0 ? 'bg-amber-400 text-white'
-                                                            : idx === 1 ? 'bg-slate-300 text-slate-700'
+                                                            : idx === 1 ? 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                                                             : idx === 2 ? 'bg-orange-300 text-white'
-                                                            : 'bg-slate-100 text-slate-500'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                                                         }`}>{idx + 1}</span>
-                                                        <span className="text-xs font-bold text-slate-700 group-hover/brgy:text-[#d4a574] transition-colors truncate">{brgy.name}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover/brgy:text-[#d4a574] transition-colors truncate">{brgy.name}</span>
                                                     </div>
-                                                    <span className="text-xs font-black text-slate-800 shrink-0 ml-1">{brgy.total}</span>
+                                                    <span className="text-xs font-black text-slate-800 dark:text-slate-100 shrink-0 ml-1">{brgy.total}</span>
                                                 </div>
-                                                <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+                                                <div className="h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mb-1.5">
                                                     <div
                                                         className="h-full bg-gradient-to-r from-[#d4a574] to-[#c49060] rounded-full transition-all duration-500"
                                                         style={{ width: `${(brgy.total / maxTotal) * 100}%` }}
@@ -1073,7 +1073,7 @@ const Mapping = () => {
                                                     <span className="text-[9px] font-bold text-[#d4a574]">{brgy.births}B</span>
                                                     <span className="text-[9px] font-bold text-rose-400">{brgy.deaths}D</span>
                                                     <span className="text-[9px] font-bold text-indigo-400">{brgy.marriages}M</span>
-                                                    <span className="ml-auto text-[9px] font-bold text-slate-400 group-hover/brgy:text-[#d4a574] transition-colors flex items-center gap-0.5">
+                                                    <span className="ml-auto text-[9px] font-bold text-slate-400 dark:text-slate-500 group-hover/brgy:text-[#d4a574] transition-colors flex items-center gap-0.5">
                                                         <MapPinIcon className="w-3 h-3 text-[#d4a574]" /> Locate
                                                     </span>
                                                 </div>
@@ -1084,7 +1084,7 @@ const Mapping = () => {
                                         {rankings.length > 10 && (
                                             <button
                                                 onClick={() => setShowAllBarangays(v => !v)}
-                                                className="w-full mt-1 py-2 rounded-xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 hover:border-[#d4a574]/40 hover:text-[#d4a574] hover:bg-[#d4a574]/5 transition-all cursor-pointer uppercase tracking-widest shrink-0"
+                                                className="w-full mt-1 py-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-black text-slate-400 hover:border-[#d4a574]/40 hover:text-[#d4a574] hover:bg-[#d4a574]/5 transition-all cursor-pointer uppercase tracking-widest shrink-0"
                                             >
                                                 {showAllBarangays
                                                     ? `↑ Show Top 10 Only`
@@ -1101,24 +1101,24 @@ const Mapping = () => {
             </div>
 
             {/* Activity Table (Prints / Uploads) */}
-            <motion.div variants={itemVariants} className="bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden flex flex-col">
-                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <motion.div variants={itemVariants} className="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     {/* Simplified Tabs: Prints vs Uploads */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                             <button
                                 type="button"
                                 onClick={() => setTableTab('prints')}
                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                     tableTab === 'prints'
-                                        ? 'bg-white text-slate-800 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                 }`}
                             >
                                 <PrinterIcon className="w-3.5 h-3.5" />
                                 <span>Prints</span>
                                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                                    tableTab === 'prints' ? 'bg-[#d4a574]/20 text-[#9c6e3b]' : 'bg-slate-200 text-slate-600'
+                                    tableTab === 'prints' ? 'bg-[#d4a574]/20 text-[#9c6e3b] dark:text-[#d4a574]' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                     {filteredPrints.length}
                                 </span>
@@ -1128,14 +1128,14 @@ const Mapping = () => {
                                 onClick={() => setTableTab('uploads')}
                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                     tableTab === 'uploads'
-                                        ? 'bg-white text-slate-800 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                 }`}
                             >
                                 <ArrowUpTrayIcon className="w-3.5 h-3.5" />
                                 <span>Registry Records</span>
                                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                                    tableTab === 'uploads' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'
+                                    tableTab === 'uploads' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                     {filteredUploads.length}
                                 </span>
@@ -1149,14 +1149,14 @@ const Mapping = () => {
                     </div>
 
                     {/* Filter Pills */}
-                    <div className="flex bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto overflow-x-auto max-w-full">
+                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit self-start sm:self-auto overflow-x-auto max-w-full">
                         {['all', 'birth', 'death', 'marriage'].map(type => (
                             <button
                                 key={type}
                                 onClick={() => setActiveFilter(type)}
                                 className={`px-3 sm:px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${activeFilter === type
-                                        ? 'bg-white text-slate-800 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                     }`}
                             >
                                 {type}
@@ -1166,39 +1166,39 @@ const Mapping = () => {
                 </div>
 
                 {/* Mobile Card List (md:hidden) — No horizontal side-scrolling */}
-                <div className="md:hidden divide-y divide-slate-100">
+                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                     {isLoading ? (
                         <div className="p-4">
                             <SkeletonLoader type="table" rows={3} />
                         </div>
                     ) : activeTableData.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500 text-xs font-medium">
+                        <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs font-medium">
                             {tableTab === 'prints' ? 'No prints found.' : 'No registry records found.'}
                         </div>
                     ) : (
                         activeTableData.map((item, index) => {
                             const normType = getNormalizedType(item);
-                            const colorClass = normType === 'birth' ? 'text-[#d4a574] bg-[#d4a574]/10 border-[#d4a574]/20' : normType === 'death' ? 'text-rose-500 bg-rose-50 border-rose-100' : 'text-indigo-500 bg-indigo-50 border-indigo-100';
+                            const colorClass = normType === 'birth' ? 'text-[#d4a574] bg-[#d4a574]/10 border-[#d4a574]/20' : normType === 'death' ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50' : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50';
 
                             return (
-                                <div key={index} className="p-4 space-y-2.5 bg-white/40 hover:bg-slate-50/60 transition-colors">
+                                <div key={index} className="p-4 space-y-2.5 bg-white/40 dark:bg-slate-900/60 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <span className="font-bold text-slate-800 text-xs">{item.number}</span>
-                                            <div className="text-[10px] text-slate-400 font-medium">{item.date}</div>
+                                            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">{item.number}</span>
+                                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{item.date}</div>
                                         </div>
                                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${colorClass}`}>
                                             {item.type}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold text-slate-700">{item.name}</span>
-                                        <span className="text-slate-500 font-medium flex items-center gap-1 text-[11px]">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span>
+                                        <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 text-[11px]">
                                             <MapPinIcon className="w-3.5 h-3.5 text-[#d4a574]" />
                                             {item.barangay}
                                         </span>
                                     </div>
-                                    <div className="flex items-center justify-between pt-1 border-t border-slate-100/60">
+                                    <div className="flex items-center justify-between pt-1 border-t border-slate-100/60 dark:border-slate-800">
                                         <div className="flex items-center gap-1.5">
                                             <Avatar
                                                 size={18}
@@ -1206,12 +1206,12 @@ const Mapping = () => {
                                                 variant="beam"
                                                 colors={['#0f172a', '#d4a574', '#6366f1', '#f43f5e', '#10b981']}
                                             />
-                                            <span className="text-[11px] font-medium text-slate-500">{item.encoded_by || 'System'}</span>
+                                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{item.encoded_by || 'System'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
                                                 onClick={() => locateBarangay(item.barangay)}
-                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-[#d4a574]/10 text-slate-600 hover:text-[#d4a574] rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-[#d4a574]/10 text-slate-600 dark:text-slate-300 hover:text-[#d4a574] rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                 title="Locate on Map"
                                             >
                                                 <MagnifyingGlassIcon className="w-3.5 h-3.5" />
@@ -1221,7 +1221,7 @@ const Mapping = () => {
                                                 href={`/api/documents/view/${item.document_id || item.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-600 dark:text-slate-300 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                 title="View Full Document"
                                             >
                                                 <EyeIcon className="w-3.5 h-3.5" />
@@ -1239,7 +1239,7 @@ const Mapping = () => {
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
+                            <tr className="bg-slate-50 dark:bg-slate-950/70 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-bold border-b border-slate-200 dark:border-slate-800">
                                 <th className="p-4 pl-6">{tableTab === 'prints' ? 'Certificate No.' : 'Registry No.'}</th>
                                 <th className="p-4">Type</th>
                                 <th className="p-4">Subject Name</th>
@@ -1248,7 +1248,7 @@ const Mapping = () => {
                                 <th className="p-4 text-right pr-6">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {isLoading ? (
                                 <tr>
                                     <td colSpan="6" className="p-0">
@@ -1257,7 +1257,7 @@ const Mapping = () => {
                                 </tr>
                             ) : activeTableData.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="p-8 text-center text-slate-500">
+                                    <td colSpan="6" className="p-8 text-center text-slate-500 dark:text-slate-400">
                                         {tableTab === 'prints' ? 'No prints found.' : 'No registry records found.'}
                                     </td>
                                 </tr>
@@ -1267,12 +1267,12 @@ const Mapping = () => {
                                         key={index}
                                         onMouseEnter={() => setHoveredBrgy(item.barangay)}
                                         onMouseLeave={() => setHoveredBrgy(null)}
-                                        className={`hover:bg-slate-50 transition-colors text-xs group/row ${hoveredBrgy === item.barangay ? 'bg-slate-50' : ''}`}
+                                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-xs group/row ${hoveredBrgy === item.barangay ? 'bg-slate-50 dark:bg-slate-800/40' : ''}`}
                                     >
                                         <td className="p-4 pl-6">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-800">{item.number}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium">{item.date}</span>
+                                                <span className="font-bold text-slate-800 dark:text-slate-100">{item.number}</span>
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{item.date}</span>
                                             </div>
                                         </td>
                                         <td className="p-4">
@@ -1286,8 +1286,8 @@ const Mapping = () => {
                                                 );
                                             })()}
                                         </td>
-                                        <td className="p-4 font-semibold text-slate-700">{item.name}</td>
-                                        <td className="p-4 text-slate-600 font-medium">{item.barangay}</td>
+                                        <td className="p-4 font-semibold text-slate-700 dark:text-slate-200">{item.name}</td>
+                                        <td className="p-4 text-slate-600 dark:text-slate-300 font-medium">{item.barangay}</td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <Avatar
@@ -1296,14 +1296,14 @@ const Mapping = () => {
                                                     variant="beam"
                                                     colors={['#0f172a', '#d4a574', '#6366f1', '#f43f5e', '#10b981']}
                                                 />
-                                                <span className="font-medium text-slate-500">{item.encoded_by || 'System'}</span>
+                                                <span className="font-medium text-slate-500 dark:text-slate-400">{item.encoded_by || 'System'}</span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
                                             <div className="flex items-center justify-end gap-2 opacity-90 sm:opacity-0 sm:group-hover/row:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => locateBarangay(item.barangay)}
-                                                    className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-[#d4a574] transition-all cursor-pointer"
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-400 hover:text-[#d4a574] transition-all cursor-pointer"
                                                     title="Locate on Map"
                                                 >
                                                     <MagnifyingGlassIcon className="w-4 h-4" />
@@ -1312,7 +1312,7 @@ const Mapping = () => {
                                                     href={`/api/documents/view/${item.document_id || item.id}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-500 transition-all cursor-pointer"
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-500 transition-all cursor-pointer"
                                                     title="View Full Document"
                                                 >
                                                     <EyeIcon className="w-4 h-4" />

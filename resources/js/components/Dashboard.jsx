@@ -99,9 +99,14 @@ function Dashboard() {
         const Chart = window.Chart;
         if (!Chart) return;
 
+        const isDarkMode = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+        const gridColor = isDarkMode ? 'rgba(148, 163, 184, 0.12)' : '#e2e8f0';
+        const labelColor = isDarkMode ? '#94a3b8' : '#0f172a';
+        const chartBg = isDarkMode ? '#0f172a' : '#ffffff';
+
         Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-        Chart.defaults.color = '#020617';
-        Chart.defaults.font.size = 13;
+        Chart.defaults.color = labelColor;
+        Chart.defaults.font.size = 11;
         Chart.defaults.font.weight = '600';
 
         Object.values(chartRefs.current).forEach(chart => chart?.destroy());
@@ -123,19 +128,19 @@ function Dashboard() {
                         if (l === 'birth') return '#d4a574';
                         if (l === 'death') return '#f43f5e';
                         if (l === 'marriage') return '#6366f1';
-                        return '#0f172a';
+                        return isDarkMode ? '#38bdf8' : '#0f172a';
                     }),
-                    hoverOffset: 30,
-                    hoverBorderWidth: 4,
-                    hoverBorderColor: '#ffffff',
+                    hoverOffset: 12,
+                    hoverBorderWidth: 3,
+                    hoverBorderColor: chartBg,
                     borderWidth: 2,
-                    borderColor: '#ffffff'
+                    borderColor: chartBg
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '70%',
+                cutout: '72%',
                 animation: {
                     animateRotate: true,
                     animateScale: true
@@ -144,18 +149,18 @@ function Dashboard() {
                     legend: { 
                         position: 'bottom', 
                         labels: { 
-                            color: '#0f172a', 
-                            padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 25, 
-                            font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12, weight: '700' } 
+                            color: labelColor, 
+                            padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 14, 
+                            font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 11, weight: '700' } 
                         } 
                     },
                     tooltip: {
                         enabled: true,
                         backgroundColor: '#0f172a',
-                        titleFont: { size: 14, weight: 'bold' },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 10,
+                        titleFont: { size: 12, weight: 'bold' },
+                        bodyFont: { size: 11 },
+                        padding: 10,
+                        cornerRadius: 8,
                         displayColors: true
                     }
                 }
@@ -168,25 +173,25 @@ function Dashboard() {
                 labels: ['Complete', 'In Queue', 'Action Needed'],
                 datasets: [{
                     data: chartData?.processStatus?.data || [0, 0, 0],
-                    backgroundColor: ['#10b981', '#4f46e5', '#ef4444'],
-                    hoverBackgroundColor: ['#34d399', '#6366f1', '#f87171'],
-                    borderRadius: 8,
-                    barThickness: typeof window !== 'undefined' && window.innerWidth < 640 ? 26 : 50
+                    backgroundColor: ['#10b981', '#6366f1', '#ef4444'],
+                    hoverBackgroundColor: ['#34d399', '#818cf8', '#f87171'],
+                    borderRadius: 6,
+                    barThickness: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 32
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { color: '#0f172a', font: { weight: '700' } } },
-                    x: { grid: { display: false }, ticks: { color: '#0f172a', font: { weight: '700', size: 11 } } }
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, font: { weight: '600', size: 10 } } },
+                    x: { grid: { display: false }, ticks: { color: labelColor, font: { weight: '600', size: 10 } } }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: '#0f172a',
-                        padding: 12,
-                        cornerRadius: 10
+                        padding: 10,
+                        cornerRadius: 8
                     }
                 }
             }
@@ -201,43 +206,43 @@ function Dashboard() {
                         label: 'Births',
                         data: chartData?.trendChart?.births || [],
                         borderColor: '#d4a574',
-                        backgroundColor: 'rgba(212, 165, 116, 0.05)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(212, 165, 116, 0.08)',
+                        borderWidth: 2,
                         fill: true,
                         tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 8,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 5,
                         pointBackgroundColor: '#d4a574',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderColor: chartBg,
+                        pointBorderWidth: 1.5
                     },
                     {
                         label: 'Deaths',
                         data: chartData?.trendChart?.deaths || [],
                         borderColor: '#f43f5e',
-                        backgroundColor: 'rgba(244, 63, 94, 0.05)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(244, 63, 94, 0.08)',
+                        borderWidth: 2,
                         fill: true,
                         tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 8,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 5,
                         pointBackgroundColor: '#f43f5e',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderColor: chartBg,
+                        pointBorderWidth: 1.5
                     },
                     {
                         label: 'Marriages',
                         data: chartData?.trendChart?.marriages || [],
                         borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                        borderWidth: 2,
                         fill: true,
                         tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 8,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 5,
                         pointBackgroundColor: '#6366f1',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderColor: chartBg,
+                        pointBorderWidth: 1.5
                     }
                 ]
             },
@@ -245,15 +250,15 @@ function Dashboard() {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { color: '#0f172a', stepSize: 1 } },
-                    x: { grid: { display: false }, ticks: { color: '#0f172a', font: { weight: '700' } } }
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1, font: { size: 10 } } },
+                    x: { grid: { display: false }, ticks: { color: labelColor, font: { weight: '600', size: 10 } } }
                 },
                 plugins: {
-                    legend: { display: true, labels: { font: { weight: '700', size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12 } } },
+                    legend: { display: true, labels: { color: labelColor, font: { weight: '700', size: typeof window !== 'undefined' && window.innerWidth < 640 ? 9 : 10 } } },
                     tooltip: {
                         backgroundColor: '#0f172a',
-                        padding: 12,
-                        cornerRadius: 10
+                        padding: 10,
+                        cornerRadius: 8
                     }
                 }
             }
@@ -265,25 +270,25 @@ function Dashboard() {
                 labels: chartData?.accuracyChart?.labels || [],
                 datasets: [{
                     data: chartData?.accuracyChart?.data || [],
-                    backgroundColor: ['rgba(79, 70, 229, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(139, 92, 246, 0.8)'],
-                    hoverBorderWidth: 4,
+                    backgroundColor: ['rgba(99, 102, 241, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(168, 85, 247, 0.8)'],
+                    hoverBorderWidth: 3,
                     borderWidth: 2,
-                    borderColor: '#ffffff'
+                    borderColor: chartBg
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { r: { grid: { color: '#f1f5f9' }, ticks: { display: false } } },
+                scales: { r: { grid: { color: gridColor }, ticks: { display: false } } },
                 plugins: {
                     legend: { 
                         position: typeof window !== 'undefined' && window.innerWidth < 640 ? 'bottom' : 'right', 
-                        labels: { color: '#0f172a', font: { weight: '700', size: 10 } } 
+                        labels: { color: labelColor, font: { weight: '700', size: 9 } } 
                     },
                     tooltip: {
                         backgroundColor: '#0f172a',
-                        padding: 12,
-                        cornerRadius: 10
+                        padding: 10,
+                        cornerRadius: 8
                     }
                 }
             }
@@ -300,118 +305,118 @@ function Dashboard() {
     const itemVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-8 pb-12 max-w-7xl mx-auto font-['Inter'] min-h-screen relative z-10">
-            {/* High Contrast Welcome Hero */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 sm:space-y-5 pb-10 max-w-7xl mx-auto font-['Inter'] min-h-screen relative z-10 text-slate-800 dark:text-slate-100">
+            {/* Compact Welcome Hero Banner */}
             <motion.div
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
-                className="relative p-4 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-slate-900 border-2 border-slate-800 shadow-xl overflow-hidden group hover:border-indigo-500/50 transition-all duration-300"
+                className="relative p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg overflow-hidden group hover:border-indigo-500/40 transition-all duration-300"
             >
-                {/* Background Glows */}
+                {/* Subtle Background Glows */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className="absolute top-[-20%] left-[10%] w-[300px] h-[300px] bg-indigo-500/20 rounded-full blur-[100px] animate-pulse"></div>
-                    <div className="absolute bottom-[-20%] right-[20%] w-[250px] h-[250px] bg-emerald-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+                    <div className="absolute top-[-20%] left-[10%] w-[220px] h-[220px] bg-indigo-500/15 rounded-full blur-[80px]"></div>
+                    <div className="absolute bottom-[-20%] right-[20%] w-[180px] h-[180px] bg-emerald-500/10 rounded-full blur-[60px]"></div>
                 </div>
 
-                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-6">
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
                     <div>
-                        <div className="flex items-center gap-2 mb-1 sm:mb-4">
-                            <span className="text-indigo-200 text-xs sm:text-sm font-bold">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-indigo-300 text-xs font-bold tracking-wide">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         </div>
-                        <h1 className="text-2xl sm:text-5xl font-black text-white tracking-tight leading-tight mb-1 sm:mb-2">
+                        <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight leading-tight">
                             {greeting}, <span className="text-indigo-400 capitalize">{user.name?.split(' ')[0]}</span>
                         </h1>
-                        <p className="text-slate-400 text-xs sm:text-lg font-medium tracking-tight italic">"{motto}"</p>
+                        <p className="text-slate-400 text-xs sm:text-sm font-medium tracking-tight italic mt-0.5">"{motto}"</p>
                     </div>
-                    <div className="flex items-center gap-2.5 self-end md:self-auto">
-                        <a href="/" target="_blank" rel="noopener noreferrer" className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center gap-2 text-white font-bold text-xs sm:text-sm transition-colors backdrop-blur-sm cursor-pointer shadow-lg shadow-black/30 group">
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 opacity-80 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
+                        <a href="/" target="_blank" rel="noopener noreferrer" className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center gap-2 text-white font-bold text-xs transition-colors backdrop-blur-sm cursor-pointer shadow-md shadow-black/20 group">
+                            <svg className="w-4 h-4 opacity-80 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                             Live Website
                         </a>
-                        <div className="w-9 h-9 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-sm shadow-inner shadow-white/5">
-                            <ShieldCheckIcon className="w-5 h-5 sm:w-8 sm:h-8 text-indigo-400 animate-pulse drop-shadow-[0_0_15px_rgba(129,140,248,0.5)]" />
+                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-sm shadow-inner shadow-white/5">
+                            <ShieldCheckIcon className="w-5 h-5 text-indigo-400 drop-shadow-[0_0_12px_rgba(129,140,248,0.4)]" />
                         </div>
                     </div>
                 </div>
             </motion.div>
 
-            {/* Human-Centric Stats Grid - 2 columns on mobile, 4 on desktop */}
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
+            {/* Compact Human-Centric Stats Grid */}
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                 {[
-                    { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600', border: 'border-indigo-700', sub: 'Master' },
-                    { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-950', bg: 'bg-white', border: 'border-slate-300', sub: 'Action Needed' },
-                    { label: 'TOTAL ISSUED FILES', val: stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-950', bg: 'bg-white', border: 'border-slate-300', sub: 'Finalized' },
-                    { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-950', bg: 'bg-white', border: 'border-slate-300', sub: 'Current' }
+                    { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master' },
+                    { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Action Needed' },
+                    { label: 'TOTAL ISSUED FILES', val: stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Finalized' },
+                    { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Current' }
                 ].map((s, i) => (
                     <motion.div
                         key={i}
                         variants={itemVariants}
-                        className={`${s.bg} rounded-2xl sm:rounded-[2rem] p-3 sm:p-8 border-2 ${s.border} shadow-sm relative group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-out`}
+                        className={`${s.bg} rounded-xl sm:rounded-2xl p-3 sm:p-5 border ${s.border} shadow-xs relative group hover:shadow-md hover:scale-[1.01] transition-all duration-200 ease-out`}
                     >
-                        <div className="flex justify-between items-start mb-2 sm:mb-6 relative z-10">
-                            <div className={`w-7 h-7 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl flex items-center justify-center ${s.bg === 'bg-white' ? 'bg-slate-100' : 'bg-white/20'}`}>
-                                <s.icon className={`w-3.5 h-3.5 sm:w-6 sm:h-6 ${s.bg === 'bg-white' ? 'text-indigo-600' : 'text-white'}`} />
+                        <div className="flex justify-between items-start mb-2 sm:mb-3 relative z-10">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg.includes('bg-indigo-600') ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                <s.icon className={`w-4 h-4 ${s.bg.includes('bg-indigo-600') ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
                             </div>
                         </div>
-                        <div className="space-y-0.5 sm:space-y-1 relative z-10">
-                            <h3 className={`text-xl sm:text-5xl font-black tracking-tight ${s.color} tabular-nums leading-none`}>{s.val}</h3>
-                            <p className={`text-[9px] sm:text-xs font-bold uppercase tracking-wider mt-1 sm:mt-2 truncate ${s.bg === 'bg-white' ? 'text-slate-950' : 'text-white'}`}>{s.label}</p>
+                        <div className="space-y-0.5 relative z-10">
+                            <h3 className={`text-xl sm:text-3xl font-black tracking-tight ${s.color} tabular-nums leading-none`}>{s.val}</h3>
+                            <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-100' : 'text-slate-700 dark:text-slate-300'}`}>{s.label}</p>
                         </div>
-                        <p className={`text-[8px] sm:text-[10px] font-bold mt-1.5 sm:mt-4 uppercase tracking-tighter relative z-10 truncate ${s.bg === 'bg-white' ? 'text-slate-500' : 'text-indigo-100'}`}>{s.sub} Volume</p>
+                        <p className={`text-[9px] sm:text-[10px] font-bold mt-1.5 uppercase tracking-tight relative z-10 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-200/80' : 'text-slate-400 dark:text-slate-500'}`}>{s.sub} Volume</p>
                     </motion.div>
                 ))}
             </motion.div>
 
-            {/* Certificate Types Stats Grid - 3 columns side by side on mobile */}
+            {/* Compact Certificate Types Stats Grid */}
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-3 gap-2 sm:gap-6"
+                className="grid grid-cols-3 gap-2 sm:gap-4"
             >
                 {[
-                    { label: 'Birth', fullLabel: 'Birth Certificates', val: stats.birthsCount || 0, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', sub: 'Total Records' },
-                    { label: 'Death', fullLabel: 'Death Certificates', val: stats.deathsCount || 0, color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200', sub: 'Total Records' },
-                    { label: 'Marriage', fullLabel: 'Marriage Certificates', val: stats.marriagesCount || 0, color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', sub: 'Total Records' }
+                    { label: 'Birth', fullLabel: 'Birth Certificates', val: stats.birthsCount || 0, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/40', sub: 'Total Records' },
+                    { label: 'Death', fullLabel: 'Death Certificates', val: stats.deathsCount || 0, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/40', sub: 'Total Records' },
+                    { label: 'Marriage', fullLabel: 'Marriage Certificates', val: stats.marriagesCount || 0, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50/70 dark:bg-indigo-950/20 border-indigo-200/80 dark:border-indigo-800/40', sub: 'Total Records' }
                 ].map((s, i) => (
                     <motion.div
                         key={i}
                         variants={itemVariants}
-                        className={`${s.bg} rounded-xl sm:rounded-[2rem] p-2.5 sm:p-6 border-2 shadow-xs relative group hover:shadow-lg transition-all duration-300 ease-out flex flex-col justify-center`}
+                        className={`${s.bg} rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border shadow-xs relative group hover:shadow-md transition-all duration-200 ease-out flex flex-col justify-center`}
                     >
-                        <div className="space-y-0.5 sm:space-y-1 relative z-10">
-                            <h3 className={`text-xl sm:text-4xl font-black tracking-tight text-slate-950 tabular-nums leading-none`}>{s.val}</h3>
-                            <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1 sm:mt-2 truncate ${s.color}`}>
+                        <div className="space-y-0.5 relative z-10">
+                            <h3 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white tabular-nums leading-none">{s.val}</h3>
+                            <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1 truncate ${s.color}`}>
                                 <span className="sm:hidden">{s.label}</span>
                                 <span className="hidden sm:inline">{s.fullLabel}</span>
                             </p>
                         </div>
-                        <p className={`text-[8px] sm:text-[10px] font-black mt-1 sm:mt-3 uppercase tracking-tighter relative z-10 text-slate-400 truncate`}>{s.sub}</p>
+                        <p className="text-[8px] sm:text-[10px] font-bold mt-1 uppercase tracking-tight relative z-10 text-slate-400 dark:text-slate-500 truncate">{s.sub}</p>
                     </motion.div>
                 ))}
             </motion.div>
 
-            {/* Human-Friendly Charts Section - Row 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-8 relative z-10">
-                <motion.div variants={itemVariants} className="lg:col-span-1 bg-white p-3.5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border-2 border-slate-300 shadow-sm flex flex-col h-[270px] sm:h-[450px] lg:h-[520px] overflow-hidden relative group hover:shadow-xl transition-shadow duration-300">
-                    <div className="mb-2 sm:mb-10 text-center relative z-10">
-                        <h3 className="font-black text-slate-950 text-base sm:text-xl tracking-tight leading-none mb-1 sm:mb-2">Document Types</h3>
-                        <p className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-widest">Breakdown by Type</p>
+            {/* Compact Human-Friendly Charts Section - Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 relative z-10">
+                <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[280px] sm:h-[320px] overflow-hidden relative group hover:shadow-md transition-shadow duration-200">
+                    <div className="mb-2 text-center relative z-10">
+                        <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">Document Types</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Breakdown by Type</p>
                     </div>
                     <div className="flex-1 relative flex items-center justify-center z-10 min-h-0 w-full">
                         <canvas id="docTypesChart"></canvas>
-                        <div className="absolute pointer-events-none flex flex-col items-center justify-center mb-4 sm:mb-10 bg-white w-14 h-14 sm:w-24 sm:h-24 rounded-full border-4 border-slate-100 shadow-lg">
-                            <span className="text-lg sm:text-4xl font-black text-slate-950 tracking-tighter">{stats.totalDocs}</span>
+                        <div className="absolute pointer-events-none flex flex-col items-center justify-center mb-6 bg-white dark:bg-slate-900 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-slate-100 dark:border-slate-800 shadow-md">
+                            <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.totalDocs}</span>
                         </div>
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white p-3.5 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border-2 border-slate-300 shadow-sm flex flex-col h-[260px] sm:h-[450px] lg:h-[520px] overflow-hidden relative group hover:shadow-xl transition-shadow duration-300">
-                    <div className="flex justify-between items-center mb-2 sm:mb-10 relative z-10">
+                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[280px] sm:h-[320px] overflow-hidden relative group hover:shadow-md transition-shadow duration-200">
+                    <div className="flex justify-between items-center mb-3 relative z-10">
                         <div>
-                            <h3 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight leading-none mb-1 sm:mb-2">Processing Status</h3>
-                            <p className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-widest">Workflow progress</p>
+                            <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">Processing Status</h3>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Workflow progress</p>
                         </div>
                     </div>
                     <div className="flex-1 relative z-10 min-h-0 w-full">
@@ -420,13 +425,13 @@ function Dashboard() {
                 </motion.div>
             </div>
 
-            {/* Human-Friendly Charts Section - Row 2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-8 relative z-10">
-                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white p-3.5 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border-2 border-slate-300 shadow-sm flex flex-col h-[260px] sm:h-[420px] lg:h-[450px] overflow-hidden relative group hover:shadow-xl transition-shadow duration-300">
-                    <div className="flex justify-between items-center mb-2 sm:mb-10 relative z-10">
+            {/* Compact Human-Friendly Charts Section - Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 relative z-10">
+                <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[270px] sm:h-[300px] overflow-hidden relative group hover:shadow-md transition-shadow duration-200">
+                    <div className="flex justify-between items-center mb-3 relative z-10">
                         <div>
-                            <h3 className="font-black text-slate-950 text-base sm:text-2xl tracking-tight leading-none mb-1 sm:mb-2">Registration Timeline</h3>
-                            <p className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-widest">New records per month</p>
+                            <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">Registration Timeline</h3>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">New records per month</p>
                         </div>
                     </div>
                     <div className="flex-1 relative z-10 min-h-0 w-full">
@@ -434,10 +439,10 @@ function Dashboard() {
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="lg:col-span-1 bg-white p-3.5 sm:p-10 rounded-2xl sm:rounded-[2.5rem] border-2 border-slate-300 shadow-sm flex flex-col h-[270px] sm:h-[420px] lg:h-[450px] overflow-hidden relative group hover:shadow-xl transition-shadow duration-300">
-                    <div className="mb-2 sm:mb-8 relative z-10">
-                        <h3 className="font-black text-slate-950 text-base sm:text-xl tracking-tight leading-none mb-1 sm:mb-2">Records by Area</h3>
-                        <p className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-widest">Location distribution</p>
+                <motion.div variants={itemVariants} className="lg:col-span-1 bg-white dark:bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[270px] sm:h-[300px] overflow-hidden relative group hover:shadow-md transition-shadow duration-200">
+                    <div className="mb-2 relative z-10">
+                        <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">Records by Area</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Location distribution</p>
                     </div>
                     <div className="flex-1 relative z-10 min-h-0 w-full">
                         <canvas id="accuracyChart"></canvas>

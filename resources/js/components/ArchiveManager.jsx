@@ -38,6 +38,7 @@ const ArchiveManager = () => {
     const [archiveTypeFilter, setArchiveTypeFilter] = useState('all');
     const [archiveSubTab, setArchiveSubTab] = useState('scans');
     const [selectedArchiveIds, setSelectedArchiveIds] = useState([]);
+    const [isBarMinimized, setIsBarMinimized] = useState(false);
     const [isPolicyCollapsed, setIsPolicyCollapsed] = useState(() => {
         return typeof window !== 'undefined' && window.innerWidth < 768;
     });
@@ -346,41 +347,17 @@ const ArchiveManager = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 relative z-10 w-full sm:w-auto">
-                        {archiveSubTab !== 'tickets' && selectedArchiveIds.length > 0 && (
-                            <>
-                                <button
-                                    onClick={bulkRestoreArchived}
-                                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/10 transition-all cursor-pointer active:scale-95"
-                                >
-                                    <ArrowPathIcon className="w-4 h-4" />
-                                    Restore Selected ({selectedArchiveIds.length})
-                                </button>
-                                <button
-                                    onClick={canPurge ? bulkPurgeArchived : undefined}
-                                    disabled={!canPurge}
-                                    title={canPurge ? "Purge Selected" : "Only Admins and SuperAdmins can permanently purge records"}
-                                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
-                                        canPurge
-                                            ? "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/10 cursor-pointer active:scale-95"
-                                            : "bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed opacity-50"
-                                    }`}
-                                >
-                                    <TrashIcon className="w-4 h-4" />
-                                    Purge Selected ({selectedArchiveIds.length})
-                                </button>
-                            </>
-                        )}
                     </div>
                 </div>
 
                 {/* Info and Policy Warning Alert Box (Collapsible on mobile) */}
-                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-3 sm:p-5 text-xs text-indigo-700">
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-3 sm:p-5 text-xs text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800/50 dark:text-indigo-300">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-200 shrink-0">
+                            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-200 shrink-0 dark:bg-indigo-500/10 dark:border-indigo-700">
                                 <ShieldCheckIcon className="w-4 h-4 text-indigo-600" />
                             </div>
-                            <h4 className="font-bold text-xs sm:text-[13px] text-indigo-900 truncate">Archive Policy & Audit Trail Compliance</h4>
+                            <h4 className="font-bold text-xs sm:text-[13px] text-indigo-900 truncate dark:text-indigo-200">Archive Policy & Audit Trail Compliance</h4>
                         </div>
                         <button
                             type="button"
@@ -404,7 +381,7 @@ const ArchiveManager = () => {
                                 transition={{ duration: 0.2 }}
                                 className="overflow-hidden"
                             >
-                                <p className="leading-relaxed text-indigo-700/80 pt-2 sm:pt-2.5 pl-9 sm:pl-12 text-[11px] sm:text-xs">
+                                <p className="leading-relaxed text-indigo-700/80 pt-2 sm:pt-2.5 pl-9 sm:pl-12 text-[11px] sm:text-xs dark:text-indigo-300/80">
                                     CiviCORE maintains immutable transaction histories to ensure complete accountability for LCR and PSA state audit workflows.
                                     While scanned queues and database registry documents can be deleted and subsequently recovered in this panel, <strong>Activity Logs and printed transaction history cannot be deleted or purged</strong> by design.
                                 </p>
@@ -414,11 +391,11 @@ const ArchiveManager = () => {
                 </div>
 
                 {/* Main Filter & Table Card */}
-                <div className="bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-slate-100 flex flex-col overflow-hidden">
+                <div className="bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-slate-100 flex flex-col overflow-hidden dark:bg-slate-900/80 dark:border-slate-800">
                     {/* Controls Header */}
-                    <div className="p-3.5 sm:p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-slate-50/40">
+                    <div className="p-3.5 sm:p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-900/50">
                         {/* Subtabs inside the Archive Manager - Responsive 3-column grid */}
-                        <div className="grid grid-cols-3 bg-slate-100 p-1 gap-1 rounded-xl sm:rounded-2xl border border-slate-200/50 w-full sm:w-auto">
+                        <div className="grid grid-cols-3 bg-slate-100 dark:bg-slate-800 p-1 gap-1 rounded-xl sm:rounded-2xl border border-slate-200/50 dark:border-slate-700/50 w-full sm:w-auto">
                             <button
                                 onClick={() => {
                                     setArchiveSubTab('scans');
@@ -426,8 +403,8 @@ const ArchiveManager = () => {
                                 }}
                                 className={`px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl transition-all cursor-pointer text-center ${
                                     archiveSubTab === 'scans'
-                                        ? 'bg-white text-slate-800 shadow-xs border border-slate-200'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs border border-slate-200 dark:border-slate-700'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-700/40'
                                 }`}
                             >
                                 <span className="hidden sm:inline">Scans & Uploads</span>
@@ -440,8 +417,8 @@ const ArchiveManager = () => {
                                 }}
                                 className={`px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl transition-all cursor-pointer text-center ${
                                     archiveSubTab === 'registry'
-                                        ? 'bg-white text-slate-800 shadow-xs border border-slate-200'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs border border-slate-200 dark:border-slate-700'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-700/40'
                                 }`}
                             >
                                 <span className="hidden sm:inline">Master Registry</span>
@@ -454,8 +431,8 @@ const ArchiveManager = () => {
                                 }}
                                 className={`px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-black rounded-lg sm:rounded-xl transition-all cursor-pointer text-center ${
                                     archiveSubTab === 'tickets'
-                                        ? 'bg-white text-slate-800 shadow-xs border border-slate-200'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
+                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs border border-slate-200 dark:border-slate-700'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/40 dark:hover:bg-slate-700/40'
                                 }`}
                             >
                                 <span className="hidden sm:inline">Ticket Requests</span>
@@ -471,13 +448,13 @@ const ArchiveManager = () => {
                                     value={archiveSearch}
                                     onChange={e => setArchiveSearch(e.target.value)}
                                     placeholder="Search Archived Records…"
-                                    className="pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 w-full sm:w-56 font-medium shadow-xs"
+                                    className="pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 w-full sm:w-56 font-medium shadow-xs"
                                 />
                             </div>
                             <select
                                 value={archiveTypeFilter}
                                 onChange={e => setArchiveTypeFilter(e.target.value)}
-                                className="text-xs font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 cursor-pointer shadow-xs"
+                                className="text-xs font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 cursor-pointer shadow-xs"
                             >
                                 <option value="all">All Types</option>
                                 <option value="birth">Birth Certificates</option>
@@ -491,14 +468,14 @@ const ArchiveManager = () => {
                     {showLoading ? (
                         <div className="p-6 sm:p-8"><SkeletonLoader type="table" rows={6} /></div>
                     ) : activeArchiveList.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center p-10 sm:p-16 text-slate-400 text-center">
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-slate-50 flex items-center justify-center mb-3 sm:mb-4 border border-slate-100 shadow-xs">
-                                <TrashIcon className="w-7 h-7 sm:w-8 sm:h-8 text-slate-300" />
+                        <div className="flex flex-col items-center justify-center p-10 sm:p-16 text-slate-400 dark:text-slate-500 text-center">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-3 sm:mb-4 border border-slate-100 dark:border-slate-700 shadow-xs">
+                                <TrashIcon className="w-7 h-7 sm:w-8 sm:h-8 text-slate-300 dark:text-slate-600" />
                             </div>
-                            <p className="text-sm font-bold text-slate-600">
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
                                 {archiveSearch ? 'No matching archived records' : 'This section of the archive is empty'}
                             </p>
-                            <p className="text-xs mt-1 text-slate-400 max-w-[280px] leading-relaxed mx-auto">
+                            <p className="text-xs mt-1 text-slate-400 dark:text-slate-500 max-w-[280px] leading-relaxed mx-auto">
                                 {archiveSearch
                                     ? 'Try adjusting your search query or switching category filters.'
                                     : 'When records are deleted from active lists, they will be temporarily held here.'
@@ -511,12 +488,12 @@ const ArchiveManager = () => {
                             <div className="hidden md:block overflow-x-auto custom-scrollbar w-full">
                                 <table className="w-full text-left border-collapse table-auto">
                                     <thead>
-                                        <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                                        <tr className="bg-slate-50/50 dark:bg-slate-950/70 border-b border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider">
                                             <th className="px-6 py-4 w-12">
                                                 {archiveSubTab !== 'tickets' && (
                                                     <input
                                                         type="checkbox"
-                                                        className="rounded border-slate-300 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer"
+                                                        className="rounded border-slate-300 dark:border-slate-700 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer dark:bg-slate-950"
                                                         checked={selectedArchiveIds.length === activeArchiveList.length && activeArchiveList.length > 0}
                                                         onChange={() => toggleSelectAllArchive(activeArchiveList)}
                                                     />
@@ -529,7 +506,7 @@ const ArchiveManager = () => {
                                             <th className="px-6 py-4 text-right w-36">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
                                         {archiveSubTab === 'tickets' ? (
                                             paginatedArchiveList.map(ticket => {
                                                 let ticketDetails = ticket.details || {};
@@ -543,38 +520,38 @@ const ArchiveManager = () => {
                                                 const archiveReason = ticketDetails.deletion_reason || ticketDetails.cancellation_reason;
 
                                                 return (
-                                                <tr key={ticket.id} className="hover:bg-slate-50/40 transition-colors group">
+                                                <tr key={ticket.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group">
                                                     <td className="px-6 py-4"></td>
                                                     <td className="px-4 py-4">
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-sm font-bold text-slate-800 truncate max-w-xs">
+                                                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs">
                                                                 {ticket.client_name}
                                                             </span>
-                                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                                                                 Ticket: {ticket.ticket_number}
                                                             </span>
                                                             {archiveReason && (
-                                                                <span className="text-[11px] text-slate-500 font-semibold mt-1 max-w-sm truncate" title={archiveReason}>
+                                                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1 max-w-sm truncate" title={archiveReason}>
                                                                     Reason: {archiveReason}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-50 text-slate-500 border border-slate-100 rounded-md uppercase tracking-wide">
+                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 border border-slate-100 dark:border-slate-700 rounded-md uppercase tracking-wide">
                                                             {ticket.purpose}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-4">
                                                         <span className={`text-[10px] font-black px-2 py-0.5 border rounded-md uppercase tracking-wide ${
                                                             ticket.archive_status === 'deleted'
-                                                                ? 'bg-rose-50 text-rose-600 border-rose-100'
-                                                                : 'bg-amber-50 text-amber-600 border-amber-100'
+                                                                ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
+                                                                : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
                                                         }`}>
                                                             {ticket.archive_status === 'deleted' ? 'Deleted' : 'Declined'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 tabular-nums">
+                                                    <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 dark:text-slate-400 tabular-nums">
                                                         {ticket.deleted_at
                                                             ? new Date(ticket.deleted_at).toLocaleString()
                                                             : new Date(ticket.updated_at).toLocaleString()
@@ -584,7 +561,7 @@ const ArchiveManager = () => {
                                                         <div className="flex items-center justify-end gap-2">
                                                             <button
                                                                 onClick={() => restoreTicket(ticket.id)}
-                                                                className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white rounded-xl transition-all cursor-pointer active:scale-90"
+                                                                className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-xl transition-all cursor-pointer active:scale-90"
                                                                 title="Restore Ticket"
                                                             >
                                                                 <ArrowPathIcon className="w-4 h-4" />
@@ -595,8 +572,8 @@ const ArchiveManager = () => {
                                                                 title={canPurge ? "Permanently Delete" : "Only Admins and SuperAdmins can permanently purge tickets"}
                                                                 className={`p-2 border rounded-xl transition-all ${
                                                                     canPurge
-                                                                        ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white cursor-pointer active:scale-90"
-                                                                        : "text-slate-300 bg-slate-50 border-slate-200 cursor-not-allowed opacity-50"
+                                                                        ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-90"
+                                                                        : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
                                                                 }`}
                                                             >
                                                                 <TrashIcon className="w-4 h-4" />
@@ -608,43 +585,43 @@ const ArchiveManager = () => {
                                             })
                                         ) : (
                                             paginatedArchiveList.map(file => (
-                                                <tr key={file.id} className="hover:bg-slate-50/40 transition-colors group">
+                                                <tr key={file.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group">
                                                     <td className="px-6 py-4">
                                                         <input
                                                             type="checkbox"
-                                                            className="rounded border-slate-300 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer"
+                                                            className="rounded border-slate-300 dark:border-slate-700 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer dark:bg-slate-950"
                                                             checked={selectedArchiveIds.includes(file.id)}
                                                             onChange={() => toggleSelectArchive(file.id)}
                                                         />
                                                     </td>
                                                     <td className="px-4 py-4">
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-sm font-bold text-slate-800 truncate max-w-xs">
+                                                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs">
                                                                 {file.personName || file.name}
                                                             </span>
                                                             {file.personName && (
-                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                                                                     File: {file.name}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-50 text-slate-500 border border-slate-100 rounded-md uppercase tracking-wide">
+                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 border border-slate-100 dark:border-slate-700 rounded-md uppercase tracking-wide">
                                                             {file.type}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-4 text-xs font-semibold text-slate-500">
+                                                    <td className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                         {file.encoded_by || 'System'}
                                                     </td>
-                                                    <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 tabular-nums">
+                                                    <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 dark:text-slate-400 tabular-nums">
                                                         {new Date(file.deleted_at).toLocaleString()}
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <button
                                                                 onClick={() => restoreArchived(file.id)}
-                                                                className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white rounded-xl transition-all cursor-pointer active:scale-90"
+                                                                className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-xl transition-all cursor-pointer active:scale-90"
                                                                 title="Restore to Active Queue"
                                                             >
                                                                 <ArrowPathIcon className="w-4 h-4" />
@@ -655,8 +632,8 @@ const ArchiveManager = () => {
                                                                 title={canPurge ? "Permanently Delete" : "Only Admins and SuperAdmins can permanently purge records"}
                                                                 className={`p-2 border rounded-xl transition-all ${
                                                                     canPurge
-                                                                        ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white cursor-pointer active:scale-90"
-                                                                        : "text-slate-300 bg-slate-50 border-slate-200 cursor-not-allowed opacity-50"
+                                                                        ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-90"
+                                                                        : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
                                                                 }`}
                                                             >
                                                                 <TrashIcon className="w-4 h-4" />
@@ -671,7 +648,7 @@ const ArchiveManager = () => {
                             </div>
 
                             {/* Mobile Card View (Zero horizontal scrollbars) */}
-                            <div className="md:hidden divide-y divide-slate-100">
+                            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                                 {archiveSubTab === 'tickets' ? (
                                     paginatedArchiveList.map(ticket => {
                                         let ticketDetails = ticket.details || {};
@@ -685,16 +662,16 @@ const ArchiveManager = () => {
                                         const archiveReason = ticketDetails.deletion_reason || ticketDetails.cancellation_reason;
 
                                         return (
-                                            <div key={ticket.id} className="p-3.5 space-y-2 bg-white">
+                                            <div key={ticket.id} className="p-3.5 space-y-2 bg-white dark:bg-slate-900">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md uppercase tracking-wide shrink-0">
+                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md uppercase tracking-wide shrink-0">
                                                             {ticket.purpose}
                                                         </span>
                                                         <span className={`text-[10px] font-black px-2 py-0.5 border rounded-md uppercase tracking-wide shrink-0 ${
                                                             ticket.archive_status === 'deleted'
-                                                                ? 'bg-rose-50 text-rose-600 border-rose-100'
-                                                                : 'bg-amber-50 text-amber-600 border-amber-100'
+                                                                ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
+                                                                : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
                                                         }`}>
                                                             {ticket.archive_status === 'deleted' ? 'Deleted' : 'Declined'}
                                                         </span>
@@ -702,7 +679,7 @@ const ArchiveManager = () => {
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <button
                                                             onClick={() => restoreTicket(ticket.id)}
-                                                            className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-lg transition-all cursor-pointer active:scale-95 shadow-xs"
+                                                            className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-lg transition-all cursor-pointer active:scale-95 shadow-xs"
                                                             title="Restore Ticket"
                                                         >
                                                             <ArrowPathIcon className="w-3.5 h-3.5" />
@@ -713,8 +690,8 @@ const ArchiveManager = () => {
                                                             title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge"}
                                                             className={`p-1.5 border rounded-lg transition-all shadow-xs ${
                                                                 canPurge
-                                                                    ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95"
-                                                                    : "text-slate-300 bg-slate-50 border-slate-200 cursor-not-allowed opacity-50"
+                                                                    ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-95"
+                                                                    : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
                                                             }`}
                                                         >
                                                             <TrashIcon className="w-3.5 h-3.5" />
@@ -723,16 +700,16 @@ const ArchiveManager = () => {
                                                 </div>
 
                                                 <div className="space-y-0.5">
-                                                    <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">{ticket.client_name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{ticket.client_name}</p>
+                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
                                                         Ticket: {ticket.ticket_number}
                                                     </p>
                                                     {archiveReason && (
-                                                        <p className="text-[11px] text-slate-500 font-medium italic">
+                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic">
                                                             Reason: {archiveReason}
                                                         </p>
                                                     )}
-                                                    <p className="text-[10px] text-slate-400 font-mono">
+                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                                                         {ticket.deleted_at ? new Date(ticket.deleted_at).toLocaleString() : new Date(ticket.updated_at).toLocaleString()}
                                                     </p>
                                                 </div>
@@ -741,26 +718,26 @@ const ArchiveManager = () => {
                                     })
                                 ) : (
                                     paginatedArchiveList.map(file => (
-                                        <div key={file.id} className={`p-3.5 space-y-2 transition-colors ${selectedArchiveIds.includes(file.id) ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                                        <div key={file.id} className={`p-3.5 space-y-2 transition-colors ${selectedArchiveIds.includes(file.id) ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : 'bg-white dark:bg-slate-900'}`}>
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                     <input
                                                         type="checkbox"
-                                                        className="rounded border-slate-300 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer w-3.5 h-3.5 shrink-0"
+                                                        className="rounded border-slate-300 dark:border-slate-700 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer w-3.5 h-3.5 shrink-0 dark:bg-slate-950"
                                                         checked={selectedArchiveIds.includes(file.id)}
                                                         onChange={() => toggleSelectArchive(file.id)}
                                                     />
-                                                    <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md uppercase tracking-wide shrink-0">
+                                                    <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md uppercase tracking-wide shrink-0">
                                                         {file.type}
                                                     </span>
-                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
+                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider truncate">
                                                         {file.encoded_by || 'System'}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     <button
                                                         onClick={() => restoreArchived(file.id)}
-                                                        className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-lg transition-all cursor-pointer active:scale-95 shadow-xs"
+                                                        className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-lg transition-all cursor-pointer active:scale-95 shadow-xs"
                                                         title="Restore Record"
                                                     >
                                                         <ArrowPathIcon className="w-3.5 h-3.5" />
@@ -771,8 +748,8 @@ const ArchiveManager = () => {
                                                         title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge"}
                                                         className={`p-1.5 border rounded-lg transition-all shadow-xs ${
                                                             canPurge
-                                                                ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95"
-                                                                : "text-slate-300 bg-slate-50 border-slate-200 cursor-not-allowed opacity-50"
+                                                                ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-95"
+                                                                : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
                                                         }`}
                                                     >
                                                         <TrashIcon className="w-3.5 h-3.5" />
@@ -781,13 +758,13 @@ const ArchiveManager = () => {
                                             </div>
 
                                             <div className="pl-5.5 space-y-0.5">
-                                                <p className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">{file.personName || file.name}</p>
+                                                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{file.personName || file.name}</p>
                                                 {file.personName && (
-                                                    <p className="text-[10px] text-slate-400 font-medium">
+                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                                         File: {file.name}
                                                     </p>
                                                 )}
-                                                <p className="text-[10px] text-slate-400 font-mono">
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                                                     {new Date(file.deleted_at).toLocaleString()}
                                                 </p>
                                             </div>
@@ -812,6 +789,76 @@ const ArchiveManager = () => {
                     )}
                 </div>
             </motion.div>
+
+            {/* Floating Multi-Select Action Bar (Bottom Screen Dock) */}
+            <AnimatePresence>
+                {archiveSubTab !== 'tickets' && selectedArchiveIds.length > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{
+                            y: isBarMinimized ? 52 : 0,
+                            opacity: 1,
+                            scale: isBarMinimized ? 0.95 : 1
+                        }}
+                        exit={{ y: 100, opacity: 0 }}
+                        transition={{ type: 'tween', duration: 0.1, ease: 'circOut' }}
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4"
+                    >
+                        <div className={`bg-slate-900 border border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-4 flex items-center justify-between relative transition-all ${isBarMinimized ? 'opacity-50 hover:opacity-100' : ''}`}>
+                            {/* Toggle Button */}
+                            <button
+                                onClick={() => setIsBarMinimized(!isBarMinimized)}
+                                className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-slate-400 hover:text-white p-1.5 rounded-full shadow-lg transition-all cursor-pointer z-10"
+                                title={isBarMinimized ? "Expand Toolbar" : "Minimize Toolbar"}
+                            >
+                                {isBarMinimized ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
+                            </button>
+
+                            <div className="flex items-center gap-4 pl-4">
+                                <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-white text-xs font-black transition-all ${isBarMinimized ? 'scale-75' : ''}`}>
+                                    {selectedArchiveIds.length}
+                                </span>
+                                {!isBarMinimized && (
+                                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                                        <p className="text-white text-sm font-bold leading-none tracking-tight">Records Selected</p>
+                                        <button onClick={() => setSelectedArchiveIds([])} className="text-[10px] text-slate-400 hover:text-white font-bold uppercase tracking-widest mt-1 transition-colors">Clear Selection</button>
+                                    </motion.div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pr-2">
+                                {isBarMinimized ? (
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-4">Selection active</span>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={bulkRestoreArchived}
+                                            className="flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 cursor-pointer"
+                                            title="Restore Selected Records"
+                                        >
+                                            <ArrowPathIcon className="w-4 h-4" />
+                                            <span>Restore ({selectedArchiveIds.length})</span>
+                                        </button>
+                                        <button
+                                            onClick={canPurge ? bulkPurgeArchived : undefined}
+                                            disabled={!canPurge}
+                                            title={canPurge ? "Permanently Delete Selected Records" : "Only Admins and SuperAdmins can permanently delete records"}
+                                            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 ${
+                                                canPurge
+                                                    ? "bg-rose-500 hover:bg-rose-600 text-white shadow-rose-900/20 cursor-pointer"
+                                                    : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                                            }`}
+                                        >
+                                            <TrashIcon className="w-4 h-4" />
+                                            <span>Delete ({selectedArchiveIds.length})</span>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Action Center Confirm Dialog */}
             <ActionConfirmModal

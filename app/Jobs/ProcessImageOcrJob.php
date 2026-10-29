@@ -116,10 +116,10 @@ class ProcessImageOcrJob implements ShouldQueue
             // mapped and protected from being overwritten by PHP's regex guesses.
             $newFields = $this->normalizePythonFields($newFields);
 
-            // ── Always Run PHP Anchor Parser Fallback + Merge ─────────────────
-            // Even if Python returns fields, our PHP parser might find missing 
-            // data using its regex anchor strategy.
-            if (!empty($newText)) {
+            // ── Run PHP Anchor Parser Fallback only if newText is non-JSON plain text ──
+            $trimmedNewText = trim($newText);
+            $isJsonNewText = (str_starts_with($trimmedNewText, '{') && str_ends_with($trimmedNewText, '}')) || (str_starts_with($trimmedNewText, '[') && str_ends_with($trimmedNewText, ']'));
+            if (!empty($newText) && !$isJsonNewText) {
                 $parser = new \App\Services\OcrParserService();
                 $parsedData = $parser->parseText($newText);
                 $phpFields = $parsedData['extracted_fields'] ?? [];
@@ -242,6 +242,16 @@ class ProcessImageOcrJob implements ShouldQueue
 
         // Cleanup intermediate keys
         unset($fields['full_name'], $fields['date_of_birth'], $fields['place_of_birth'], $fields['mother_full_name'], $fields['father_full_name']);
+
+        // Purge any accidental JSON dumps or stringified JSON remnants from field values
+        foreach ($fields as $key => $val) {
+            if (is_string($val)) {
+                $trimmed = trim($val);
+                if (str_contains($trimmed, 'is_valid_document') || (str_starts_with($trimmed, '{') && str_contains($trimmed, '":'))) {
+                    $fields[$key] = null;
+                }
+            }
+        }
 
         return $fields;
     }

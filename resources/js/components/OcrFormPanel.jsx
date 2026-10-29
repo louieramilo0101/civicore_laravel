@@ -213,6 +213,10 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
     configSections.forEach(section => {
         section.fields.forEach(f => {
             let val = ef[f.key] === undefined || ef[f.key] === null ? '' : String(ef[f.key]).trim();
+            // Sanitize against any accidental JSON syntax / dumps
+            if (val.includes('{') || val.includes('}') || val.includes('":') || val.includes('is_valid_document')) {
+                val = '';
+            }
             if (f.type === 'date') {
                 val = normalizeDateToYMD(val);
             } else if (f.key === 'barangay' && val) {

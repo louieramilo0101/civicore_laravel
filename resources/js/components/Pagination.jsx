@@ -64,22 +64,22 @@ const Pagination = ({
     };
 
     return (
-        <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/80 backdrop-blur-sm border-t border-slate-200/80 rounded-b-2xl ${className}`}>
+        <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-t border-slate-200/80 dark:border-slate-800 rounded-b-2xl ${className}`}>
             {/* Left side: Showing X-Y of Z & Page size selector */}
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start text-xs font-semibold text-slate-500">
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start text-xs font-semibold text-slate-500 dark:text-slate-400">
                 <span>
-                    Showing <strong className="text-slate-800 tabular-nums">{startItem}</strong> to{' '}
-                    <strong className="text-slate-800 tabular-nums">{endItem}</strong> of{' '}
-                    <strong className="text-slate-800 tabular-nums">{totalItems}</strong> {itemLabel}
+                    Showing <strong className="text-slate-800 dark:text-slate-100 tabular-nums">{startItem}</strong> to{' '}
+                    <strong className="text-slate-800 dark:text-slate-100 tabular-nums">{endItem}</strong> of{' '}
+                    <strong className="text-slate-800 dark:text-slate-100 tabular-nums">{totalItems}</strong> {itemLabel}
                 </span>
 
                 {onPageSizeChange && (
-                    <div className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-slate-200">
-                        <span className="hidden md:inline text-[11px] text-slate-400 font-bold uppercase tracking-wider">Per page:</span>
+                    <div className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-slate-200 dark:sm:border-slate-800">
+                        <span className="hidden md:inline text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Per page:</span>
                         <select
                             value={pageSize}
                             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1 focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none cursor-pointer"
+                            className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1 focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none cursor-pointer"
                         >
                             {pageSizeOptions.map((opt) => (
                                 <option key={opt} value={opt}>
@@ -98,7 +98,7 @@ const Pagination = ({
                     type="button"
                     onClick={() => handlePageClick(1)}
                     disabled={safeCurrentPage === 1}
-                    className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all"
+                    className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all"
                     title="First Page"
                 >
                     <ChevronDoubleLeftIcon className="w-3.5 h-3.5" />
@@ -109,7 +109,7 @@ const Pagination = ({
                     type="button"
                     onClick={() => handlePageClick(safeCurrentPage - 1)}
                     disabled={safeCurrentPage === 1}
-                    className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all"
+                    className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all"
                     title="Previous Page"
                 >
                     <ChevronLeftIcon className="w-3.5 h-3.5" />
@@ -117,7 +117,7 @@ const Pagination = ({
                 </button>
 
                 {/* Mobile current indicator (e.g. 2 / 10) */}
-                <span className="sm:hidden px-3 text-xs font-bold text-slate-700 tabular-nums">
+                <span className="sm:hidden px-3 text-xs font-bold text-slate-700 dark:text-slate-200 tabular-nums">
                     {safeCurrentPage} / {totalPages}
                 </span>
 
@@ -125,7 +125,7 @@ const Pagination = ({
                 <div className="hidden sm:flex items-center gap-1">
                     {getPageNumbers().map((p, idx) => (
                         p === '...' ? (
-                            <span key={`dots-${idx}`} className="w-8 text-center text-xs text-slate-400 select-none">
+                            <span key={`dots-${idx}`} className="w-8 text-center text-xs text-slate-400 dark:text-slate-500 select-none">
                                 …
                             </span>
                         ) : (
@@ -135,8 +135,8 @@ const Pagination = ({
                                 onClick={() => handlePageClick(p)}
                                 className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
                                     p === safeCurrentPage
-                                        ? 'bg-[#0f172a] text-[#d4a574] shadow-sm ring-1 ring-[#0f172a]'
-                                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                                        ? 'bg-[#0f172a] text-[#d4a574] dark:bg-slate-800 dark:text-[#d4a574] shadow-sm ring-1 ring-[#0f172a] dark:ring-slate-700'
+                                        : 'bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                 }`}
                             >
                                 {p}
