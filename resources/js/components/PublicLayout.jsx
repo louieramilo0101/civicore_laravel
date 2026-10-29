@@ -150,28 +150,30 @@ export default function PublicLayout({ children }) {
                 {children}
             </main>
 
-            {/* Fixed Dark Mode + Accessibility Buttons — bottom-right */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
-                <button
-                    type="button"
-                    onClick={toggleTheme}
-                    aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
-                >
-                    {isDark
-                        ? <SunIcon className="w-5 h-5 text-[#d4a574]" />
-                        : <MoonIcon className="w-5 h-5 text-slate-300" />
-                    }
-                </button>
-                <button
-                    type="button"
-                    onClick={openSettings}
-                    aria-label="Open accessibility settings"
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
-                >
-                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                </button>
-            </div>
+            {/* Fixed Dark Mode + Accessibility Buttons — bottom-right (not shown on Landing page "/") */}
+            {location.pathname !== '/' && (
+                <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
+                    >
+                        {isDark
+                            ? <SunIcon className="w-5 h-5 text-[#d4a574]" />
+                            : <MoonIcon className="w-5 h-5 text-slate-300" />
+                        }
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openSettings}
+                        aria-label="Open accessibility settings"
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
+                    >
+                        <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                    </button>
+                </div>
+            )}
 
             {/* Footer */}
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">
