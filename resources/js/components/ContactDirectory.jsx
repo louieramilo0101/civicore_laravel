@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import SkeletonLoader from './SkeletonLoader';
 
@@ -58,8 +58,27 @@ export default function ContactDirectory() {
                     </motion.p>
                 </div>
 
-                {/* 3-Column Contact Channels Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 w-full pt-4">
+                {/* Contact Channels Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-6 w-full pt-4">
+                    
+                    {/* Location / Physical Address Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                        className="p-8 sm:p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5 hover:border-[#d4a574]/50 transition-all flex flex-col items-center gap-6 group relative overflow-hidden"
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-[50px] -z-0" />
+                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform text-white group-hover:text-[#d4a574]">
+                            <MapPinIcon className="w-8 h-8" />
+                        </div>
+                        <div className="z-10 text-center">
+                            <div className="text-[12px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-2">Office Address</div>
+                            <div className="text-white font-bold text-sm sm:text-base tracking-tight leading-relaxed">
+                                Naic Municipal Hall, Antero Soriano Highway, Naic, 4110, Cavite
+                            </div>
+                        </div>
+                    </motion.div>
                     
                     {/* Email Card */}
                     <motion.a 
