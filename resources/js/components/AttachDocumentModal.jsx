@@ -72,14 +72,38 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
     // Initialize suggested search query from ticket details when modal opens
     useEffect(() => {
         if (isOpen && ticket) {
-            let suggestedQuery = ticket.client_name || '';
-            if (ticket.purpose === 'birth' && ticket.details?.last_name) {
-                suggestedQuery = `${ticket.details.first_name || ''} ${ticket.details.last_name || ''}`.trim();
-            } else if (ticket.purpose === 'death' && ticket.details?.deceased_last_name) {
-                suggestedQuery = `${ticket.details.deceased_first_name || ''} ${ticket.details.deceased_last_name || ''}`.trim();
-            } else if (ticket.purpose === 'marriage' && ticket.details?.husband_last_name) {
-                suggestedQuery = `${ticket.details.husband_last_name || ''}`.trim();
+            let details = ticket.details;
+            if (typeof details === 'string') {
+                try {
+                    details = JSON.parse(details);
+                } catch (_) {
+                    details = {};
+                }
             }
+            details = details || {};
+
+            let suggestedQuery = '';
+            if (ticket.purpose === 'birth') {
+                if (details.last_name || details.first_name) {
+                    suggestedQuery = `${details.first_name || ''} ${details.last_name || ''}`.trim();
+                }
+            } else if (ticket.purpose === 'death') {
+                if (details.deceased_last_name || details.deceased_first_name) {
+                    suggestedQuery = `${details.deceased_first_name || ''} ${details.deceased_last_name || ''}`.trim();
+                }
+            } else if (ticket.purpose === 'marriage') {
+                if (details.husband_last_name || details.husband_first_name) {
+                    suggestedQuery = `${details.husband_first_name || ''} ${details.husband_last_name || ''}`.trim();
+                } else if (details.wife_last_name || details.wife_first_name) {
+                    suggestedQuery = `${details.wife_first_name || ''} ${details.wife_last_name || ''}`.trim();
+                }
+            }
+
+            // Fallback to client name if no document registrant name was found
+            if (!suggestedQuery && ticket.client_name) {
+                suggestedQuery = ticket.client_name.trim();
+            }
+
             setOcrQuery(suggestedQuery);
             setSelectedDoc(null);
             setPrintRemarks('');

@@ -55,10 +55,20 @@ class DocumentController extends Controller
         }
 
         if (!empty($search)) {
-            $conditions[] = "(d.name LIKE ? OR d.personName LIKE ? OR d.barangay LIKE ? OR d.extracted_fields LIKE ? OR d.raw_text LIKE ? OR d.ocr_text LIKE ? OR i.certNumber LIKE ?)";
-            $searchTerm = "%{$search}%";
-            for ($k = 0; $k < 7; $k++) {
-                $params[] = $searchTerm;
+            $rawSearch = trim($search);
+            // Split search into individual keywords (e.g. "Norcio Simeon" or "Ventura David")
+            $terms = array_values(array_filter(preg_split('/\s+/', $rawSearch)));
+
+            if (!empty($terms)) {
+                $termConditions = [];
+                foreach ($terms as $term) {
+                    $termConditions[] = "(d.name LIKE ? OR d.personName LIKE ? OR d.barangay LIKE ? OR d.extracted_fields LIKE ?)";
+                    $termWildcard = "%{$term}%";
+                    for ($k = 0; $k < 4; $k++) {
+                        $params[] = $termWildcard;
+                    }
+                }
+                $conditions[] = "(" . implode(" AND ", $termConditions) . ")";
             }
         }
 
