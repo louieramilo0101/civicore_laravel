@@ -580,9 +580,6 @@ export default function Landing() {
                             className="lg:col-span-7 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl shadow-xl group cursor-default"
                         >
                             <div className="space-y-4">
-                                <div className="w-12 h-12 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/25 flex items-center justify-center text-[#d4a574] group-hover:scale-105 transition-transform">
-                                    <DocumentTextIcon className="w-6 h-6" />
-                                </div>
                                 <div>
                                     <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block mb-1">
                                         {t.birthForm}
@@ -619,9 +616,6 @@ export default function Landing() {
                             className="lg:col-span-5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-[#d4a574]/40 rounded-2xl p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl shadow-xl group cursor-default"
                         >
                             <div className="space-y-4">
-                                <div className="w-12 h-12 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/25 flex items-center justify-center text-[#d4a574] group-hover:scale-105 transition-transform">
-                                    <HeartIcon className="w-6 h-6" />
-                                </div>
                                 <div>
                                     <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block mb-1">
                                         {t.marriageForm}
@@ -658,9 +652,6 @@ export default function Landing() {
                             className="lg:col-span-12 bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-[#d4a574]/30 rounded-2xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all backdrop-blur-xl shadow-xl cursor-default"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="w-11 h-11 rounded-xl bg-[#d4a574]/10 border border-[#d4a574]/20 flex items-center justify-center text-[#d4a574] shrink-0">
-                                    <DocumentCheckIcon className="w-5 h-5" />
-                                </div>
                                 <div className="space-y-1">
                                     <span className="text-[10px] font-bold text-[#d4a574] uppercase tracking-wider block">
                                         {t.deathForm}
