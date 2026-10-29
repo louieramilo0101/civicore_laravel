@@ -499,9 +499,9 @@ export default function Ticketing({ mode = 'portal' }) {
                                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                         Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
                                     </p>
-                                    <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-750/50 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
+                                    <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/90 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
+                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
                                                 <PaperClipIcon className="w-5 h-5 text-[#c49a67]" />
                                             </div>
                                             <div className="min-w-0 text-center sm:text-left">
@@ -512,8 +512,8 @@ export default function Ticketing({ mode = 'portal' }) {
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">Choose file or drag & drop</div>
-                                                        <div className="text-[10px] text-slate-400 dark:text-slate-400">Scanned letter or photo of authorization & ID</div>
+                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-100">Choose file or drag & drop</div>
+                                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Scanned letter or photo of authorization & ID</div>
                                                     </div>
                                                 )}
                                             </div>
@@ -523,12 +523,12 @@ export default function Ticketing({ mode = 'portal' }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => setConsentFile(null)}
-                                                    className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-bold cursor-pointer transition-all"
+                                                    className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold cursor-pointer transition-all"
                                                 >
                                                     Remove
                                                 </button>
                                             )}
-                                            <label className="px-4 py-2 rounded-xl bg-[#1a2f4a] hover:bg-slate-800 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
+                                            <label className="px-4 py-2 rounded-xl bg-[#1a2f4a] dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 border border-transparent dark:border-slate-600 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
                                                 <span>{consentFile ? 'Change File' : 'Browse File'}</span>
                                                 <input
                                                     type="file"
