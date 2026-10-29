@@ -3,13 +3,18 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Bars3Icon,
-    XMarkIcon
+    XMarkIcon,
+    SunIcon,
+    MoonIcon,
+    AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
+import { useAccessibility } from './AccessibilityContext.jsx';
 
 /** Provides the shared shell for unauthenticated portal pages. */
 export default function PublicLayout({ children }) {
     const location = useLocation();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { isDark, toggleTheme, openSettings } = useAccessibility();
 
     const navLinks = [
         { name: 'Home', path: '/' },
@@ -144,6 +149,29 @@ export default function PublicLayout({ children }) {
             <main id="main-content" className="flex-1 relative z-10 focus:outline-none">
                 {children}
             </main>
+
+            {/* Fixed Dark Mode + Accessibility Buttons — bottom-right */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+                <button
+                    type="button"
+                    onClick={toggleTheme}
+                    aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
+                >
+                    {isDark
+                        ? <SunIcon className="w-5 h-5 text-[#d4a574]" />
+                        : <MoonIcon className="w-5 h-5 text-slate-300" />
+                    }
+                </button>
+                <button
+                    type="button"
+                    onClick={openSettings}
+                    aria-label="Open accessibility settings"
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center border border-white/10 bg-[#0f172a]/80 backdrop-blur-md text-slate-200 hover:text-white hover:border-[#d4a574]/50 hover:bg-[#1a2f4a]/80 shadow-lg transition-all"
+                >
+                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                </button>
+            </div>
 
             {/* Footer */}
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">

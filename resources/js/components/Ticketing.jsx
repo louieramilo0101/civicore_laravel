@@ -50,7 +50,7 @@ export default function Ticketing({ mode = 'portal' }) {
     const [clientName, setClientName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
-    const [purpose, setPurpose] = useState('birth');
+    const [purpose, setPurpose] = useState('');
     const [consentFile, setConsentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -131,6 +131,11 @@ export default function Ticketing({ mode = 'portal' }) {
 
         if (!clientName.trim()) {
             showAlert({ title: 'Validation Error', message: 'Please enter your name.', type: 'danger' });
+            return;
+        }
+
+        if (!purpose) {
+            showAlert({ title: 'Validation Error', message: 'Please select a document type before submitting.', type: 'danger' });
             return;
         }
 
@@ -586,6 +591,14 @@ export default function Ticketing({ mode = 'portal' }) {
                                 <DocumentTextIcon className="w-5 h-5 text-[#d4a574]" />
                                 Provide Registry Information (To Speed Up Processing)
                             </h3>
+
+                            {!purpose && (
+                                <div className="py-8 text-center text-slate-400">
+                                    <DocumentTextIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                                    <p className="text-sm font-semibold">Select a document type above to continue</p>
+                                    <p className="text-xs mt-1 opacity-70">Fields will appear after you choose Birth, Death, or Marriage</p>
+                                </div>
+                            )}
 
                             {purpose === 'birth' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
