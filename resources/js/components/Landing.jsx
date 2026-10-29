@@ -455,7 +455,7 @@ export default function Landing() {
                                     </div>
                                 </div>
                             ) : config?.opening_hours ? (
-                                <Tooltip content={t.hoursTooltip} position="top" className="w-full">
+                                <Tooltip content={t.hoursTooltip} position="top" className="w-full block">
                                     <motion.div
                                         variants={itemVars}
                                         whileHover={{ y: -2, borderColor: 'rgba(212,165,116,0.3)' }}

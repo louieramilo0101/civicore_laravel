@@ -67,7 +67,7 @@ export default function Tooltip({
 
     return (
         <span
-            className="relative inline-flex items-center"
+            className={`relative inline-flex items-center ${className}`}
             onMouseEnter={showTooltip}
             onMouseLeave={hideTooltip}
             onFocus={showTooltip}
@@ -88,7 +88,7 @@ export default function Tooltip({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.15, ease: 'easeOut' }}
-                        className={`absolute z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 text-[11px] font-semibold text-slate-100 bg-slate-900/95 border border-slate-700/70 shadow-2xl backdrop-blur-md rounded-xl ${positionStyles} ${className}`}
+                        className={`absolute z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 text-[11px] font-semibold text-slate-100 bg-slate-900/95 border border-slate-700/70 shadow-2xl backdrop-blur-md rounded-xl ${positionStyles}`}
                     >
                         {resolvedContent}
                         <span className={`absolute w-0 h-0 pointer-events-none ${arrowStyles}`} />
