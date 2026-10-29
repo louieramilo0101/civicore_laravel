@@ -388,7 +388,7 @@ export default function Ticketing({ mode = 'portal' }) {
                 <div className="mb-6">
                     <Link
                         to="/"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-[#d4a574] transition-colors bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm"
+                        className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-[#d4a574] dark:hover:text-[#d4a574] transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"
                     >
                         <span>←</span> Back to Home
                     </Link>
@@ -487,33 +487,33 @@ export default function Ticketing({ mode = 'portal' }) {
                                 </div>
 
                                 {/* Consent / Authorization Document Upload */}
-                                <div className="md:col-span-3 space-y-2 pt-2 border-t border-slate-100">
+                                <div className="md:col-span-3 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                                             <PaperClipIcon className="w-4 h-4 text-[#c49a67]" />
                                             Authorization Letter & Valid ID
-                                            <span className="text-[10px] text-slate-400 font-normal">(Required if NOT parent or child)</span>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Required if NOT parent or child)</span>
                                         </label>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">PDF, JPG, PNG up to 10MB</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-500">
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                         Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
                                     </p>
-                                    <div className="relative border-2 border-dashed border-slate-200 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 hover:bg-slate-50 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
+                                    <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-750/50 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
+                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
                                                 <PaperClipIcon className="w-5 h-5 text-[#c49a67]" />
                                             </div>
                                             <div className="min-w-0 text-center sm:text-left">
                                                 {consentFile ? (
                                                     <div>
-                                                        <div className="text-xs font-bold text-slate-900 truncate max-w-xs">{consentFile.name}</div>
-                                                        <div className="text-[10px] text-emerald-600 font-bold">{(consentFile.size / 1024 / 1024).toFixed(2)} MB • Ready to upload</div>
+                                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-xs">{consentFile.name}</div>
+                                                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{(consentFile.size / 1024 / 1024).toFixed(2)} MB • Ready to upload</div>
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <div className="text-xs font-semibold text-slate-700">Choose file or drag & drop</div>
-                                                        <div className="text-[10px] text-slate-400">Scanned letter or photo of authorization & ID</div>
+                                                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">Choose file or drag & drop</div>
+                                                        <div className="text-[10px] text-slate-400 dark:text-slate-400">Scanned letter or photo of authorization & ID</div>
                                                     </div>
                                                 )}
                                             </div>

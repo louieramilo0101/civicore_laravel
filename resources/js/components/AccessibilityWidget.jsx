@@ -5,8 +5,7 @@ import {
     SunIcon,
     MoonIcon,
     EyeIcon,
-    AdjustmentsHorizontalIcon,
-    LanguageIcon
+    AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 import { useAccessibility } from './AccessibilityContext.jsx';
 
@@ -28,8 +27,6 @@ export default function AccessibilityWidget() {
         setDyslexiaFont,
         readingGuide,
         setReadingGuide,
-        lang,
-        setLang,
         openSettings,
     } = useAccessibility();
 
@@ -77,10 +74,10 @@ export default function AccessibilityWidget() {
                                 <span className="text-xl">♿</span>
                                 <div>
                                     <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                                        {lang === 'fil' ? 'Tulong sa Aksibilidad' : 'Accessibility Options'}
+                                        Accessibility Options
                                     </h4>
                                     <p className="text-[10px] text-slate-400 font-medium">
-                                        {lang === 'fil' ? 'Para sa PWD at Nakatatanda' : 'For PWD & Senior Citizens'}
+                                        For PWD &amp; Senior Citizens
                                     </p>
                                 </div>
                             </div>
@@ -97,7 +94,7 @@ export default function AccessibilityWidget() {
                         {/* Quick Text Resizing */}
                         <div className="space-y-1.5">
                             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                                <span>{lang === 'fil' ? 'Sukat ng Titik' : 'Text Size'}</span>
+                                <span>Text Size</span>
                                 <span className="text-[10px] text-[#d4a574] font-black uppercase">
                                     {fontScale === 'normal' ? '100%' : fontScale === 'large' ? '115%' : '130%'}
                                 </span>
@@ -175,7 +172,7 @@ export default function AccessibilityWidget() {
                                     <span className={`w-2 h-2 rounded-full ${highContrast ? 'bg-[#d4a574]' : 'bg-slate-300'}`} />
                                 </div>
                                 <span className="text-[11px] font-black">
-                                    {lang === 'fil' ? 'High Contrast' : 'High Contrast'}
+                                    High Contrast
                                 </span>
                             </button>
 
@@ -213,38 +210,9 @@ export default function AccessibilityWidget() {
                                     <span className={`w-2 h-2 rounded-full ${readingGuide ? 'bg-[#d4a574]' : 'bg-slate-300'}`} />
                                 </div>
                                 <span className="text-[11px] font-black">
-                                    {lang === 'fil' ? 'Gabay sa Basa' : 'Reading Ruler'}
+                                    Reading Ruler
                                 </span>
                             </button>
-                        </div>
-
-                        {/* Language Switch */}
-                        <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
-                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                                <LanguageIcon className="w-3.5 h-3.5 text-[#d4a574]" />
-                                {lang === 'fil' ? 'Wika / Language:' : 'Language:'}
-                            </span>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setLang('en')}
-                                    className={`px-2 py-0.5 rounded-lg font-black text-[10px] transition-all cursor-pointer ${
-                                        lang === 'en' ? 'bg-[#d4a574] text-slate-950' : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                >
-                                    EN
-                                </button>
-                                <span className="text-slate-400 text-[10px]">|</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setLang('fil')}
-                                    className={`px-2 py-0.5 rounded-lg font-black text-[10px] transition-all cursor-pointer ${
-                                        lang === 'fil' ? 'bg-[#d4a574] text-slate-950' : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                >
-                                    FIL
-                                </button>
-                            </div>
                         </div>
 
                         {/* More Settings Button */}
@@ -257,7 +225,7 @@ export default function AccessibilityWidget() {
                             className="w-full py-2 px-3 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                         >
                             <AdjustmentsHorizontalIcon className="w-4 h-4 text-[#d4a574]" />
-                            <span>{lang === 'fil' ? 'Lahat ng Setting...' : 'All Display Settings...'}</span>
+                            <span>All Display Settings...</span>
                         </button>
                     </motion.div>
                 )}
@@ -277,7 +245,7 @@ export default function AccessibilityWidget() {
                     ♿
                 </div>
                 <span className="text-xs font-extrabold tracking-tight text-slate-200 group-hover:text-[#d4a574] transition-colors pr-1 hidden sm:inline-block">
-                    {lang === 'fil' ? 'Aksibilidad' : 'Accessibility'}
+                    Accessibility
                 </span>
             </motion.button>
         </div>
