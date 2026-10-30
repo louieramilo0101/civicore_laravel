@@ -2031,131 +2031,49 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center justify-between">
+                            ) : activeDocId ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                                                Template Overlay Preview
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                                Uploaded Document
                                             </p>
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                                                Professional layout using calibrated clean templates.
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                The actual scanned file attached to this record.
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowDiagnosticBoxes(false)}
-                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${!showDiagnosticBoxes ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                                            >
-                                                Clean View
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowDiagnosticBoxes(true)}
-                                                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${showDiagnosticBoxes ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                                            >
-                                                Diagnostic Grid
-                                            </button>
-                                        </div>
+                                        <a
+                                            href={`/api/documents/view/${activeDocId}?raw=1`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[10px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl font-bold uppercase transition-colors shrink-0"
+                                        >
+                                            Open Fullscreen ↗
+                                        </a>
                                     </div>
 
-                                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-inner">
-                                        <div className="relative w-full overflow-hidden" style={{ minHeight: '600px' }}>
+                                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-inner flex flex-col p-3">
+                                        <div className="flex-1 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center min-h-[500px]">
                                             <img
-                                                src={`/api/templates/preview?file=${matchedTemplate?.file_path || effectiveType}&type=${effectiveType}`}
-                                                className="w-full h-auto block"
-                                                alt="Professional Template Background"
+                                                src={`/api/documents/view-image/${activeDocId}?v=${file?.updated_at ? new Date(file.updated_at).getTime() : 1}`}
+                                                alt="Uploaded Document"
+                                                className="w-full h-auto max-h-[720px] object-contain rounded-xl"
                                                 onError={(e) => {
-                                                    // Fallback to type background preview if direct file fails
-                                                    if (!e.target.dataset.triedFallback) {
-                                                        e.target.dataset.triedFallback = "true";
-                                                        e.target.src = `/api/templates/preview?type=${effectiveType}`;
-                                                    }
+                                                    e.target.style.display = 'none';
+                                                    const iframe = document.createElement('iframe');
+                                                    iframe.src = `/api/documents/view/${activeDocId}?raw=1`;
+                                                    iframe.className = 'w-full h-[620px] border-0 rounded-xl bg-white';
+                                                    e.target.parentNode.appendChild(iframe);
                                                 }}
                                             />
-
-                                            {(matchedTemplate?.config?.fields && matchedTemplate.config.fields.length > 0 
-                                                ? matchedTemplate.config.fields 
-                                                : effectiveType === 'marriage' 
-                                                    ? MarriageTemplateOverlayFields 
-                                                    : effectiveType === 'death' 
-                                                        ? DeathTemplateOverlayFields 
-                                                        : BirthTemplateOverlayFields
-                                            )?.map((item) => {
-                                                let value = formData[item.key] || '';
-                                                // Dynamic checklist resolution for 21a Attendant on Birth Certificates
-                                                if (effectiveType === 'birth' || !effectiveType) {
-                                                    const att = String(formData.attendant_type || '').toLowerCase().trim();
-                                                    if (item.key === 'attendant_check_physician') {
-                                                        value = (formData.attendant_check_physician || att.includes('physician') || att === '1') ? '✓' : '';
-                                                    } else if (item.key === 'attendant_check_nurse') {
-                                                        value = (formData.attendant_check_nurse || att.includes('nurse') || att === '2') ? '✓' : '';
-                                                    } else if (item.key === 'attendant_check_midwife') {
-                                                        value = (formData.attendant_check_midwife || att.includes('midwife') || att === '3') ? '✓' : '';
-                                                    } else if (item.key === 'attendant_check_hilot') {
-                                                        value = (formData.attendant_check_hilot || att.includes('hilot') || att === '4') ? '✓' : '';
-                                                    } else if (item.key === 'attendant_check_others') {
-                                                        value = (formData.attendant_check_others || att.includes('other') || att === '5') ? '✓' : '';
-                                                    } else if (item.key === 'attendant_others_specify') {
-                                                        if (formData.attendant_others_specify) {
-                                                            value = formData.attendant_others_specify;
-                                                        } else if (att && !['1','2','3','4','5','physician','nurse','midwife','hilot (traditional birth attendant)','others','other'].includes(att)) {
-                                                            value = formData.attendant_type;
-                                                        }
-                                                    }
-                                                }
-                                                const label = item.label || item.key;
-                                                return (
-                                                    <div
-                                                        key={item.key}
-                                                        className={`absolute flex flex-col justify-center px-0.5 rounded-px shadow-sm transition-all ${!showDiagnosticBoxes ? '' : 'border border-emerald-400/50 bg-emerald-50/30 shadow-sm backdrop-blur-[0.5px]'}`}
-                                                        style={{
-                                                            left: `${(item.x || 0) * 100}%`,
-                                                            top: `${(item.y || 0) * 100}%`,
-                                                            width: `${(item.w || 0) * 100}%`,
-                                                            height: `${(item.h || 0) * 80}%`,
-                                                        }}
-                                                        title={`${label}`}
-                                                    >
-                                                        {showDiagnosticBoxes && (
-                                                            <div className="text-[5.5px] md:text-[6.5px] font-black text-emerald-800/80 uppercase tracking-tighter absolute -top-1.5 left-0 whitespace-nowrap bg-white/90 px-0.5 rounded-px shadow-xs z-10 leading-none py-0.2">
-                                                                {label}
-                                                            </div>
-                                                        )}
-                                                        {typeof value === 'string' && (value.startsWith('data:image') || value.startsWith('/storage') || value.startsWith('blob:') || value.startsWith('http') || value.endsWith('.png') || value.endsWith('.jpg')) ? (
-                                                            <img
-                                                                src={value}
-                                                                alt={label}
-                                                                className="w-full h-full object-contain pointer-events-none"
-                                                            />
-                                                        ) : (
-                                                            <div className={`font-black text-slate-950 tracking-tight truncate px-0.5 leading-none ${!showDiagnosticBoxes ? 'text-[10px] md:text-[12px]' : 'text-[8.5px] md:text-[10px]'}`}>
-                                                                {value || (!showDiagnosticBoxes ? '' : '—')}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
                                         </div>
                                     </div>
-
-                                    {ocrResult?.field_confidence && (
-                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
-                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Extraction Confidence</p>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {Object.entries(ocrResult.field_confidence).map(([key, meta]) => (
-                                                    <div key={key} className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs flex items-center justify-between gap-2">
-                                                        <span className="font-semibold text-slate-700 dark:text-slate-300">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`font-bold ${meta?.validation_passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                            {Math.round(Number(meta?.confidence || 0) * 100)}%
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center min-h-[300px] text-slate-400 dark:text-slate-500">
+                                    <PhotoIcon className="w-12 h-12 mb-3 opacity-30" />
+                                    <p className="text-sm font-semibold">No document attached</p>
+                                </div>
                             )}
                         </div>
 
