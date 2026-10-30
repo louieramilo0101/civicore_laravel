@@ -986,12 +986,19 @@ class DocumentController extends Controller
             DB::rollBack();
             // Use mb_convert_encoding to ensure the error message is safe for JSON/Logging
             // We EXPLICITLY do NOT log the trace here because it may contain binary PDF data
-            $safeError = mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8');
+            $rawMsg = $e->getMessage();
+            $safeError = mb_convert_encoding($rawMsg, 'UTF-8', 'UTF-8');
             \Log::error("Document Save/Approve Error: " . $safeError . " on line " . $e->getLine() . " in " . $e->getFile());
+            
+            // Format beginner/user-friendly message if it's a database constraint failure
+            $userMsg = 'System sync failure: ' . $safeError;
+            if (str_contains($rawMsg, 'UNIQUE constraint failed') || str_contains($rawMsg, 'Duplicate entry')) {
+                $userMsg = 'A record with this Registry Number already exists in the registry. Please check or edit the registry number before saving.';
+            }
             
             return response()->json([
                 'success' => false, 
-                'error' => 'System sync failure: ' . $safeError
+                'error' => $userMsg
             ], 500);
         }
     });
