@@ -295,10 +295,26 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             Log::info("ProcessDocumentOcr finished successfully for Document ID: " . $this->documentId . $elapsedLog);
 
         } catch (\Throwable $e) {
-            Log::error("ProcessDocumentOcr failed for Document ID {$this->documentId}: " . $e->getMessage());
+            $errorMessage = $e->getMessage();
+            Log::error("ProcessDocumentOcr failed for Document ID {$this->documentId}: " . $errorMessage);
             Log::error($e->getTraceAsString());
+
+            $currentMeta = DB::table('documents')->where('id', $this->documentId)->value('metadata');
+            $metadata = json_decode($currentMeta ?? '{}', true) ?: [];
+            
+            // Format a user-friendly failure reason
+            if (str_contains($errorMessage, 'cURL error 28') || str_contains($errorMessage, 'timed out')) {
+                $friendlyReason = 'The OCR service timed out or was not responding. Ensure the OCR microservice (ocr_server.py on port 8080) is running.';
+            } elseif (str_contains($errorMessage, 'Connection refused') || str_contains($errorMessage, 'Could not connect')) {
+                $friendlyReason = 'Could not connect to OCR service on port 8080. Please ensure the local OCR server is started.';
+            } else {
+                $friendlyReason = $errorMessage;
+            }
+            $metadata['failure_reason'] = $friendlyReason;
+
             DB::table('documents')->where('id', $this->documentId)->update([
                 'status' => 'failed',
+                'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
                 'updated_at' => now(),
             ]);
         }

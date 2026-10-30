@@ -1060,9 +1060,42 @@ const Documents = () => {
         const terminalCls = {
             processed: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50 shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]',
             extracted: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800/50 shadow-[0_0_12px_-4px_rgba(59,130,246,0.3)]',
-            failed: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800/50',
+            failed: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer shadow-sm',
             stopped: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700',
         }[s] || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+
+        if (s === 'failed') {
+            const handleShowFailureReason = (e) => {
+                e.stopPropagation();
+                let metaObj = {};
+                try {
+                    metaObj = typeof file.metadata === 'string' ? JSON.parse(file.metadata) : (file.metadata || {});
+                } catch (err) {
+                    metaObj = {};
+                }
+                const reason = metaObj.failure_reason || metaObj.error || 'The document OCR extraction process timed out or encountered an unexpected issue while communicating with the processing service.';
+                showAlert({
+                    title: 'Processing Failure Reason',
+                    message: `${reason}\n\nTip: You can click the Play / Retry button on the right to re-queue this document for OCR extraction.`,
+                    type: 'error'
+                });
+            };
+
+            return (
+                <Tooltip content="Click to view failure reason" position="top">
+                    <motion.button
+                        type="button"
+                        onClick={handleShowFailureReason}
+                        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-tight transition-all active:scale-95 ${terminalCls}`}
+                        aria-label="View OCR Failure Reason"
+                    >
+                        <ExclamationTriangleIcon className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                        {labelStr}
+                    </motion.button>
+                </Tooltip>
+            );
+        }
 
         return (
             <motion.span
