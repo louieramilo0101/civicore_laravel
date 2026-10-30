@@ -2035,10 +2035,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
                                                 Uploaded Document
                                             </p>
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
                                                 The actual scanned file attached to this record.
                                             </p>
                                         </div>

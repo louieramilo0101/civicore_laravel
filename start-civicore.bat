@@ -106,7 +106,7 @@ ipconfig | findstr /i "IPv4 Address Ethernet Wireless Wi-Fi Adapter"
 echo   ---------------------------------------------------
 echo   * Visit on Local PC:       http://localhost:8000
 echo   * Visit on Mobile Phone:   http://%PC_IP%:8000
-echo   (If connected via Wi-Fi, type the IPv4 address above followed by :8000)
+echo   (For full mobile camera WebRTC access over HTTPS, run start-tunnel.bat)
 echo ===================================================
 echo.
 echo ===================================================

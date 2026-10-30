@@ -1204,16 +1204,16 @@ class DocumentController extends Controller
             };
         }
 
-        // If it's a PDF and we're asking for the raw preview, prefer generated page images.
+        // If it's a PDF and we're asking for the raw preview, prefer the dual A4 picture scan or generated page images.
         if ($request->has('raw') && $ext === 'pdf') {
             $dir = dirname($fullPath);
             $base = pathinfo($fullPath, PATHINFO_FILENAME);
 
             $candidates = [
+                $dir . '/' . $base . '_image.jpg',
                 $dir . '/' . $base . '_page_1_proc.jpg',
-                $dir . '/' . $base . '_page_2_proc.jpg',
                 $dir . '/' . $base . '_page_1.jpg',
-                $dir . '/' . $base . '_page_2.jpg',
+                $dir . '/' . $base . '_proc.jpg',
             ];
 
             foreach ($candidates as $candidate) {

@@ -83,11 +83,11 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
             setDisplayUrl(dataUrl);
 
-            // Automatically attempt OpenCV corner detection and document validation on the rotated canvas
+            // Automatically attempt Scanic corner detection on the rotated canvas
             ensureOpenCvLoaded().then(() => {
                 if (cancelled) return;
-                try {
-                    const detected = detectDocumentCorners(canvas);
+                detectDocumentCorners(canvas).then((detected) => {
+                    if (cancelled) return;
                     if (detected) {
                         setCorners(detected);
                         setValidationNotice({
@@ -100,9 +100,9 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                             message: "Document borders not clearly found. Adjust corner handles manually or use Full Page."
                         });
                     }
-                } catch (e) {
+                }).catch((e) => {
                     console.warn("Auto-detect failed:", e);
-                }
+                });
             });
         };
         img.src = imageSrc;
@@ -117,7 +117,7 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
             await ensureOpenCvLoaded();
             const imgElement = containerRef.current?.querySelector('img');
             if (imgElement) {
-                const detected = detectDocumentCorners(imgElement);
+                const detected = await detectDocumentCorners(imgElement);
                 if (detected) {
                     setCorners(detected);
                     setValidationNotice({
