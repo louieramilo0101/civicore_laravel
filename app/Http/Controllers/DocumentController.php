@@ -1101,6 +1101,28 @@ class DocumentController extends Controller
         }
 
         $imagePath = $doc->image_path;
+
+        // If imagePath is a PDF, or missing, check if there is an extracted page image in storage
+        if (empty($imagePath) || str_ends_with(strtolower($imagePath), '.pdf') || !\Storage::disk('public')->exists($imagePath)) {
+            $basePath = !empty($doc->file_path) ? $doc->file_path : $imagePath;
+            if (!empty($basePath)) {
+                $dir = dirname($basePath);
+                $filename = pathinfo($basePath, PATHINFO_FILENAME);
+                $candidates = [
+                    $dir . '/' . $filename . '_image.jpg',
+                    $dir . '/' . $filename . '_page_1_proc.jpg',
+                    $dir . '/' . $filename . '_page_1.jpg',
+                    $dir . '/' . $filename . '_proc.jpg',
+                ];
+                foreach ($candidates as $cand) {
+                    if (\Storage::disk('public')->exists($cand)) {
+                        $imagePath = $cand;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (empty($imagePath) || !\Storage::disk('public')->exists($imagePath)) {
             // Fall back to serveDocument if image_path is empty or missing
             return $this->serveDocument($id, 'inline');
