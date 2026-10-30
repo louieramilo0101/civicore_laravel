@@ -121,7 +121,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                             <button
                                 type="button"
                                 onClick={() => setPreviewMode('image')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                     previewMode === 'image'
                                         ? 'bg-indigo-600 text-white shadow-xs'
                                         : 'text-slate-400 hover:text-white'
@@ -132,7 +132,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                             <button
                                 type="button"
                                 onClick={() => setPreviewMode('pdf')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                                     previewMode === 'pdf'
                                         ? 'bg-indigo-600 text-white shadow-xs'
                                         : 'text-slate-400 hover:text-white'
@@ -157,8 +157,8 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
             </div>
 
             {/* Immersive Preview Content */}
-            <div className="flex-1 overflow-hidden p-8 flex justify-center bg-gradient-to-b from-slate-900 to-slate-950">
-                <div className="w-full max-w-5xl h-full bg-slate-950 rounded-3xl shadow-[0_40px_70px_-15px_rgba(0,0,0,0.6)] overflow-hidden border border-white/5 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
+            <div className="flex-1 overflow-hidden p-8 flex justify-center bg-slate-950">
+                <div className="w-full max-w-5xl h-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
                     {previewMode === 'image' && imageUrl ? (
                         <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
                             <img
@@ -175,8 +175,6 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                             className="w-full h-full border-none relative z-10 bg-white"
                         />
                     )}
-                    {/* Subtle decorative background pulse */}
-                    <div className="absolute inset-0 bg-slate-100 animate-pulse opacity-5 z-0 pointer-events-none" />
                 </div>
             </div>
         </div>,
