@@ -93,14 +93,6 @@ const Layout = ({ children }) => {
 
     return (
         <div className="h-screen w-screen bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 flex relative overflow-hidden">
-            {/* Accessible Skip Link */}
-            <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999999] focus:px-4 focus:py-2.5 focus:bg-[#d4a574] focus:text-slate-950 focus:font-black focus:text-xs focus:rounded-xl focus:shadow-2xl focus:outline-none"
-            >
-                Skip to main content / Lumaktaw sa nilalaman
-            </a>
-
             {/* Ambient Background Radial Glows (Zero-CPU/GPU-accelerated) */}
             <div className="fixed top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)] pointer-events-none z-0"></div>
             <div className="fixed bottom-[-10%] right-[-5%] w-[35%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05)_0%,transparent_70%)] pointer-events-none z-0"></div>

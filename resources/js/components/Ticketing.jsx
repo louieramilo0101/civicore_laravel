@@ -53,6 +53,7 @@ export default function Ticketing({ mode = 'portal' }) {
     const [purpose, setPurpose] = useState('');
     const [consentFile, setConsentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showEmailWarning, setShowEmailWarning] = useState(false);
 
     // ── Portal Window helper (after 5 PM → ticket scheduled for tomorrow) ─────────
     const getPortalState = useCallback(() => {
@@ -126,25 +127,7 @@ export default function Ticketing({ mode = 'portal' }) {
         setDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
-    const handlePortalSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!clientName.trim()) {
-            showAlert({ title: 'Validation Error', message: 'Please enter your name.', type: 'danger' });
-            return;
-        }
-
-        if (!purpose) {
-            showAlert({ title: 'Validation Error', message: 'Please select a document type before submitting.', type: 'danger' });
-            return;
-        }
-
-        const nameRegex = /^[a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]+$/;
-        if (!nameRegex.test(clientName.trim())) {
-            showAlert({ title: 'Validation Error', message: 'Name cannot contain numbers or special symbols (only letters, spaces, and . , - \' are allowed).', type: 'danger' });
-            return;
-        }
-
+    const doSubmit = async () => {
         setIsSubmitting(true);
         try {
             const formData = new FormData();
@@ -182,6 +165,33 @@ export default function Ticketing({ mode = 'portal' }) {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handlePortalSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!clientName.trim()) {
+            showAlert({ title: 'Validation Error', message: 'Please enter your name.', type: 'danger' });
+            return;
+        }
+
+        if (!purpose) {
+            showAlert({ title: 'Validation Error', message: 'Please select a document type before submitting.', type: 'danger' });
+            return;
+        }
+
+        const nameRegex = /^[a-zA-Z\s\.\,\'\-\ñ\Ñ\u00C0-\u024F]+$/;
+        if (!nameRegex.test(clientName.trim())) {
+            showAlert({ title: 'Validation Error', message: 'Name cannot contain numbers or special symbols (only letters, spaces, and . , - \' are allowed).', type: 'danger' });
+            return;
+        }
+
+        if (!email.trim()) {
+            setShowEmailWarning(true);
+            return;
+        }
+
+        await doSubmit();
     };
 
     // ── Ticket Status View State ──────────────────────────────────────────────
@@ -383,6 +393,7 @@ export default function Ticketing({ mode = 'portal' }) {
     // ── RENDER CLIENT PORTAL (PUBLIC REQUEST FORM) ────────────────────────────────
     if (mode === 'portal') {
         return (
+            <>
             <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                 {/* Back to Home Button */}
                 <div className="mb-6">
@@ -453,7 +464,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Email Address</label>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">(Optional)</span>
+
                                     </div>
                                     <div className="relative">
                                         <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -727,6 +738,51 @@ export default function Ticketing({ mode = 'portal' }) {
                     </form>
                 </motion.div>
             </div>
+
+            {/* ── No-Email Warning Modal ─────────────────────────────── */}
+            <AnimatePresence>
+                {showEmailWarning && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.92, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.92, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-slate-200 dark:border-slate-700 text-center"
+                        >
+                            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center border border-amber-200 dark:border-amber-700">
+                                <EnvelopeIcon className="w-7 h-7 text-amber-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">No Email Provided</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                If your ticket is <span className="font-black text-rose-500">declined</span>, the <span className="font-black">only way you'll be notified</span> is through your <span className="font-black text-[#d4a574]">Gmail</span>. Without an email address, you won't receive any update about the decision.
+                            </p>
+                            <div className="mt-6 flex flex-col gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEmailWarning(false)}
+                                    className="w-full py-3 rounded-2xl bg-[#1a2f4a] dark:bg-slate-700 text-white font-black text-sm hover:bg-slate-800 dark:hover:bg-slate-600 transition-all cursor-pointer"
+                                >
+                                    Go Back &amp; Add Email
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowEmailWarning(false); doSubmit(); }}
+                                    className="w-full py-3 rounded-2xl border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all cursor-pointer"
+                                >
+                                    Proceed Without Email
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            </>
         );
     }
 
@@ -798,21 +854,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest print:text-slate-500">Requested Document</p>
                                         <p className="text-lg font-black text-[#d4a574] tracking-tight mt-1">{purposeLabel}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest print:text-slate-500">Ticket Status</p>
-                                        <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mt-1 border ${ticket.status === 'Serving'
-                                            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                                            : ticket.status === 'Completed'
-                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                : ticket.status === 'Cancelled'
-                                                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                                    : ticket.status === 'Expired'
-                                                        ? 'bg-slate-200/60 text-slate-400 border-slate-300/50'
-                                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                            }`}>
-                                            {ticket.status}
-                                        </span>
-                                    </div>
+
                                 </div>
                             </div>
 

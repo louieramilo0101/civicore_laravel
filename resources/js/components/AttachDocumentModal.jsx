@@ -42,8 +42,9 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
         setIsSearchingOcr(true);
         try {
             const params = {
-                per_page: 30,
+                per_page: 50,
                 for_attach: 1,
+                status: 'processed', // only show OCR-processed/extracted docs ready to attach
             };
             if (type) {
                 params.type = type === 'marriage' ? 'marriage' : type;
@@ -56,8 +57,13 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                 params,
                 signal: controller.signal
             });
-            const data = res.data.data || res.data.documents || (Array.isArray(res.data) ? res.data : []);
-            setSearchResults(data);
+            const raw = res.data.data || res.data.documents || (Array.isArray(res.data) ? res.data : []);
+            // Client-side safety filter: only include docs that have meaningful person data
+            const ready = raw.filter(doc => {
+                const s = (doc.status || '').toLowerCase();
+                return s === 'processed' || s === 'extracted' || s === 'issued' || s === 'active';
+            });
+            setSearchResults(ready);
         } catch (err) {
             if (!axios.isCancel(err) && err.name !== 'CanceledError') {
                 console.error('OCR record search failed:', err);
@@ -327,13 +333,6 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                             </p>
                                                         )}
                                                     </div>
-                                                    <span className={`shrink-0 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border rounded-full ${
-                                                        doc.status === 'processed' || doc.status === 'issued'
-                                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                            : 'bg-amber-50 text-amber-600 border-amber-100'
-                                                    }`}>
-                                                        {doc.status || 'Active'}
-                                                    </span>
                                                 </div>
 
                                                 <div className="flex justify-between items-end border-t border-slate-100/60 pt-3 text-[11px] text-slate-500">
@@ -356,11 +355,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                         >
                                                             <EyeIcon className="w-4 h-4" />
                                                         </a>
-                                                        {isDocSelected && (
-                                                            <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
-                                                                <CheckCircleIcon className="w-5 h-5" />
-                                                            </div>
-                                                        )}
+
                                                     </div>
                                                 </div>
                                             </div>

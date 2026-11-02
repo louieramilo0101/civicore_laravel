@@ -103,7 +103,7 @@ const MobileDeviceLayout = ({ children }) => {
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-50 overflow-hidden font-sans text-slate-900">
+        <div className="fixed inset-0 w-full h-full bg-slate-50 dark:bg-[#0b1120] overflow-hidden font-sans text-slate-900 dark:text-slate-100">
             {/* Ambient Background Glows */}
             <div className="fixed top-[-10%] left-[-10%] w-[60%] h-[40%] bg-indigo-500/15 rounded-full blur-[100px] pointer-events-none z-0" />
             <div className="fixed bottom-[-10%] right-[-10%] w-[60%] h-[40%] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none z-0" />
@@ -141,7 +141,7 @@ const MobileDeviceLayout = ({ children }) => {
             <main
                 ref={mainScrollRef}
                 onScroll={handleScroll}
-                className="w-full h-full overflow-y-auto overflow-x-hidden pt-16 pb-20 px-3 sm:px-5 custom-scrollbar text-slate-800 bg-slate-50/60 touch-pan-y"
+                className="w-full h-full overflow-y-auto overflow-x-hidden pt-16 pb-20 px-3 sm:px-5 custom-scrollbar text-slate-800 dark:text-slate-100 bg-slate-50/60 dark:bg-transparent touch-pan-y"
             >
                 <div className="min-h-full">
                     {children}

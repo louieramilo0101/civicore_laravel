@@ -1073,11 +1073,26 @@ const Documents = () => {
                 } catch (err) {
                     metaObj = {};
                 }
-                const reason = metaObj.failure_reason || metaObj.error || 'The document OCR extraction process timed out or encountered an unexpected issue while communicating with the processing service.';
+                const rawReason = metaObj.failure_reason || metaObj.error || '';
+                // Map technical errors to plain-language messages for non-technical users
+                const reason = (() => {
+                    const r = rawReason.toLowerCase();
+                    if (!rawReason) return 'The document could not be processed. This may be due to a poor scan quality or an unsupported file format. Please try re-uploading a clearer copy.';
+                    if (r.includes('timeout') || r.includes('timed out')) return 'Processing took too long and was stopped. This usually happens with very large or complex files. Try uploading a smaller or clearer version.';
+                    if (r.includes('password') || r.includes('encrypted')) return 'The file appears to be password-protected or encrypted. Please remove the password and re-upload.';
+                    if (r.includes('corrupt') || r.includes('invalid pdf') || r.includes('not a pdf')) return 'The file could not be opened — it may be corrupted or in an unsupported format. Try saving it again and re-uploading.';
+                    if (r.includes('no text') || r.includes('empty') || r.includes('blank')) return 'No readable text was found in the document. Make sure the scan is clear and the document is not blank.';
+                    if (r.includes('too large') || r.includes('size') || r.includes('limit')) return 'The file is too large to process. Please compress or reduce the file size and try again.';
+                    if (r.includes('duplicate') || r.includes('already exists')) return 'A similar document is already in the registry. Duplicate uploads are not allowed.';
+                    if (r.includes('network') || r.includes('connection') || r.includes('socket')) return 'A connection error occurred while processing the document. Please check your internet and try again.';
+                    if (r.includes('ocr') || r.includes('extraction') || r.includes('tesseract')) return 'The text extraction engine could not read this document. Try uploading a higher-quality scan.';
+                    return 'The document could not be processed. Please try re-uploading the file. If the problem continues, contact your administrator.';
+                })();
                 showAlert({
                     title: 'Processing Failure Reason',
                     message: `${reason}\n\nTip: You can click the Play / Retry button on the right to re-queue this document for OCR extraction.`,
-                    type: 'error'
+                    type: 'error',
+                    autoDismiss: false
                 });
             };
 
@@ -1296,25 +1311,41 @@ const Documents = () => {
                         <div className="space-y-2.5 mb-5">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Document Category</label>
                             {docTypes.map(doc => {
-                                const tColors = {
-                                    birth: 'border-[#d4a574] bg-[#d4a574]/5 text-[#d4a574] ring-[#d4a574]/30',
-                                    death: 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-500 ring-rose-500/30',
-                                    marriage: 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 ring-indigo-500/30'
-                                }[doc.type] || 'border-slate-500 bg-slate-50 text-slate-500 ring-slate-500/30';
+                                const tStyles = {
+                                    birth: {
+                                        selected: 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]',
+                                        ring: 'ring-[#d4a574]/30',
+                                        text: 'text-[#d4a574]'
+                                    },
+                                    death: {
+                                        selected: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                                        ring: 'ring-rose-500/30',
+                                        text: 'text-rose-600 dark:text-rose-400'
+                                    },
+                                    marriage: {
+                                        selected: 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+                                        ring: 'ring-indigo-500/30',
+                                        text: 'text-indigo-600 dark:text-indigo-400'
+                                    }
+                                }[doc.type] || {
+                                    selected: 'border-slate-500 bg-slate-500/10 text-slate-500',
+                                    ring: 'ring-slate-500/30',
+                                    text: 'text-slate-500'
+                                };
 
                                 const isSelected = selectedDocType === doc.type;
 
                                 return (
                                     <div key={doc.type} onClick={() => setSelectedDocType(doc.type)}
                                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${isSelected
-                                            ? `${tColors.split(' ')[0]} ${tColors.split(' ')[1]} shadow-sm`
+                                            ? `${tStyles.selected} shadow-sm`
                                             : 'border-transparent bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800'
                                             }`}>
-                                        <div className={`w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 shadow-sm ${isSelected ? `ring-1 ${tColors.split(' ')[3]}` : ''}`}>
+                                        <div className={`w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-slate-900 shadow-sm ${isSelected ? `ring-1 ${tStyles.ring}` : ''}`}>
                                             {doc.icon}
                                         </div>
                                         <div>
-                                            <div className={`font-semibold text-sm ${isSelected ? tColors.split(' ')[2] : 'text-slate-700 dark:text-slate-200'}`}>{doc.name}</div>
+                                            <div className={`font-semibold text-sm ${isSelected ? tStyles.text : 'text-slate-700 dark:text-slate-200'}`}>{doc.name}</div>
                                             <div className="text-xs text-slate-400 dark:text-slate-500">{doc.desc}</div>
                                         </div>
                                     </div>

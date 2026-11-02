@@ -193,10 +193,7 @@
             <strong>Don't have access to your email?</strong> Walk-in clients are welcome at the counter. Staff can issue an on-site ticket for you.
         </p>
 
-        <!-- CTA -->
-        <div class="cta">
-            <a href="{{ $ticketUrl }}">View Ticket Status Online →</a>
-        </div>
+    `
 
     </div>
 

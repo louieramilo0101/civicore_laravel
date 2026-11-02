@@ -26,10 +26,12 @@ export const ModalProvider = ({ children }) => {
             cancelText = 'Cancel',
             onConfirm = null,
             onCancel = null,
-            showCancel = false
+            showCancel = false,
+            autoDismiss = true,
+            autoDismissDelay = 3000
         } = typeof options === 'string' ? { message: options } : options;
 
-        setConfig({ title, message, type, confirmText, cancelText, onConfirm, onCancel, showCancel });
+        setConfig({ title, message, type, confirmText, cancelText, onConfirm, onCancel, showCancel, autoDismiss, autoDismissDelay });
         setIsOpen(true);
     }, []);
 

@@ -145,10 +145,13 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [scannerError, setScannerError] = useState('');
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isDecodingPhoto, setIsDecodingPhoto] = useState(false);
+    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
+    const [isCameraLive, setIsCameraLive] = useState(false);
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [manualTicketInput, setManualTicketInput] = useState('');
     const nativeCameraInputRef = React.useRef(null);
     const galleryInputRef = React.useRef(null);
+    const html5QrCodeRef = React.useRef(null);
 
     /** Stores the identifier of the ticket currently being declined. */
     /** @type {[number|string|null, import('react').Dispatch<import('react').SetStateAction<number|string|null>>]} */
@@ -156,6 +159,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+    /** State for confirming issue after printing */
+    const [isPostPrintConfirmOpen, setIsPostPrintConfirmOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIdPreviewOpen, setIsIdPreviewOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
@@ -182,6 +187,83 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     });
 
     /**
+     * Stop the live camera stream if running.
+     */
+    const stopLiveCamera = async () => {
+        if (html5QrCodeRef.current) {
+            try {
+                if (html5QrCodeRef.current.isScanning) {
+                    await html5QrCodeRef.current.stop();
+                }
+                await html5QrCodeRef.current.clear();
+            } catch (err) {
+                console.warn('Error stopping QR scanner:', err);
+            } finally {
+                html5QrCodeRef.current = null;
+                setIsCameraLive(false);
+            }
+        }
+    };
+
+    /**
+     * Start real-time continuous camera viewfinder for live QR scanning.
+     */
+    const startLiveCamera = async () => {
+        try {
+            setScannerError('');
+            await stopLiveCamera();
+
+            const scannerHost = document.getElementById('qr-live-camera-viewport');
+            if (!scannerHost) return;
+
+            const qrCode = new Html5Qrcode('qr-live-camera-viewport');
+            html5QrCodeRef.current = qrCode;
+
+            const config = {
+                fps: 15,
+                qrbox: { width: 220, height: 220 },
+                aspectRatio: 1.0,
+            };
+
+            await qrCode.start(
+                { facingMode: 'environment' },
+                config,
+                async (decodedText) => {
+                    if (decodedText) {
+                        await stopLiveCamera();
+                        handleCheckInToken(decodedText);
+                    }
+                },
+                () => {
+                    // Ignore per-frame decode misses
+                }
+            );
+
+            setIsCameraLive(true);
+        } catch (err) {
+            console.warn('Live camera start failed:', err);
+            setIsCameraLive(false);
+            setScannerError('Could not start live camera feed. You can still snap/upload a photo or enter the ticket number.');
+        }
+    };
+
+    // Manage live camera lifecycle when modal opens/closes
+    useEffect(() => {
+        if (isScannerOpen) {
+            // slight timeout to allow portal and element mounting
+            const timer = setTimeout(() => {
+                startLiveCamera();
+            }, 100);
+            return () => {
+                clearTimeout(timer);
+                stopLiveCamera();
+            };
+        } else {
+            stopLiveCamera();
+        }
+    }, [isScannerOpen]);
+
+    /**
      * Handles ticket check-in for a scanned token, URL, or ticket number.
      * @param {string} rawInput Scanned QR token or staff-typed ticket number.
      * @returns {Promise<void>}
@@ -191,6 +273,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         try {
             setIsLoading(true);
             setScannerError('');
+            await stopLiveCamera();
 
             let tokenOrNum = rawInput.trim();
             if (tokenOrNum.includes('/')) {
@@ -367,7 +450,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             const prevCount = prevCountRef.current;
             /** Ticket records returned by the filtered inbox endpoint. */
             const newTickets = ticketsRes.data;
-            if (prevCount > 0 && newTickets.length > prevCount) {
+            if (prevCount > 0 && newTickets.length > prevCount && !showLoading) {
                 const latest = newTickets[0];
                 playNotificationSound();
                 if (showAlert && latest) {
@@ -401,7 +484,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             }
         } catch (err) {
             console.error(err);
-            showAlert({ title: 'Error', message: 'Could not retrieve tickets queue.', type: 'danger' });
+            if (showLoading) {
+                showAlert({ title: 'Error', message: 'Could not retrieve tickets queue.', type: 'danger' });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -433,7 +518,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 setSelectedTicket(updatedTicket);
                 setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
                 setScannedData(prev => prev ? { ...prev, ...updatedTicket } : prev);
-                setIsPopupOpen(true);
+                setIsAttachOpen(false);
                 showAlert({
                     title: 'File Attached!',
                     message: `Ticket ${selectedTicket.ticket_number} was linked and marked ready for release.`,
@@ -497,6 +582,18 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     };
 
     /**
+     * Prints the document first for physical verification, then opens confirmation.
+     */
+    const handlePrintAndPromptConfirm = () => {
+        if (!selectedTicket) return;
+        setIsVerifyOpen(false);
+        if (selectedTicket.document_id) {
+            handlePrintTicketDocument(selectedTicket);
+        }
+        setIsPostPrintConfirmOpen(true);
+    };
+
+    /**
      * Marks the selected attached request as issued after staff verification.
      * @returns {Promise<void>} Resolves after the issue request completes.
      */
@@ -513,8 +610,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     type: 'success'
                 });
                 setIsVerifyOpen(false);
-                setSelectedTicket(null);
+                setIsPostPrintConfirmOpen(false);
                 setMobileView('list');
+                setSelectedTicket(null);
                 fetchPendingTickets(false);
                 if (refreshCounter) refreshCounter();
             }
@@ -897,9 +995,20 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             </div>
                                         </div>
                                         {selectedTicket.document_id && (
-                                            <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-indigo-150 dark:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-750 dark:text-indigo-300 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
-                                                View PDF
-                                            </a>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePrintTicketDocument(selectedTicket)}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-[#d4a574] rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer shadow-xs active:scale-95"
+                                                    title="Print attached document"
+                                                >
+                                                    <PrinterIcon className="w-3.5 h-3.5 text-[#d4a574]" />
+                                                    <span>Print</span>
+                                                </button>
+                                                <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-indigo-150 dark:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-750 dark:text-indigo-300 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
+                                                    View PDF
+                                                </a>
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -1369,6 +1478,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     </div>
                                     <button
                                         onClick={() => {
+                                            stopLiveCamera();
                                             setIsScannerOpen(false);
                                             setScannerError('');
                                         }}
@@ -1380,37 +1490,54 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-5 bg-slate-50 dark:bg-slate-900/90">
-                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-center font-medium">
-                                    Snap a photo of the queue ticket using your camera, select a saved image, or enter the ticket number below.
+                            <div className="p-6 space-y-4 bg-slate-50 dark:bg-slate-900/90">
+                                {/* Real-time Live Camera Viewfinder */}
+                                <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-square max-w-[280px] mx-auto border-2 border-dashed border-[#d4a574]/40 flex flex-col items-center justify-center shadow-inner">
+                                    <div id="qr-live-camera-viewport" className="w-full h-full [&>video]:w-full [&>video]:h-full [&>video]:object-cover" />
+
+                                    {/* Real-time Aiming Overlay Reticle */}
+                                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                        <div className="w-48 h-48 border-2 border-[#d4a574] rounded-2xl relative shadow-[0_0_0_9999px_rgba(15,23,42,0.45)]">
+                                            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white -mt-0.5 -ml-0.5" />
+                                            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white -mt-0.5 -mr-0.5" />
+                                            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white -mb-0.5 -ml-0.5" />
+                                            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white -mb-0.5 -mr-0.5" />
+                                            <div className="absolute inset-x-2 top-1/2 h-0.5 bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse" />
+                                        </div>
+                                    </div>
+
+                                    {!isCameraLive && (
+                                        <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 p-4 text-center z-10">
+                                            <ArrowPathIcon className="w-6 h-6 text-[#d4a574] animate-spin" />
+                                            <span className="text-[11px] font-bold text-slate-300">Starting camera stream...</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center font-medium">
+                                    Point camera directly at the QR code for instant real-time scan.
                                 </p>
 
-                                {/* Native Camera & Photo Upload Buttons */}
-                                <div className="grid grid-cols-2 gap-3">
+                                {/* Fallback Photo & File Upload */}
+                                <div className="grid grid-cols-2 gap-2.5 pt-1">
                                     <button
                                         type="button"
                                         disabled={isDecodingPhoto}
                                         onClick={() => nativeCameraInputRef.current?.click()}
-                                        className="p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex flex-col items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50"
+                                        className="py-2.5 px-3 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center gap-2 text-xs transition cursor-pointer disabled:opacity-50"
                                     >
-                                        <CameraIcon className="w-7 h-7" />
-                                        <div className="text-center">
-                                            <span className="block text-xs font-black">Native Camera</span>
-                                            <span className="block text-[10px] text-indigo-200 font-medium">Snap photo of ticket</span>
-                                        </div>
+                                        <CameraIcon className="w-4 h-4 text-indigo-500" />
+                                        <span>Capture Photo</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         disabled={isDecodingPhoto}
                                         onClick={() => galleryInputRef.current?.click()}
-                                        className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold flex flex-col items-center justify-center gap-2 shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+                                        className="py-2.5 px-3 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center gap-2 text-xs transition cursor-pointer disabled:opacity-50"
                                     >
-                                        <PhotoIcon className="w-7 h-7 text-slate-600 dark:text-slate-300" />
-                                        <div className="text-center">
-                                            <span className="block text-xs font-black">Upload Photo</span>
-                                            <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium">Choose image file</span>
-                                        </div>
+                                        <PhotoIcon className="w-4 h-4 text-indigo-500" />
+                                        <span>Upload File</span>
                                     </button>
                                 </div>
 
@@ -1667,19 +1794,83 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </div>
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2.5">
                                 <button
                                     onClick={() => setIsVerifyOpen(false)}
-                                    className="flex-1 py-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-255 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                                    className="px-4 py-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
+                                    onClick={selectedTicket.document_id ? handlePrintAndPromptConfirm : handleFinalIssue}
+                                    disabled={isIssuing}
+                                    className="flex-1 py-3 px-3 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                >
+                                    {isIssuing ? (
+                                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        selectedTicket.document_id ? 'Confirm & Print' : 'Confirm & Issue'
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Post-Print Issuance Confirmation Modal */}
+            <AnimatePresence>
+                {isPostPrintConfirmOpen && selectedTicket && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 dark:border-slate-800"
+                        >
+                            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+                                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-1.5">
+                                    <CheckCircleIcon className="w-6 h-6 text-emerald-500" /> Confirm Document Issued
+                                </h3>
+                                <button onClick={() => setIsPostPrintConfirmOpen(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer">
+                                    <XMarkIcon className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Did the document print properly? Click below to finalize issuance and mark this ticket as completed. If there was a printer issue, you can reprint or cancel without losing the ticket.
+                                </p>
+
+                                <div className="bg-slate-50 dark:bg-slate-800/60 p-4 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs space-y-2">
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Client Name:</span><span className="font-extrabold text-slate-800 dark:text-slate-100">{selectedTicket.client_name}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.name}</span></div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2.5">
+                                <button
+                                    onClick={() => setIsPostPrintConfirmOpen(false)}
+                                    className="px-4 py-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                                >
+                                    Cancel (Keep in Queue)
+                                </button>
+                                <button
+                                    onClick={() => handlePrintTicketDocument(selectedTicket)}
+                                    className="px-4 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                                >
+                                    Reprint
+                                </button>
+                                <button
                                     onClick={handleFinalIssue}
                                     disabled={isIssuing}
-                                    className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    className="flex-1 py-3 px-3 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                                 >
-                                    {isIssuing ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Confirm & Issue'}
+                                    {isIssuing ? (
+                                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        'Mark as Completed'
+                                    )}
                                 </button>
                             </div>
                         </motion.div>

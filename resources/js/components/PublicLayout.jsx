@@ -29,14 +29,6 @@ export default function PublicLayout({ children }) {
 
     return (
         <div className="min-h-screen flex flex-col bg-[#0f172a] relative overflow-hidden font-sans">
-            {/* Accessible Skip Link for Keyboard / Screen Reader Users */}
-            <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999999] focus:px-4 focus:py-2.5 focus:bg-[#d4a574] focus:text-slate-950 focus:font-black focus:text-xs focus:rounded-xl focus:shadow-2xl focus:outline-none"
-            >
-                Skip to main content / Lumaktaw sa nilalaman
-            </a>
-
             {/* Background Effects */}
             <div
                 className="absolute inset-0 opacity-[0.04] pointer-events-none"

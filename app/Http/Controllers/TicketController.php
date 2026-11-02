@@ -672,7 +672,7 @@ class TicketController extends Controller
 
         $ticket->save();
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     // ─── Staff: Link Document (Legacy compatibility) ─────────────────────────
@@ -714,7 +714,7 @@ class TicketController extends Controller
             'updated_at' => Carbon::now(),
         ]);
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     // ─── V1 Revamped Endpoints ──────────────────────────────────────────────
@@ -761,7 +761,7 @@ class TicketController extends Controller
             'updated_at' => Carbon::now(),
         ]);
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     /**
@@ -824,7 +824,7 @@ class TicketController extends Controller
             'updated_at' => Carbon::now(),
         ]);
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     /**
@@ -1063,7 +1063,7 @@ class TicketController extends Controller
                 ->update($updateData);
         }
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     /**
@@ -1153,7 +1153,7 @@ class TicketController extends Controller
             $ticket->save();
         }
 
-        return response()->json(['success' => true, 'ticket' => $ticket]);
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
     }
 
     /**
