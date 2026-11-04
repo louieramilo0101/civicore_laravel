@@ -379,13 +379,16 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
         // Cleanup intermediate keys
         unset($fields['full_name'], $fields['date_of_birth'], $fields['place_of_birth'], $fields['mother_full_name'], $fields['father_full_name']);
 
-        // Purge any accidental JSON dumps or stringified JSON remnants from field values
+        // Purge any accidental JSON dumps or stringified JSON remnants, and normalize missing/empty/n/a values to null
         foreach ($fields as $key => $val) {
             if (is_string($val)) {
                 $trimmed = trim($val);
-                if (str_contains($trimmed, 'is_valid_document') || (str_starts_with($trimmed, '{') && str_contains($trimmed, '":'))) {
+                $lower = strtolower($trimmed);
+                if ($trimmed === '' || $lower === 'n/a' || $lower === 'not applicable' || str_contains($trimmed, 'is_valid_document') || (str_starts_with($trimmed, '{') && str_contains($trimmed, '":'))) {
                     $fields[$key] = null;
                 }
+            } elseif ($val === '') {
+                $fields[$key] = null;
             }
         }
 

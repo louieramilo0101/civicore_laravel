@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { 
-    PencilIcon, 
-    ArrowUturnLeftIcon, 
-    TrashIcon, 
+import {
+    PencilIcon,
+    ArrowUturnLeftIcon,
+    TrashIcon,
     CheckCircleIcon,
     ArrowUpTrayIcon,
     ScissorsIcon,
@@ -54,7 +54,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         }
     });
 
-    const isNa = value === 'n/a';
+    const isNa = !value || value === 'n/a';
     const hasExistingSignature = value && value !== 'n/a' && (value.startsWith('data:image') || value.startsWith('/storage') || value.startsWith('blob:') || value.startsWith('http'));
 
     // Sync saved signatories to localStorage
@@ -156,7 +156,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         const blank = data.every(v => v === 0);
         if (blank) {
             setIsEmpty(true);
-            onChange('n/a');
+            onChange(null);
         } else {
             onChange(canvas.toDataURL('image/png'));
         }
@@ -170,7 +170,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         setIsEmpty(true);
-        onChange('n/a');
+        onChange(null);
     };
 
     // ── Image Cropping Logic ──────────────────────────────────────────────────
@@ -285,11 +285,10 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
         return (
             <div className="space-y-1.5 w-full">
                 <div
-                    className={`relative w-full h-16 border-2 rounded-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer group ${
-                        isNa || !hasExistingSignature
+                    className={`relative w-full h-16 border-2 rounded-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer group ${isNa || !hasExistingSignature
                             ? 'border-dashed border-slate-200 bg-slate-50/60 hover:border-[#d4a574]/60 hover:bg-[#d4a574]/5'
                             : 'border-slate-200 bg-white hover:border-[#d4a574]/60 shadow-xs'
-                    }`}
+                        }`}
                     onClick={() => !disabled && setIsEditing(true)}
                     title={disabled ? 'Signature (view only)' : 'Click to draw, crop, or pick signature'}
                 >
@@ -311,7 +310,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                         <div className="flex items-center gap-2 text-slate-400 group-hover:text-[#d4a574] transition-colors">
                             {isNa ? (
                                 <>
-                                    <span className="text-xs font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg uppercase tracking-widest">n/a</span>
+                                    <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-lg tracking-wider">null</span>
                                     {!disabled && <span className="text-[10px] font-bold text-slate-400 group-hover:text-[#d4a574]">· Click to add</span>}
                                 </>
                             ) : (
@@ -369,11 +368,10 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                     <button
                         type="button"
                         onClick={() => setMode('draw')}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            mode === 'draw'
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${mode === 'draw'
                                 ? 'bg-white text-slate-800 shadow-xs'
                                 : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                            }`}
                     >
                         <PencilIcon className="w-3 h-3 text-[#d4a574]" />
                         Draw
@@ -381,11 +379,10 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                     <button
                         type="button"
                         onClick={() => setMode('crop')}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            mode === 'crop'
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${mode === 'crop'
                                 ? 'bg-white text-[#d4a574] shadow-xs'
                                 : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                            }`}
                     >
                         <ScissorsIcon className="w-3 h-3 text-[#d4a574]" />
                         Crop Image
@@ -393,11 +390,10 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                     <button
                         type="button"
                         onClick={() => setMode('library')}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            mode === 'library'
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${mode === 'library'
                                 ? 'bg-white text-indigo-600 shadow-xs'
                                 : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                            }`}
                     >
                         <BookmarkSquareIcon className="w-3 h-3 text-indigo-500" />
                         Signatories ({savedSignatories.length})
@@ -419,7 +415,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                             <button
                                 type="button"
                                 onClick={handleClear}
-                                title="Clear signature (set to n/a)"
+                                title="Clear signature (set to null)"
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer"
                             >
                                 <TrashIcon className="w-3.5 h-3.5" />
@@ -463,7 +459,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                     )}
 
                     <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>Draw with mouse or finger · Leave blank for n/a</span>
+                        <span>Draw with mouse or finger · Leave blank for null</span>
                         <button
                             type="button"
                             onClick={() => setMode('crop')}
@@ -620,7 +616,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                                         <span className="font-black text-slate-600 uppercase tracking-wider">Cropped Signature Preview</span>
                                         <span className="text-emerald-600 font-bold">✓ Ready to paste</span>
                                     </div>
-                                    <div 
+                                    <div
                                         className="h-16 w-full rounded-lg border border-slate-200 flex items-center justify-center p-1 overflow-hidden"
                                         style={{
                                             backgroundImage: 'repeating-conic-gradient(#f1f5f9 0% 25%, #ffffff 0% 50%)',
@@ -735,7 +731,7 @@ const SignaturePad = ({ value, onChange, disabled = false, fieldKey = 'sig' }) =
                                     </div>
 
                                     {/* Thumbnail */}
-                                    <div 
+                                    <div
                                         className="h-12 w-full rounded-lg border border-slate-100 flex items-center justify-center p-1 bg-slate-50 overflow-hidden mb-2"
                                         style={{
                                             backgroundImage: 'repeating-conic-gradient(#f8fafc 0% 25%, #ffffff 0% 50%)',

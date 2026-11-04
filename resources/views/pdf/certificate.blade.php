@@ -47,7 +47,7 @@
             @foreach($fields as $key => $value)
                 <div class="field">
                     <span class="field-label">{{ ucwords(str_replace('_', ' ', $key)) }}:</span>
-                    <span class="field-value">{{ $value ?: 'N/A' }}</span>
+                    <span class="field-value">{{ ($value === null || $value === '' || strtolower((string)$value) === 'n/a') ? 'null' : $value }}</span>
                 </div>
             @endforeach
         @else

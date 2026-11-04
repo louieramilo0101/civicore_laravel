@@ -8,7 +8,6 @@ import {
     LinkIcon,
     PaperClipIcon,
     EyeIcon,
-    SparklesIcon,
     CheckCircleIcon,
     MinusIcon,
     ArrowsPointingOutIcon
@@ -19,7 +18,7 @@ import useDebounce from '../hooks/useDebounce.js';
 /** Lets staff attach an existing registry document to a pending request. */
 export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach }) {
     const [ocrQuery, setOcrQuery] = useState('');
-    const debouncedQuery = useDebounce(ocrQuery, 300);
+    const debouncedQuery = useDebounce(ocrQuery, 50);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchingOcr, setIsSearchingOcr] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
@@ -176,40 +175,40 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
     }
 
         return createPortal(
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 text-slate-900 leading-normal">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0, y: 15 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.95, opacity: 0, y: 15 }}
                     transition={{ type: 'spring', duration: 0.4 }}
-                    className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full p-8 border border-slate-100 flex flex-col h-[85vh] max-h-[700px] overflow-hidden"
+                    className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-2xl w-full p-8 border border-slate-150 dark:border-slate-800 flex flex-col h-[85vh] max-h-[700px] overflow-hidden"
                 >
                     {/* Header */}
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6 shrink-0">
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 mb-6 shrink-0">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                                <SparklesIcon className="w-6 h-6 animate-pulse" />
+                            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center">
+                                <PaperClipIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="font-black text-slate-800 text-lg tracking-tight">
+                                <h3 className="font-black text-slate-800 dark:text-slate-100 text-lg tracking-tight">
                                     Attach File
                                 </h3>
-                                <p className="text-xs text-slate-500 font-medium">
-                                    Linking ticket <span className="font-bold text-slate-700">{ticket?.ticket_number}</span> ({ticket?.client_name})
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    Linking ticket <span className="font-bold text-slate-700 dark:text-slate-200">{ticket?.ticket_number}</span> ({ticket?.client_name})
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <button
                                 onClick={() => setIsMinimized(true)}
-                                className="p-2 border border-slate-200 rounded-xl hover:bg-amber-50 hover:border-amber-200 text-slate-400 hover:text-amber-600 transition-all cursor-pointer"
+                                className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-200 dark:hover:border-amber-800 text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 transition-all cursor-pointer"
                                 title="Minimize — continue working"
                             >
                                 <MinusIcon className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={onClose}
-                                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+                                className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all cursor-pointer"
                             >
                                 <XMarkIcon className="w-5 h-5" />
                             </button>
@@ -238,7 +237,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                 performSearch(ocrQuery, ticket?.purpose);
                                             }
                                         }}
-                                        className="w-full pl-11 pr-11 py-3.5 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold bg-slate-50/50 focus:bg-white transition-all shadow-sm"
+                                        className="w-full pl-11 pr-11 py-3.5 text-sm border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold bg-slate-50/50 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all shadow-sm"
                                         autoFocus
                                     />
                                     {ocrQuery && (
@@ -249,7 +248,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                     setOcrQuery('');
                                                     performSearch('', ticket?.purpose);
                                                 }}
-                                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                                                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                                                 title="Clear search"
                                             >
                                                 <XMarkIcon className="w-4 h-4" />
@@ -260,28 +259,28 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                 <button
                                     onClick={() => performSearch(ocrQuery, ticket?.purpose)}
                                     disabled={isSearchingOcr}
-                                    className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0 shadow-sm"
+                                    className="px-5 py-3.5 bg-slate-900 text-white dark:bg-[#d4a574] dark:hover:bg-[#bc8a59] dark:text-slate-950 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0 shadow-sm"
                                     title="Refresh search"
                                 >
-                                    {isSearchingOcr ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Search'}
+                                    {isSearchingOcr ? 'Searching...' : 'Search'}
                                 </button>
                             </div>
 
                             {/* Result Count Bar */}
-                            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-slate-400 min-h-[16px]">
+                            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 min-h-[16px]">
                                 <span>
                                     {isSearchingOcr || ocrQuery !== debouncedQuery ? null : ocrQuery.trim() ? (
                                         <span>
-                                            Found <strong className="text-slate-700 font-black">{searchResults.length}</strong> record{searchResults.length === 1 ? '' : 's'} matching "{ocrQuery}"
+                                            Found <strong className="text-slate-700 dark:text-slate-200 font-black">{searchResults.length}</strong> record{searchResults.length === 1 ? '' : 's'} matching "{ocrQuery}"
                                         </span>
                                     ) : (
                                         <span>
-                                            Showing <strong className="text-slate-700 font-black">{searchResults.length}</strong> recent {ticket?.purpose || 'registry'} records
+                                            Showing <strong className="text-slate-700 dark:text-slate-200 font-black">{searchResults.length}</strong> recent {ticket?.purpose || 'registry'} records
                                         </span>
                                     )}
                                 </span>
                                 {selectedDoc && (
-                                    <span className="text-emerald-600 font-bold flex items-center gap-1">
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                                         <CheckCircleIcon className="w-3.5 h-3.5 inline" /> Selected: {selectedDoc.certNumber || selectedDoc.name}
                                     </span>
                                 )}
@@ -292,16 +291,14 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                         {/* Results Body */}
                         <div className="flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar mb-5">
                             {isSearchingOcr && searchResults.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                                    <ArrowPathIcon className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
-                                    <p className="text-xs font-bold text-slate-600">Scanning registry tables...</p>
-                                    <p className="text-[11px] text-slate-400 mt-1">Cross-referencing matching names and dates.</p>
+                                <div className="flex flex-col items-center justify-center py-24 text-slate-400 dark:text-slate-500">
+                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Searching registry records...</p>
                                 </div>
                             ) : searchResults.length === 0 ? (
-                                <div className="text-center py-20 text-slate-400 border-2 border-dashed border-slate-200 rounded-[2rem] p-6 bg-slate-50/20">
+                                <div className="text-center py-20 text-slate-400 dark:text-slate-500 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 bg-slate-50/20 dark:bg-slate-800/20">
                                     <DocumentMagnifyingGlassIcon className="w-12 h-12 mx-auto mb-3 opacity-20 text-indigo-500" />
-                                    <p className="text-sm font-black text-slate-700">No matching records found</p>
-                                    <p className="text-xs text-slate-400 mt-1.5 max-w-xs mx-auto">
+                                    <p className="text-sm font-black text-slate-700 dark:text-slate-300">No matching records found</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 max-w-xs mx-auto">
                                         No files matched "{ocrQuery}". Try typing in a name, date, or registry number.
                                     </p>
                                 </div>
@@ -315,32 +312,32 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                 onClick={() => setSelectedDoc(doc)}
                                                 className={`p-4.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-4 group ${
                                                     isDocSelected
-                                                        ? 'border-indigo-600 bg-indigo-50/10 shadow-sm ring-1 ring-indigo-500/20'
-                                                        : 'border-slate-150 bg-white hover:bg-slate-50 hover:border-slate-300'
+                                                        ? 'border-indigo-600 bg-indigo-50/10 dark:bg-indigo-950/40 shadow-sm ring-1 ring-indigo-500/20'
+                                                        : 'border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                                                 }`}
                                             >
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="min-w-0">
-                                                        <span className="text-[9px] font-mono font-black text-slate-400 tracking-wider block">
+                                                        <span className="text-[9px] font-mono font-black text-slate-400 dark:text-slate-500 tracking-wider block">
                                                             {doc.certNumber || 'REGISTRY RECORD'}
                                                         </span>
-                                                        <h4 className="font-extrabold text-slate-800 text-sm tracking-tight truncate mt-1" title={doc.name}>
+                                                        <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm tracking-tight truncate mt-1" title={doc.name}>
                                                             {doc.personName || doc.name}
                                                         </h4>
                                                         {(doc.detected_type || doc.type) && (
-                                                            <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
                                                                 {String(doc.detected_type || doc.type).replace(/_/g, ' ').toUpperCase()}
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex justify-between items-end border-t border-slate-100/60 pt-3 text-[11px] text-slate-500">
+                                                <div className="flex justify-between items-end border-t border-slate-100/60 dark:border-slate-800 pt-3 text-[11px] text-slate-500 dark:text-slate-400">
                                                     <div>
                                                         <p className="font-semibold truncate max-w-[20ch]">
-                                                            Barangay: <span className="font-bold text-slate-700">{doc.barangay || 'Unspecified'}</span>
+                                                            Barangay: <span className="font-bold text-slate-700 dark:text-slate-200">{doc.barangay || 'Unspecified'}</span>
                                                         </p>
-                                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                                                             Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                                                         </p>
                                                     </div>
@@ -349,7 +346,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                             href={`/api/documents/view/${doc.id}?raw=1`}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+                                                            className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                                                             title="View Document"
                                                             onClick={e => e.stopPropagation()}
                                                         >
@@ -365,8 +362,8 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                             )}
 
                             {/* Remarks - inside scroll area, below results */}
-                            <div className="mt-5 pt-4 border-t border-dashed border-slate-200">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-1">
+                            <div className="mt-5 pt-4 border-t border-dashed border-slate-200 dark:border-slate-800">
+                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">
                                     Remarks
                                 </label>
                                 <textarea
@@ -375,17 +372,17 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                     onChange={e => setPrintRemarks(e.target.value)}
                                     rows="2"
                                     maxLength={1000}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-semibold text-slate-700 resize-none"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-semibold text-slate-700 dark:text-slate-200 resize-none"
                                 />
                             </div>
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="border-t border-slate-100 pt-4 flex justify-end gap-3 shrink-0">
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-end gap-3 shrink-0">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-6 py-3 border border-slate-200 text-slate-650 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-colors cursor-pointer"
+                                className="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                 disabled={isLinking}
                             >
                                 Cancel
@@ -396,8 +393,8 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                 disabled={!selectedDoc || isLinking}
                                 className={`px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
                                     selectedDoc
-                                        ? 'bg-[#1a2f4a] hover:bg-[#112033] text-white shadow-slate-200'
-                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                        ? 'bg-[#1a2f4a] dark:bg-[#d4a574] hover:bg-[#112033] dark:hover:bg-[#bc8a59] text-white dark:text-slate-950 shadow-slate-200 dark:shadow-none'
+                                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'
                                 }`}
                             >
                                 {isLinking ? (

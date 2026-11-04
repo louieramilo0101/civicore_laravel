@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
     UserIcon, ShieldCheckIcon, AdjustmentsHorizontalIcon,
@@ -272,15 +272,19 @@ const Accounts = () => {
         );
     };
 
-    const filteredUsers = users.filter(user => {
-        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              user.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
-        const userActive = user.is_active !== false;
-        if (statusFilter === 'active') return matchesSearch && userActive;
-        if (statusFilter === 'disabled') return matchesSearch && !userActive;
-        return matchesSearch;
-    });
+    const filteredUsers = useMemo(() => {
+        const query = (searchQuery || '').trim().toLowerCase();
+        return users.filter(user => {
+            const matchesSearch = !query ||
+                                  (user.name || '').toLowerCase().includes(query) ||
+                                  (user.role || '').toLowerCase().includes(query) ||
+                                  (user.email && user.email.toLowerCase().includes(query));
+            const userActive = user.is_active !== false;
+            if (statusFilter === 'active') return matchesSearch && userActive;
+            if (statusFilter === 'disabled') return matchesSearch && !userActive;
+            return matchesSearch;
+        });
+    }, [users, searchQuery, statusFilter]);
 
     const fetchUsers = async (showLoading = true) => {
         if (showLoading) setIsLoading(true);
@@ -989,7 +993,7 @@ const Accounts = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative"
+                        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-200 dark:border-slate-700"
                     >
                         <div className="h-20 bg-gradient-to-r from-[#0f172a] to-slate-800 p-6 flex items-center justify-between border-b border-slate-700">
                             <h3 className="text-xl font-black text-[#d4a574] flex items-center gap-2">
@@ -999,7 +1003,7 @@ const Accounts = () => {
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
+                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900">
                             <form onSubmit={handleAddUser} className="p-6 space-y-4">
                                     {/* New User Avatar Picker */}
                                     <div className="flex flex-col items-center mb-6">
@@ -1028,8 +1032,8 @@ const Accounts = () => {
                                         </button>
 
                                         {isNewUserAvatarLibraryOpen && (
-                                            <div className="mt-6 w-full bg-slate-50 border border-slate-200/60 rounded-3xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Curated Characters</p>
+                                            <div className="mt-6 w-full bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-3xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 ml-1">Curated Characters</p>
                                                 <div className="grid grid-cols-5 gap-3">
                                                     {AVATAR_LIBRARY.map((item) => (
                                                         <button
@@ -1041,7 +1045,7 @@ const Accounts = () => {
                                                                 setNewUserFormData({ ...newUserFormData, avatar: `LIBRARY_PICK:${item.seed}` });
                                                             }}
                                                             className={`relative p-1 rounded-xl transition-all hover:scale-110 ${newUserAvatarPreview === `LIBRARY_PICK:${item.seed}`
-                                                                    ? 'ring-2 ring-[#d4a574] ring-offset-2 bg-white'
+                                                                    ? 'ring-2 ring-[#d4a574] ring-offset-2 bg-white dark:ring-offset-slate-900'
                                                                     : 'grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
                                                                 }`}
                                                         >
@@ -1066,26 +1070,26 @@ const Accounts = () => {
                                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                                 First Name <span className="text-rose-500 text-lg leading-none">*</span>
                                             </label>
-                                            <input required type="text" value={newUserFormData.first_name} onChange={e => setNewUserFormData({ ...newUserFormData, first_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="e.g. John" />
+                                            <input required type="text" value={newUserFormData.first_name} onChange={e => setNewUserFormData({ ...newUserFormData, first_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="e.g. John" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                                 Last Name <span className="text-rose-500 text-lg leading-none">*</span>
                                             </label>
-                                            <input required type="text" value={newUserFormData.last_name} onChange={e => setNewUserFormData({ ...newUserFormData, last_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="e.g. Doe" />
+                                            <input required type="text" value={newUserFormData.last_name} onChange={e => setNewUserFormData({ ...newUserFormData, last_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="e.g. Doe" />
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                             Middle Name <span className="text-slate-400 text-[10px] lowercase font-normal">(Optional)</span>
                                         </label>
-                                        <input type="text" value={newUserFormData.middle_name} onChange={e => setNewUserFormData({ ...newUserFormData, middle_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="e.g. Smith" />
+                                        <input type="text" value={newUserFormData.middle_name} onChange={e => setNewUserFormData({ ...newUserFormData, middle_name: sanitizeName(e.target.value) })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="e.g. Smith" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                             Email Address <span className="text-rose-500 text-lg leading-none">*</span>
                                         </label>
-                                        <input required type="email" value={newUserFormData.email} onChange={e => setNewUserFormData({ ...newUserFormData, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="john@example.com" />
+                                        <input required type="email" value={newUserFormData.email} onChange={e => setNewUserFormData({ ...newUserFormData, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors" placeholder="john@example.com" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
@@ -1097,7 +1101,7 @@ const Accounts = () => {
                                                 type={showNewUserPassword ? "text" : "password"}
                                                 value={newUserFormData.password}
                                                 onChange={e => setNewUserFormData({ ...newUserFormData, password: e.target.value })}
-                                                className={`w-full px-4 py-2.5 border ${newUserFormData.password && !isStrongPassword(newUserFormData.password) ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10`}
+                                                className={`w-full px-4 py-2.5 border ${newUserFormData.password && !isStrongPassword(newUserFormData.password) ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200 dark:border-slate-700'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors pr-10`}
                                                 placeholder="••••••••"
                                             />
                                             <button
@@ -1113,7 +1117,7 @@ const Accounts = () => {
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">System Role</label>
                                         <div className="relative">
-                                            <select value={newUserFormData.role} onChange={e => setNewUserFormData({ ...newUserFormData, role: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 focus:bg-white transition-colors cursor-pointer appearance-none">
+                                            <select value={newUserFormData.role} onChange={e => setNewUserFormData({ ...newUserFormData, role: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-colors cursor-pointer appearance-none">
                                                 <option value="Admin">Admin</option>
                                                 <option value="SuperAdmin">SuperAdmin</option>
                                             </select>
@@ -1124,7 +1128,7 @@ const Accounts = () => {
                                     </div>
 
                                     <div className="pt-2 flex gap-3">
-                                        <button type="button" disabled={isAddingUser} onClick={() => setIsAddUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
+                                        <button type="button" disabled={isAddingUser} onClick={() => setIsAddUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50">Cancel</button>
                                         <button type="submit" disabled={isAddingUser} className="flex-1 py-3 bg-[#0f172a] text-[#d4a574] font-black rounded-xl hover:bg-slate-800 transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                                             {isAddingUser ? (
                                                 <><svg className="animate-spin h-4 w-4 text-[#d4a574]" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> CREATING...</>
@@ -1143,7 +1147,7 @@ const Accounts = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative"
+                        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-200 dark:border-slate-700"
                     >
                         <div className="h-20 bg-gradient-to-r from-[#0f172a] to-slate-800 p-6 flex items-center justify-between border-b border-slate-700">
                             <h3 className="text-xl font-black text-[#d4a574] flex items-center gap-2">
@@ -1153,10 +1157,10 @@ const Accounts = () => {
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleChangePasswordSubmit} className="p-6 space-y-4 bg-white dark:bg-slate-900">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                    Old Password <span className="text-slate-300 text-[10px] uppercase font-normal">(Required)</span>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                    Old Password <span className="text-slate-300 dark:text-slate-600 text-[10px] uppercase font-normal">(Required)</span>
                                 </label>
                                 <div className="relative flex items-center">
                                     <input
@@ -1164,7 +1168,7 @@ const Accounts = () => {
                                         type={showOldPassword ? "text" : "password"}
                                         value={changePasswordFormData.oldPassword}
                                         onChange={e => setChangePasswordFormData({ ...changePasswordFormData, oldPassword: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10"
+                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors pr-10"
                                         placeholder="••••••••"
                                     />
                                     <button
@@ -1186,7 +1190,7 @@ const Accounts = () => {
                                         type={showNewPassword ? "text" : "password"}
                                         value={changePasswordFormData.newPassword}
                                         onChange={e => setChangePasswordFormData({ ...changePasswordFormData, newPassword: e.target.value })}
-                                        className={`w-full px-4 py-2.5 border ${changePasswordFormData.newPassword && !isStrongPassword(changePasswordFormData.newPassword) ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10`}
+                                        className={`w-full px-4 py-2.5 border ${changePasswordFormData.newPassword && !isStrongPassword(changePasswordFormData.newPassword) ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200 dark:border-slate-700'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors pr-10`}
                                         placeholder="••••••••"
                                     />
                                     <button
@@ -1209,7 +1213,7 @@ const Accounts = () => {
                                         type={showConfirmPassword ? "text" : "password"}
                                         value={changePasswordFormData.confirmPassword}
                                         onChange={e => setChangePasswordFormData({ ...changePasswordFormData, confirmPassword: e.target.value })}
-                                        className={`w-full px-4 py-2.5 border ${changePasswordFormData.confirmPassword && changePasswordFormData.newPassword !== changePasswordFormData.confirmPassword ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10`}
+                                        className={`w-full px-4 py-2.5 border ${changePasswordFormData.confirmPassword && changePasswordFormData.newPassword !== changePasswordFormData.confirmPassword ? 'border-rose-300 ring-4 ring-rose-50' : 'border-slate-200 dark:border-slate-700'} rounded-xl focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors pr-10`}
                                         placeholder="••••••••"
                                     />
                                     <button
@@ -1225,7 +1229,7 @@ const Accounts = () => {
                                 )}
                             </div>
                             <div className="pt-6 flex gap-3">
-                                <button type="button" disabled={isSubmitting} onClick={() => setIsChangePasswordModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
+                                <button type="button" disabled={isSubmitting} onClick={() => setIsChangePasswordModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50">Cancel</button>
                                 <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-[#0f172a] text-[#d4a574] font-black rounded-xl hover:bg-slate-800 transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                                     {isSubmitting ? (
                                         <>
@@ -1249,11 +1253,11 @@ const Accounts = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-100"
+                        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-200 dark:border-slate-700"
                     >
                         <div className={`h-20 p-6 flex items-center justify-between border-b ${
-                            selectedUser?.is_active !== false 
-                                ? 'bg-gradient-to-r from-red-600 to-rose-700 border-red-800' 
+                            selectedUser?.is_active !== false
+                                ? 'bg-gradient-to-r from-red-600 to-rose-700 border-red-800'
                                 : 'bg-gradient-to-r from-emerald-800 to-teal-800 border-emerald-900'
                         }`}>
                             <h3 className="text-xl font-black text-white flex items-center gap-2">
@@ -1271,18 +1275,18 @@ const Accounts = () => {
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={handleDeleteUserSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleDeleteUserSubmit} className="p-6 space-y-4 bg-white dark:bg-slate-900">
                             <div className={`p-4 rounded-xl mb-4 border ${
-                                selectedUser?.is_active !== false 
-                                    ? 'bg-red-50 border-red-200 text-red-900' 
-                                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                selectedUser?.is_active !== false
+                                    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-900 dark:text-red-200'
+                                    : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200'
                             }`}>
                                 {selectedUser?.is_active !== false ? (
                                     <div className="space-y-1">
                                         <p className="text-sm font-semibold">
                                             You are about to disable <strong>{selectedUser?.name}</strong>. Their login session will be ended and access revoked.
                                         </p>
-                                        <p className="text-xs text-red-800/90 font-medium">
+                                        <p className="text-xs text-red-800/90 dark:text-red-300/90 font-medium">
                                             <strong>Zero Data Loss:</strong> All past documents, issued certificates, and audit logs handled by this user remain fully preserved.
                                         </p>
                                     </div>
@@ -1293,7 +1297,7 @@ const Accounts = () => {
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                     Your Admin Password <span className="text-rose-500 text-lg leading-none">*</span>
                                 </label>
                                 <div className="relative">
@@ -1302,23 +1306,23 @@ const Accounts = () => {
                                         type={showDeleteUserPassword ? "text" : "password"}
                                         value={deleteUserPassword}
                                         onChange={e => setDeleteUserPassword(e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none text-sm font-medium text-slate-700 bg-slate-50 focus:bg-white transition-colors pr-10"
+                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-950 pr-10"
                                         placeholder="••••••••"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowDeleteUserPassword(!showDeleteUserPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                     >
                                         {showDeleteUserPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                                     </button>
                                 </div>
                             </div>
                             <div className="pt-4 flex gap-3">
-                                <button type="button" disabled={isDeletingUser} onClick={() => setIsDeleteUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm disabled:opacity-50">Cancel</button>
+                                <button type="button" disabled={isDeletingUser} onClick={() => setIsDeleteUserModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm disabled:opacity-50">Cancel</button>
                                 <button type="submit" disabled={isDeletingUser} className={`flex-1 py-3 text-white font-black rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${
-                                    selectedUser?.is_active !== false 
-                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' 
+                                    selectedUser?.is_active !== false
+                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
                                         : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                                 }`}>
                                     {isDeletingUser ? (
@@ -1342,7 +1346,7 @@ const Accounts = () => {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden relative"
+                        className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden relative border border-slate-200 dark:border-slate-700"
                     >
                         <div className="h-24 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-8 flex items-center justify-between border-b border-white/10">
                             <div className="flex items-center gap-4">
@@ -1361,7 +1365,7 @@ const Accounts = () => {
                             </button>
                         </div>
 
-                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
+                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar bg-white dark:bg-slate-900">
                             <form onSubmit={handleEditProfileSubmit} className="p-8 space-y-6">
                                 {/* Avatar Section */}
                                 <div className="flex flex-col items-center">
@@ -1436,7 +1440,7 @@ const Accounts = () => {
                                                 type="text"
                                                 value={editProfileFormData.first_name}
                                                 onChange={e => setEditProfileFormData({ ...editProfileFormData, first_name: sanitizeName(e.target.value) })}
-                                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 transition-all"
+                                                className="w-full px-5 py-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 transition-all"
                                                 placeholder="e.g. John"
                                             />
                                         </div>
@@ -1447,7 +1451,7 @@ const Accounts = () => {
                                                 type="text"
                                                 value={editProfileFormData.last_name}
                                                 onChange={e => setEditProfileFormData({ ...editProfileFormData, last_name: sanitizeName(e.target.value) })}
-                                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 transition-all"
+                                                className="w-full px-5 py-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 transition-all"
                                                 placeholder="e.g. Doe"
                                             />
                                         </div>
@@ -1458,7 +1462,7 @@ const Accounts = () => {
                                             type="text"
                                             value={editProfileFormData.middle_name}
                                             onChange={e => setEditProfileFormData({ ...editProfileFormData, middle_name: sanitizeName(e.target.value) })}
-                                            className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 transition-all"
+                                            className="w-full px-5 py-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 transition-all"
                                             placeholder="e.g. Smith"
                                         />
                                     </div>
@@ -1473,7 +1477,7 @@ const Accounts = () => {
                                                 type="email"
                                                 value={editProfileFormData.email}
                                                 onChange={e => setEditProfileFormData({ ...editProfileFormData, email: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                                className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 transition-all disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed"
                                                 placeholder="john@example.com"
                                             />
                                         </div>
@@ -1488,7 +1492,7 @@ const Accounts = () => {
                                                 disabled={!isSuperAdmin()}
                                                 value={editProfileFormData.role}
                                                 onChange={e => setEditProfileFormData({ ...editProfileFormData, role: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 appearance-none cursor-pointer transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                                className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] outline-none text-sm font-bold text-slate-700 dark:text-slate-200 appearance-none cursor-pointer transition-all disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed"
                                             >
                                                 <option value="Admin">Admin</option>
                                                 <option value="SuperAdmin">SuperAdmin</option>
@@ -1503,7 +1507,7 @@ const Accounts = () => {
                                         type="button"
                                         disabled={isUpdatingProfile}
                                         onClick={() => setIsEditProfileModalOpen(false)}
-                                        className="px-6 py-3 bg-white border border-slate-200 text-slate-400 font-black rounded-xl hover:bg-slate-50 hover:text-slate-600 transition-all text-[10px] uppercase tracking-widest disabled:opacity-50"
+                                        className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-black rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 transition-all text-[10px] uppercase tracking-widest disabled:opacity-50"
                                     >
                                         Discard
                                     </button>
@@ -1535,7 +1539,7 @@ const Accounts = () => {
                         initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.95, opacity: 0 }}
-                        className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 flex flex-col"
+                        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col"
                     >
                         <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1556,7 +1560,7 @@ const Accounts = () => {
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh]">
+                        <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh] bg-white dark:bg-slate-900">
                             {isLoadingSettings ? (
                                 <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
                                     <ArrowPathIcon className="w-7 h-7 animate-spin text-indigo-600" />
@@ -1565,7 +1569,7 @@ const Accounts = () => {
                             ) : (
                                 <>
                                     {/* Request Anti-Spam Limits */}
-                                    <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                                    <div className="bg-slate-50/80 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="text-xs font-black text-slate-800 uppercase tracking-wider">
@@ -1581,7 +1585,7 @@ const Accounts = () => {
                                                 type="button"
                                                 disabled={isUpdatingLimits}
                                                 onClick={() => handleToggleLimits(!ticketLimitsEnabled)}
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ticketLimitsEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'}`}
                                                 title={ticketLimitsEnabled ? 'Click to turn off request limits' : 'Click to turn on limits for requests'}
                                             >
                                                 <span
@@ -1595,19 +1599,19 @@ const Accounts = () => {
                                     </div>
 
                                     {/* OCR Engine Switcher */}
-                                    <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                                    <div className="bg-slate-50/80 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div className="text-xs font-black text-slate-800 uppercase tracking-wider">
                                                 Document OCR Engine
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {ocrEngine === 'ollama' ? (
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800'}`}>
                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                                                         {ocrStatusInfo?.ollama?.online ? 'Ollama Online' : 'Ollama Offline'}
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800">
                                                         <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-indigo-500" />
                                                         Cloud AI
                                                     </span>
@@ -1631,8 +1635,8 @@ const Accounts = () => {
                                                 onClick={() => handleSwitchOcrEngine('gemini')}
                                                 className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
                                                     ocrEngine === 'gemini'
-                                                        ? 'bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-400/20'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-400 text-indigo-900 dark:text-indigo-300 shadow-xs ring-1 ring-indigo-400/20'
+                                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                 }`}
                                             >
                                                 <CloudIcon className="w-5 h-5 text-indigo-600" />
@@ -1646,8 +1650,8 @@ const Accounts = () => {
                                                 onClick={() => handleSwitchOcrEngine('ollama')}
                                                 className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${
                                                     ocrEngine === 'ollama'
-                                                        ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-xs ring-1 ring-emerald-500/20'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/20'
+                                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                                 }`}
                                             >
                                                 <CpuChipIcon className="w-5 h-5 text-emerald-600" />
@@ -1664,14 +1668,14 @@ const Accounts = () => {
                             )}
                         </div>
 
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                             <button
                                 type="button"
                                 onClick={() => {
                                     setIsAdvancedSettingsOpen(false);
                                     openSettings();
                                 }}
-                                className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
+                                className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer"
                                 title="Open Display & Accessibility settings"
                             >
                                 <SunIcon className="w-4 h-4" />
@@ -1680,7 +1684,7 @@ const Accounts = () => {
                             <button
                                 type="button"
                                 onClick={() => setIsAdvancedSettingsOpen(false)}
-                                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                                className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white text-xs font-bold transition-all cursor-pointer"
                             >
                                 Done
                             </button>

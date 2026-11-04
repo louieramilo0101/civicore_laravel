@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -122,6 +122,17 @@ const normalizeMonth = (val) => {
     return found || val;
 };
 
+/** Converts ordinal strings like "1st", "3rd", "First" into a plain numeric string ("1", "3") */
+const normalizeOrdinalToNumber = (val) => {
+    if (val === null || val === undefined || val === 'n/a') return val;
+    const str = String(val).trim().toLowerCase();
+    const wordMap = { first: '1', second: '2', third: '3', fourth: '4', fifth: '5', sixth: '6', seventh: '7', eighth: '8', ninth: '9', tenth: '10' };
+    if (wordMap[str]) return wordMap[str];
+    const suffixMatch = str.match(/^(\d+)\s*(?:st|nd|rd|th)$/);
+    if (suffixMatch) return suffixMatch[1];
+    return val;
+};
+
 /** Validates day of month against month and year */
 const validateDayOfMonth = (dayVal, monthVal, yearVal) => {
     if (!dayVal || dayVal === 'n/a') return null;
@@ -170,10 +181,10 @@ const normalizeDateToYMD = (val) => {
     if (!val || typeof val !== 'string' && typeof val !== 'number') return '';
     const str = String(val).trim();
     if (!str || str.toLowerCase() === 'n/a' || str.toLowerCase() === 'not applicable' || str === 'Select...') return '';
-    
+
     // Direct match: YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    
+
     // Starts with YYYY-MM-DD (e.g. ISO or SQL timestamp)
     const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
     if (isoMatch) return isoMatch[1];
@@ -212,10 +223,13 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
 
     configSections.forEach(section => {
         section.fields.forEach(f => {
-            let val = ef[f.key] === undefined || ef[f.key] === null ? '' : String(ef[f.key]).trim();
+            let val = ef[f.key] === undefined || ef[f.key] === null ? null : String(ef[f.key]).trim();
             // Sanitize against any accidental JSON syntax / dumps
-            if (val.includes('{') || val.includes('}') || val.includes('":') || val.includes('is_valid_document')) {
-                val = '';
+            if (val && (val.includes('{') || val.includes('}') || val.includes('":') || val.includes('is_valid_document'))) {
+                val = null;
+            }
+            if (val && (val.toLowerCase() === 'n/a' || val.toLowerCase() === 'not applicable')) {
+                val = null;
             }
             if (f.type === 'date') {
                 val = normalizeDateToYMD(val);
@@ -224,13 +238,32 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
                 val = findClosestBarangay(val);
             } else if ((f.key === 'dob_month' || f.key === 'marriage_parents_month' || f.key.includes('month')) && f.type === 'select' && val) {
                 val = normalizeMonth(val);
+            } else if (f.type === 'number' && val) {
+                // Birth order often arrives as "1st", "3rd" or "First" — normalize to a plain number
+                val = normalizeOrdinalToNumber(val);
+                if (String(val).trim() === '0') {
+                    val = null;
+                }
+            }
+            // Case-insensitive auto-select: match extracted values to existing options
+            // (e.g. "cavite" → "Cavite", " naic " → "Naic") instead of falling into "Others"
+            if (f.type === 'select' && val && val !== 'Others') {
+                const trimmed = val.trim().replace(/\s+/g, ' ');
+                if (trimmed) {
+                    if (f.options.includes(trimmed)) {
+                        val = trimmed;
+                    } else {
+                        const ci = f.options.find(o => o.toLowerCase() === trimmed.toLowerCase());
+                        if (ci) val = ci;
+                    }
+                }
             }
             if (!isManualEntry) {
-                if (!f.required && val === '' && f.type !== 'date' && f.type !== 'select') {
-                    val = 'n/a';
+                if (!f.required && (val === '' || val === null) && f.type !== 'date' && f.type !== 'select') {
+                    val = null;
                 }
-                if (f.type === 'signature' && val === '') {
-                    val = 'n/a';
+                if (f.type === 'signature' && (val === '' || val === null)) {
+                    val = null;
                 }
             }
             init[f.key] = val;
@@ -280,8 +313,8 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
     }
 
     // Auto-compose date_of_birth from dob_day, dob_month, dob_year if not directly set
-    const monthMap = { 'January':'01','February':'02','March':'03','April':'04','May':'05','June':'06','July':'07','August':'08','September':'09','October':'10','November':'11','December':'12' };
-    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthMap = { 'January': '01', 'February': '02', 'March': '03', 'April': '04', 'May': '05', 'June': '06', 'July': '07', 'August': '08', 'September': '09', 'October': '10', 'November': '11', 'December': '12' };
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     if (!init.date_of_birth && (init.dob_year || ef.dob_year)) {
         const yr = init.dob_year || ef.dob_year;
@@ -383,7 +416,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const { stats } = useData();
 
     const detectedType = ocrResult?.detected_type !== 'unknown' ? ocrResult?.detected_type : (docType || file.type || 'unknown');
-    
+
     // Loaded manually or from cache
     const [manualType, setManualType] = useState(() => {
         try {
@@ -394,10 +427,53 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         }
         return detectedType === 'unknown' ? '' : detectedType;
     });
-    
+
     const effectiveType = manualType || detectedType;
     const isManualEntry = !file?.file_path || file?.name === 'Manual Entry' || file?.id === 'manual';
     const isEditMode = !isManualEntry && (file?.status === 'processed' || file?.status === 'extracted' || file?.source === 'issuance' || isViewOnly);
+
+    // ── Type Mismatch Guard ────────────────────────────────────────────────
+    // Flags scans whose AI-detected type (e.g. a Death certificate) differs
+    // from the category the document was uploaded under (e.g. "birth").
+    // Saving is blocked until the user consciously selects the correct type.
+    const isValidCertType = (t) => ['birth', 'death', 'marriage'].includes(String(t).toLowerCase());
+    const aiDetectedType = String(ocrResult?.detected_type || '').toLowerCase();
+    const expectedCategory = String(docType || file?.type || '').toLowerCase();
+
+    const [acknowledgedType, setAcknowledgedType] = useState(() => {
+        try {
+            const ack = sessionStorage.getItem(`civicore_ocr_type_ack_${file.id}`);
+            return ack ? String(JSON.parse(ack) || '') : '';
+        } catch (err) {
+            return '';
+        }
+    });
+
+    // Persist the acknowledgement so re-opening the same document doesn't re-flag it
+    useEffect(() => {
+        if (!acknowledgedType || !file?.id) return;
+        try {
+            sessionStorage.setItem(`civicore_ocr_type_ack_${file.id}`, JSON.stringify(acknowledgedType));
+        } catch (err) {
+            console.error('Error saving type acknowledgement:', err);
+        }
+    }, [acknowledgedType, file?.id]);
+
+    const typeMismatch = !isManualEntry && !isViewOnly
+        && isValidCertType(aiDetectedType)
+        && isValidCertType(expectedCategory)
+        && aiDetectedType !== expectedCategory
+        && acknowledgedType !== effectiveType;
+
+    // Shared handler for picking a certificate type: confirms the choice so the
+    // mismatch guard releases, then rebuilds the form for the selected type.
+    const handleTypeChoice = (t) => {
+        isDirtyRef.current = true;
+        setManualType(t);
+        setAcknowledgedType(t);
+        setFormData(getInitialFormData(t, {}, file));
+        clearError('_type');
+    };
 
     // Left visual preview tab state: 'picture' (A4 Picture Scan) | 'pdf' (Live Certificate PDF)
     const [leftPreviewTab, setLeftPreviewTab] = useState('picture');
@@ -413,6 +489,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
     const [errors, setErrors] = useState({});
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+    const [activeErrorFieldKey, setActiveErrorFieldKey] = useState(null);
+    const formScrollContainerRef = useRef(null);
 
     const clearError = (key) => {
         setErrors(prev => {
@@ -421,11 +499,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             delete next[key];
             return next;
         });
+        setActiveErrorFieldKey(prev => (prev === key ? null : prev));
     };
 
     const clearAllErrors = () => {
         setErrors({});
         setHasAttemptedSubmit(false);
+        setActiveErrorFieldKey(null);
     };
 
     const [postFxModalOpen, setPostFxModalOpen] = useState(false);
@@ -576,6 +656,20 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             }
         } catch (err) {
             console.error("Save action failed in panel wrapper:", err);
+            if (err?.errors && typeof err.errors === 'object') {
+                const sErrors = {};
+                let firstKey = null;
+                Object.keys(err.errors).forEach(k => {
+                    const cleanKey = k.replace(/^fields\./, '').replace(/^extracted_fields\./, '');
+                    sErrors[cleanKey] = Array.isArray(err.errors[k]) ? err.errors[k][0] : String(err.errors[k]);
+                    if (!firstKey) firstKey = cleanKey;
+                });
+                setErrors(prev => ({ ...prev, ...sErrors }));
+                setHasAttemptedSubmit(true);
+                if (firstKey) {
+                    jumpToField(firstKey);
+                }
+            }
         }
     };
 
@@ -610,7 +704,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const [duplicateData, setDuplicateData] = useState(null);
     const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
-    useEffect(() => {
+useEffect(() => {
         const docId = file.id || file.file_id || file.document_id || file.realId;
         if (!docId) return;
 
@@ -632,7 +726,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             try {
                 const res = await fetch(`/api/documents/${docId}/check-duplicate`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Accept': 'application/json' },
                     body: JSON.stringify({
                         type: effectiveType,
                         fields: {
@@ -658,15 +752,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             }
         };
 
-        const delayDebounceFn = setTimeout(() => {
-            checkDuplicateRecord();
-        }, 400);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [
-        formData.registry_number, formData.registry_no,
-        effectiveType, manualType
-    ]);
+        // Run immediately on mount so the banner appears instantly when the
+        // user opens the review/edit panel — no debounce delay.
+        checkDuplicateRecord();
+    }, [file.id]);
 
     /**
      * Returns Tailwind classes for field confidence:
@@ -676,7 +765,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
      */
     /** Maps OCR confidence and validation state to a visual class. */
     const getConfidenceClass = (fieldKey, hasError) => {
-        if (hasAttemptedSubmit && hasError) return 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm';
+        if (hasAttemptedSubmit && hasError) {
+            const isActive = activeErrorFieldKey === fieldKey;
+            return `border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm ${isActive ? 'ring-4 ring-rose-500 animate-pulse' : ''}`;
+        }
         const meta = fieldConfidence[fieldKey];
         if (!meta) return 'border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:ring-slate-100 focus:border-slate-400 shadow-sm';
         if (meta.low_confidence || meta.confidence < 0.65) {
@@ -736,9 +828,6 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         setOcrText(newText);
     }, [activeDocId, file?.id, file?.updated_at, ocrResult, effectiveType]);
 
-    const typeMismatch = ocrResult?.type_mismatch;
-    const mismatchMessage = ocrResult?.mismatch_message;
-
     const sourceDocumentId = file?.document_id || file?.source_document_id;
     const originalDocumentUrl = sourceDocumentId
         ? `/api/documents/view/${sourceDocumentId}?raw=1`
@@ -752,6 +841,72 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             fieldLabelMap[f.key] = f.label;
         });
     });
+    fieldLabelMap['barangay'] = 'Barangay (For Analytics)';
+    fieldLabelMap['_file'] = 'Scanned Document File';
+
+    /** Automatically scrolls and focuses the missing or erroneous field for the user. */
+    const jumpToField = useCallback((fieldKey) => {
+        if (!fieldKey) return;
+
+        // If file error, switch to scan tab on mobile
+        if (fieldKey === '_file') {
+            setMobileTab('scan');
+        } else {
+            // Ensure fields mode is active and mobile is on form tab so inputs are rendered
+            setViewMode('fields');
+            setMobileTab('form');
+        }
+
+        setActiveErrorFieldKey(fieldKey);
+
+        const tryScrollAndFocus = () => {
+            let targetElem = null;
+
+            if (fieldKey === '_file') {
+                targetElem = document.getElementById('manual-file-dropzone') || document.getElementById('field-container-_file');
+            } else {
+                targetElem = document.getElementById(`field-input-${fieldKey}`)
+                    || document.querySelector(`[data-field-key="${fieldKey}"] input, [data-field-key="${fieldKey}"] select, [data-field-key="${fieldKey}"] textarea`)
+                    || document.getElementById(`field-container-${fieldKey}`)
+                    || document.querySelector(`[data-field-key="${fieldKey}"]`);
+            }
+
+            if (!targetElem) {
+                targetElem = document.querySelector('.border-rose-500, input.border-rose-500, select.border-rose-500, textarea.border-rose-500');
+            }
+
+            if (targetElem) {
+                targetElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                if (formScrollContainerRef.current) {
+                    const cRect = formScrollContainerRef.current.getBoundingClientRect();
+                    const eRect = targetElem.getBoundingClientRect();
+                    const relativeOffset = eRect.top - cRect.top + formScrollContainerRef.current.scrollTop;
+                    formScrollContainerRef.current.scrollTo({
+                        top: Math.max(0, relativeOffset - 120),
+                        behavior: 'smooth'
+                    });
+                }
+
+                const inputElem = targetElem.matches('input, select, textarea')
+                    ? targetElem
+                    : targetElem.querySelector('input, select, textarea');
+
+                if (inputElem) {
+                    try { inputElem.focus({ preventScroll: true }); } catch (e) { inputElem.focus(); }
+                } else if (typeof targetElem.focus === 'function') {
+                    try { targetElem.focus({ preventScroll: true }); } catch (e) { targetElem.focus(); }
+                }
+            }
+        };
+
+        setTimeout(tryScrollAndFocus, 60);
+        setTimeout(tryScrollAndFocus, 180);
+
+        setTimeout(() => {
+            setActiveErrorFieldKey(prev => (prev === fieldKey ? null : prev));
+        }, 3500);
+    }, []);
 
     /** Validates and submits the edited OCR data to the parent workflow. */
     const handleSubmit = (e, minimize = false) => {
@@ -764,32 +919,51 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             return;
         }
 
+        // --- Block save if the OCR-detected type conflicts with the upload category ---
+        if (typeMismatch) {
+            setErrors({ _type: true });
+            if (formScrollContainerRef.current) {
+                formScrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            return;
+        }
+
         // --- Strict Validation ---
         const configSections = FIELD_CONFIG[effectiveType] || FIELD_CONFIG.birth;
         const newErrors = {};
         let firstErrorField = null;
+        let firstErrorKey = null;
 
         configSections.forEach(section => {
             section.fields.forEach(f => {
                 const rawVal = formData[f.key];
                 const strVal = rawVal === undefined || rawVal === null ? '' : String(rawVal).trim();
-                if (f.required && (strVal === '' || strVal === 'Select...' || strVal === 'n/a')) {
+                if (f.required && (strVal === '' || strVal === 'Select...' || strVal.toLowerCase() === 'n/a')) {
                     newErrors[f.key] = `${f.label} is required`;
-                    if (!firstErrorField) firstErrorField = f.label;
-                } else if (strVal !== '' && strVal !== 'n/a') {
+                    if (!firstErrorField) {
+                        firstErrorField = f.label;
+                        firstErrorKey = f.key;
+                    }
+                } else if (strVal !== '' && strVal.toLowerCase() !== 'n/a') {
                     if (f.key.endsWith('_day')) {
                         const monthKey = f.key.replace('_day', '_month');
                         const yearKey = f.key.replace('_day', '_year');
                         const dayErr = validateDayOfMonth(strVal, formData[monthKey], formData[yearKey]);
                         if (dayErr) {
                             newErrors[f.key] = dayErr;
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         }
                     } else if (f.key.endsWith('_year')) {
                         const yrErr = validateCalendarYear(strVal);
                         if (yrErr) {
                             newErrors[f.key] = yrErr;
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         }
                     } else if (f.type === 'date') {
                         const parsedDate = new Date(strVal);
@@ -797,22 +971,37 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         today.setHours(23, 59, 59, 999);
                         if (isNaN(parsedDate.getTime())) {
                             newErrors[f.key] = 'Please enter a valid calendar date';
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         } else if (parsedDate > today) {
                             newErrors[f.key] = 'Date cannot be in the future';
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         }
                     } else if (f.type === 'number' || /(^|_)age($|_)/i.test(f.key)) {
                         const n = Number(strVal);
                         if (isNaN(n) || n < 0) {
                             newErrors[f.key] = 'Must be a valid positive number';
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         } else if (f.min !== undefined && n < f.min) {
                             newErrors[f.key] = `Minimum value is ${f.min}`;
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         } else if (f.max !== undefined && n > f.max) {
                             newErrors[f.key] = `Maximum value is ${f.max}`;
-                            if (!firstErrorField) firstErrorField = f.label;
+                            if (!firstErrorField) {
+                                firstErrorField = f.label;
+                                firstErrorKey = f.key;
+                            }
                         }
                     }
                 }
@@ -825,7 +1014,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             const d = new Date(formData.date_of_death);
             if (!isNaN(b.getTime()) && !isNaN(d.getTime()) && d < b) {
                 newErrors.date_of_death = 'Date of death cannot be earlier than date of birth';
-                if (!firstErrorField) firstErrorField = '3. Date of Death';
+                if (!firstErrorField) {
+                    firstErrorField = '3. Date of Death';
+                    firstErrorKey = 'date_of_death';
+                }
             }
         }
         if (effectiveType === 'marriage' && formData.date_of_marriage) {
@@ -835,14 +1027,20 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     const h = new Date(formData.husband_dob);
                     if (!isNaN(h.getTime()) && m < h) {
                         newErrors.date_of_marriage = 'Marriage date cannot be earlier than husband birth date';
-                        if (!firstErrorField) firstErrorField = '16. Date of Marriage';
+                        if (!firstErrorField) {
+                            firstErrorField = '16. Date of Marriage';
+                            firstErrorKey = 'date_of_marriage';
+                        }
                     }
                 }
                 if (formData.wife_dob) {
                     const w = new Date(formData.wife_dob);
                     if (!isNaN(w.getTime()) && m < w) {
                         newErrors.date_of_marriage = 'Marriage date cannot be earlier than wife birth date';
-                        if (!firstErrorField) firstErrorField = '16. Date of Marriage';
+                        if (!firstErrorField) {
+                            firstErrorField = '16. Date of Marriage';
+                            firstErrorKey = 'date_of_marriage';
+                        }
                     }
                 }
             }
@@ -850,27 +1048,27 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
         // Mandatory Barangay Check for Geospatial Analytics Mapping
         const brgyVal = formData.barangay ? String(formData.barangay).trim() : '';
-        if (!brgyVal || brgyVal === 'Select...' || brgyVal === 'n/a') {
+        if (!brgyVal || brgyVal === 'Select...' || brgyVal.toLowerCase() === 'n/a') {
             newErrors.barangay = true;
-            if (!firstErrorField) firstErrorField = 'Barangay (For analytics)';
+            if (!firstErrorField) {
+                firstErrorField = 'Barangay (For analytics)';
+                firstErrorKey = 'barangay';
+            }
         }
 
         // Mandatory file check for manual registration if Dummy Data Mode is OFF
         if (isManualEntry && !isDummyMode && !manualFile) {
             newErrors._file = 'A scanned certificate picture or PDF is required. Please attach a file or enable Dummy Data Mode.';
-            if (!firstErrorField) firstErrorField = 'Scanned Document File';
+            if (!firstErrorField) {
+                firstErrorField = 'Scanned Document File';
+                firstErrorKey = '_file';
+            }
         }
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
-            // Focus and scroll to the first error field automatically
-            setTimeout(() => {
-                const firstError = document.querySelector('.border-rose-500, select.border-rose-500, input.border-rose-500');
-                if (firstError) {
-                    firstError.focus();
-                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
+            const targetKey = firstErrorKey || Object.keys(newErrors)[0];
+            jumpToField(targetKey);
             return;
         }
 
@@ -883,7 +1081,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         if (sanitizedFields.date_of_birth && sanitizedFields.date_of_birth !== 'n/a') {
             const parts = String(sanitizedFields.date_of_birth).split('-');
             if (parts.length === 3) {
-                const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
                 const y = parseInt(parts[0], 10);
                 const mIdx = parseInt(parts[1], 10) - 1;
                 const d = parseInt(parts[2], 10);
@@ -899,7 +1097,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         if (sanitizedFields.marriage_parents_date && sanitizedFields.marriage_parents_date !== 'n/a') {
             const parts = String(sanitizedFields.marriage_parents_date).split('-');
             if (parts.length === 3) {
-                const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
                 const y = parseInt(parts[0], 10);
                 const mIdx = parseInt(parts[1], 10) - 1;
                 const d = parseInt(parts[2], 10);
@@ -916,13 +1114,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                 const val = sanitizedFields[f.key];
                 const strVal = val === undefined || val === null ? '' : String(val).trim();
                 if (!f.required && f.key !== 'barangay') {
-                    if (strVal === '' || strVal === 'n/a') {
-                        sanitizedFields[f.key] = 'n/a';
+                    if (strVal === '' || strVal.toLowerCase() === 'n/a' || strVal.toLowerCase() === 'not applicable') {
+                        sanitizedFields[f.key] = null;
                     }
                 }
-                // Signature fields always sanitize to 'n/a' if empty
-                if (f.type === 'signature' && (strVal === '' || strVal === undefined || strVal === null)) {
-                    sanitizedFields[f.key] = 'n/a';
+                // Signature fields sanitize to null if empty
+                if (f.type === 'signature' && (strVal === '' || strVal === undefined || strVal === null || strVal.toLowerCase() === 'n/a')) {
+                    sanitizedFields[f.key] = null;
                 }
             });
         });
@@ -953,12 +1151,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     const val = sanitizedFields[f.key];
                     const strVal = val === undefined || val === null ? '' : String(val).trim();
                     if (!f.required && f.key !== 'barangay') {
-                        if (strVal === '' || strVal === 'n/a') {
-                            sanitizedFields[f.key] = 'n/a';
+                        if (strVal === '' || strVal.toLowerCase() === 'n/a' || strVal.toLowerCase() === 'not applicable') {
+                            sanitizedFields[f.key] = null;
                         }
                     }
-                    if (f.type === 'signature' && (strVal === '' || strVal === undefined || strVal === null)) {
-                        sanitizedFields[f.key] = 'n/a';
+                    if (f.type === 'signature' && (strVal === '' || strVal === undefined || strVal === null || strVal.toLowerCase() === 'n/a')) {
+                        sanitizedFields[f.key] = null;
                     }
                 });
             });
@@ -1023,25 +1221,20 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                 <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-8 py-3.5 sm:py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md gap-3 shrink-0">
                     <div className="flex items-center justify-between w-full md:w-auto">
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
-                                isManualEntry 
-                                    ? 'bg-[#d4a574]/15 border border-[#d4a574]/30 text-[#d4a574]'
-                                    : isEditMode
-                                        ? 'bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-800 text-indigo-600'
-                                        : 'bg-emerald-50 dark:bg-emerald-950 border border-emerald-100 dark:border-emerald-800 text-emerald-600'
-                            }`}>
-                                {isManualEntry || isEditMode ? (
-                                    <PencilSquareIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                                ) : (
-                                    <DocumentCheckIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                                )}
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isManualEntry
+                                ? 'bg-[#d4a574]/15 border border-[#d4a574]/30 text-[#d4a574]'
+                                : isEditMode
+                                    ? 'bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-800 text-indigo-600'
+                                    : 'bg-emerald-50 dark:bg-emerald-950 border border-emerald-100 dark:border-emerald-800 text-emerald-600'
+                                }`}>
+                                <DocumentCheckIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                             </div>
                             <div className="min-w-0">
                                 <h3 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight truncate sm:whitespace-normal">
-                                    {isManualEntry 
-                                        ? 'Manual Civil Registry Encoding' 
-                                        : isEditMode 
-                                            ? 'Modify Civil Registry Record' 
+                                    {isManualEntry
+                                        ? 'Manual Civil Registry Encoding'
+                                        : isEditMode
+                                            ? 'Review Civil Registry Record'
                                             : 'Extracted Document Data'}
                                 </h3>
                                 <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-0.5 line-clamp-1">
@@ -1078,11 +1271,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         setIsDummyMode(prev => !prev);
                                         clearError('_file');
                                     }}
-                                    className={`flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none group shadow-xs ${
-                                        isDummyMode
-                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 hover:bg-amber-100/70'
-                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                    }`}
+                                    className={`flex items-center gap-2 sm:gap-2.5 px-3 py-1.5 rounded-full border transition-all cursor-pointer select-none group shadow-xs ${isDummyMode
+                                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 hover:bg-amber-100/70'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                        }`}
                                     title={isDummyMode ? "Click to switch to Upload Scan" : "Click to switch to Dummy Data Mode"}
                                 >
                                     <span className="flex items-center gap-1.5 text-xs font-extrabold tracking-tight">
@@ -1101,14 +1293,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     </span>
 
                                     <div
-                                        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                                            isDummyMode ? 'bg-amber-500' : 'bg-slate-300 group-hover:bg-slate-400'
-                                        }`}
+                                        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center p-0.5 ${isDummyMode ? 'bg-amber-500' : 'bg-slate-300 group-hover:bg-slate-400'
+                                            }`}
                                     >
                                         <div
-                                            className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
-                                                isDummyMode ? 'translate-x-3.5' : 'translate-x-0'
-                                            }`}
+                                            className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${isDummyMode ? 'translate-x-3.5' : 'translate-x-0'
+                                                }`}
                                         />
                                     </div>
                                 </button>
@@ -1121,17 +1311,11 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     <button
                                         key={t}
                                         type="button"
-                                        onClick={() => {
-                                            isDirtyRef.current = true;
-                                            setManualType(t);
-                                            setFormData(getInitialFormData(t, {}, file));
-                                            clearError('_type');
-                                        }}
-                                        className={`px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${
-                                            effectiveType === t
-                                                ? 'bg-[#0f172a] dark:bg-slate-950 text-[#d4a574] shadow-md border border-[#d4a574]/40'
-                                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600'
-                                        }`}
+                                        onClick={() => handleTypeChoice(t)}
+                                        className={`px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${effectiveType === t
+                                            ? 'bg-[#0f172a] dark:bg-slate-950 text-[#d4a574] shadow-md border border-[#d4a574]/40'
+                                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600'
+                                            }`}
                                     >
                                         {t}
                                     </button>
@@ -1158,37 +1342,41 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     </div>
                 </div>
 
-                {/* Unknown Type Warning Banner */}
-                {(detectedType === 'unknown' || !manualType) && !isViewOnly && !isManualEntry && (
-                    <div className={`px-8 py-4 border-b flex items-center gap-4 ${errors._type ? 'bg-rose-50 border-rose-200 animate-pulse' : 'bg-amber-50 border-amber-200'}`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${errors._type ? 'bg-rose-100' : 'bg-amber-100'}`}>
-                            <ExclamationTriangleIcon className={`w-5 h-5 ${errors._type ? 'text-rose-600' : 'text-amber-600'}`} />
+                {/* Unknown Type / Type Mismatch Warning Banner */}
+                {((detectedType === 'unknown' || !manualType) || typeMismatch) && !isViewOnly && !isManualEntry && (
+                    <div className={`px-8 py-4 border-b flex items-center gap-4 ${errors._type || typeMismatch ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} ${typeMismatch ? 'animate-pulse' : ''}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${errors._type || typeMismatch ? 'bg-rose-100' : 'bg-amber-100'}`}>
+                            <ExclamationTriangleIcon className={`w-5 h-5 ${errors._type || typeMismatch ? 'text-rose-600' : 'text-amber-600'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-black ${errors._type ? 'text-rose-700' : 'text-amber-800'}`}>
-                                {errors._type ? 'Document type required before saving' : 'Document type could not be auto-detected'}
+                            <p className={`text-sm font-black ${errors._type || typeMismatch ? 'text-rose-700' : 'text-amber-800'}`}>
+                                {typeMismatch
+                                    ? 'Wrong certificate type detected'
+                                    : errors._type ? 'Document type required before saving' : 'Document type could not be auto-detected'}
                             </p>
-                            <p className={`text-xs font-medium mt-0.5 ${errors._type ? 'text-rose-500' : 'text-amber-600'}`}>
-                                Please select if this picture is a Birth, Death, or Marriage certificate.
+                            <p className={`text-xs font-medium mt-0.5 ${errors._type || typeMismatch ? 'text-rose-500' : 'text-amber-600'}`}>
+                                {typeMismatch ? (
+                                    <span>
+                                        This scan was detected as a <strong className="uppercase">{aiDetectedType}</strong> certificate, but it was uploaded as <strong className="uppercase">{expectedCategory}</strong>.
+                                        Select the correct certificate type below before continuing.
+                                    </span>
+                                ) : (
+                                    'Please select if this picture is a Birth, Death, or Marriage certificate.'
+                                )}
                             </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                             {['birth', 'death', 'marriage'].map(t => (
                                 <button
                                     key={t}
-                                    onClick={() => {
-                                        isDirtyRef.current = true;
-                                        setManualType(t);
-                                        setFormData(getInitialFormData(t, {}, file));
-                                        clearError('_type');
-                                    }}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all cursor-pointer ${
-                                        manualType === t
-                                            ? t === 'birth' ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-md'
-                                              : t === 'death' ? 'bg-rose-500 text-white border-rose-500 shadow-md'
-                                              : 'bg-indigo-500 text-white border-indigo-500 shadow-md'
-                                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                    }`}
+                                    type="button"
+                                    onClick={() => handleTypeChoice(t)}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all cursor-pointer ${manualType === t
+                                        ? t === 'birth' ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-md'
+                                            : t === 'death' ? 'bg-rose-500 text-white border-rose-500 shadow-md'
+                                                : 'bg-indigo-500 text-white border-indigo-500 shadow-md'
+                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
                                 >
                                     {t}
                                 </button>
@@ -1204,11 +1392,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             <button
                                 type="button"
                                 onClick={() => setMobileTab('form')}
-                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                    mobileTab === 'form'
-                                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                }`}
+                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${mobileTab === 'form'
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                    }`}
                             >
                                 <PencilSquareIcon className="w-4 h-4 text-indigo-600" />
                                 <span>Registry Form</span>
@@ -1216,11 +1403,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             <button
                                 type="button"
                                 onClick={() => setMobileTab('scan')}
-                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer relative ${
-                                    mobileTab === 'scan'
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                }`}
+                                className={`py-2 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer relative ${mobileTab === 'scan'
+                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                    }`}
                             >
                                 <PhotoIcon className={`w-4 h-4 ${mobileTab === 'scan' ? 'text-white' : 'text-indigo-600'}`} />
                                 <span>Attached Scan</span>
@@ -1236,30 +1422,27 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                     {/* ── Left Pane: Reference Scan or Manual Upload Dropzone ── */}
                     {viewMode !== 'compare' && (
                         originalDocumentUrl ? (
-                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${
-                                mobileTab === 'scan' ? 'flex flex-1 overflow-hidden' : 'hidden lg:flex'
-                            }`}>
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${mobileTab === 'scan' ? 'flex flex-1 overflow-hidden' : 'hidden lg:flex'
+                                }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
                                     <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-xl">
                                         <button
                                             type="button"
                                             onClick={() => setLeftPreviewTab('picture')}
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                                leftPreviewTab === 'picture' 
-                                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-black' 
-                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                            }`}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${leftPreviewTab === 'picture'
+                                                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-black'
+                                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                                }`}
                                         >
                                             📷 Uploaded Picture (A4)
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setLeftPreviewTab('pdf')}
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                                leftPreviewTab === 'pdf' 
-                                                    ? 'bg-indigo-600 text-white shadow-sm font-black' 
-                                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                            }`}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${leftPreviewTab === 'pdf'
+                                                ? 'bg-indigo-600 text-white shadow-sm font-black'
+                                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                                }`}
                                         >
                                             📄 Live Certificate (PDF)
                                         </button>
@@ -1309,9 +1492,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 </div>
                             </div>
                         ) : isManualEntry && !isDummyMode ? (
-                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${
-                                viewMode === 'template' ? 'hidden' : (mobileTab === 'scan' ? 'flex flex-1 overflow-y-auto' : 'hidden lg:flex')
-                            }`}>
+                            <div className={`w-full lg:w-[45%] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 sm:p-4 flex-col shrink-0 ${viewMode === 'template' ? 'hidden' : (mobileTab === 'scan' ? 'flex flex-1 overflow-y-auto' : 'hidden lg:flex')
+                                }`}>
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs">
@@ -1387,6 +1569,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         </div>
                                     ) : (
                                         <div
+                                            id="manual-file-dropzone"
+                                            data-field-key="_file"
+                                            tabIndex={-1}
                                             onDragOver={(e) => { e.preventDefault(); setIsDraggingManual(true); }}
                                             onDragLeave={() => setIsDraggingManual(false)}
                                             onDrop={(e) => {
@@ -1396,13 +1581,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     handleFileSelect(e.dataTransfer.files[0]);
                                                 }
                                             }}
-                                            className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center transition-all ${
-                                                isDraggingManual
-                                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[0.99]'
-                                                    : errors._file
-                                                        ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/20'
-                                                        : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
-                                            }`}
+                                            className={`w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center transition-all ${isDraggingManual
+                                                ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[0.99]'
+                                                : errors._file
+                                                    ? `border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 ring-2 ring-rose-400 ${activeErrorFieldKey === '_file' ? 'ring-4 ring-rose-500 animate-pulse' : ''}`
+                                                    : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
+                                                }`}
                                         >
                                             <input
                                                 ref={fileInputRef}
@@ -1463,11 +1647,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         ) : null
                     )}
 
-                    <div className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 ${
-                        mobileTab === 'form' || !(viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode))) 
-                            ? 'flex flex-col' 
+                    <div
+                        ref={formScrollContainerRef}
+                        className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 ${mobileTab === 'form' || !(viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode)))
+                            ? 'flex flex-col'
                             : 'hidden lg:flex lg:flex-col'
-                    }`}>
+                            }`}>
                         {/* Mobile Quick Banner for Attached Scan */}
                         {viewMode !== 'compare' && Boolean(originalDocumentUrl || (isManualEntry && !isDummyMode)) && (
                             <div className="lg:hidden flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 border border-indigo-100">
@@ -1495,14 +1680,6 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         )}
 
                         <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full sm:w-fit gap-1 flex-wrap">
-                            {!isManualEntry && (
-                                <button
-                                    onClick={() => setViewMode('text')}
-                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'text' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                                >
-                                    Full Extracted Text
-                                </button>
-                            )}
                             <button
                                 onClick={() => setViewMode('fields')}
                                 className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'fields' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
@@ -1520,52 +1697,32 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             {duplicateData && (
                                 <button
                                     onClick={() => setViewMode('compare')}
-                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'compare' ? 'bg-amber-600 text-white shadow-sm font-black' : 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse flex items-center justify-center gap-1.5'}`}
+                                    className={`flex-1 sm:flex-initial text-center px-3 sm:px-4 py-2 sm:py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${viewMode === 'compare' ? 'bg-amber-600 text-white shadow-sm font-black' : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse flex items-center justify-center gap-1.5'}`}
                                 >
-                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-700 shrink-0" />
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                                     Compare Side-by-Side
                                 </button>
                             )}
                         </div>
 
                         {duplicateData && viewMode !== 'compare' && (
-                            <div className="flex items-start gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                                    <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 animate-pulse" />
+                            <div className="flex items-start gap-4 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl">
+                                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center shrink-0">
+                                    <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400 animate-pulse" />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-bold text-amber-800">Potential Duplicate Detected</p>
-                                    <p className="text-xs text-amber-600 mt-1">
+                                    <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Potential Duplicate Detected</p>
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                                         A similar record exists in the Master Registry under Certificate #<strong>{duplicateData.certNumber}</strong> ({duplicateData.name}).
                                     </p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('compare')}
-                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shrink-0"
+                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shrink-0"
                                 >
                                     Compare Side-by-Side
                                 </button>
-                            </div>
-                        )}
-
-                        {viewMode === 'text' && (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        OCR Result (Editable)
-                                    </label>
-                                    <span className="text-[10px] text-slate-400 italic">Changes are saved to the database</span>
-                                </div>
-                                <textarea
-                                    value={ocrText}
-                                    onChange={(e) => {
-                                        isDirtyRef.current = true;
-                                        setOcrText(e.target.value);
-                                    }}
-                                    className="w-full h-[400px] p-4 text-sm font-mono border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all"
-                                    placeholder="Edit the extracted text here..."
-                                />
                             </div>
                         )}
 
@@ -1574,14 +1731,14 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                             {!isManualEntry && (
                                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-xs">
                                     <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                                    <span>⚠️ OCR results are not 100% accurate. Please verify all fields manually before submitting.</span>
+                                    <span>OCR results are not 100% accurate. Please verify all fields manually before submitting.</span>
                                 </div>
                             )}
 
                             {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
                                 <div className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-2xl text-rose-800 dark:text-rose-300 text-sm font-bold shadow-sm">
                                     <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                                    <div>
+                                    <div className="flex-1">
                                         <p className="font-black text-rose-900 dark:text-rose-200">Cannot Save: Required Fields Missing</p>
                                         <p className="text-xs font-semibold text-rose-700 dark:text-rose-300 mt-0.5">
                                             {errors._file
@@ -1590,6 +1747,20 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     ? "Barangay (For Analytics) is mandatory to ensure geospatial mapping accuracy. Please select or enter the Barangay before saving."
                                                     : "Please complete all mandatory fields highlighted in red below."}
                                         </p>
+                                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                            {Object.keys(errors).filter(k => Boolean(errors[k]) && k !== '_type').map(k => (
+                                                <button
+                                                    key={k}
+                                                    type="button"
+                                                    onClick={() => jumpToField(k)}
+                                                    className="px-2.5 py-1 text-[11px] font-black rounded-lg bg-rose-200/80 hover:bg-rose-300/90 dark:bg-rose-900/80 dark:hover:bg-rose-800 text-rose-950 dark:text-rose-100 transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                                    title={`Jump to ${fieldLabelMap[k] || k}`}
+                                                >
+                                                    <span>Go to {fieldLabelMap[k] || (k === '_file' ? 'Scanned File' : k)}</span>
+                                                    <span>↓</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1599,7 +1770,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     <ExclamationTriangleIcon className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-sm font-bold text-rose-700">Document Type Mismatch</p>
-                                        <p className="text-sm text-rose-600 mt-0.5">{mismatchMessage}</p>
+                                        <p className="text-sm text-rose-600 mt-0.5">
+                                            This scan was detected as a <strong className="uppercase">{aiDetectedType}</strong> certificate, but it was uploaded as <strong className="uppercase">{expectedCategory}</strong>. Select the correct certificate type in the banner above before saving.
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -1621,7 +1794,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                         )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                                             {section.fields.map(field => (
-                                                <div key={field.key} className={field.width || 'sm:col-span-1'}>
+                                                <div
+                                                    key={field.key}
+                                                    id={`field-container-${field.key}`}
+                                                    data-field-key={field.key}
+                                                    className={`${field.width || 'sm:col-span-1'} transition-all duration-300 rounded-2xl ${activeErrorFieldKey === field.key ? 'ring-4 ring-rose-400/80 dark:ring-rose-500/80 p-1.5 -m-1.5 bg-rose-50/40 dark:bg-rose-950/40 shadow-md' : ''}`}
+                                                >
                                                     <label className={`block text-[11px] font-black uppercase tracking-widest mb-2.5 transition-colors ${hasAttemptedSubmit && errors[field.key] ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'}`}>
                                                         {field.label} {field.required && <span className="text-rose-400">*</span>}
                                                     </label>
@@ -1635,6 +1813,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                 return (
                                                                     <>
                                                                         <select
+                                                                            id={`field-input-${field.key}`}
+                                                                            name={field.key}
                                                                             value={isStandardOption ? rawVal : (rawVal ? 'Others' : '')}
                                                                             onChange={e => {
                                                                                 isDirtyRef.current = true;
@@ -1680,10 +1860,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                             )}
                                                         </div>
                                                     ) : field.type === 'signature' ? (
-                                                        <div>
+                                                        <div id={`field-input-${field.key}`}>
                                                             <SignaturePad
                                                                 fieldKey={field.key}
-                                                                value={formData[field.key] || 'n/a'}
+                                                                value={formData[field.key] ?? null}
                                                                 onChange={val => {
                                                                     isDirtyRef.current = true;
                                                                     setFormData(p => ({ ...p, [field.key]: val }));
@@ -1700,7 +1880,9 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     ) : field.type === 'textarea' ? (
                                                         <div>
                                                             <textarea
-                                                                value={formData[field.key] || ''}
+                                                                id={`field-input-${field.key}`}
+                                                                name={field.key}
+                                                                value={(formData[field.key] === null || formData[field.key] === undefined || formData[field.key] === 'n/a') ? '' : formData[field.key]}
                                                                 maxLength={getFieldMaxLength(field)}
                                                                 onChange={e => {
                                                                     isDirtyRef.current = true;
@@ -1721,17 +1903,19 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                         <div>
                                                             <div className="relative">
                                                                 <input
+                                                                    id={`field-input-${field.key}`}
+                                                                    name={field.key}
                                                                     type={field.type === 'date' ? 'date' : 'text'}
                                                                     inputMode={field.type === 'number' || field.key.endsWith('_day') || field.key.endsWith('_year') || /(^|_)age($|_)/i.test(field.key) ? 'numeric' : undefined}
                                                                     min={field.type === 'date' ? '1900-01-01' : field.min}
                                                                     max={field.type === 'date' ? new Date().toISOString().split('T')[0] : field.max}
-                                                                    value={field.type === 'date' ? normalizeDateToYMD(formData[field.key]) : (formData[field.key] || '')}
+                                                                    value={field.type === 'date' ? normalizeDateToYMD(formData[field.key]) : ((formData[field.key] === null || formData[field.key] === undefined || formData[field.key] === 'n/a') ? '' : formData[field.key])}
                                                                     maxLength={
                                                                         field.type === 'date' ? undefined :
-                                                                        field.key.endsWith('_day') ? 2 :
-                                                                        field.key.endsWith('_year') ? 4 :
-                                                                        /(^|_)age($|_)/i.test(field.key) ? 3 :
-                                                                        getFieldMaxLength(field)
+                                                                            field.key.endsWith('_day') ? 2 :
+                                                                                field.key.endsWith('_year') ? 4 :
+                                                                                    /(^|_)age($|_)/i.test(field.key) ? 3 :
+                                                                                        getFieldMaxLength(field)
                                                                     }
                                                                     onChange={e => {
                                                                         isDirtyRef.current = true;
@@ -1751,7 +1935,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                             if (field.key === 'date_of_birth' && val) {
                                                                                 const parts = val.split('-');
                                                                                 if (parts.length === 3) {
-                                                                                    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                                                                                    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
                                                                                     const y = parseInt(parts[0], 10);
                                                                                     const mIdx = parseInt(parts[1], 10) - 1;
                                                                                     const d = parseInt(parts[2], 10);
@@ -1822,7 +2006,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                             } else if (field.key === 'marriage_parents_date' && val) {
                                                                                 const parts = val.split('-');
                                                                                 if (parts.length === 3) {
-                                                                                    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                                                                                    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
                                                                                     const y = parseInt(parts[0], 10);
                                                                                     const mIdx = parseInt(parts[1], 10) - 1;
                                                                                     const d = parseInt(parts[2], 10);
@@ -1969,11 +2153,10 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                             const dropped = e.dataTransfer.files?.[0];
                                             if (dropped) handleFileSelect(dropped);
                                         }}
-                                        className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[420px] ${
-                                            isDraggingManual
-                                                ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20'
-                                                : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:border-slate-400 dark:hover:border-slate-600'
-                                        }`}
+                                        className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[420px] ${isDraggingManual
+                                            ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20'
+                                            : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:border-slate-400 dark:hover:border-slate-600'
+                                            }`}
                                     >
                                         <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 shadow-xs">
                                             <PhotoIcon className="w-8 h-8" />
@@ -2091,21 +2274,23 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Left side: Uploaded/Current Record */}
-                                    <div className="bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 space-y-4">
-                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60">
+                                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
                                             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                                             <h5 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">Current Extracted Data (Incoming)</h5>
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
-                                                const existingVal = duplicateData.extracted_fields[key] || 'n/a';
-                                                const currentVal = formData[key] || 'n/a';
+                                                const rawExisting = duplicateData.extracted_fields[key];
+                                                const rawCurrent = formData[key];
+                                                const existingVal = (rawExisting === null || rawExisting === undefined || rawExisting === '' || String(rawExisting).toLowerCase() === 'n/a') ? 'null' : rawExisting;
+                                                const currentVal = (rawCurrent === null || rawCurrent === undefined || rawCurrent === '' || String(rawCurrent).toLowerCase() === 'n/a') ? 'null' : rawCurrent;
                                                 const isDifferent = String(currentVal).toLowerCase().trim() !== String(existingVal).toLowerCase().trim();
 
                                                 return (
-                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300/60 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                                        <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
+                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'} ${currentVal === 'null' ? 'italic text-slate-400 dark:text-slate-500 font-mono text-xs' : ''}`}>
                                                             {currentVal}
                                                         </span>
                                                     </div>
@@ -2115,21 +2300,23 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                     </div>
 
                                     {/* Right side: Existing Master Entry */}
-                                    <div className="bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 space-y-4">
-                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-700/60">
+                                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+                                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
                                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                                             <h5 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">Master Registry Entry (Existing)</h5>
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
-                                                const existingVal = duplicateData.extracted_fields[key] || 'n/a';
-                                                const currentVal = formData[key] || 'n/a';
+                                                const rawExisting = duplicateData.extracted_fields[key];
+                                                const rawCurrent = formData[key];
+                                                const existingVal = (rawExisting === null || rawExisting === undefined || rawExisting === '' || String(rawExisting).toLowerCase() === 'n/a') ? 'null' : rawExisting;
+                                                const currentVal = (rawCurrent === null || rawCurrent === undefined || rawCurrent === '' || String(rawCurrent).toLowerCase() === 'n/a') ? 'null' : rawCurrent;
                                                 const isDifferent = String(currentVal).toLowerCase().trim() !== String(existingVal).toLowerCase().trim();
 
                                                 return (
-                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300/60 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'}`}>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
-                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                                                    <div key={key} className={`p-3 rounded-xl border transition-all ${isDifferent ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                                        <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{fieldLabelMap[key] || key}</span>
+                                                        <span className={`block text-sm font-bold mt-1.5 ${isDifferent ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-slate-100'} ${existingVal === 'null' ? 'italic text-slate-400 dark:text-slate-500 font-mono text-xs' : ''}`}>
                                                             {existingVal}
                                                         </span>
                                                     </div>
@@ -2142,6 +2329,22 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         )}
 
                         <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                            {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const firstKey = Object.keys(errors).find(k => Boolean(errors[k]) && k !== '_type');
+                                        if (firstKey) jumpToField(firstKey);
+                                    }}
+                                    className="w-full mb-3 py-3 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-black flex items-center justify-between hover:bg-rose-100 dark:hover:bg-rose-900/70 transition-all cursor-pointer shadow-xs active:scale-98"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ExclamationTriangleIcon className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                                        <span>Missing: <strong>{fieldLabelMap[Object.keys(errors).find(k => Boolean(errors[k]) && k !== '_type')] || 'Required field'}</strong></span>
+                                    </div>
+                                    <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">Jump to field ↑</span>
+                                </button>
+                            )}
                             {isViewOnly ? (
                                 <button
                                     onClick={onClose}

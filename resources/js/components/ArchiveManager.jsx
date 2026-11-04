@@ -34,7 +34,7 @@ const ArchiveManager = () => {
     const [isLoadingArchived, setIsLoadingArchived] = useState(() => !sessionStorage.getItem('civicore_archived_files'));
     const [isLoadingTickets, setIsLoadingTickets] = useState(() => !sessionStorage.getItem('civicore_archived_tickets'));
     const [archiveSearch, setArchiveSearch] = useState('');
-    const debouncedArchiveSearch = useDebounce(archiveSearch, 300);
+    const debouncedArchiveSearch = useDebounce(archiveSearch, 50);
     const [archiveTypeFilter, setArchiveTypeFilter] = useState('all');
     const [archiveSubTab, setArchiveSubTab] = useState('scans');
     const [selectedArchiveIds, setSelectedArchiveIds] = useState([]);

@@ -605,13 +605,20 @@ class IssuanceController extends Controller
                 }
             }
 
-            $certNumber = $extractedFields['registry_number'] ?? '';
-            $barangay = $extractedFields['barangay'] ?? '';
+            $certNumber = $extractedFields['registry_number'] ?? null;
+            if ($certNumber === '' || strtolower((string)$certNumber) === 'n/a') {
+                $certNumber = null;
+            }
+            $barangay = $extractedFields['barangay'] ?? null;
+            if ($barangay === '' || strtolower((string)$barangay) === 'n/a') {
+                $barangay = null;
+            }
+            $nameVal = !empty($name) && strtolower(trim((string)$name)) !== 'n/a' ? trim($name) : null;
 
             return response()->json([
                 'success' => true,
                 'extracted' => [
-                    'name' => $name,
+                    'name' => $nameVal,
                     'certNumber' => $certNumber,
                     'barangay' => $barangay,
                     'type' => $detectedType,

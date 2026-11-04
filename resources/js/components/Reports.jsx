@@ -70,7 +70,7 @@ export default function Reports() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearchQuery = useDebounce(searchQuery, 350);
+    const debouncedSearchQuery = useDebounce(searchQuery, 50);
 
     const [previewRecords, setPreviewRecords] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -819,18 +819,18 @@ export default function Reports() {
                     {/* Document Categories Checklist (Pagsamahin: Birth + Death + Marriage) */}
                     <div className="lg:col-span-7 space-y-3">
                         <div className="flex items-center justify-between">
-                            <label className="block text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <DocumentTextIcon className="w-4 h-4 text-indigo-600" /> Document Types to Include
+                            <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                <DocumentTextIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Document Types to Include
                             </label>
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 font-semibold">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
                                     {selectedDocTypes.length} of 3 selected
                                 </span>
                                 {selectedDocTypes.length < 3 && (
                                     <button
                                         type="button"
                                         onClick={selectAllTypes}
-                                        className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 cursor-pointer underline"
+                                        className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer underline"
                                     >
                                         Select All
                                     </button>
@@ -846,26 +846,26 @@ export default function Reports() {
                                 onClick={() => toggleDocType('birth')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('birth')
-                                        ? 'bg-amber-50/50 dark:bg-amber-950/30 border-[#d4a574] text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-[#d4a574]/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
+                                        ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-orange-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('birth') ? 'bg-[#d4a574] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                        selectedDocTypes.includes('birth') ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                                     }`}>
                                         <UserIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
                                         <p className="text-xs font-black leading-tight truncate">Birth</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Live Birth</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Live Birth</p>
                                     </div>
                                 </div>
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('birth')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-[#d4a574] focus:ring-[#d4a574] cursor-pointer dark:bg-slate-950"
+                                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
 
@@ -874,26 +874,26 @@ export default function Reports() {
                                 onClick={() => toggleDocType('death')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('death')
-                                        ? 'bg-rose-50/50 dark:bg-rose-950/30 border-rose-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-rose-400/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
+                                        ? 'bg-red-50/50 dark:bg-red-950/30 border-red-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-red-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('death') ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                        selectedDocTypes.includes('death') ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                                     }`}>
                                         <DocumentTextIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
                                         <p className="text-xs font-black leading-tight truncate">Death</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Deceased</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Deceased</p>
                                     </div>
                                 </div>
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('death')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer dark:bg-slate-950"
+                                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
 
@@ -902,31 +902,31 @@ export default function Reports() {
                                 onClick={() => toggleDocType('marriage')}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     selectedDocTypes.includes('marriage')
-                                        ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-indigo-400/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
+                                        ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-blue-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('marriage') ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                        selectedDocTypes.includes('marriage') ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                                     }`}>
                                         <UsersIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
                                         <p className="text-xs font-black leading-tight truncate">Marriage</p>
-                                        <p className="text-[10px] text-slate-400 font-medium">Contract</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Contract</p>
                                     </div>
                                 </div>
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('marriage')}
                                     onChange={() => {}}
-                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer dark:bg-slate-950"
+                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
 
                         </div>
-                        <p className="text-[11px] text-slate-400 font-medium pl-1">
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium pl-1">
                             You can check multiple categories (e.g. Birth and Death together) to export them combined in one report.
                         </p>
                     </div>

@@ -127,7 +127,7 @@ def crop_and_binarize_signatures(image_path: str, doc_type: str) -> dict:
             black_ratio = black_pixels / total_pixels if total_pixels > 0 else 0.0
             
             if black_ratio < 0.005:
-                signatures[key] = "n/a"
+                signatures[key] = None
                 continue
             
             rgba = cv2.cvtColor(crop, cv2.COLOR_BGR2BGRA)

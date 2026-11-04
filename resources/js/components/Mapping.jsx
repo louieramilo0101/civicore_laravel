@@ -109,6 +109,19 @@ const Mapping = () => {
     const [dateTo, setDateTo] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isStatsCollapsed, setIsStatsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [isDarkMode, setIsDarkMode] = useState(() => 
+        typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+    );
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const observer = new MutationObserver(() => {
+            const dark = document.documentElement.classList.contains('dark');
+            setIsDarkMode(dark);
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
 
     /** Determines whether a transaction falls within the active date filter. */
     const isWithinTimeframe = (dateStr) => {
@@ -380,25 +393,25 @@ const Mapping = () => {
                 `, { direction: 'top', offset: [0, -32], opacity: 0.95 });
 
                 const popupContent = showRatioMode ? `
-                    <div class="p-3 min-w-[160px]">
-                        <h4 class="font-bold text-[#0f172a] text-sm mb-2 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                    <div class="p-3 min-w-[160px] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg">
+                        <h4 class="font-bold text-[#0f172a] dark:text-slate-100 text-sm mb-2 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                             ${barangay.name}
                         </h4>
                         <div class="space-y-1.5 text-xs mt-3">
-                            <div class="flex justify-between items-center"><span class="text-slate-500 font-medium">Births:</span> <span class="font-bold text-[#d4a574] bg-[#d4a574]/10 px-1.5 rounded">${barangay.births}</span></div>
-                            <div class="flex justify-between items-center"><span class="text-slate-500 font-medium">Deaths:</span> <span class="font-bold text-rose-500 bg-rose-50 px-1.5 rounded">${barangay.deaths}</span></div>
-                            <div class="flex justify-between items-center border-t border-slate-100 pt-1.5"><span class="text-slate-500 font-medium font-bold">Birth/Death Ratio:</span> <span class="font-black text-slate-800">${ratio.toFixed(2)}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 font-medium">Births:</span> <span class="font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 px-1.5 rounded">${barangay.births}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 font-medium">Deaths:</span> <span class="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 rounded">${barangay.deaths}</span></div>
+                            <div class="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-1.5"><span class="text-slate-500 dark:text-slate-400 font-medium font-bold">Birth/Death Ratio:</span> <span class="font-black text-slate-800 dark:text-slate-100">${ratio.toFixed(2)}</span></div>
                         </div>
                     </div>
                 ` : `
-                    <div class="p-3 min-w-[160px]">
-                        <h4 class="font-bold text-[#0f172a] text-sm mb-2 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                    <div class="p-3 min-w-[160px] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg">
+                        <h4 class="font-bold text-[#0f172a] dark:text-slate-100 text-sm mb-2 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                             ${barangay.name}
                         </h4>
                         <div class="space-y-1.5 text-xs mt-3">
-                            <div class="flex justify-between items-center"><span class="text-slate-500 font-medium">Births:</span> <span class="font-bold text-[#d4a574] bg-[#d4a574]/10 px-1.5 rounded">${barangay.births}</span></div>
-                            <div class="flex justify-between items-center"><span class="text-slate-500 font-medium">Deaths:</span> <span class="font-bold text-rose-500 bg-rose-50 px-1.5 rounded">${barangay.deaths}</span></div>
-                            <div class="flex justify-between items-center"><span class="text-slate-500 font-medium">Marriages:</span> <span class="font-bold text-indigo-500 bg-indigo-50 px-1.5 rounded">${barangay.marriages}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 font-medium">Births:</span> <span class="font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 px-1.5 rounded">${barangay.births}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 font-medium">Deaths:</span> <span class="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 rounded">${barangay.deaths}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 font-medium">Marriages:</span> <span class="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 rounded">${barangay.marriages}</span></div>
                         </div>
                     </div>
                 `;
@@ -417,24 +430,84 @@ const Mapping = () => {
         if (canvasRef.current && window.Chart) {
             if (chartRef.current) chartRef.current.destroy();
             const ctx = canvasRef.current.getContext('2d');
+            const isDark = isDarkMode || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
+            const textColor = isDark ? '#e2e8f0' : '#334155';
+            const textMuted = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(226, 232, 240, 0.8)';
+            const tooltipBg = isDark ? '#0f172a' : '#ffffff';
+            const tooltipText = isDark ? '#f8fafc' : '#0f172a';
+
             chartRef.current = new window.Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: last6Months,
                     datasets: [
-                        { label: 'Births', data: monthData.births, backgroundColor: '#d4a574', borderRadius: 4 },
-                        { label: 'Deaths', data: monthData.deaths, backgroundColor: '#f43f5e', borderRadius: 4 },
-                        { label: 'Marriages', data: monthData.marriages, backgroundColor: '#6366f1', borderRadius: 4 }
+                        { label: 'Births', data: monthData.births, backgroundColor: '#f97316', borderRadius: 4 },
+                        { label: 'Deaths', data: monthData.deaths, backgroundColor: '#ef4444', borderRadius: 4 },
+                        { label: 'Marriages', data: monthData.marriages, backgroundColor: '#2563eb', borderRadius: 4 }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: false // Disables chart bar re-animation movement on data update/hover
+                    animation: false, // Disables chart bar re-animation movement on data update/hover
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: textColor,
+                                font: { size: 11, weight: '700' },
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 12
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: tooltipBg,
+                            titleColor: tooltipText,
+                            bodyColor: tooltipText,
+                            borderColor: isDark ? '#334155' : '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 10,
+                            boxPadding: 4,
+                            usePointStyle: true
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: textMuted,
+                                font: { size: 10, weight: '600' }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            border: {
+                                color: gridColor
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: textMuted,
+                                font: { size: 10, weight: '600' },
+                                precision: 0
+                            },
+                            grid: {
+                                color: gridColor
+                            },
+                            border: {
+                                dash: [4, 4],
+                                color: gridColor
+                            }
+                        }
+                    }
                 }
             });
         }
-    }, [isLoading, apiData, docsData, showHeatmap, showRatioMode, quickFilter, dateFrom, dateTo]);
+    }, [isLoading, apiData, docsData, showHeatmap, showRatioMode, quickFilter, dateFrom, dateTo, rightPanelTab, isDarkMode]);
 
     /** Centers the map on a named barangay when coordinates are available. */
     const locateBarangay = (brgyName) => {
@@ -953,15 +1026,15 @@ const Mapping = () => {
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-[#d4a574]"></span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-orange-500"></span>
                                         <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Births</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-rose-500"></span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-red-500"></span>
                                         <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Deaths</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-indigo-500"></span>
+                                        <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-blue-600"></span>
                                         <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200">Marriages</span>
                                     </div>
                                     <div className="flex items-center gap-2">

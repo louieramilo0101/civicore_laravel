@@ -129,7 +129,7 @@
         <tr>
             <td class="meta-item" colspan="2">
                 <span class="meta-label">Subject Name:</span>
-                <span class="meta-value">{{ $doc->personName ?? $fields['full_name'] ?? 'N/A' }}</span>
+                <span class="meta-value">{{ $doc->personName ?? $fields['full_name'] ?? 'null' }}</span>
             </td>
         </tr>
     </table>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,9 @@ import Pagination from './Pagination.jsx';
 import Tooltip from './Tooltip.jsx';
 import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
 import useDebounce from '../hooks/useDebounce.js';
+import { BirthConfig } from './forms/BirthCertificateConfig.js';
+import { DeathConfig } from './forms/DeathCertificateConfig.js';
+import { MarriageConfig } from './forms/MarriageCertificateConfig.js';
 
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
@@ -40,7 +43,7 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-white truncate max-w-xs">{file.name}</p>
-                        <p className="text-xs text-slate-400 capitalize">{file.detected_type || file.type} certificate</p>
+                        <p className="text-xs text-slate-400 capitalize">{file.type || file.detected_type} certificate</p>
                     </div>
                 </div>
 
@@ -49,22 +52,20 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                     <button
                         type="button"
                         onClick={() => setPreviewTab('picture')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            previewTab === 'picture' 
-                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
-                                : 'text-slate-400 hover:text-white'
-                        }`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${previewTab === 'picture'
+                            ? 'bg-indigo-600 text-white shadow-sm font-black'
+                            : 'text-slate-400 hover:text-white'
+                            }`}
                     >
                         📷 Uploaded Picture (A4)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPreviewTab('pdf')}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                            previewTab === 'pdf' 
-                                ? 'bg-indigo-600 text-white shadow-sm font-black' 
-                                : 'text-slate-400 hover:text-white'
-                        }`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${previewTab === 'pdf'
+                            ? 'bg-indigo-600 text-white shadow-sm font-black'
+                            : 'text-slate-400 hover:text-white'
+                            }`}
                     >
                         📄 Standardized PDF (A4)
                     </button>
@@ -456,6 +457,44 @@ const Documents = () => {
 
     const approveRecord = async (fileId) => {
         const file = files.find(f => f.id === fileId);
+        if (!file) return;
+
+        // ── Pre-approval validation gate ────────────────────────────────────
+        // 1. Block direct approval if the OCR-detected certificate type conflicts
+        //    with the upload category (e.g. a Death certificate uploaded as Birth).
+        if (hasTypeMismatch(file)) {
+            const detected = (file.detected_type || file.type || 'birth');
+            const uploaded = (file.type || 'birth');
+            showAlert({
+                title: 'Certificate Type Mismatch',
+                message: `This document was detected as a "${detected}" certificate but was uploaded under "${uploaded}". Direct approval is blocked. Please click the Pencil icon to review and correct the certificate type before approving.`,
+                type: 'warning',
+                autoDismiss: false
+            });
+            return;
+        }
+
+        // 2. Block direct approval if any required fields are missing from the
+        //    extracted data. Staff must open the form to fill them in.
+        const missingFields = getMissingRequiredFields(file);
+        if (missingFields) {
+            const missingLabels = Object.keys(missingFields).map(k => {
+                const cfg = { birth: BirthConfig, death: DeathConfig, marriage: MarriageConfig }[file.detected_type || file.type] || BirthConfig;
+                for (const sec of cfg) {
+                    const found = sec.fields.find(f => f.key === k);
+                    if (found) return found.label;
+                }
+                return k;
+            });
+            showAlert({
+                title: 'Required Fields Missing',
+                message: `The following required fields are missing or empty: ${missingLabels.join(', ')}. Direct approval is blocked. Please click the Pencil icon to review and complete the form before approving.`,
+                type: 'warning',
+                autoDismiss: false
+            });
+            return;
+        }
+
         // Show immediate local status update
         setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status: 'uploading' } : f));
 
@@ -541,21 +580,39 @@ const Documents = () => {
         const extracted = files.filter(f => f.status === 'extracted');
         if (!extracted.length) return;
 
+        // Filter out files that have type mismatches or missing required fields
+        const approvable = extracted.filter(f => !hasTypeMismatch(f) && !getMissingRequiredFields(f));
+        const blocked = extracted.filter(f => hasTypeMismatch(f) || getMissingRequiredFields(f));
+
+        if (!approvable.length) {
+            showAlert({
+                title: 'Mass Approval Blocked',
+                message: `All ${extracted.length} extracted documents have either a certificate type mismatch or missing required fields. Please review them individually using the Pencil icon before approving.`,
+                type: 'warning',
+                autoDismiss: false
+            });
+            return;
+        }
+
+        const warningNote = blocked.length > 0
+            ? `\n\n${blocked.length} document(s) will be skipped due to type mismatches or missing required fields.`
+            : '';
+
         setConfirmModal({
             isOpen: true,
             title: 'Mass Approval',
-            message: `Approve all ${extracted.length} extracted records and issue them immediately?`,
+            message: `Approve ${approvable.length} extracted records and issue them immediately?${warningNote}`,
             type: 'success',
             onConfirm: () => {
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                runBackgroundTask(`Mass Approval: ${extracted.length} Records`, async () => {
+                runBackgroundTask(`Mass Approval: ${approvable.length} Records`, async () => {
                     // Show immediate local status update for all targeted files
-                    const idsToUpdate = extracted.map(f => f.id);
+                    const idsToUpdate = approvable.map(f => f.id);
                     setFiles(prev => prev.map(f => idsToUpdate.includes(f.id) ? { ...f, status: 'uploading' } : f));
 
                     let ok = 0;
                     try {
-                        for (const f of extracted) {
+                        for (const f of approvable) {
                             const res = await fetch(`/api/documents/${f.id}/quick-approve`, { method: 'POST', credentials: 'include' });
                             if (res.ok) ok++;
                         }
@@ -700,6 +757,58 @@ const Documents = () => {
         return (nameParts || fallback || '').toUpperCase();
     };
 
+    /** Returns the list of required field keys for a given certificate type. */
+    const getRequiredFieldKeys = (type) => {
+        const config = { birth: BirthConfig, death: DeathConfig, marriage: MarriageConfig }[type] || BirthConfig;
+        const keys = [];
+        config.forEach(section => {
+            section.fields.forEach(f => {
+                if (f.required) keys.push(f.key);
+            });
+        });
+        return keys;
+    };
+
+    /**
+     * Returns an object of missing required fields for a document.
+     * @returns {Object|null} null if all required fields are present, otherwise an object mapping field key -> label
+     */
+    const getMissingRequiredFields = (file) => {
+        const fields = file.extracted_fields || {};
+        const detectedType = (file.detected_type || file.type || 'birth').toLowerCase();
+        if (detectedType === 'marriage_license') {
+            detectedType = 'marriage';
+        }
+        const requiredKeys = getRequiredFieldKeys(detectedType);
+        const missing = {};
+        requiredKeys.forEach(key => {
+            const val = fields[key];
+            const strVal = val === undefined || val === null ? '' : String(val).trim();
+            if (strVal === '' || strVal === 'Select...' || strVal.toLowerCase() === 'n/a') {
+                missing[key] = key;
+            }
+        });
+        // Barangay is always required for analytics
+        const brgyVal = fields.barangay ? String(fields.barangay).trim() : '';
+        if (!brgyVal || brgyVal === 'Select...' || brgyVal.toLowerCase() === 'n/a') {
+            missing.barangay = 'barangay';
+        }
+        return Object.keys(missing).length > 0 ? missing : null;
+    };
+
+    /**
+     * Detects whether the OCR-detected certificate type conflicts with the
+     * upload category (e.g. a Death certificate uploaded under "birth").
+     * @returns {boolean} true if there is a type mismatch that needs staff attention
+     */
+    const hasTypeMismatch = (file) => {
+        const detected = String(file.detected_type || '').toLowerCase();
+        const uploadType = String(file.type || '').toLowerCase();
+        const validTypes = ['birth', 'death', 'marriage'];
+        if (!validTypes.includes(detected) || !validTypes.includes(uploadType)) return false;
+        return detected !== uploadType;
+    };
+
     const executeSave = async ({ fields, ocr_text, parentalConsent, detectedType, minimizeRequested = false, manualFile = null, isDummy = false, force = false }) => {
         if (!activeOcr) return;
         const file = activeOcr.file;
@@ -820,7 +929,9 @@ const Documents = () => {
                     refreshAll();
                     return { success: true, message: `Data for ${personName} has been secured.` };
                 }
-                throw new Error(data.message || data.error || 'Save failed');
+                const saveErr = new Error(data.message || data.error || 'Save failed');
+                if (data.errors) saveErr.errors = data.errors;
+                throw saveErr;
             } catch (err) {
                 refreshDocuments(true);
                 throw err;
@@ -992,21 +1103,21 @@ const Documents = () => {
                     ? 'linear-gradient(90deg, #6366f1, #818cf8, #a5b4fc)' // indigo
                     : 'linear-gradient(90deg, #94a3b8, #cbd5e1)';
 
-            const trackBg = isPending 
+            const trackBg = isPending
                 ? (isDark ? '#431407' : '#fff7ed')
-                : isProcessing 
+                : isProcessing
                     ? (isDark ? '#1e1b4b' : '#eef2ff')
                     : (isDark ? '#0f172a' : '#f8fafc');
 
-            const borderColor = isPending 
+            const borderColor = isPending
                 ? (isDark ? '#7c2d12' : '#fed7aa')
-                : isProcessing 
+                : isProcessing
                     ? (isDark ? '#3730a3' : '#c7d2fe')
                     : (isDark ? '#334155' : '#e2e8f0');
 
-            const textColor = isPending 
+            const textColor = isPending
                 ? (isDark ? '#fdba74' : '#9a3412')
-                : isProcessing 
+                : isProcessing
                     ? (isDark ? '#c7d2fe' : '#3730a3')
                     : (isDark ? '#cbd5e1' : '#475569');
 
@@ -1144,52 +1255,53 @@ const Documents = () => {
 
 
 
-    const filteredQueue = queueFiles.filter(f =>
-        !debouncedQueueSearch || f.name.toLowerCase().includes(debouncedQueueSearch.toLowerCase())
-    );
+    const filteredQueue = useMemo(() => {
+        const cleanTerm = (queueSearch || '').trim().toLowerCase();
+        if (!cleanTerm) return queueFiles;
+        return queueFiles.filter(f =>
+            (f._search ? f._search.includes(cleanTerm) : (f.name || '').toLowerCase().includes(cleanTerm))
+        );
+    }, [queueFiles, queueSearch]);
 
-    const filteredHistory = historyFiles.filter(f => {
-        // Search filter
-        const matchesSearch = !debouncedHistorySearch ||
-            f.name.toLowerCase().includes(debouncedHistorySearch.toLowerCase()) ||
-            f.personName?.toLowerCase().includes(debouncedHistorySearch.toLowerCase());
+    const filteredHistory = useMemo(() => {
+        const cleanTerm = (historySearch || '').trim().toLowerCase();
+        const { type, staff, barangay, dateRange } = historyFilters;
 
-        if (!matchesSearch) return false;
+        return historyFiles.filter(f => {
+            if (type !== 'all' && (f.detected_type || f.type) !== type) return false;
+            if (staff !== 'all' && f.encoded_by !== staff) return false;
+            if (barangay !== 'all' && f.barangay !== barangay) return false;
 
-        // Type filter
-        if (historyFilters.type !== 'all' && (f.detected_type || f.type) !== historyFilters.type) return false;
-
-        // Staff filter
-        if (historyFilters.staff !== 'all' && f.encoded_by !== historyFilters.staff) return false;
-
-        // Barangay filter
-        if (historyFilters.barangay !== 'all' && f.barangay !== historyFilters.barangay) return false;
-
-        // Date filter
-        if (historyFilters.dateRange !== 'all') {
-            const docDate = new Date(f.created_at);
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            if (historyFilters.dateRange === 'today') {
-                if (docDate < today) return false;
-            } else if (historyFilters.dateRange === 'yesterday') {
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                if (docDate < yesterday || docDate >= today) return false;
-            } else if (historyFilters.dateRange === 'week') {
-                const lastWeek = new Date(today);
-                lastWeek.setDate(lastWeek.getDate() - 7);
-                if (docDate < lastWeek) return false;
-            } else if (historyFilters.dateRange === 'month') {
-                const lastMonth = new Date(today);
-                lastMonth.setMonth(lastMonth.getMonth() - 1);
-                if (docDate < lastMonth) return false;
+            if (cleanTerm) {
+                const searchIndex = f._search || `${f.name || ''} ${f.personName || ''} ${f.barangay || ''}`.toLowerCase();
+                if (!searchIndex.includes(cleanTerm)) return false;
             }
-        }
 
-        return true;
-    });
+            if (dateRange !== 'all') {
+                const docDate = new Date(f.created_at);
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                if (dateRange === 'today') {
+                    if (docDate < today) return false;
+                } else if (dateRange === 'yesterday') {
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (docDate < yesterday || docDate >= today) return false;
+                } else if (dateRange === 'week') {
+                    const lastWeek = new Date(today);
+                    lastWeek.setDate(lastWeek.getDate() - 7);
+                    if (docDate < lastWeek) return false;
+                } else if (dateRange === 'month') {
+                    const lastMonth = new Date(today);
+                    lastMonth.setMonth(lastMonth.getMonth() - 1);
+                    if (docDate < lastMonth) return false;
+                }
+            }
+
+            return true;
+        });
+    }, [historyFiles, historySearch, historyFilters]);
 
     // Pagination States
     const [queuePage, setQueuePage] = useState(1);
@@ -1200,11 +1312,11 @@ const Documents = () => {
     // Reset pagination when search or filters change
     useEffect(() => {
         setQueuePage(1);
-    }, [debouncedQueueSearch]);
+    }, [queueSearch]);
 
     useEffect(() => {
         setHistoryPage(1);
-    }, [debouncedHistorySearch, historyFilters]);
+    }, [historySearch, historyFilters]);
 
     const totalQueuePages = Math.max(1, Math.ceil(filteredQueue.length / queuePageSize));
     const safeQueuePage = Math.min(queuePage, totalQueuePages);
@@ -1477,148 +1589,183 @@ const Documents = () => {
                                 ) : (
                                     <>
                                         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
-                                        <table className="w-full text-left border-collapse table-auto">
-                                            <thead>
-                                                <tr className="bg-slate-50/70 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400 w-10">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
-                                                            checked={selectedIds.length === filteredQueue.length && filteredQueue.length > 0}
-                                                            onChange={() => toggleSelectAll(filteredQueue)}
-                                                        />
-                                                    </th>
-                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Document</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400 w-16">Type</th>
-                                                    <th className="px-2 py-2.5 text-center font-black text-slate-500 dark:text-slate-400">Status</th>
-                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400 w-28">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                                                {paginatedQueue.map(file => (
-                                                    <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                                                        {file.isDeleted ? (
-                                                            <td colSpan="6" className="p-4 text-center">
-                                                                <span className="text-sm text-slate-500 dark:text-slate-400 mr-3">Document temporarily deleted.</span>
-                                                                <button onClick={() => undoDelete(file.id)} className="text-xs font-bold text-[#d4a574] border border-[#d4a574]/30 bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-1.5 rounded-lg transition-colors">Undo</button>
-                                                            </td>
-                                                        ) : (
-                                                            <>
-                                                                <td className="px-3 py-2.5">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
-                                                                        checked={selectedIds.includes(file.id)}
-                                                                        onChange={() => toggleSelect(file.id)}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-3 py-2.5">
-                                                                    <div className="flex items-center">
-                                                                        <div className="min-w-0">
-                                                                            {(() => {
-                                                                                const extractedName = buildPersonName(file.extracted_fields, file.detected_type || file.type);
-                                                                                const cleanPersonName = file.personName && !file.personName.includes('{') ? file.personName : '';
-                                                                                const titleName = extractedName || cleanPersonName || file.name;
-                                                                                const hasActualName = Boolean(extractedName || cleanPersonName);
-
-                                                                                return (
-                                                                                    <>
-                                                                                        <p
-                                                                                            className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[24ch] hover:text-[#d4a574] cursor-pointer transition-colors"
-                                                                                            title={titleName}
-                                                                                            onClick={() => setPreviewFile(file)}
-                                                                                        >
-                                                                                            {titleName}
-                                                                                        </p>
-                                                                                        <p className="text-[9px] text-slate-400 font-medium truncate uppercase tracking-tighter">
-                                                                                            {hasActualName ? `${file.name} · ${file.size || ''}` : `${file.size || ''} · ${file.encoded_by || 'Unknown'}`}
-                                                                                        </p>
-                                                                                    </>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-2 py-2.5">
-                                                                    {(() => {
-                                                                        const rawType = ((file.detected_type && file.detected_type.toLowerCase() !== 'unknown') ? file.detected_type : (file.type && file.type.toLowerCase() !== 'unknown' ? file.type : 'birth')).toLowerCase();
-                                                                        const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
-                                                                        return (
-                                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
-                                                                                {rawType}
-                                                                            </span>
-                                                                        );
-                                                                    })()}
-                                                                </td>
-                                                                <td className="px-2 py-2.5 text-center">{statusBadge(file)}</td>
-                                                                <td className="px-3 py-2.5 text-right">
-                                                                    <div className="flex items-center justify-end gap-1 px-1">
-                                                                        {['pending', 'processing'].includes(file.status?.toLowerCase()) && (
-                                                                            <Tooltip content="Stop Processing" position="left">
-                                                                                <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                    className="p-2.5 text-amber-600 bg-amber-50/80 dark:bg-amber-950/50 dark:border-amber-900/50 dark:text-amber-300 hover:bg-amber-600 dark:hover:bg-amber-800 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                                    aria-label="Stop Processing">
-                                                                                    <StopIcon className="w-4 h-4 text-amber-600 dark:text-amber-300 group-hover/btn:text-white transition-colors" />
-                                                                                </button>
-                                                                            </Tooltip>
-                                                                        )}
-
-                                                                        {['stopped', 'failed', 'uploaded'].includes(file.status?.toLowerCase()) && (
-                                                                            <Tooltip content="Resume / Retry Processing" position="left">
-                                                                                <button onClick={() => toggleOcrStatus(file.id, file.status)}
-                                                                                    className="p-2.5 text-sky-600 bg-sky-50/80 dark:bg-sky-950/50 dark:border-sky-900/50 dark:text-sky-300 hover:bg-sky-600 dark:hover:bg-sky-800 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                                    aria-label="Resume / Retry Processing">
-                                                                                    <PlayIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 group-hover/btn:text-white transition-colors" />
-                                                                                </button>
-                                                                            </Tooltip>
-                                                                        )}
-
-                                                                        {['extracted', 'processed'].includes(file.status?.toLowerCase()) && (
-                                                                            <Tooltip content={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'} position="left">
-                                                                                <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
-                                                                                    className="p-2.5 text-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 dark:border-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-800 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
-                                                                                    aria-label={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
-                                                                                    <PencilSquareIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-300 group-hover/btn:text-white transition-colors" />
-                                                                                </button>
-                                                                            </Tooltip>
-                                                                        )}
-
-                                                                        {file.status?.toLowerCase() === 'extracted' && (
-                                                                            file.has_duplicate ? (
-                                                                                <Tooltip content="Direct Approve Blocked (Potential Duplicate)" position="left">
-                                                                                    <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
-                                                                                        className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
-                                                                                        aria-label="Direct Approve Blocked (Potential Duplicate)">
-                                                                                        <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                                                                    </button>
-                                                                                </Tooltip>
-                                                                            ) : (
-                                                                                <Tooltip content="Direct Approve & Issue Record" position="left">
-                                                                                    <button onClick={() => approveRecord(file.id)}
-                                                                                        className="p-2.5 text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
-                                                                                        aria-label="Direct Approve & Issue Record">
-                                                                                        <CheckCircleIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
-                                                                                    </button>
-                                                                                </Tooltip>
-                                                                            )
-                                                                        )}
-
-                                                                        <Tooltip content="Delete Document" position="left">
-                                                                            <button onClick={() => removeFile(file.id)}
-                                                                                className="p-2.5 text-rose-600 bg-rose-50/80 dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 hover:bg-rose-600 dark:hover:bg-rose-800 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
-                                                                                aria-label="Delete Document">
-                                                                                <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-300 group-hover/btn:text-white transition-colors" />
-                                                                            </button>
-                                                                        </Tooltip>
-                                                                    </div>
-                                                                </td>
-                                                            </>
-                                                        )}
+                                            <table className="w-full text-left border-collapse table-auto">
+                                                <thead>
+                                                    <tr className="bg-slate-50/70 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                        <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400 w-10">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
+                                                                checked={selectedIds.length === filteredQueue.length && filteredQueue.length > 0}
+                                                                onChange={() => toggleSelectAll(filteredQueue)}
+                                                            />
+                                                        </th>
+                                                        <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Document</th>
+                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400 w-16">Type</th>
+                                                        <th className="px-2 py-2.5 text-center font-black text-slate-500 dark:text-slate-400">Status</th>
+                                                        <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400 w-28">Actions</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                                    {paginatedQueue.map(file => (
+                                                        <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                                                            {file.isDeleted ? (
+                                                                <td colSpan="6" className="p-4 text-center">
+                                                                    <span className="text-sm text-slate-500 dark:text-slate-400 mr-3">Document temporarily deleted.</span>
+                                                                    <button onClick={() => undoDelete(file.id)} className="text-xs font-bold text-[#d4a574] border border-[#d4a574]/30 bg-[#d4a574]/10 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-1.5 rounded-lg transition-colors">Undo</button>
+                                                                </td>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-3 py-2.5">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-[#d4a574] focus:ring-[#d4a574]/30"
+                                                                            checked={selectedIds.includes(file.id)}
+                                                                            onChange={() => toggleSelect(file.id)}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-3 py-2.5">
+                                                                        <div className="flex items-center">
+                                                                            <div className="min-w-0">
+                                                                                {(() => {
+                                                                                    const extractedName = buildPersonName(file.extracted_fields, file.detected_type || file.type);
+                                                                                    const cleanPersonName = file.personName && !file.personName.includes('{') ? file.personName : '';
+                                                                                    const titleName = extractedName || cleanPersonName || file.name;
+                                                                                    const hasActualName = Boolean(extractedName || cleanPersonName);
+
+                                                                                    return (
+                                                                                        <>
+                                                                                            <p
+                                                                                                className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[24ch] hover:text-[#d4a574] cursor-pointer transition-colors"
+                                                                                                title={titleName}
+                                                                                                onClick={() => setPreviewFile(file)}
+                                                                                            >
+                                                                                                {titleName}
+                                                                                            </p>
+                                                                                            <p className="text-[9px] text-slate-400 font-medium truncate uppercase tracking-tighter">
+                                                                                                {hasActualName ? `${file.name} · ${file.size || ''}` : `${file.size || ''} · ${file.encoded_by || 'Unknown'}`}
+                                                                                            </p>
+                                                                                        </>
+                                                                                    );
+                                                                                })()}
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+<td className="px-2 py-2.5">
+                                                                         {(() => {
+                                                                             const rawType = ((file.type && file.type.toLowerCase() !== 'unknown') ? file.type : (file.detected_type && file.detected_type.toLowerCase() !== 'unknown' ? file.detected_type : 'birth')).toLowerCase();
+                                                                             const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                                             const mismatch = hasTypeMismatch(file);
+                                                                             return (
+                                                                                 <span className={`inline-flex flex-col items-center ${colorClass}`}>
+                                                                                     <span className={`text-xs font-black uppercase tracking-wider ${mismatch ? 'line-through opacity-40' : ''}`}>
+                                                                                         {rawType}
+                                                                                     </span>
+                                                                                     {mismatch && (
+                                                                                         <span className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 whitespace-nowrap">
+                                                                                             ⚠ Mismatch
+                                                                                         </span>
+                                                                                     )}
+                                                                                 </span>
+                                                                             );
+                                                                         })()}
+                                                                     </td>
+                                                                    <td className="px-2 py-2.5 text-center">{statusBadge(file)}</td>
+                                                                    <td className="px-3 py-2.5 text-right">
+                                                                        <div className="flex items-center justify-end gap-1 px-1">
+                                                                            {['pending', 'processing'].includes(file.status?.toLowerCase()) && (
+                                                                                <Tooltip content="Stop Processing" position="left">
+                                                                                    <button onClick={() => toggleOcrStatus(file.id, file.status)}
+                                                                                        className="p-2.5 text-amber-600 bg-amber-50/80 dark:bg-amber-950/50 dark:border-amber-900/50 dark:text-amber-300 hover:bg-amber-600 dark:hover:bg-amber-800 hover:border-amber-600 hover:text-white rounded-xl transition-all border border-amber-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                        aria-label="Stop Processing">
+                                                                                        <StopIcon className="w-4 h-4 text-amber-600 dark:text-amber-300 group-hover/btn:text-white transition-colors" />
+                                                                                    </button>
+                                                                                </Tooltip>
+                                                                            )}
+
+                                                                            {['stopped', 'failed', 'uploaded'].includes(file.status?.toLowerCase()) && (
+                                                                                <Tooltip content="Resume / Retry Processing" position="left">
+                                                                                    <button onClick={() => toggleOcrStatus(file.id, file.status)}
+                                                                                        className="p-2.5 text-sky-600 bg-sky-50/80 dark:bg-sky-950/50 dark:border-sky-900/50 dark:text-sky-300 hover:bg-sky-600 dark:hover:bg-sky-800 hover:border-sky-600 hover:text-white rounded-xl transition-all border border-sky-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                        aria-label="Resume / Retry Processing">
+                                                                                        <PlayIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 group-hover/btn:text-white transition-colors" />
+                                                                                    </button>
+                                                                                </Tooltip>
+                                                                            )}
+
+                                                                            {['extracted', 'processed'].includes(file.status?.toLowerCase()) && (
+                                                                                <Tooltip content={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'} position="left">
+                                                                                    <button onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
+                                                                                        className="p-2.5 text-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 dark:border-indigo-900/50 dark:text-indigo-300 hover:bg-indigo-600 dark:hover:bg-indigo-800 hover:border-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-200 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                                                        aria-label={file.status?.toLowerCase() === 'processed' ? 'View Details' : 'Review & Edit'}>
+                                                                                        <PencilSquareIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-300 group-hover/btn:text-white transition-colors" />
+                                                                                    </button>
+                                                                                </Tooltip>
+                                                                            )}
+
+{file.status?.toLowerCase() === 'extracted' && (
+                                                                                 file.has_duplicate ? (
+                                                                                     <Tooltip content="Direct Approve Blocked (Potential Duplicate)" position="left">
+                                                                                         <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
+                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                             aria-label="Direct Approve Blocked (Potential Duplicate)">
+                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                         </button>
+                                                                                     </Tooltip>
+                                                                                 ) : hasTypeMismatch(file) ? (
+                                                                                     <Tooltip content="Direct Approve Blocked (Type Mismatch)" position="left">
+                                                                                         <button onClick={() => showAlert({ title: 'Type Mismatch', message: `This document was detected as "${file.detected_type}" but uploaded as "${file.type}". Direct approval is blocked. Please click the Pencil icon to review and correct the certificate type.`, type: 'warning' })}
+                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                             aria-label="Direct Approve Blocked (Type Mismatch)">
+                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                         </button>
+                                                                                     </Tooltip>
+                                                                                 ) : getMissingRequiredFields(file) ? (
+                                                                                     <Tooltip content="Direct Approve Blocked (Missing Required Fields)" position="left">
+                                                                                         <button onClick={() => {
+                                                                                             const missing = getMissingRequiredFields(file);
+                                                                                             const cfg = { birth: BirthConfig, death: DeathConfig, marriage: MarriageConfig }[file.detected_type || file.type] || BirthConfig;
+                                                                                             const labels = Object.keys(missing).map(k => {
+                                                                                                 for (const sec of cfg) {
+                                                                                                     const found = sec.fields.find(f => f.key === k);
+                                                                                                     if (found) return found.label;
+                                                                                                 }
+                                                                                                 return k;
+                                                                                             });
+                                                                                             showAlert({ title: 'Required Fields Missing', message: `Missing: ${labels.join(', ')}. Please click the Pencil icon to review and complete the form.`, type: 'warning' });
+                                                                                         }}
+                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                             aria-label="Direct Approve Blocked (Missing Required Fields)">
+                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                         </button>
+                                                                                     </Tooltip>
+                                                                                 ) : (
+                                                                                     <Tooltip content="Direct Approve & Issue Record" position="left">
+                                                                                         <button onClick={() => approveRecord(file.id)}
+                                                                                             className="p-2.5 text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                                                             aria-label="Direct Approve & Issue Record">
+                                                                                             <CheckCircleIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
+                                                                                         </button>
+                                                                                     </Tooltip>
+                                                                                 )
+                                                                             )}
+
+                                                                            <Tooltip content="Delete Document" position="left">
+                                                                                <button onClick={() => removeFile(file.id)}
+                                                                                    className="p-2.5 text-rose-600 bg-rose-50/80 dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 hover:bg-rose-600 dark:hover:bg-rose-800 hover:border-rose-600 hover:text-white rounded-xl transition-all border border-rose-200 cursor-pointer shadow-sm active:scale-90 group/btn"
+                                                                                    aria-label="Delete Document">
+                                                                                    <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-300 group-hover/btn:text-white transition-colors" />
+                                                                                </button>
+                                                                            </Tooltip>
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                         <Pagination
                                             currentPage={safeQueuePage}
                                             totalItems={filteredQueue.length}
@@ -1746,96 +1893,96 @@ const Documents = () => {
                                 ) : (
                                     <>
                                         <div className="overflow-x-auto flex-1">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-slate-50/50 dark:bg-slate-950/70 text-slate-400 dark:text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                                                    <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Person / Document</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Process Date</th>
-                                                    <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Staff / Admin</th>
-                                                    <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400">Record</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
-                                                {paginatedHistory.map(file => {
-                                                    const dateObj = new Date(file.created_at);
-                                                    return (
-                                                        <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors group">
-                                                            <td className="px-3 py-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500' :
-                                                                        file.type === 'death' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' :
-                                                                            'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
-                                                                        }`}>
-                                                                        <DocumentIcon className="w-5 h-5" />
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[20ch]">
-                                                                            {(!file.personName || file.personName.toLowerCase().includes('unnamed')) ? file.name : file.personName}
-                                                                        </p>
-                                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate flex items-center gap-1.5">
-                                                                            <span className="uppercase tracking-tighter">{file.detected_type || file.type}</span>
-                                                                            <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                                                                            <span className="truncate max-w-[15ch]">{file.name}</span>
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-2 py-3">
-                                                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#d4a574]" />
-                                                                    {file.barangay || '—'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-2 py-3">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 tabular-nums">
-                                                                        {file.created_at ? new Date(file.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                                                                    </span>
-                                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">
-                                                                        {file.created_at ? new Date(file.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-2 py-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                                                        {file.encoded_by ? file.encoded_by.charAt(0).toUpperCase() : '?'}
-                                                                    </div>
-                                                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[10ch]">{file.encoded_by || 'Unknown'}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-3 py-3 text-right">
-                                                                <div className="flex items-center justify-end">
-                                                                    {file.isLog ? (
-                                                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100/50 italic">
-                                                                            Persistent Record
-                                                                        </span>
-                                                                    ) : (
-                                                                        <div className="flex gap-2">
-                                                                            <button
-                                                                                onClick={() => handleRequestToPrint(file)}
-                                                                                className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-all"
-                                                                            >
-                                                                                Request to Print
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
-                                                                                className="px-3 py-1.5 text-[10px] font-bold text-white bg-[#d4a574] hover:bg-[#c29463] rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5"
-                                                                            >
-                                                                                <DocumentCheckIcon className="w-4 h-4" />
-                                                                                View Details
-                                                                            </button>
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-slate-50/50 dark:bg-slate-950/70 text-slate-400 dark:text-slate-400 text-[9px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                        <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Person / Document</th>
+                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
+                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Process Date</th>
+                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Staff / Admin</th>
+                                                        <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400">Record</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                                    {paginatedHistory.map(file => {
+                                                        const dateObj = new Date(file.created_at);
+                                                        return (
+                                                            <tr key={file.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors group">
+                                                                <td className="px-3 py-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${file.type === 'birth' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500' :
+                                                                            file.type === 'death' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' :
+                                                                                'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
+                                                                            }`}>
+                                                                            <DocumentIcon className="w-5 h-5" />
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate max-w-[20ch]">
+                                                                                {(!file.personName || file.personName.toLowerCase().includes('unnamed')) ? file.name : file.personName}
+                                                                            </p>
+                                                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate flex items-center gap-1.5">
+                                                                                <span className="uppercase tracking-tighter">{file.detected_type || file.type}</span>
+                                                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                                                                <span className="truncate max-w-[15ch]">{file.name}</span>
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-2 py-3">
+                                                                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#d4a574]" />
+                                                                        {file.barangay || '—'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-2 py-3">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                                                                            {file.created_at ? new Date(file.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">
+                                                                            {file.created_at ? new Date(file.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-2 py-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                            {file.encoded_by ? file.encoded_by.charAt(0).toUpperCase() : '?'}
+                                                                        </div>
+                                                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[10ch]">{file.encoded_by || 'Unknown'}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-3 text-right">
+                                                                    <div className="flex items-center justify-end">
+                                                                        {file.isLog ? (
+                                                                            <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100/50 italic">
+                                                                                Persistent Record
+                                                                            </span>
+                                                                        ) : (
+                                                                            <div className="flex gap-2">
+                                                                                <button
+                                                                                    onClick={() => handleRequestToPrint(file)}
+                                                                                    className="px-3 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-all"
+                                                                                >
+                                                                                    Request to Print
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => setActiveOcr({ file, ocrResult: { extracted_fields: file.extracted_fields, detected_type: file.detected_type, text: file.ocr_text } })}
+                                                                                    className="px-3 py-1.5 text-[10px] font-bold text-white bg-[#d4a574] hover:bg-[#c29463] rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5"
+                                                                                >
+                                                                                    <DocumentCheckIcon className="w-4 h-4" />
+                                                                                    View Details
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                         <Pagination
                                             currentPage={safeHistoryPage}
                                             totalItems={filteredHistory.length}

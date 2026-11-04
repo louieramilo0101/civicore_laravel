@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Html5Qrcode } from "html5-qrcode";
@@ -127,7 +127,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             gain.connect(ctx.destination);
             osc.start();
             osc.stop(ctx.currentTime + 0.3);
-        } catch (e) {}
+        } catch (e) { }
     };
 
     // Modal and workflow state. Each flag controls one staff-facing overlay or action.
@@ -165,6 +165,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [isIdPreviewOpen, setIsIdPreviewOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIssuing, setIsIssuing] = useState(false);
+    /** Holds ticket data for immediate post-attachment print confirmation prompt */
+    const [attachedPrintPromptTicket, setAttachedPrintPromptTicket] = useState(null);
 
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isWalkinModalOpen, setIsWalkinModalOpen] = useState(false);
@@ -178,6 +180,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [walkinPurpose, setWalkinPurpose] = useState('birth');
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isCreatingWalkin, setIsCreatingWalkin] = useState(false);
+    const [walkinAuthFile, setWalkinAuthFile] = useState(null);
+    const [walkinErrors, setWalkinErrors] = useState({});
+    const [walkinTouched, setWalkinTouched] = useState(false);
+    const walkinAuthFileInputRef = React.useRef(null);
     /** @type {[TicketDetails, import('react').Dispatch<import('react').SetStateAction<TicketDetails>>]} */
     const [walkinDetails, setWalkinDetails] = useState({
         first_name: '', middle_name: '', last_name: '', date_of_birth: '', place_of_birth: '', father_name: '', mother_name: '',
@@ -331,7 +337,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     if (barcodes.length > 0 && barcodes[0].rawValue) {
                         decodedText = barcodes[0].rawValue;
                     }
-                } catch (_) {}
+                } catch (_) { }
             }
 
             // 2. Decode using Html5Qrcode client-side scanner engine (offline)
@@ -387,6 +393,121 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         }
 
         setWalkinDetails(prev => ({ ...prev, [field]: cleanVal }));
+        if (walkinErrors[field]) {
+            setWalkinErrors(prev => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    };
+
+    /**
+     * Resets all walk-in modal fields and error states.
+     */
+    const resetWalkinForm = () => {
+        setWalkinName('');
+        setWalkinAuthFile(null);
+        setWalkinErrors({});
+        setWalkinTouched(false);
+        if (walkinAuthFileInputRef.current) walkinAuthFileInputRef.current.value = '';
+        setWalkinDetails({
+            first_name: '', middle_name: '', last_name: '', date_of_birth: '', place_of_birth: '', father_name: '', mother_name: '',
+            deceased_first_name: '', deceased_middle_name: '', deceased_last_name: '', date_of_death: '', place_of_death: '',
+            husband_first_name: '', husband_middle_name: '', husband_last_name: '',
+            wife_first_name: '', wife_middle_name: '', wife_last_name: '', date_of_marriage: '', place_of_marriage: ''
+        });
+    };
+
+    /**
+     * Closes the walk-in modal safely and clears form fields.
+     */
+    const closeWalkinModal = () => {
+        if (isCreatingWalkin) return;
+        setIsWalkinModalOpen(false);
+        resetWalkinForm();
+    };
+
+    /**
+     * Validates required client and registry fields for the walk-in ticket.
+     * @returns {Record<string, string>} Validation errors keyed by field name.
+     */
+    const validateWalkinForm = () => {
+        const errors = {};
+        if (!walkinName.trim()) {
+            errors.client_name = 'Client name is required.';
+        }
+
+        if (walkinPurpose === 'birth') {
+            if (!walkinDetails.first_name?.trim()) errors.first_name = 'First name is required.';
+            if (!walkinDetails.last_name?.trim()) errors.last_name = 'Last name is required.';
+            if (!walkinDetails.date_of_birth?.trim()) errors.date_of_birth = 'Date of birth is required.';
+        } else if (walkinPurpose === 'death') {
+            if (!walkinDetails.deceased_first_name?.trim()) errors.deceased_first_name = 'Deceased first name is required.';
+            if (!walkinDetails.deceased_last_name?.trim()) errors.deceased_last_name = 'Deceased last name is required.';
+            if (!walkinDetails.date_of_death?.trim()) errors.date_of_death = 'Date of death is required.';
+        } else if (walkinPurpose === 'marriage') {
+            if (!walkinDetails.husband_first_name?.trim()) errors.husband_first_name = 'Husband first name is required.';
+            if (!walkinDetails.husband_last_name?.trim()) errors.husband_last_name = 'Husband last name is required.';
+            if (!walkinDetails.wife_first_name?.trim()) errors.wife_first_name = 'Wife first name is required.';
+            if (!walkinDetails.wife_last_name?.trim()) errors.wife_last_name = 'Wife last name is required.';
+            if (!walkinDetails.date_of_marriage?.trim()) errors.date_of_marriage = 'Date of marriage is required.';
+        }
+
+        if (walkinAuthFile) {
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+            if (!validTypes.includes(walkinAuthFile.type)) {
+                errors.auth_file = 'Authorization document must be a PDF, PNG, or JPG file.';
+            } else if (walkinAuthFile.size > 10 * 1024 * 1024) {
+                errors.auth_file = 'Authorization document file size cannot exceed 10MB.';
+            }
+        }
+
+        return errors;
+    };
+
+    /**
+     * Handles file selection for walk-in authorization document / ID scan.
+     * @param {React.ChangeEvent<HTMLInputElement>} e
+     */
+    const handleWalkinFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+            showAlert({ title: 'Invalid File Format', message: 'Authorization document must be a PDF, PNG, or JPG file.', type: 'warning' });
+            if (walkinAuthFileInputRef.current) walkinAuthFileInputRef.current.value = '';
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            showAlert({ title: 'File Too Large', message: 'Authorization document file size cannot exceed 10MB.', type: 'warning' });
+            if (walkinAuthFileInputRef.current) walkinAuthFileInputRef.current.value = '';
+            return;
+        }
+
+        setWalkinAuthFile(file);
+        if (walkinErrors.auth_file) {
+            setWalkinErrors(prev => {
+                const next = { ...prev };
+                delete next.auth_file;
+                return next;
+            });
+        }
+    };
+
+    /**
+     * Formats bytes into a human-readable size string.
+     * @param {number} bytes
+     * @returns {string}
+     */
+    const formatFileSize = (bytes) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
     };
 
     /**
@@ -451,15 +572,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             /** Ticket records returned by the filtered inbox endpoint. */
             const newTickets = ticketsRes.data;
             if (prevCount > 0 && newTickets.length > prevCount && !showLoading) {
-                const latest = newTickets[0];
                 playNotificationSound();
-                if (showAlert && latest) {
-                    showAlert({
-                        title: 'New Request Received!',
-                        message: `Ticket ${latest.ticket_number} (${latest.client_name}) was added to the queue.`,
-                        type: 'info'
-                    });
-                }
             }
             prevCountRef.current = newTickets.length;
 
@@ -519,6 +632,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
                 setScannedData(prev => prev ? { ...prev, ...updatedTicket } : prev);
                 setIsAttachOpen(false);
+                setAttachedPrintPromptTicket(updatedTicket);
                 showAlert({
                     title: 'File Attached!',
                     message: `Ticket ${selectedTicket.ticket_number} was linked and marked ready for release.`,
@@ -658,29 +772,36 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
      * @returns {Promise<void>} Resolves after the ticket creation attempt.
      */
     const handleCreateWalkinTicket = async () => {
-        if (!walkinName.trim()) {
-            showAlert({ title: 'Error', message: 'Client name is required.', type: 'warning' });
+        const errors = validateWalkinForm();
+        if (Object.keys(errors).length > 0) {
+            setWalkinErrors(errors);
+            setWalkinTouched(true);
+            const firstError = Object.values(errors)[0];
+            showAlert({ title: 'Required Fields Missing', message: firstError, type: 'warning' });
             return;
         }
+
         setIsCreatingWalkin(true);
         try {
-            /** Server response containing the newly created walk-in ticket. */
-            const res = await axios.post('/api/v1/tickets', {
-                client_name: walkinName.trim(),
-                purpose: walkinPurpose,
-                source: 'walk-in',
-                details: walkinDetails
+            const formData = new FormData();
+            formData.append('client_name', walkinName.trim());
+            formData.append('purpose', walkinPurpose);
+            formData.append('source', 'walk-in');
+            if (walkinAuthFile) {
+                formData.append('consent_form', walkinAuthFile);
+            }
+            Object.entries(walkinDetails).forEach(([k, v]) => {
+                formData.append(`details[${k}]`, v || '');
             });
+
+            /** Server response containing the newly created walk-in ticket. */
+            const res = await axios.post('/api/v1/tickets', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             if (res.data.success) {
                 showAlert({ title: 'Success', message: `Walk-in ticket ${res.data.ticket.ticket_number} created.`, type: 'success' });
-                setIsWalkinModalOpen(false);
-                setWalkinName('');
-                setWalkinDetails({
-                    first_name: '', middle_name: '', last_name: '', date_of_birth: '', place_of_birth: '', father_name: '', mother_name: '',
-                    deceased_first_name: '', deceased_middle_name: '', deceased_last_name: '', date_of_death: '', place_of_death: '',
-                    husband_first_name: '', husband_middle_name: '', husband_last_name: '',
-                    wife_first_name: '', wife_middle_name: '', wife_last_name: '', date_of_marriage: '', place_of_marriage: ''
-                });
+                closeWalkinModal();
                 if (res.data.ticket) {
                     setSelectedTicket(res.data.ticket);
                     setMobileView('detail');
@@ -690,39 +811,34 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             }
         } catch (err) {
             console.error(err);
-            showAlert({ title: 'Error', message: 'Failed to create walk-in ticket.', type: 'danger' });
+            const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to create walk-in ticket.';
+            showAlert({ title: 'Error', message: msg, type: 'danger' });
         } finally {
             setIsCreatingWalkin(false);
         }
     };
 
     /** Tickets matching the free-text search currently entered by staff, with active sort order. */
-    const filteredTickets = tickets.filter(t => {
-        const query = searchQuery.toLowerCase().trim();
-        if (!query) return true;
+    const filteredTickets = useMemo(() => {
+        const query = (searchQuery || '').toLowerCase().trim();
 
-        if (t.ticket_number?.toLowerCase().includes(query)) return true;
-        if (t.client_name?.toLowerCase().includes(query)) return true;
-        if (t.purpose?.toLowerCase().includes(query)) return true;
-        if (t.contact_number?.toLowerCase().includes(query)) return true;
-        if (t.email?.toLowerCase().includes(query)) return true;
+        const filtered = !query ? tickets : tickets.filter(t => {
+            if (t._search) return t._search.includes(query);
 
-        // Match linked document name & personName
-        if (t.document?.name?.toLowerCase().includes(query)) return true;
-        if (t.document?.personName?.toLowerCase().includes(query)) return true;
+            const detailsStr = t.details ? (typeof t.details === 'object' ? Object.values(t.details).join(' ') : String(t.details)) : '';
+            const searchIndex = `${t.ticket_number || ''} ${t.client_name || ''} ${t.purpose || ''} ${t.contact_number || ''} ${t.email || ''} ${t.document?.name || ''} ${t.document?.personName || ''} ${detailsStr}`.toLowerCase();
+            return searchIndex.includes(query);
+        });
 
-        // Match serialized details
-        if (t.details && JSON.stringify(t.details).toLowerCase().includes(query)) return true;
+        return [...filtered].sort((a, b) => {
+            if (a.queue_status === 'serving' && b.queue_status !== 'serving') return -1;
+            if (b.queue_status === 'serving' && a.queue_status !== 'serving') return 1;
 
-        return false;
-    }).sort((a, b) => {
-        if (a.queue_status === 'serving' && b.queue_status !== 'serving') return -1;
-        if (b.queue_status === 'serving' && a.queue_status !== 'serving') return 1;
-
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-    });
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+    }, [tickets, searchQuery, sortOrder]);
 
     return (
         <div className="flex flex-col space-y-4 h-full min-h-0 overflow-hidden">
@@ -756,7 +872,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </p>
                             </div>
                         </div>
-                        
+
                         <button
                             onClick={() => fetchPendingTickets(false)}
                             className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shrink-0 active:scale-95 cursor-pointer shadow-sm dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
@@ -864,12 +980,12 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             filteredTickets.map(t => {
                                 /** Whether this row is the currently selected request. */
                                 const isSelected = selectedTicket?.id === t.id;
-                                /** Purpose-specific visual badge classes. */
+                                /** Purpose-specific visual badge classes. Consistent: Birth=Orange, Death=Red, Marriage=Blue. */
                                 const badgeClass = t.purpose === 'birth'
-                                    ? 'bg-blue-50 text-blue-700 border-blue-100'
+                                    ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/50'
                                     : t.purpose === 'death'
-                                        ? 'bg-slate-100 text-slate-600 border-slate-200'
-                                        : 'bg-rose-50 text-rose-700 border-rose-100';
+                                        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50'
+                                        : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50';
 
                                 return (
                                     <div
@@ -878,11 +994,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             setSelectedTicket(t);
                                             setMobileView('detail');
                                         }}
-                                        className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${
-                                            isSelected
-                                                ? 'border-[#d4a574] bg-[#d4a574]/5 dark:bg-[#d4a574]/10 shadow-sm ring-1 ring-[#d4a574]/30'
-                                                : 'border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                                        }`}
+                                        className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 ${isSelected
+                                            ? 'border-[#d4a574] bg-[#d4a574]/5 dark:bg-[#d4a574]/10 shadow-sm ring-1 ring-[#d4a574]/30'
+                                            : 'border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                                            }`}
                                     >
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="min-w-0">
@@ -970,13 +1085,12 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight mt-1">{selectedTicket.ticket_number}</h2>
                                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Submitted: {new Date(selectedTicket.created_at).toLocaleString()}</p>
                                 </div>
-                                <span className={`px-4 py-1 border rounded-full text-xs font-black uppercase tracking-wider text-center self-start sm:self-auto ${
-                                    selectedTicket.purpose === 'birth'
-                                        ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50'
-                                        : selectedTicket.purpose === 'death'
-                                            ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                            : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
-                                }`}>
+                                <span className={`px-4 py-1 border rounded-full text-xs font-black uppercase tracking-wider text-center self-start sm:self-auto ${selectedTicket.purpose === 'birth'
+                                    ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/50'
+                                    : selectedTicket.purpose === 'death'
+                                        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50'
+                                        : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50'
+                                    }`}>
                                     {selectedTicket.purpose} Certificate
                                 </span>
                             </div>
@@ -1189,76 +1303,195 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                            onClick={() => !isCreatingWalkin && setIsWalkinModalOpen(false)}
+                            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+                            onClick={closeWalkinModal}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="relative bg-white rounded-3xl shadow-2xl p-6 w-full max-w-2xl border border-slate-100 max-h-[90vh] flex flex-col"
+                            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-2xl border border-slate-150 dark:border-slate-800 max-h-[90vh] flex flex-col z-10"
                         >
-                            <h3 className="text-xl font-black text-slate-800 mb-1">New Walk-in Request</h3>
-                            <p className="text-xs text-slate-500 mb-6 shrink-0">Create a new ticket for a walk-in client.</p>
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">New Walk-in Request</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Create a new ticket for a walk-in client. Fields marked with <span className="text-rose-500 font-bold">*</span> are required.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeWalkinModal}
+                                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                >
+                                    <XMarkIcon className="w-5 h-5" />
+                                </button>
+                            </div>
 
                             <div className="space-y-4 mb-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Client Name</label>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                            Client Name <span className="text-rose-500 font-bold">*</span>
+                                        </label>
                                         <input
                                             type="text"
                                             value={walkinName}
-                                            onChange={e => setWalkinName(sanitizeName(e.target.value))}
+                                            onChange={e => {
+                                                const val = sanitizeName(e.target.value);
+                                                setWalkinName(val);
+                                                if (walkinErrors.client_name) {
+                                                    setWalkinErrors(prev => {
+                                                        const next = { ...prev };
+                                                        delete next.client_name;
+                                                        return next;
+                                                    });
+                                                }
+                                            }}
                                             placeholder="e.g. Juan Dela Cruz"
-                                            className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#d4a574]/50"
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm font-semibold transition-all ${
+                                                walkinTouched && walkinErrors.client_name
+                                                    ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                    : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/50 focus:border-[#d4a574]'
+                                            }`}
                                         />
+                                        {walkinTouched && walkinErrors.client_name && (
+                                            <p className="text-[10px] text-rose-500 font-bold mt-1 flex items-center gap-1">
+                                                <ExclamationTriangleIcon className="w-3 h-3" />
+                                                {walkinErrors.client_name}
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Purpose</label>
-                                        <select
-                                            value={walkinPurpose}
-                                            onChange={e => setWalkinPurpose(e.target.value)}
-                                            className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#d4a574]/50 cursor-pointer"
-                                        >
-                                            <option value="birth">Birth Certificate</option>
-                                            <option value="death">Death Certificate</option>
-                                            <option value="marriage">Marriage License</option>
-                                        </select>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                            Purpose / Certificate Type <span className="text-rose-500 font-bold">*</span>
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => setWalkinPurpose('birth')}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                                                    walkinPurpose === 'birth'
+                                                        ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-500 text-orange-700 dark:text-orange-300 ring-2 ring-orange-500/20 shadow-xs'
+                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'birth' ? 'bg-orange-500 dark:bg-orange-400' : 'bg-slate-400'}`} />
+                                                <span>Birth Certificate</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setWalkinPurpose('death')}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                                                    walkinPurpose === 'death'
+                                                        ? 'bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-500 text-red-700 dark:text-red-300 ring-2 ring-red-500/20 shadow-xs'
+                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'death' ? 'bg-red-500 dark:bg-red-400' : 'bg-slate-400'}`} />
+                                                <span>Death Certificate</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setWalkinPurpose('marriage')}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                                                    walkinPurpose === 'marriage'
+                                                        ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shadow-xs'
+                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`}
+                                            >
+                                                <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'marriage' ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400'}`} />
+                                                <span>Marriage License</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-slate-100">
-                                    <h4 className="text-sm font-black text-slate-800 mb-3">Registry Information</h4>
-                                    
+                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+                                            {walkinPurpose === 'birth' && 'Birth Registry Information'}
+                                            {walkinPurpose === 'death' && 'Death Registry Information'}
+                                            {walkinPurpose === 'marriage' && 'Marriage Registry Information'}
+                                        </h4>
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+                                            <span className="text-rose-500 font-bold">*</span> Required for search & release
+                                        </span>
+                                    </div>
+
                                     {walkinPurpose === 'birth' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">First Name</label>
-                                                <input type="text" value={walkinDetails.first_name} onChange={e => handleWalkinDetailChange('first_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    First Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.first_name}
+                                                    onChange={e => handleWalkinDetailChange('first_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.first_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.first_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.first_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Middle Name</label>
-                                                <input type="text" value={walkinDetails.middle_name} onChange={e => handleWalkinDetailChange('middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Middle Name</label>
+                                                <input type="text" value={walkinDetails.middle_name} onChange={e => handleWalkinDetailChange('middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Last Name</label>
-                                                <input type="text" value={walkinDetails.last_name} onChange={e => handleWalkinDetailChange('last_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Last Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.last_name}
+                                                    onChange={e => handleWalkinDetailChange('last_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.last_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.last_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.last_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Birth</label>
-                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_birth} onChange={e => handleWalkinDetailChange('date_of_birth', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Date of Birth <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    max="2099-12-31"
+                                                    value={walkinDetails.date_of_birth}
+                                                    onChange={e => handleWalkinDetailChange('date_of_birth', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.date_of_birth
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.date_of_birth && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_birth}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Birth</label>
-                                                <input type="text" value={walkinDetails.place_of_birth} onChange={e => handleWalkinDetailChange('place_of_birth', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Place of Birth</label>
+                                                <input type="text" value={walkinDetails.place_of_birth} onChange={e => handleWalkinDetailChange('place_of_birth', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Father's Name</label>
-                                                <input type="text" value={walkinDetails.father_name} onChange={e => handleWalkinDetailChange('father_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Father's Name</label>
+                                                <input type="text" value={walkinDetails.father_name} onChange={e => handleWalkinDetailChange('father_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Mother's Maiden Name</label>
-                                                <input type="text" value={walkinDetails.mother_name} onChange={e => handleWalkinDetailChange('mother_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Mother's Maiden Name</label>
+                                                <input type="text" value={walkinDetails.mother_name} onChange={e => handleWalkinDetailChange('mother_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                         </div>
                                     )}
@@ -1266,83 +1499,271 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     {walkinPurpose === 'death' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Deceased First Name</label>
-                                                <input type="text" value={walkinDetails.deceased_first_name} onChange={e => handleWalkinDetailChange('deceased_first_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Deceased First Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.deceased_first_name}
+                                                    onChange={e => handleWalkinDetailChange('deceased_first_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.deceased_first_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.deceased_first_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.deceased_first_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Deceased Middle Name</label>
-                                                <input type="text" value={walkinDetails.deceased_middle_name} onChange={e => handleWalkinDetailChange('deceased_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Deceased Middle Name</label>
+                                                <input type="text" value={walkinDetails.deceased_middle_name} onChange={e => handleWalkinDetailChange('deceased_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Deceased Last Name</label>
-                                                <input type="text" value={walkinDetails.deceased_last_name} onChange={e => handleWalkinDetailChange('deceased_last_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Deceased Last Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.deceased_last_name}
+                                                    onChange={e => handleWalkinDetailChange('deceased_last_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.deceased_last_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.deceased_last_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.deceased_last_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Death</label>
-                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_death} onChange={e => handleWalkinDetailChange('date_of_death', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Date of Death <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    max="2099-12-31"
+                                                    value={walkinDetails.date_of_death}
+                                                    onChange={e => handleWalkinDetailChange('date_of_death', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.date_of_death
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.date_of_death && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_death}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Death</label>
-                                                <input type="text" value={walkinDetails.place_of_death} onChange={e => handleWalkinDetailChange('place_of_death', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Place of Death</label>
+                                                <input type="text" value={walkinDetails.place_of_death} onChange={e => handleWalkinDetailChange('place_of_death', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                         </div>
                                     )}
 
                                     {walkinPurpose === 'marriage' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="col-span-2 text-[10px] font-bold text-slate-400 uppercase mt-2 border-b border-slate-100 pb-1">Husband</div>
+                                            <div className="col-span-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-2 border-b border-slate-100 dark:border-slate-800 pb-1">Husband</div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">First Name</label>
-                                                <input type="text" value={walkinDetails.husband_first_name} onChange={e => handleWalkinDetailChange('husband_first_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    First Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.husband_first_name}
+                                                    onChange={e => handleWalkinDetailChange('husband_first_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.husband_first_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.husband_first_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.husband_first_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Middle Name</label>
-                                                <input type="text" value={walkinDetails.husband_middle_name} onChange={e => handleWalkinDetailChange('husband_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Middle Name</label>
+                                                <input type="text" value={walkinDetails.husband_middle_name} onChange={e => handleWalkinDetailChange('husband_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Last Name</label>
-                                                <input type="text" value={walkinDetails.husband_last_name} onChange={e => handleWalkinDetailChange('husband_last_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Last Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.husband_last_name}
+                                                    onChange={e => handleWalkinDetailChange('husband_last_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.husband_last_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.husband_last_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.husband_last_name}</p>
+                                                )}
                                             </div>
 
-                                            <div className="col-span-2 text-[10px] font-bold text-slate-400 uppercase mt-4 border-b border-slate-100 pb-1">Wife</div>
+                                            <div className="col-span-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-4 border-b border-slate-100 dark:border-slate-800 pb-1">Wife</div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">First Name</label>
-                                                <input type="text" value={walkinDetails.wife_first_name} onChange={e => handleWalkinDetailChange('wife_first_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    First Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.wife_first_name}
+                                                    onChange={e => handleWalkinDetailChange('wife_first_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.wife_first_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.wife_first_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.wife_first_name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Middle Name</label>
-                                                <input type="text" value={walkinDetails.wife_middle_name} onChange={e => handleWalkinDetailChange('wife_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Middle Name</label>
+                                                <input type="text" value={walkinDetails.wife_middle_name} onChange={e => handleWalkinDetailChange('wife_middle_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Last Name</label>
-                                                <input type="text" value={walkinDetails.wife_last_name} onChange={e => handleWalkinDetailChange('wife_last_name', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Last Name <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={walkinDetails.wife_last_name}
+                                                    onChange={e => handleWalkinDetailChange('wife_last_name', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.wife_last_name
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.wife_last_name && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.wife_last_name}</p>
+                                                )}
                                             </div>
 
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Date of Marriage</label>
-                                                <input type="date" max="2099-12-31" value={walkinDetails.date_of_marriage} onChange={e => handleWalkinDetailChange('date_of_marriage', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                    Date of Marriage <span className="text-rose-500 font-bold">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    max="2099-12-31"
+                                                    value={walkinDetails.date_of_marriage}
+                                                    onChange={e => handleWalkinDetailChange('date_of_marriage', e.target.value)}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
+                                                        walkinTouched && walkinErrors.date_of_marriage
+                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                    }`}
+                                                />
+                                                {walkinTouched && walkinErrors.date_of_marriage && (
+                                                    <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_marriage}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-600 uppercase">Place of Marriage</label>
-                                                <input type="text" value={walkinDetails.place_of_marriage} onChange={e => handleWalkinDetailChange('place_of_marriage', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                                                <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Place of Marriage</label>
+                                                <input type="text" value={walkinDetails.place_of_marriage} onChange={e => handleWalkinDetailChange('place_of_marriage', e.target.value)} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40" />
                                             </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Authorization & Representative Document Upload */}
+                                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                                            <IdentificationIcon className="w-4 h-4 text-[#d4a574]" />
+                                            <span>Authorization Document / Valid ID</span>
+                                        </h4>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                            Optional / Representative
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                                        If the client is transacting on behalf of the document owner, attach an authorization letter or government-issued ID here.
+                                    </p>
+
+                                    <input
+                                        ref={walkinAuthFileInputRef}
+                                        type="file"
+                                        accept=".pdf,image/png,image/jpeg,image/jpg"
+                                        onChange={handleWalkinFileChange}
+                                        className="hidden"
+                                    />
+
+                                    {!walkinAuthFile ? (
+                                        <div
+                                            onClick={() => walkinAuthFileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] dark:hover:border-[#d4a574] rounded-2xl p-4 text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/20 dark:hover:bg-slate-800/80 group"
+                                        >
+                                            <div className="flex flex-col items-center justify-center gap-1.5">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700/80 group-hover:bg-amber-100 dark:group-hover:bg-[#d4a574]/20 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-[#b88648] dark:group-hover:text-[#d4a574] transition-colors">
+                                                    <PaperClipIcon className="w-5 h-5" />
+                                                </div>
+                                                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                                    Click to attach Authorization Letter or Valid ID
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                                    Accepts PDF, PNG, JPG (up to 10MB)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                    <DocumentTextIcon className="w-4 h-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                                        {walkinAuthFile.name}
+                                                    </div>
+                                                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-2">
+                                                        <span>{formatFileSize(walkinAuthFile.size)}</span>
+                                                        <span>•</span>
+                                                        <span>Attached</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWalkinAuthFile(null);
+                                                    if (walkinAuthFileInputRef.current) walkinAuthFileInputRef.current.value = '';
+                                                }}
+                                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                                title="Remove file"
+                                            >
+                                                <XMarkIcon className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 shrink-0 pt-4 border-t border-slate-100">
+                            <div className="flex justify-end gap-3 shrink-0 pt-4 border-t border-slate-100 dark:border-slate-800">
                                 <button
-                                    onClick={() => setIsWalkinModalOpen(false)}
+                                    type="button"
+                                    onClick={closeWalkinModal}
                                     disabled={isCreatingWalkin}
-                                    className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors disabled:opacity-50"
+                                    className="px-5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleCreateWalkinTicket}
                                     disabled={isCreatingWalkin}
-                                    className="px-5 py-2.5 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                                    className="px-5 py-2.5 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 dark:bg-[#d4a574] dark:hover:bg-[#bc8a59] dark:text-slate-950 rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                                 >
                                     {isCreatingWalkin ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Create Ticket'}
                                 </button>
@@ -1354,27 +1775,27 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             <AnimatePresence>
                 {isDeclineOpen && selectedTicket && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 leading-normal">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100"
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 dark:border-slate-800"
                         >
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-3.5 mb-4">
-                                <h3 className="font-extrabold text-rose-600 text-lg flex items-center gap-2">
+                            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3.5 mb-4">
+                                <h3 className="font-extrabold text-rose-600 dark:text-rose-400 text-lg flex items-center gap-2">
                                     <ExclamationTriangleIcon className="w-5 h-5" /> Decline Request
                                 </h3>
-                                <button onClick={() => setIsDeclineOpen(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer">
+                                <button onClick={() => setIsDeclineOpen(false)} className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer">
                                     <XMarkIcon className="w-6 h-6" />
                                 </button>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Standard Decline Reason</label>
+                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">Standard Decline Reason</label>
                                     <select
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 text-xs font-semibold focus:border-rose-400 focus:ring focus:ring-rose-200 focus:ring-opacity-50 transition-all cursor-pointer"
+                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl p-3 text-xs font-semibold focus:border-rose-400 focus:ring focus:ring-rose-200 focus:ring-opacity-50 transition-all cursor-pointer"
                                         value={declinePreset}
                                         onChange={(e) => {
                                             /** Selected preset decline reason from the form control. */
@@ -1397,9 +1818,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </div>
 
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Additional Remarks / Custom Details *</label>
+                                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">Additional Remarks / Custom Details *</label>
                                     <textarea
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 text-sm focus:border-rose-400 focus:ring focus:ring-rose-200 focus:ring-opacity-50 transition-all"
+                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl p-3 text-sm focus:border-rose-400 focus:ring focus:ring-rose-200 focus:ring-opacity-50 transition-all placeholder-slate-400 dark:placeholder-slate-500"
                                         rows="3"
                                         placeholder="Add specific notes or custom message for the requester..."
                                         value={declineReason}
@@ -1407,26 +1828,26 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         disabled={deletingId === selectedTicket.id}
                                     />
                                 </div>
-                                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                                     <button
                                         type="button"
-                                         onClick={() => {
-                                             setIsDeclineOpen(false);
-                                             setDeclineReason('');
-                                             setDeclinePreset('');
-                                         }}
-                                        className="px-5 py-2.5 bg-white border border-slate-200 text-slate-650 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-colors cursor-pointer"
+                                        onClick={() => {
+                                            setIsDeclineOpen(false);
+                                            setDeclineReason('');
+                                            setDeclinePreset('');
+                                        }}
+                                        className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                                         disabled={deletingId === selectedTicket.id}
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="button"
-                                         onClick={confirmDeclineRequest}
-                                         disabled={deletingId === selectedTicket.id || !declineReason.trim()}
-                                        className="px-5 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-700 shadow-md shadow-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                                        onClick={confirmDeclineRequest}
+                                        disabled={deletingId === selectedTicket.id || !declineReason.trim()}
+                                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md shadow-rose-200 dark:shadow-none transition-all cursor-pointer disabled:opacity-50"
                                     >
-                                         {deletingId === selectedTicket.id ? 'Declining...' : 'Decline Request'}
+                                        {deletingId === selectedTicket.id ? 'Declining...' : 'Decline Request'}
                                     </button>
                                 </div>
                             </div>
@@ -1601,6 +2022,82 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             )}
 
             <>
+                {/* Immediate Post-Attachment Print Prompt Modal */}
+                {attachedPrintPromptTicket && (
+                    createPortal(
+                        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-150 dark:border-slate-800"
+                            >
+                                <div className="bg-[#0f172a] px-6 py-5 text-white flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-[#d4a574]/15 border border-[#d4a574]/30 flex items-center justify-center">
+                                            <PrinterIcon className="w-5 h-5 text-[#d4a574]" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4a574]">File Attached</p>
+                                            <h3 className="text-lg font-black tracking-tight">Print Document Now?</h3>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setAttachedPrintPromptTicket(null)}
+                                        className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                    >
+                                        <XMarkIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 space-y-4">
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        The registry document has been linked to ticket <strong className="text-slate-900 dark:text-white font-mono">{attachedPrintPromptTicket.ticket_number}</strong> ({attachedPrintPromptTicket.client_name}).
+                                    </p>
+
+                                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Request Purpose:</span>
+                                            <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">{attachedPrintPromptTicket.purpose}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400">Queue State:</span>
+                                            <span className="font-bold text-emerald-600 dark:text-emerald-400 uppercase">Ready For Pickup</span>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                                        You can print the certificate now, or do it later from the ticket details pane when the citizen arrives.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAttachedPrintPromptTicket(null)}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        Later
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const ticketToPrint = attachedPrintPromptTicket;
+                                            setAttachedPrintPromptTicket(null);
+                                            handlePrintTicketDocument(ticketToPrint);
+                                        }}
+                                        className="px-5 py-2.5 rounded-xl bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm cursor-pointer border border-[#d4a574]/40"
+                                    >
+                                        <PrinterIcon className="w-4 h-4 text-[#d4a574]" />
+                                        Print Now
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>,
+                        document.body
+                    )
+                )}
+
                 {/* Scanned Ticket Popup Modal */}
                 {isPopupOpen && scannedData && (
                     createPortal(

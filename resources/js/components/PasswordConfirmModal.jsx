@@ -50,10 +50,10 @@ const PasswordConfirmModal = ({ isOpen, onConfirm, onCancel, title, message }) =
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100"
+                className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-700"
             >
                 {/* Header */}
-                <div className="bg-slate-900 px-6 py-5 flex items-center justify-between">
+                <div className="bg-slate-900 dark:bg-slate-950 px-6 py-5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                             <LockClosedIcon className="w-5 h-5 text-indigo-400" />
@@ -65,18 +65,18 @@ const PasswordConfirmModal = ({ isOpen, onConfirm, onCancel, title, message }) =
                     </button>
                 </div>
 
-                <div className="p-8 space-y-6">
-                    <div className="flex items-start gap-4 p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                        <ShieldCheckIcon className="w-6 h-6 text-amber-600 mt-0.5" />
+                <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
+                    <div className="flex items-start gap-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl">
+                        <ShieldCheckIcon className="w-6 h-6 text-amber-600 dark:text-amber-400 mt-0.5" />
                         <div>
-                            <p className="text-sm font-bold text-amber-900">High-Security Action</p>
-                            <p className="text-xs text-amber-700 mt-1">{message || 'Please provide your account password to authorize this action.'}</p>
+                            <p className="text-sm font-bold text-amber-900 dark:text-amber-200">High-Security Action</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{message || 'Please provide your account password to authorize this action.'}</p>
                         </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Password</label>
+                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Your Password</label>
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
@@ -85,12 +85,12 @@ const PasswordConfirmModal = ({ isOpen, onConfirm, onCancel, title, message }) =
                                     placeholder="••••••••"
                                     required
                                     autoFocus
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-sans pr-10"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-sans pr-10"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                 >
                                     {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                                 </button>
@@ -102,14 +102,14 @@ const PasswordConfirmModal = ({ isOpen, onConfirm, onCancel, title, message }) =
                             <button
                                 type="button"
                                 onClick={onCancel}
-                                className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                                className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading || !password}
-                                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
+                                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
                             >
                                 {loading ? 'Verifying...' : 'Unlock Action'}
                             </button>

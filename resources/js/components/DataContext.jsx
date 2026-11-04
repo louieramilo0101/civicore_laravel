@@ -14,6 +14,15 @@ export const useData = () => {
 /** Owns shared dashboard, document, issuance, history, and template state. */
 export const DataProvider = ({ children }) => {
     const DATA_VERSION = '1.0.5';
+
+    const safeCache = (key, value) => {
+        try {
+            sessionStorage.setItem(key, value);
+        } catch (err) {
+            console.warn(`Skipping session cache for ${key}:`, err?.name || err);
+            try { sessionStorage.removeItem(key); } catch (e) { /* ignore */ }
+        }
+    };
     
     // ── State for Stats ──────────────────────────────────────────────────────
     const [stats, setStats] = useState(() => {
@@ -179,10 +188,10 @@ export const DataProvider = ({ children }) => {
             
             if (data.stats) {
                 setStats(data.stats);
-                sessionStorage.setItem('civicore_stats', JSON.stringify(data.stats));
+                safeCache('civicore_stats', JSON.stringify(data.stats));
             }
             if (data.chartData) {
-                sessionStorage.setItem('civicore_chart_data', JSON.stringify(data.chartData));
+                safeCache('civicore_chart_data', JSON.stringify(data.chartData));
             }
             lastFetch.current.stats = now;
         } catch (err) {
@@ -208,6 +217,13 @@ export const DataProvider = ({ children }) => {
                     if (typeof ef === 'string') {
                         try { ef = JSON.parse(ef); } catch (e) { ef = null; }
                     }
+                    if (ef && typeof ef === 'object' && !Array.isArray(ef)) {
+                        Object.keys(ef).forEach(k => {
+                            if (typeof ef[k] === 'string' && (ef[k].trim().toLowerCase() === 'n/a' || ef[k].trim().toLowerCase() === 'not applicable')) {
+                                ef[k] = null;
+                            }
+                        });
+                    }
                     
                     let meta = doc.metadata;
                     if (typeof meta === 'string') {
@@ -231,6 +247,7 @@ export const DataProvider = ({ children }) => {
                         created_at:       doc.created_at,
                         file_path:        doc.file_path,
                         has_duplicate:    !!doc.has_duplicate,
+                        _search:          `${doc.name || ''} ${doc.personName || ''} ${doc.barangay || ''} ${doc.type || ''} ${doc.encoded_by || ''}`.toLowerCase(),
                         // batch progress fields (populated by server for active processing docs)
                         batch_progress:   doc.batch_progress,
                         batch_total:      doc.batch_total,
@@ -238,7 +255,7 @@ export const DataProvider = ({ children }) => {
                     };
                 });
                 setDocuments(mapped);
-                sessionStorage.setItem('civicore_documents', JSON.stringify(mapped));
+                safeCache('civicore_documents', JSON.stringify(mapped));
             }
             lastFetch.current.documents = now;
         } catch (err) {
@@ -275,6 +292,7 @@ export const DataProvider = ({ children }) => {
                     approved_by:     i.approved_by,
                     ticket_number:   i.ticket_number,
                     created_at:      i.created_at,
+                    _search:         `${i.certNumber || ''} ${i.name || ''} ${i.barangay || ''} ${i.type || ''} ${i.encoded_by || ''} ${i.ticket_number || ''} ${i.or_number || ''}`.toLowerCase(),
                     source:          'issuance',
                     raw: {
                         ...i,
@@ -283,7 +301,7 @@ export const DataProvider = ({ children }) => {
                     }
                 }));
                 setIssuances(mapped);
-                sessionStorage.setItem('civicore_issuances', JSON.stringify(mapped));
+                safeCache('civicore_issuances', JSON.stringify(mapped));
             }
             lastFetch.current.issuances = now;
         } catch (err) {
@@ -305,7 +323,7 @@ export const DataProvider = ({ children }) => {
             
             if (data.data) {
                 setHistory(data.data);
-                sessionStorage.setItem('civicore_history', JSON.stringify(data.data));
+                safeCache('civicore_history', JSON.stringify(data.data));
             }
             lastFetch.current.history = now;
         } catch (err) {
@@ -330,7 +348,7 @@ export const DataProvider = ({ children }) => {
             
             if (data) {
                 setTemplates(data);
-                sessionStorage.setItem('civicore_templates', JSON.stringify(data));
+                safeCache('civicore_templates', JSON.stringify(data));
             }
             lastFetch.current.templates = now;
         } catch (err) {

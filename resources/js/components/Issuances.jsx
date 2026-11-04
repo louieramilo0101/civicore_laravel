@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -821,16 +821,23 @@ const Issuances = () => {
     const uniqueBarangays = NAIC_BARANGAYS;
     const uniqueEncoders = Array.isArray(allUsers) ? [...new Set(allUsers.map(u => u.name))].sort() : [];
 
-    const filteredCertificates = certificates.filter(cert => {
-        const matchesType = selectedType === 'all' || cert.type.toLowerCase() === selectedType.toLowerCase();
-        const matchesBarangay = selectedBarangay === 'all' || cert.barangay === selectedBarangay;
-        const matchesEncoder = selectedEncoder === 'all' || cert.encoded_by === selectedEncoder;
-        const matchesSearch = cert.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            cert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            cert.barangay.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredCertificates = useMemo(() => {
+        const cleanTerm = (searchTerm || '').trim().toLowerCase();
+        const cleanType = (selectedType || 'all').toLowerCase();
+        const cleanBrgy = selectedBarangay;
+        const cleanEncoder = selectedEncoder;
 
-        return matchesType && matchesBarangay && matchesEncoder && matchesSearch;
-    });
+        return certificates.filter(cert => {
+            if (cleanType !== 'all' && (cert.type || '').toLowerCase() !== cleanType) return false;
+            if (cleanBrgy !== 'all' && cert.barangay !== cleanBrgy) return false;
+            if (cleanEncoder !== 'all' && cert.encoded_by !== cleanEncoder) return false;
+
+            if (!cleanTerm) return true;
+
+            const searchIndex = cert._search || `${cert.number || ''} ${cert.name || ''} ${cert.barangay || ''} ${cert.ticket_number || ''} ${cert.or_number || ''}`.toLowerCase();
+            return searchIndex.includes(cleanTerm);
+        });
+    }, [certificates, selectedType, selectedBarangay, selectedEncoder, searchTerm]);
 
     const isDocumentAction = (action = '') => {
         const a = (action || '').toLowerCase();
@@ -867,41 +874,43 @@ const Issuances = () => {
         };
     };
 
-    const filteredLogs = activityLogs.filter(log => {
-        // Enforce document actions only: Attached to ticket, Viewed, Deleted
-        if (!isDocumentAction(log.action)) return false;
-
-        const matchesSearch = !historySearch ||
-            (log.details || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            (log.user_name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            (log.action || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            (log.record_type || '').toLowerCase().includes(historySearch.toLowerCase());
-
-        let matchesAction = true;
-        if (historyActionFilter !== 'all') {
-            const filterLower = historyActionFilter.toLowerCase();
-            const actionLower = (log.action || '').toLowerCase();
-            if (filterLower.includes('attach')) {
-                matchesAction = actionLower.includes('attach');
-            } else if (filterLower.includes('view')) {
-                matchesAction = actionLower.includes('view');
-            } else if (filterLower.includes('delet')) {
-                matchesAction = actionLower.includes('delet');
-            } else {
-                matchesAction = log.action === historyActionFilter;
-            }
-        }
-
-        const matchesUser = historyUserFilter === 'all' || log.user_name === historyUserFilter;
-
-        // Date Range filtering
-        const logDate = new Date(log.created_at).setHours(0, 0, 0, 0);
+    const filteredLogs = useMemo(() => {
+        const cleanTerm = (historySearch || '').trim().toLowerCase();
+        const filterLower = (historyActionFilter || 'all').toLowerCase();
+        const userFilter = historyUserFilter;
         const start = historyStartDate ? new Date(historyStartDate).setHours(0, 0, 0, 0) : null;
         const end = historyEndDate ? new Date(historyEndDate).setHours(0, 0, 0, 0) : null;
-        const matchesDate = (!start || logDate >= start) && (!end || logDate <= end);
 
-        return matchesSearch && matchesAction && matchesUser && matchesDate;
-    });
+        return activityLogs.filter(log => {
+            if (!isDocumentAction(log.action)) return false;
+
+            if (userFilter !== 'all' && log.user_name !== userFilter) return false;
+
+            if (filterLower !== 'all') {
+                const actionLower = (log.action || '').toLowerCase();
+                if (filterLower.includes('attach')) {
+                    if (!actionLower.includes('attach')) return false;
+                } else if (filterLower.includes('view')) {
+                    if (!actionLower.includes('view')) return false;
+                } else if (filterLower.includes('delet')) {
+                    if (!actionLower.includes('delet')) return false;
+                } else if (log.action !== historyActionFilter) {
+                    return false;
+                }
+            }
+
+            if (start || end) {
+                const logDate = new Date(log.created_at).setHours(0, 0, 0, 0);
+                if (start && logDate < start) return false;
+                if (end && logDate > end) return false;
+            }
+
+            if (!cleanTerm) return true;
+
+            const searchIndex = log._search || `${log.details || ''} ${log.user_name || ''} ${log.action || ''} ${log.record_type || ''}`.toLowerCase();
+            return searchIndex.includes(cleanTerm);
+        });
+    }, [activityLogs, historySearch, historyActionFilter, historyUserFilter, historyStartDate, historyEndDate]);
 
     // Pagination States
     const [databasePage, setDatabasePage] = useState(1);
@@ -1002,29 +1011,29 @@ const Issuances = () => {
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden"
+                                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden"
                             >
-                                <div className="p-8">
+                                <div className="p-8 bg-white dark:bg-slate-900">
                                     {/* Header */}
-                                    <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 mb-6 mx-auto border border-amber-100">
+                                    <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/40 rounded-2xl flex items-center justify-center text-amber-500 dark:text-amber-400 mb-6 mx-auto border border-amber-100 dark:border-amber-900/50">
                                         <PrinterIcon className="w-8 h-8" />
                                     </div>
 
-                                    <h3 className="text-2xl font-black text-slate-800 text-center tracking-tight mb-2">
+                                    <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 text-center tracking-tight mb-2">
                                         {requestingPrintCert.status === 'Issued' ? 'Request Reprint Approval' : 'Request Print Approval'}
                                     </h3>
-                                    <p className="text-slate-500 text-center text-sm font-medium leading-relaxed mb-6">
-                                        An Official Receipt (OR) Number is required to request print authorization for <strong className="text-slate-800">{requestingPrintCert.name}</strong>.
+                                    <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium leading-relaxed mb-6">
+                                        An Official Receipt (OR) Number is required to request print authorization for <strong className="text-slate-800 dark:text-slate-200">{requestingPrintCert.name}</strong>.
                                     </p>
 
                                     {/* Linked Queue Ticket Notification */}
                                     {activeLinkedTicket && (
-                                        <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-3">
+                                        <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl flex items-center gap-3">
                                             <div className="w-10 h-10 bg-indigo-500 text-white rounded-xl flex items-center justify-center text-xs font-black shrink-0 shadow-md shadow-indigo-200">
                                                 Ticket
                                             </div>
                                             <div>
-                                                <p className="text-xs text-indigo-900 font-black leading-none">{activeLinkedTicket.ticket_number}</p>
+                                                <p className="text-xs text-indigo-900 dark:text-indigo-200 font-black leading-none">{activeLinkedTicket.ticket_number}</p>
                                                 <p className="text-[10px] text-indigo-500 mt-1 font-bold uppercase tracking-wider">Live Citizen Waiting: {activeLinkedTicket.client_name}</p>
                                             </div>
                                         </div>
@@ -1033,23 +1042,23 @@ const Issuances = () => {
                                     {/* Input Fields */}
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-1">Official Receipt (OR) Number</label>
+                                            <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Official Receipt (OR) Number</label>
                                             <input
                                                 type="text"
                                                 placeholder="Enter receipt number (e.g. OR-8888)..."
                                                 value={orNumber}
                                                 onChange={(e) => setOrNumber(e.target.value)}
-                                                className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700"
+                                                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 dark:text-slate-200"
                                             />
                                         </div>
 
                                         {!activeLinkedTicket && (
                                             <div>
-                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-1">Link Queue Ticket (Optional)</label>
+                                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Link Queue Ticket (Optional)</label>
                                                 <select
                                                     value={selectedTicketId}
                                                     onChange={(e) => setSelectedTicketId(e.target.value)}
-                                                    className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 cursor-pointer"
+                                                    className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                                                 >
                                                     <option value="">-- Select Active Ticket to Link --</option>
                                                     {tickets.filter(t => 
@@ -1066,23 +1075,23 @@ const Issuances = () => {
                                         )}
 
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-1">Remarks / Purpose (Optional)</label>
+                                            <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Remarks / Purpose (Optional)</label>
                                             <textarea
                                                 placeholder="Enter any notes or remarks..."
                                                 value={printRemarks}
                                                 onChange={(e) => setPrintRemarks(e.target.value)}
                                                 rows="3"
-                                                className="block w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-medium text-slate-600 resize-none"
+                                                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-medium text-slate-600 dark:text-slate-300 resize-none"
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-slate-50 flex gap-3">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 flex gap-3">
                                     <button
                                         onClick={() => setRequestingPrintCert(null)}
                                         disabled={isSubmittingPrintRequest}
-                                        className="flex-1 px-6 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                                        className="flex-1 px-6 py-3.5 text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                                     >
                                         Cancel
                                     </button>
@@ -1104,64 +1113,64 @@ const Issuances = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden"
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden"
                         >
                             {/* Header */}
-                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-[#d4a574]/15 text-[#d4a574] rounded-xl flex items-center justify-center">
                                         <CameraIcon className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none">Scan to Search</h3>
-                                        <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-wider">OCR Document Search using EasyOCR / Tesseract</p>
+                                        <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight leading-none">Scan to Search</h3>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-bold uppercase tracking-wider">OCR Document Search using EasyOCR / Tesseract</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => setIsScanSearchOpen(false)}
-                                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
                                 >
                                     <XMarkIcon className="w-6 h-6" />
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-4">
+                            <div className="p-6 space-y-4 bg-white dark:bg-slate-900">
                                 {/* Source Toggle */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+                                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
                                     <button
                                         onClick={() => setScanSource('webcam')}
-                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'webcam' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'webcam' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                     >
                                         Use Camera
                                     </button>
                                     <button
                                         onClick={() => setScanSource('upload')}
-                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'upload' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'upload' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                     >
                                         Upload Image
                                     </button>
                                 </div>
 
                                 {ocrError && (
-                                    <div className="p-3.5 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-xl leading-relaxed">
+                                    <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl leading-relaxed">
                                         {ocrError}
                                     </div>
                                 )}
 
                                 {/* Webcam viewport */}
                                 {scanSource === 'webcam' && (
-                                    <div className="relative aspect-video w-full bg-slate-50 rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-slate-200 shadow-inner">
+                                    <div className="relative aspect-video w-full bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-slate-200 dark:border-slate-700 shadow-inner">
                                         {isScanning ? (
                                             <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center text-white gap-3 rounded-2xl">
                                                 <ArrowPathIcon className="w-8 h-8 animate-spin text-[#d4a574]" />
                                                 <span className="text-xs font-bold tracking-widest uppercase">Processing OCR...</span>
                                             </div>
                                         ) : null}
-                                        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mb-3 border border-indigo-100 shadow-sm">
+                                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl flex items-center justify-center text-indigo-500 dark:text-indigo-400 mb-3 border border-indigo-100 dark:border-indigo-900/50 shadow-sm">
                                             <CameraIcon className="w-6 h-6 animate-pulse" />
                                         </div>
-                                        <p className="text-sm font-black text-slate-700">Scan using unified document camera</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Locks edges and crops automatically</p>
+                                        <p className="text-sm font-black text-slate-700 dark:text-slate-300">Scan using unified document camera</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-1">Locks edges and crops automatically</p>
                                         <button
                                             type="button"
                                             onClick={() => setIsSearchCameraOpen(true)}
@@ -1174,7 +1183,7 @@ const Issuances = () => {
 
                                 {/* Upload Area */}
                                 {scanSource === 'upload' && (
-                                    <div className="relative aspect-video w-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-[#d4a574]/40 flex flex-col items-center justify-center p-6 text-center transition-all group overflow-hidden">
+                                    <div className="relative aspect-video w-full bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574]/40 flex flex-col items-center justify-center p-6 text-center transition-all group overflow-hidden">
                                         {isScanning ? (
                                             <div className="absolute inset-0 bg-slate-900/80 z-20 flex flex-col items-center justify-center text-white gap-3">
                                                 <ArrowPathIcon className="w-8 h-8 animate-spin text-[#d4a574]" />
@@ -1191,19 +1200,19 @@ const Issuances = () => {
                                             }}
                                             className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                         />
-                                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#d4a574] group-hover:bg-[#d4a574]/10 transition-all border border-slate-200 mb-3 shadow-sm">
+                                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-[#d4a574] group-hover:bg-[#d4a574]/10 transition-all border border-slate-200 dark:border-slate-700 mb-3 shadow-sm">
                                             <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-700">Drag and drop or click to upload</p>
-                                        <p className="text-[10px] text-slate-400 font-medium mt-1">Supports PNG, JPG or WEBP up to 10MB</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Drag and drop or click to upload</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">Supports PNG, JPG or WEBP up to 10MB</p>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end items-center gap-3">
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex justify-end items-center gap-3">
                                 <button
                                     onClick={() => setIsScanSearchOpen(false)}
-                                    className="px-5 py-3 text-xs font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-xl transition-all cursor-pointer"
+                                    className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-all cursor-pointer"
                                 >
                                     Close
                                 </button>

@@ -129,6 +129,13 @@ class TicketController extends Controller
      */
     public function store(Request $request)
     {
+        if (is_string($request->details)) {
+            $decoded = json_decode($request->details, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $request->merge(['details' => $decoded]);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'client_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\.\,\'\-\x{00F1}\x{00D1}\x{00C0}-\x{024F}]+$/u'],
             'email'       => 'nullable|email|max:255',
@@ -260,7 +267,7 @@ class TicketController extends Controller
                     'qr_code_token'     => $token,
                     'request_status'    => 'pending',
                     'queue_status'      => 'not_in_lobby',
-                    'source'            => 'online',
+                    'source'            => in_array($request->source, ['walk-in', 'walk_in']) ? 'walk_in' : 'online',
                     'expires_at'        => $expiry,
                     'scheduled_date'    => $scheduledDate,
                     'qr_code_path'      => $qrPath,
@@ -312,16 +319,26 @@ class TicketController extends Controller
      */
     public function storeWalkIn(Request $request)
     {
+        if (is_string($request->details)) {
+            $decoded = json_decode($request->details, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $request->merge(['details' => $decoded]);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'client_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\.\,\'\-\x{00F1}\x{00D1}\x{00C0}-\x{024F}]+$/u'],
             'email'       => 'nullable|email|max:255',
             'purpose'     => 'required|in:birth,death,marriage',
             'phone'       => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
             'details'     => 'nullable|array',
+            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ], [
             'client_name.regex' => 'Name cannot contain numbers or invalid special characters (only letters, spaces, and . , - \' are allowed).',
             'phone.regex' => 'Phone number may only contain numbers and valid phone symbols (+, -, space, parens).',
             'phone.max'   => 'Phone number cannot exceed 15 characters.',
+            'consent_form.mimes' => 'Consent form must be a PDF, JPG, JPEG, or PNG file.',
+            'consent_form.max'   => 'Consent form file size cannot exceed 10MB.',
         ]);
 
         if ($validator->fails()) {
@@ -329,7 +346,12 @@ class TicketController extends Controller
         }
 
         try {
-            return DB::transaction(function () use ($request) {
+            $consentPath = null;
+            if ($request->hasFile('consent_form')) {
+                $consentPath = $request->file('consent_form')->store('consent_forms', 'public');
+            }
+
+            return DB::transaction(function () use ($request, $consentPath) {
                 $year  = date('Y');
                 $count = DB::table('tickets')
                     ->where('source', 'walk_in')
@@ -354,21 +376,22 @@ class TicketController extends Controller
                 $queueNumber = $todayCount + 101;
 
                 $ticket = Ticket::create([
-                    'ticket_number'  => $ticketNumber,
-                    'client_name'    => $request->client_name,
-                    'email'          => $request->email,
-                    'phone'          => $request->phone,
-                    'purpose'        => $request->purpose,
-                    'details'        => $request->details ?? [],
-                    'token'          => $token,
-                    'qr_code_token'  => $token,
-                    'request_status' => 'pending', // Pending record attachment but in lobby!
-                    'queue_status'   => 'waiting',
-                    'queue_number'   => $queueNumber,
-                    'source'         => 'walk_in',
-                    'expires_at'     => $expiry,
-                    'qr_code_path'   => $qrPath,
-                    'verified_at'    => Carbon::now(),
+                    'ticket_number'     => $ticketNumber,
+                    'client_name'       => $request->client_name,
+                    'email'             => $request->email,
+                    'phone'             => $request->phone,
+                    'purpose'           => $request->purpose,
+                    'details'           => $request->details ?? [],
+                    'token'             => $token,
+                    'qr_code_token'     => $token,
+                    'request_status'    => 'pending', // Pending record attachment but in lobby!
+                    'queue_status'      => 'waiting',
+                    'queue_number'      => $queueNumber,
+                    'source'            => 'walk_in',
+                    'expires_at'        => $expiry,
+                    'qr_code_path'      => $qrPath,
+                    'consent_form_path' => $consentPath,
+                    'verified_at'       => Carbon::now(),
                 ]);
 
                 // Send email if provided (non-blocking)

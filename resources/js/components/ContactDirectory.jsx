@@ -62,7 +62,10 @@ export default function ContactDirectory() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-6 w-full pt-4">
                     
                     {/* Location / Physical Address Card */}
-                    <motion.div 
+                    <motion.a
+                        href="https://www.google.com/maps/search/?api=1&query=Naic+Municipal+Hall,+Antero+Soriano+Highway,+Naic,+4110,+Cavite"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 }}
@@ -74,11 +77,11 @@ export default function ContactDirectory() {
                         </div>
                         <div className="z-10 text-center">
                             <div className="text-[12px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-2">Office Address</div>
-                            <div className="text-white font-bold text-sm sm:text-base tracking-tight leading-relaxed">
+                            <div className="text-white font-bold text-sm sm:text-base tracking-tight leading-relaxed group-hover:text-[#d4a574] transition-colors">
                                 Naic Municipal Hall, Antero Soriano Highway, Naic, 4110, Cavite
                             </div>
                         </div>
-                    </motion.div>
+                    </motion.a>
                     
                     {/* Email Card */}
                     <motion.a 

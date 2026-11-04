@@ -583,7 +583,7 @@ class DocumentController extends Controller
 
         // 1. Month validation & normalization
         foreach (['dob_month', 'marriage_parents_month'] as $mKey) {
-            if (isset($fields[$mKey]) && $fields[$mKey] !== '' && $fields[$mKey] !== 'n/a') {
+            if (isset($fields[$mKey]) && !is_null($fields[$mKey]) && $fields[$mKey] !== '' && strtolower((string)$fields[$mKey]) !== 'n/a') {
                 $rawM = trim((string)$fields[$mKey]);
                 $normalized = null;
                 if (is_numeric($rawM)) {
@@ -612,7 +612,7 @@ class DocumentController extends Controller
             'marriage_parents_day' => ['month' => 'marriage_parents_month', 'year' => 'marriage_parents_year']
         ];
         foreach ($dayKeys as $dKey => $rel) {
-            if (isset($fields[$dKey]) && $fields[$dKey] !== '' && $fields[$dKey] !== 'n/a') {
+            if (isset($fields[$dKey]) && !is_null($fields[$dKey]) && $fields[$dKey] !== '' && strtolower((string)$fields[$dKey]) !== 'n/a') {
                 $rawDay = preg_replace('/[^0-9]/', '', (string)$fields[$dKey]);
                 if ($rawDay === '') {
                     return "Day must be a number between 1 and 31.";
@@ -643,7 +643,7 @@ class DocumentController extends Controller
         // 3. Year validation
         $currentYear = (int)date('Y');
         foreach (['dob_year', 'marriage_parents_year'] as $yKey) {
-            if (isset($fields[$yKey]) && $fields[$yKey] !== '' && $fields[$yKey] !== 'n/a') {
+            if (isset($fields[$yKey]) && !is_null($fields[$yKey]) && $fields[$yKey] !== '' && strtolower((string)$fields[$yKey]) !== 'n/a') {
                 $rawYear = preg_replace('/[^0-9]/', '', (string)$fields[$yKey]);
                 $year = (int)$rawYear;
                 if (strlen($rawYear) !== 4 || $year < 1850 || $year > $currentYear + 1) {
@@ -656,7 +656,7 @@ class DocumentController extends Controller
         // 4. Date validation for Marriage & Death
         $today = date('Y-m-d');
         foreach (['date_of_birth', 'date_of_death', 'date_of_marriage', 'husband_dob', 'wife_dob', 'burial_permit_date_issued', 'transfer_permit_date_issued'] as $dKey) {
-            if (isset($fields[$dKey]) && $fields[$dKey] !== '' && $fields[$dKey] !== 'n/a') {
+            if (isset($fields[$dKey]) && !is_null($fields[$dKey]) && $fields[$dKey] !== '' && strtolower((string)$fields[$dKey]) !== 'n/a') {
                 $dStr = trim((string)$fields[$dKey]);
                 $ts = strtotime($dStr);
                 if ($ts === false) {
@@ -672,7 +672,7 @@ class DocumentController extends Controller
 
         // 5. Age numeric sanity checks
         foreach (['mother_age', 'father_age', 'husband_age', 'wife_age', 'age_completed_years', 'age_months', 'age_days'] as $aKey) {
-            if (isset($fields[$aKey]) && $fields[$aKey] !== '' && $fields[$aKey] !== 'n/a') {
+            if (isset($fields[$aKey]) && !is_null($fields[$aKey]) && $fields[$aKey] !== '' && strtolower((string)$fields[$aKey]) !== 'n/a') {
                 $cleaned = preg_replace('/[^0-9]/', '', (string)$fields[$aKey]);
                 if ($cleaned === '') {
                     return "Age must be a valid non-negative number.";
@@ -812,10 +812,16 @@ class DocumentController extends Controller
             $detectedType = $docTypeInDb ?: 'birth';
         }
 
-        // Sanitize any extractedFields that accidentally contain stringified JSON
+        // Sanitize any extractedFields: convert empty, 'n/a', 'Select...', or stringified JSON dumps to null
         if (is_array($extractedFields)) {
             foreach ($extractedFields as $k => $v) {
-                if (is_string($v) && (str_contains($v, 'is_valid_document') || (str_starts_with(trim($v), '{') && str_contains($v, '":')))) {
+                if (is_string($v)) {
+                    $t = trim($v);
+                    $lower = strtolower($t);
+                    if ($t === '' || $lower === 'n/a' || $lower === 'not applicable' || $t === 'Select...' || str_contains($v, 'is_valid_document') || (str_starts_with($t, '{') && str_contains($v, '":'))) {
+                        $extractedFields[$k] = null;
+                    }
+                } elseif ($v === '') {
                     $extractedFields[$k] = null;
                 }
             }
@@ -1525,6 +1531,21 @@ class DocumentController extends Controller
         $normType = $docType;
         if ($docType === 'marriage_license') {
             $normType = 'marriage';
+        }
+
+        // Normalize empty, 'n/a', and placeholder fields to null
+        if (is_array($extractedFields)) {
+            foreach ($extractedFields as $k => $v) {
+                if (is_string($v)) {
+                    $t = trim($v);
+                    $lower = strtolower($t);
+                    if ($t === '' || $lower === 'n/a' || $lower === 'not applicable' || $t === 'Select...' || str_contains($v, 'is_valid_document') || (str_starts_with($t, '{') && str_contains($v, '":'))) {
+                        $extractedFields[$k] = null;
+                    }
+                } elseif ($v === '') {
+                    $extractedFields[$k] = null;
+                }
+            }
         }
 
         // Validate extracted fields before creating database records
