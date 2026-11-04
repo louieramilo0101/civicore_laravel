@@ -355,7 +355,7 @@ const ArchiveManager = () => {
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-200 shrink-0 dark:bg-indigo-500/10 dark:border-indigo-700">
-                                <ShieldCheckIcon className="w-4 h-4 text-indigo-600" />
+
                             </div>
                             <h4 className="font-bold text-xs sm:text-[13px] text-indigo-900 truncate dark:text-indigo-200">Archive Policy & Audit Trail Compliance</h4>
                         </div>

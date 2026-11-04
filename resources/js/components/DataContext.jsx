@@ -237,7 +237,7 @@ export const DataProvider = ({ children }) => {
                         size:             doc.size,
                         status:           doc.status ? doc.status.toLowerCase() : 'pending',
                         date:             doc.date || '',
-                        detected_type:    (doc.detected_type && doc.detected_type.toLowerCase() !== 'unknown') ? doc.detected_type : 'birth',
+                        detected_type:    (doc.detected_type && doc.detected_type.toLowerCase() !== 'unknown') ? doc.detected_type : null,
                         extracted_fields: ef,
                         ocr_text:         doc.ocr_text,
                         encoded_by:       doc.encoded_by,

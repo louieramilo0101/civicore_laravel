@@ -210,14 +210,14 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             }
 
             // Keyword fallback for document type
-            if ($detectedType === 'unknown') {
+            if ($detectedType === 'unknown' || empty($detectedType)) {
                 $searchPool = strtolower(($doc->name ?? '') . ' ' . $ocrText);
-                if (str_contains($searchPool, 'birth') || str_contains($searchPool, 'born') || str_contains($searchPool, 'form 102') || str_contains($searchPool, 'form no. 102')) {
-                    $detectedType = 'birth';
+                if (str_contains($searchPool, 'marriage') || str_contains($searchPool, 'contract') || str_contains($searchPool, 'form 97') || str_contains($searchPool, 'form no. 97')) {
+                    $detectedType = 'marriage';
                 } elseif (str_contains($searchPool, 'death') || str_contains($searchPool, 'deceased') || str_contains($searchPool, 'form 103') || str_contains($searchPool, 'form no. 103')) {
                     $detectedType = 'death';
-                } elseif (str_contains($searchPool, 'marriage') || str_contains($searchPool, 'contract') || str_contains($searchPool, 'form 97') || str_contains($searchPool, 'form no. 97')) {
-                    $detectedType = 'marriage';
+                } elseif (str_contains($searchPool, 'birth') || str_contains($searchPool, 'born') || str_contains($searchPool, 'form 102') || str_contains($searchPool, 'form no. 102')) {
+                    $detectedType = 'birth';
                 }
             }
 

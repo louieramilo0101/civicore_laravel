@@ -121,24 +121,28 @@ class DocumentController extends Controller
                     }
                 }
             } elseif (!$request->boolean('for_attach') && ($status === 'extracted' || $status === 'checking')) {
-                if ($doc->has_duplicate) {
-                    // Skip redundant query if metadata already flagged it
-                } else {
-                    // Check if similar records already exist in the issuances table
-                    $fields = json_decode($doc->extracted_fields, true) ?: [];
-                    $type = $doc->detected_type ?: $doc->type;
-                    if ($type === 'marriage_license') {
-                        $type = 'marriage';
-                    }
+                // Check if similar records already exist in the issuances table.
+                // Fetch the full candidate now so the review panel can jump straight
+                // into the side-by-side comparison without an extra async round-trip.
+                $fields = json_decode($doc->extracted_fields, true) ?: [];
+                $type = $doc->detected_type ?: $doc->type;
+                if ($type === 'marriage_license') {
+                    $type = 'marriage';
+                }
 
-                    $dupQuery = DB::table('issuances')
-                        ->where('type', $type)
-                        ->where('document_id', '!=', $doc->id)
-                        ->whereNull('deleted_at');
-
-                    if ($this->hasTrueDuplicate($type, $fields, (int) $doc->id)) {
-                        $doc->has_duplicate = true;
-                    }
+                $candidate = $this->findDuplicateCandidate($type, $fields, (int) $doc->id);
+                if ($candidate) {
+                    $doc->has_duplicate = true;
+                    $doc->duplicate_candidate = [
+                        'id' => $candidate->id,
+                        'certNumber' => $candidate->certNumber,
+                        'type' => $candidate->type,
+                        'name' => $candidate->name,
+                        'barangay' => $candidate->barangay,
+                        'issuanceDate' => $candidate->issuanceDate,
+                        'encoded_by' => $candidate->encoded_by,
+                        'extracted_fields' => json_decode($candidate->extracted_data, true) ?: []
+                    ];
                 }
             }
         }
@@ -757,6 +761,42 @@ class DocumentController extends Controller
     }
 
     /**
+     * Returns the full duplicate candidate record (or null).
+     *
+     * Same matching logic as hasTrueDuplicate(), but returns the matched
+     * issuance row so the frontend can populate the side-by-side comparison
+     * immediately — no extra async round-trip needed.
+     */
+    private function findDuplicateCandidate(string $type, array $fields, int $excludeDocId = 0): ?object
+    {
+        $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
+        if (empty($regNo)) {
+            return null;
+        }
+
+        $normType = $type === 'marriage_license' ? 'marriage' : $type;
+
+        $query = DB::table('issuances')
+            ->whereNull('deleted_at');
+
+        if ($normType === 'marriage') {
+            $query->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $query->where('type', $normType);
+        }
+
+        if ($excludeDocId > 0) {
+            $query->where('document_id', '!=', $excludeDocId);
+        }
+
+        return $query->where(function ($q) use ($regNo) {
+            $q->where('certNumber', $regNo)
+              ->orWhere('extracted_data->registry_number', $regNo)
+              ->orWhere('extracted_data->registry_no', $regNo);
+        })->first();
+    }
+
+    /**
      * Executes the build full name operation.
      */
     private function buildFullName($fields, $type)
@@ -1028,10 +1068,10 @@ class DocumentController extends Controller
                 'updated_at' => now(),
             ]);
 
-            DB::table('issuances')->where('document_id', $id)->update([
-                'deleted_at' => now(),
-                'updated_at' => now(),
-            ]);
+DB::table('issuances')->where('document_id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
             // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
             $recentlyLogged = DB::table('activity_logs')
@@ -1054,6 +1094,8 @@ class DocumentController extends Controller
                     'updated_at' => now(),
                 ]);
             }
+
+            Cache::forget('dashboard_stats_cache');
         });
 
         return response()->json(['success' => true]);
@@ -1079,8 +1121,10 @@ class DocumentController extends Controller
                 'deleted_at' => null,
                 'updated_at' => now(),
             ]);
+
+            \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
         });
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -1410,6 +1454,8 @@ class DocumentController extends Controller
             DB::table('issuances')->where('document_id', $id)->delete();
             DB::table('document_ocr_pages')->where('document_id', $id)->delete();
 
+            \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
+
             return response()->json(['success' => true]);
         });
     }
@@ -1635,19 +1681,21 @@ class DocumentController extends Controller
                 ->get();
         } elseif ($source === 'all') {
             $docRows = DB::table('documents')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $issRows = DB::table('issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($issRows)));
+            $issRows = DB::table('issuances')->whereNull('deleted_at')->whereNull('ticket_number')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $procRows = DB::table('issuances')->whereNull('deleted_at')->whereNotNull('ticket_number')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($issRows), array_keys($procRows)));
             rsort($allKeys);
             $monthCounts = [];
             foreach ($allKeys as $k) {
                 if (!empty($k)) {
-                    $monthCounts[$k] = (int) (($docRows[$k] ?? 0) + ($issRows[$k] ?? 0));
+                    $monthCounts[$k] = (int) (($docRows[$k] ?? 0) + ($issRows[$k] ?? 0) + ($procRows[$k] ?? 0));
                 }
             }
             return response()->json(['success' => true, 'months' => $monthCounts]);
         } else {
-            $rows = DB::table('documents')
+            $rows = DB::table('issuances')
                 ->whereNull('deleted_at')
+                ->whereNull('ticket_number')
                 ->selectRaw("SUBSTRING(created_at, 1, 7) as year_month, COUNT(*) as count")
                 ->groupBy('year_month')
                 ->orderBy('year_month', 'desc')
@@ -1686,7 +1734,7 @@ class DocumentController extends Controller
 
         $records = [];
 
-        // 1. Fetch from Issuances (Procured) if needed
+// 1. Fetch from Issuances (Procured) if needed
         if ($source === 'procured' || $source === 'all') {
             $conditions = ["i.deleted_at IS NULL"];
             $params = [];
@@ -1723,75 +1771,65 @@ class DocumentController extends Controller
             $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
                              i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
                              i.ticket_number, i.extracted_data, i.created_at
-                      FROM issuances i" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
+                       FROM issuances i" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
 
             $issRecords = DB::select($query, $params);
             foreach ($issRecords as $r) {
+                // Filter out ticket-only records with T-2026- prefix (matches frontend preview behavior)
+                if (!empty($r->ticket_number) && String($r->ticket_number)->startsWith('T-2026-') &&
+                    empty($r->or_number) && empty($r->requested_by) && empty($r->print_remarks)) {
+                    continue;
+                }
                 $r->_source = 'Client Procured';
                 $r->extracted_fields = $r->extracted_data;
                 $records[] = $r;
             }
         }
 
-        // 2. Fetch from Documents (Internal Master Registry) if needed
+// 2. Fetch from Issuances (Internal Master Registry) if needed
         if ($source === 'internal' || $source === 'all') {
-            $conditions = ["d.deleted_at IS NULL"];
+            $conditions = ["i.deleted_at IS NULL", "i.ticket_number IS NULL"];
             $params = [];
 
             if (!empty($types) && !in_array('all', $types)) {
                 $placeholders = implode(',', array_fill(0, count($types), '?'));
-                $conditions[] = "LOWER(d.type) IN ($placeholders)";
+                $conditions[] = "LOWER(i.type) IN ($placeholders)";
                 foreach ($types as $t) {
                     $params[] = $t;
                 }
             }
 
             if (!empty($barangay) && $barangay !== 'all') {
-                $conditions[] = "d.barangay = ?";
+                $conditions[] = "i.barangay = ?";
                 $params[] = $barangay;
             }
 
             if (!empty($status) && $status !== 'all') {
-                $s = strtolower($status);
-                if ($s === 'processed' || $s === 'registered') {
-                    $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
-                } elseif ($s === 'pending' || $s === 'draft') {
-                    $conditions[] = "LOWER(d.status) IN ('pending', 'extracted', 'draft')";
-                } elseif ($s === 'issued' || $s === 'completed') {
-                    $conditions[] = "LOWER(d.status) IN ('issued', 'completed')";
-                } else {
-                    $conditions[] = "LOWER(d.status) = ?";
-                    $params[] = $s;
-                }
-            } else {
-                // By default in Master Registry reports, exclude raw drafts and only include documents uploaded/saved to the registry!
-                $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
+                $conditions[] = "LOWER(i.status) = ?";
+                $params[] = strtolower($status);
             }
 
             if (!empty($dateFrom)) {
-                $conditions[] = "DATE(d.created_at) >= ?";
+                $conditions[] = "DATE(i.created_at) >= ?";
                 $params[] = $dateFrom;
             }
 
             if (!empty($dateTo)) {
-                $conditions[] = "DATE(d.created_at) <= ?";
+                $conditions[] = "DATE(i.created_at) <= ?";
                 $params[] = $dateTo;
             }
 
             $whereClause = " WHERE " . implode(" AND ", $conditions);
-            $query = "SELECT d.id, d.name, d.type, d.date, d.status, d.personName, d.barangay, d.extracted_fields, d.encoded_by, d.created_at,
-                             i.certNumber
-                      FROM documents d
-                      LEFT JOIN (
-                          SELECT document_id, MIN(certNumber) as certNumber
-                          FROM issuances
-                          WHERE deleted_at IS NULL
-                          GROUP BY document_id
-                      ) i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT 5000";
+            $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
+                             i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
+                             i.ticket_number, i.extracted_data, i.created_at, d.personName, d.date, d.extracted_fields, d.status as doc_status
+                       FROM issuances i
+                       LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
 
             $docRecords = DB::select($query, $params);
             foreach ($docRecords as $r) {
                 $r->_source = 'Internal Master Registry';
+                $r->extracted_fields = $r->extracted_data;
                 $records[] = $r;
             }
         }
@@ -1808,6 +1846,23 @@ class DocumentController extends Controller
         $seniorCount = 0;
         $residentCount = 0;
         $naturalCount = 0;
+
+        // Rich category-specific metrics (aligned with frontend Reports.jsx)
+        $birthMale = 0;
+        $birthFemale = 0;
+        $birthTimely = 0;
+        $birthDelayed = 0;
+        $birthHospital = 0;
+        $birthHome = 0;
+        $deathMale = 0;
+        $deathFemale = 0;
+        $civilMarriages = 0;
+        $churchMarriages = 0;
+        $totalMales = 0;
+        $totalFemales = 0;
+        $distinctBarangays = 0;
+        $timelyTotal = 0;
+        $delayedTotal = 0;
 
         // Determine Headers based on PSA document category
         if ($singleType === 'birth') {
@@ -1902,18 +1957,61 @@ class DocumentController extends Controller
             $isSenior = ($ageVal >= 60);
             if ($docType === 'death' && $isSenior) $seniorCount++;
 
-            // Residence calculation (Resident vs Non-Resident of Naic)
+            // Residence calculation (Resident vs Non-Resident of Naic) — death records only
             $residence = strtolower($ef['residence'] ?? $doc->barangay ?? '');
             $isResident = (str_contains($residence, 'naic') || (!empty($doc->barangay) && $doc->barangay !== 'N/A'));
-            if ($isResident) $residentCount++;
+            if ($docType === 'death' && $isResident) $residentCount++;
             $residentStatusLabel = $isResident ? 'Local Resident' : 'Non-Resident';
 
-            // Natural cause calculation (Death)
+            // Natural cause calculation (Death) — only when manner_of_death is explicitly set
             $immediateCause = $ef['cause_of_death_immediate'] ?? $ef['cause_of_death'] ?? 'N/A';
-            $manner = strtolower($ef['manner_of_death'] ?? '');
-            $isNatural = (str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide')));
+            $mannerRaw = $ef['manner_of_death'] ?? null;
+            $manner = is_string($mannerRaw) ? strtolower($mannerRaw) : '';
+            $isNatural = (!empty($manner) && (str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide'))));
             if ($docType === 'death' && $isNatural) $naturalCount++;
             $mannerLabel = $isNatural ? 'Natural Cause' : 'External / Non-Natural';
+
+            // --- Rich category-specific metrics (aligned with frontend Reports.jsx) ---
+            $rawSex = strtolower($ef['sex'] ?? $ef['gender'] ?? '');
+            $isMale = ($rawSex === 'male' || $rawSex === 'm');
+            $isFemale = ($rawSex === 'female' || $rawSex === 'f');
+            if ($isMale) $totalMales++;
+            if ($isFemale) $totalFemales++;
+
+            $isDelayed = Boolean(
+                $ef['delayed_registration'] === true ||
+                $ef['delayed_registration'] === 'true' ||
+                $ef['delayed_registration'] === 1 ||
+                $ef['is_delayed'] === true ||
+                $ef['registration_type'] === 'delayed' ||
+                (is_string($ef['remarks'] ?? null) && str_contains(strtolower($ef['remarks']), 'delayed')) ||
+                (is_string($ef['remarks'] ?? null) && str_contains(strtolower($ef['remarks']), 'late'))
+            );
+            if ($isDelayed) $delayedTotal++;
+            else $timelyTotal++;
+
+            if ($docType === 'birth') {
+                if ($isMale) $birthMale++;
+                if ($isFemale) $birthFemale++;
+                if ($isDelayed) $birthDelayed++;
+                else $birthTimely++;
+                $hospStr = strtolower($ef['place_of_birth_hospital'] ?? $ef['place_of_birth_type'] ?? $ef['attendant_type'] ?? '');
+                if (str_contains($hospStr, 'hosp') || str_contains($hospStr, 'clinic') || str_contains($hospStr, 'center') || str_contains($hospStr, 'physician') || str_contains($hospStr, 'midwife')) {
+                    $birthHospital++;
+                } else {
+                    $birthHome++;
+                }
+            } elseif ($docType === 'death') {
+                if ($isMale) $deathMale++;
+                if ($isFemale) $deathFemale++;
+            } elseif ($docType === 'marriage') {
+                $officer = strtolower($ef['solemnizing_officer_name'] ?? $ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? '');
+                if (str_contains($officer, 'mayor') || str_contains($officer, 'judge') || str_contains($officer, 'civil')) {
+                    $civilMarriages++;
+                } else {
+                    $churchMarriages++;
+                }
+            }
 
             if ($singleType === 'birth') {
                 $childName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
@@ -2048,19 +2146,32 @@ class DocumentController extends Controller
 
         $output = "\xEF\xBB\xBF"; // UTF-8 BOM for Microsoft Excel / LibreOffice
 
-        // PSA-Aligned Summary Header Block
+// PSA-Aligned Summary Header Block
         $periodLabel = ($dateFrom ? $dateFrom : 'All') . " to " . ($dateTo ? $dateTo : 'Present');
         $scopeLabel = ucfirst($source) . ' Records (' . ucfirst($singleType) . ')';
 
-        $summaryStatsLine = "Total Records: {$totalCount} | Births: {$bCount} | Deaths: {$dCount} (Senior Citizens ≥60: {$seniorCount}, Local Residents: {$residentCount}, Natural Causes: {$naturalCount}) | Marriages: {$mCount}";
+        $pctNatural = $dCount > 0 ? round(($naturalCount / $dCount) * 100, 1) : 0;
+        $pctSenior = $dCount > 0 ? round(($seniorCount / $dCount) * 100, 1) : 0;
+        
+        $summaryStatsLine = "Total: {$totalCount} | Births: {$bCount} | Deaths: {$dCount} (Senior: {$seniorCount} - {$pctSenior}%, Residents: {$residentCount}, Natural: {$naturalCount} - {$pctNatural}%) | Marriages: {$mCount}";
+        
+        $warningLine = ($totalCount >= 5000) ? "WARNING: Export reached 5000 limit. Some records may be omitted." : "";
 
+        $richMetrics = [];
+        if ($singleType === 'birth' || $singleType === 'all') $richMetrics[] = "Births (M/F: {$birthMale}/{$birthFemale}, Timely/Delayed: {$birthTimely}/{$birthDelayed}, Facility/Home: {$birthHospital}/{$birthHome})";
+        if ($singleType === 'death' || $singleType === 'all') $richMetrics[] = "Deaths (M/F: {$deathMale}/{$deathFemale})";
+        if ($singleType === 'marriage' || $singleType === 'all') $richMetrics[] = "Marriages (Civil/Church: {$civilMarriages}/{$churchMarriages})";
+        
         $summaryHeaders = [
             ["OFFICE OF THE MUNICIPAL CIVIL REGISTRAR - NAIC, CAVITE"],
             ["CIVIL REGISTRY DATA REPORT (PHILIPPINE STATISTICS AUTHORITY - PSA ALIGNED)"],
             ["Generated At: " . date('Y-m-d H:i') . " | Reporting Period: " . $periodLabel . " | Scope: " . $scopeLabel],
             ["SUMMARY AT A GLANCE: " . $summaryStatsLine],
+            !empty($warningLine) ? [$warningLine] : null,
+            ["DETAILED METRICS: " . implode(" | ", $richMetrics)],
             [""] // Blank separator
         ];
+        $summaryHeaders = array_filter($summaryHeaders);
 
         foreach ($summaryHeaders as $sRow) {
             $output .= implode($delimiter, array_map(function($c) {

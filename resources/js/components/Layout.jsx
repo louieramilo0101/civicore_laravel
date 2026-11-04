@@ -85,7 +85,7 @@ const Layout = ({ children }) => {
                 credentials: 'include'
             });
             await new Promise(r => setTimeout(r, 600));
-        } catch (e) {}
+        } catch (e) { }
         localStorage.removeItem('user');
         sessionStorage.clear();
         navigate('/login', { replace: true });
@@ -97,7 +97,7 @@ const Layout = ({ children }) => {
             <div className="fixed top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)] pointer-events-none z-0"></div>
             <div className="fixed bottom-[-10%] right-[-5%] w-[35%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.05)_0%,transparent_70%)] pointer-events-none z-0"></div>
             <div className="fixed top-[20%] right-[10%] w-[30%] h-[30%] bg-[radial-gradient(ellipse_at_center,rgba(212,165,116,0.08)_0%,transparent_70%)] pointer-events-none z-0"></div>
-            
+
             {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] text-slate-300 flex flex-col border-r border-slate-800 shadow-2xl md:shadow-none translate-x-0 md:static md:shrink-0">
                 {/* Header branding */}

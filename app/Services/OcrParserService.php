@@ -138,12 +138,12 @@ class OcrParserService
 
         // ── 1. Detect Type ───────────────────────────────────────────────────
         $lower = strtolower($rawText);
-        if (preg_match('/live\s*birth|birth\s*certificate/i', $rawText)) {
-            $detectedType = 'birth';
+        if (preg_match('/marriage/i', $rawText)) {
+            $detectedType = 'marriage';
         } elseif (preg_match('/death|deceased/i', $rawText)) {
             $detectedType = 'death';
-        } elseif (preg_match('/marriage/i', $rawText)) {
-            $detectedType = 'marriage';
+        } elseif (preg_match('/live\s*birth|birth\s*certificate/i', $rawText)) {
+            $detectedType = 'birth';
         }
 
         // ── 2. Global Patterns (High Confidence) ────────────────────────────

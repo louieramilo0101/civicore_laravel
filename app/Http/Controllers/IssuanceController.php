@@ -178,8 +178,10 @@ class IssuanceController extends Controller
                     'updated_at' => now(),
                 ]);
             }
+
+            \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
         });
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -290,7 +292,9 @@ class IssuanceController extends Controller
             'deleted_at' => null,
             'updated_at' => now(),
         ]);
-        
+
+        \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
+
         return response()->json(['success' => true]);
     }
 

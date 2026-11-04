@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    TableCellsIcon, 
-    ArrowDownTrayIcon, 
-    FunnelIcon, 
-    CalendarIcon, 
+import {
+    TableCellsIcon,
+    ArrowDownTrayIcon,
+    FunnelIcon,
+    CalendarIcon,
     CheckCircleIcon,
     DocumentTextIcon,
     UserIcon,
@@ -72,6 +72,7 @@ export default function Reports() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 50);
 
+    const [previewMode, setPreviewMode] = useState('live'); // 'live' or 'export'
     const [previewRecords, setPreviewRecords] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [typeCounts, setTypeCounts] = useState({ birth: 0, death: 0, marriage: 0 });
@@ -95,6 +96,123 @@ export default function Reports() {
         timelyTotal: 0,
         delayedTotal: 0
     });
+
+    // Calculate export preview statistics
+    const exportPreviewStats = useMemo(() => {
+        if (previewMode !== 'export') return null;
+
+        let bCount = 0;
+        let dCount = 0;
+        let mCount = 0;
+        let seniorDeaths = 0;
+        let residentDeaths = 0;
+        let naturalDeaths = 0;
+        let birthMale = 0;
+        let birthFemale = 0;
+        let birthTimely = 0;
+        let birthDelayed = 0;
+        let birthHospital = 0;
+        let birthHome = 0;
+        let deathMale = 0;
+        let deathFemale = 0;
+        let civilMarriages = 0;
+        let churchMarriages = 0;
+        let totalMales = 0;
+        let totalFemales = 0;
+        let timelyTotal = 0;
+        let delayedTotal = 0;
+
+        previewRecords.forEach(d => {
+            const t = (d.type || '').toLowerCase();
+            let ef = d.extracted_fields || d.extracted_data || {};
+            if (typeof ef === 'string') {
+                try { ef = JSON.parse(ef); } catch { }
+            }
+
+            const rawSex = (ef.sex || ef.gender || '').toLowerCase();
+            const isMale = rawSex === 'male' || rawSex === 'm';
+            const isFemale = rawSex === 'female' || rawSex === 'f';
+            if (isMale) totalMales++;
+            if (isFemale) totalFemales++;
+
+            const isDelayed = Boolean(
+                ef.delayed_registration === true ||
+                ef.delayed_registration === 'true' ||
+                ef.delayed_registration === 1 ||
+                ef.is_delayed === true ||
+                ef.registration_type === 'delayed' ||
+                ef.remarks?.toLowerCase()?.includes('delayed') ||
+                ef.remarks?.toLowerCase()?.includes('late')
+            );
+            if (isDelayed) delayedTotal++;
+            else timelyTotal++;
+
+            if (t === 'birth') {
+                bCount++;
+                if (isMale) birthMale++;
+                if (isFemale) birthFemale++;
+                if (isDelayed) birthDelayed++;
+                else birthTimely++;
+                const hospStr = (ef.place_of_birth_hospital || ef.place_of_birth_type || ef.attendant_type || '').toLowerCase();
+                if (hospStr.includes('hosp') || hospStr.includes('clinic') || hospStr.includes('center') || hospStr.includes('physician') || hospStr.includes('midwife')) {
+                    birthHospital++;
+                } else {
+                    birthHome++;
+                }
+            } else if (t === 'death') {
+                dCount++;
+                if (isMale) deathMale++;
+                if (isFemale) deathFemale++;
+                const age = parseInt(ef.age_completed_years || ef.age || 0, 10);
+                if (age >= 60) seniorDeaths++;
+                const res = (ef.residence || d.barangay || '').toLowerCase();
+                if (res.includes('naic') || (d.barangay && d.barangay !== 'N/A' && d.barangay !== 'Unspecified')) {
+                    residentDeaths++;
+                }
+                const manner = (ef.manner_of_death || '').toLowerCase();
+                if (manner !== '' && (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide')))) {
+                    naturalDeaths++;
+                }
+            } else if (t === 'marriage') {
+                mCount++;
+                const officer = (ef.solemnizing_officer_name || ef.solemnizing_officer_title || ef.ceremony_type || '').toLowerCase();
+                if (officer.includes('mayor') || officer.includes('judge') || officer.includes('civil')) {
+                    civilMarriages++;
+                } else {
+                    churchMarriages++;
+                }
+            }
+        });
+
+        const pctNatural = dCount > 0 ? Math.round((naturalDeaths / dCount) * 100) : 0;
+        const pctSenior = dCount > 0 ? Math.round((seniorDeaths / dCount) * 100) : 0;
+
+        return {
+            bCount: bCount,
+            dCount: dCount,
+            mCount: mCount,
+            seniorDeaths: seniorDeaths,
+            residentDeaths: residentDeaths,
+            naturalDeaths: naturalDeaths,
+            birthMale: birthMale,
+            birthFemale: birthFemale,
+            birthTimely: birthTimely,
+            birthDelayed: birthDelayed,
+            birthHospital: birthHospital,
+            birthHome: birthHome,
+            deathMale: deathMale,
+            deathFemale: deathFemale,
+            civilMarriages: civilMarriages,
+            churchMarriages: churchMarriages,
+            totalMales: totalMales,
+            totalFemales: totalFemales,
+            timelyTotal: timelyTotal,
+            delayedTotal: delayedTotal,
+            pctNatural: pctNatural,
+            pctSenior: pctSenior
+        };
+    }, [previewMode, previewRecords]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -284,7 +402,7 @@ export default function Reports() {
                 const t = (d.type || '').toLowerCase();
                 let ef = d.extracted_fields || d.extracted_data || {};
                 if (typeof ef === 'string') {
-                    try { ef = JSON.parse(ef); } catch {}
+                    try { ef = JSON.parse(ef); } catch { }
                 }
 
                 if (d.barangay && d.barangay !== 'N/A' && d.barangay !== 'Unspecified') {
@@ -337,8 +455,8 @@ export default function Reports() {
                         residentDeaths++;
                     }
 
-                    const manner = (ef.manner_of_death || ef.cause_of_death_immediate || '').toLowerCase();
-                    if (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide'))) {
+                    const manner = (ef.manner_of_death || '').toLowerCase();
+                    if (manner !== '' && (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide')))) {
                         naturalDeaths++;
                     }
                 } else if (t === 'marriage') {
@@ -434,7 +552,7 @@ export default function Reports() {
         });
 
         const exportUrl = `/api/documents/export?${params.toString()}`;
-        
+
         const link = document.createElement('a');
         link.href = exportUrl;
         const sourcePrefix = dataSource === 'procured' ? 'client_issuances' : dataSource === 'all' ? 'all_records' : 'master_registry';
@@ -470,7 +588,7 @@ export default function Reports() {
 
     return (
         <div className="p-3 sm:p-8 space-y-4 sm:space-y-8 max-w-[1400px] mx-auto pb-16">
-            
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                 <div>
@@ -494,7 +612,7 @@ export default function Reports() {
                         <span className="hidden sm:inline">Refresh Preview</span>
                         <span className="sm:hidden">Refresh</span>
                     </button>
-                    
+
                     <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                             onClick={() => handleExport('csv')}
@@ -523,11 +641,10 @@ export default function Reports() {
                     <button
                         type="button"
                         onClick={() => setDataSource('internal')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
-                            dataSource === 'internal'
-                                ? 'bg-[#1a2f4a] dark:bg-slate-800 text-white dark:text-[#d4a574] shadow-md border dark:border-[#d4a574]/30'
-                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                        }`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'internal'
+                            ? 'bg-[#1a2f4a] dark:bg-slate-800 text-white dark:text-[#d4a574] shadow-md border dark:border-[#d4a574]/30'
+                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                     >
                         <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                         <span className="hidden sm:inline">Registry Database</span>
@@ -537,11 +654,10 @@ export default function Reports() {
                     <button
                         type="button"
                         onClick={() => setDataSource('procured')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
-                            dataSource === 'procured'
-                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                        }`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'procured'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                     >
                         <TicketIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                         <span className="hidden sm:inline">Client Procured</span>
@@ -551,11 +667,10 @@ export default function Reports() {
                     <button
                         type="button"
                         onClick={() => setDataSource('all')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${
-                            dataSource === 'all'
-                                ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
-                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                        }`}
+                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'all'
+                            ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
+                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                            }`}
                     >
                         <CircleStackIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                         <span className="hidden sm:inline">All Records (Combined)</span>
@@ -709,10 +824,7 @@ export default function Reports() {
                                         </div>
                                     ) : (
                                         /* Mode 4: All / Multiple Categories Combined */
-                                        <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Total active records selected">
-                                            <span className="font-black text-indigo-600 dark:text-indigo-400">Total Filtered:</span>
-                                            <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{totalCount} Records</span>
-                                        </div>
+                                        null
                                     )}
                                 </div>
                             </div>
@@ -723,10 +835,10 @@ export default function Reports() {
 
             {/* Main Report Configuration Card */}
             <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-6 text-slate-800 dark:text-slate-100">
-                
+
                 {/* Top Quick Settings: Period Dropdown + Document Types Checklist */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100 dark:border-slate-800">
-                    
+
                     {/* Period Selector (Month / 6 Months / Year / All Time / Custom) */}
                     <div className="lg:col-span-5 space-y-3">
                         <div className="flex items-center justify-between">
@@ -763,7 +875,7 @@ export default function Reports() {
 
                         {/* Interactive Month Picker with Greyed-Out Unavailable Months */}
                         {period === 'month' && (
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0, y: -6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="pt-2 space-y-2.5 bg-slate-50/80 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800"
@@ -789,23 +901,21 @@ export default function Reports() {
                                                 type="button"
                                                 disabled={!hasRecords}
                                                 onClick={() => setSelectedMonth(monthKey)}
-                                                className={`p-2 rounded-xl text-center text-xs transition-all relative flex flex-col items-center justify-center min-h-[52px] ${
-                                                    isSelected && hasRecords
-                                                        ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/30'
-                                                        : hasRecords
+                                                className={`p-2 rounded-xl text-center text-xs transition-all relative flex flex-col items-center justify-center min-h-[52px] ${isSelected && hasRecords
+                                                    ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/30'
+                                                    : hasRecords
                                                         ? 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer'
                                                         : 'bg-slate-100/60 dark:bg-slate-800/40 text-slate-300 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800/50 cursor-not-allowed select-none'
-                                                }`}
+                                                    }`}
                                                 title={hasRecords ? `${m.name} ${selectedYear}: ${count} record(s)` : `${m.name} ${selectedYear}: No records recorded`}
                                             >
                                                 <span className="text-[11px] leading-none">{m.short}</span>
-                                                <span className={`text-[9px] mt-1 font-semibold leading-none ${
-                                                    isSelected && hasRecords 
-                                                        ? 'text-indigo-100' 
-                                                        : hasRecords 
-                                                        ? 'text-indigo-600 dark:text-indigo-400 font-black' 
+                                                <span className={`text-[9px] mt-1 font-semibold leading-none ${isSelected && hasRecords
+                                                    ? 'text-indigo-100'
+                                                    : hasRecords
+                                                        ? 'text-indigo-600 dark:text-indigo-400 font-black'
                                                         : 'text-slate-300 dark:text-slate-600'
-                                                }`}>
+                                                    }`}>
                                                     {hasRecords ? `${count} rec` : '0'}
                                                 </span>
                                             </button>
@@ -840,20 +950,18 @@ export default function Reports() {
 
                         {/* Interactive Toggle Cards / Checklist without Emojis */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            
+
                             {/* Birth */}
                             <div
                                 onClick={() => toggleDocType('birth')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                                    selectedDocTypes.includes('birth')
-                                        ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-orange-400/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
+                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('birth')
+                                    ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-orange-400/20'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                    }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('birth') ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                    }`}>
+                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('birth') ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                        }`}>
                                         <UserIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
@@ -864,7 +972,7 @@ export default function Reports() {
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('birth')}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
@@ -872,16 +980,14 @@ export default function Reports() {
                             {/* Death */}
                             <div
                                 onClick={() => toggleDocType('death')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                                    selectedDocTypes.includes('death')
-                                        ? 'bg-red-50/50 dark:bg-red-950/30 border-red-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-red-400/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
+                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('death')
+                                    ? 'bg-red-50/50 dark:bg-red-950/30 border-red-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-red-400/20'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                    }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('death') ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                    }`}>
+                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('death') ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                        }`}>
                                         <DocumentTextIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
@@ -892,7 +998,7 @@ export default function Reports() {
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('death')}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
@@ -900,16 +1006,14 @@ export default function Reports() {
                             {/* Marriage */}
                             <div
                                 onClick={() => toggleDocType('marriage')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                                    selectedDocTypes.includes('marriage')
-                                        ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-blue-400/20'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
+                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('marriage')
+                                    ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-blue-400/20'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                    }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                                        selectedDocTypes.includes('marriage') ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                    }`}>
+                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('marriage') ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                        }`}>
                                         <UsersIcon className="w-4 h-4" />
                                     </div>
                                     <div className="truncate">
@@ -920,7 +1024,7 @@ export default function Reports() {
                                 <input
                                     type="checkbox"
                                     checked={selectedDocTypes.includes('marriage')}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                                 />
                             </div>
@@ -938,11 +1042,10 @@ export default function Reports() {
                     <button
                         type="button"
                         onClick={() => setIsAdvancedOpen(prev => !prev)}
-                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
-                            isAdvancedOpen || activeAdvancedFilterCount > 0
-                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-sm'
-                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                        }`}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${isAdvancedOpen || activeAdvancedFilterCount > 0
+                            ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            }`}
                     >
                         <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         <span>Advanced Filter Settings</span>
@@ -985,7 +1088,7 @@ export default function Reports() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    
+
                                     {/* Search by Name or Registry No */}
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1077,9 +1180,25 @@ export default function Reports() {
                             {effectiveDates.from ? ` • Between ${effectiveDates.from} and ${effectiveDates.to}` : ''}
                         </p>
                     </div>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3.5 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
-                        Previewing {previewRecords.length} records
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3.5 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
+                            Previewing {previewRecords.length} records
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setPreviewMode('live')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === 'live' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                            >
+                                Live Data
+                            </button>
+                            <button
+                                onClick={() => setPreviewMode('export')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === 'export' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                            >
+                                Export Preview
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -1092,6 +1211,30 @@ export default function Reports() {
                     </div>
                 ) : (
                     <>
+                        {previewMode === 'export' && exportPreviewStats && (
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40">
+                                <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-2">Export Preview Summary</div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Records</div>
+                                        <div className="text-lg font-black text-slate-900 dark:text-white">{previewRecords.length}</div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Births</div>
+                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.bCount}</div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deaths</div>
+                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.dCount}</div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Marriages</div>
+                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.mCount}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -1121,11 +1264,10 @@ export default function Reports() {
                                             <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                                                 {dataSource === 'all' && (
                                                     <td className="px-4 py-4">
-                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                                                            isProcured
-                                                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50'
-                                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                                                        }`}>
+                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${isProcured
+                                                            ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                                            }`}>
                                                             {isProcured ? 'Procured' : 'Registry'}
                                                         </span>
                                                     </td>

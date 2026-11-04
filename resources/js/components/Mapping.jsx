@@ -15,11 +15,7 @@ import {
     CalendarDaysIcon,
     UserIcon,
     DocumentTextIcon,
-    UsersIcon,
-    ChartBarIcon,
-    ClipboardDocumentCheckIcon,
-    PrinterIcon,
-    ArrowUpTrayIcon
+    UsersIcon
 } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Avatar from 'boring-avatars';
@@ -100,7 +96,7 @@ const Mapping = () => {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [showRatioMode, setShowRatioMode] = useState(false);
     const [rightPanelTab, setRightPanelTab] = useState('charts');
-    const [tableTab, setTableTab] = useState('prints'); // 'prints' | 'uploads'
+    const [tableTab, setTableTab] = useState('uploads'); // 'uploads' | 'prints'
     const [showAllBarangays, setShowAllBarangays] = useState(false);
     const [statsMode, setStatsMode] = useState('records'); // 'records' | 'issued'
     const [stats, setStats] = useState({ birthCount: 0, deathCount: 0, marriageCount: 0, mostActiveBrgy: 'N/A', totalRecords: 0, totalDocs: 0, maxTotal: 0 });
@@ -109,7 +105,7 @@ const Mapping = () => {
     const [dateTo, setDateTo] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isStatsCollapsed, setIsStatsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
-    const [isDarkMode, setIsDarkMode] = useState(() => 
+    const [isDarkMode, setIsDarkMode] = useState(() =>
         typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
     );
 
@@ -122,6 +118,15 @@ const Mapping = () => {
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         return () => observer.disconnect();
     }, []);
+
+    // Sync table tab with stats mode
+    useEffect(() => {
+        if (statsMode === 'records' && tableTab !== 'uploads') {
+            setTableTab('uploads');
+        } else if (statsMode === 'issued' && tableTab !== 'prints') {
+            setTableTab('prints');
+        }
+    }, [statsMode]);
 
     /** Determines whether a transaction falls within the active date filter. */
     const isWithinTimeframe = (dateStr) => {
@@ -159,10 +164,18 @@ const Mapping = () => {
         return docsData.filter(d => isWithinTimeframe(d.created_at));
     }, [docsData, quickFilter, dateFrom, dateTo]);
 
+    // Exclude ticket copies (records where ticket_number starts with 'T-2026-0')
+    // to align with Dashboard stats
+    const filteredApiDataNoTickets = React.useMemo(() => {
+        return filteredApiData.filter(i =>
+            !(i.ticket_number && String(i.ticket_number).startsWith('T-2026-0'))
+        );
+    }, [filteredApiData]);
+
     const uniqueIssuances = React.useMemo(() => {
         const seenDocIds = new Set();
         const unique = [];
-        filteredApiData.forEach(i => {
+        filteredApiDataNoTickets.forEach(i => {
             if (i.document_id) {
                 const docId = Number(i.document_id);
                 if (!seenDocIds.has(docId)) {
@@ -174,7 +187,7 @@ const Mapping = () => {
             }
         });
         return unique;
-    }, [filteredApiData]);
+    }, [filteredApiDataNoTickets]);
 
     // Maintain references to markers for interactivity
     const markersRef = useRef({});
@@ -269,7 +282,7 @@ const Mapping = () => {
             marriages: [0, 0, 0, 0, 0, 0]
         };
 
-        filteredApiData.forEach(issuance => {
+        filteredApiDataNoTickets.forEach(issuance => {
             const type = getNormalizedType(issuance);
             const dateStr = issuance.issuanceDate || issuance.created_at;
             const date = new Date(dateStr);
@@ -286,7 +299,7 @@ const Mapping = () => {
         uniqueIssuances.forEach(item => {
             const rawBrgy = item.barangay || 'Ibayo Silangan';
             const type = getNormalizedType(item);
-            
+
             // Global counts
             if (type === 'birth') birthCount++;
             else if (type === 'death') deathCount++;
@@ -302,7 +315,7 @@ const Mapping = () => {
                         break;
                     }
                 }
-                
+
                 const brgy = matchedBrgy || 'Unknown/Unmapped';
 
                 if (!brgyCounts[brgy]) brgyCounts[brgy] = { births: 0, deaths: 0, marriages: 0, total: 0 };
@@ -348,7 +361,7 @@ const Mapping = () => {
                 // Pin mode
                 let pinColor = '#0f172a'; // Default dark
                 let ratio = 0;
-                
+
                 if (showRatioMode) {
                     if (barangay.births === 0 && barangay.deaths === 0) {
                         pinColor = '#0f172a'; // No records
@@ -530,15 +543,15 @@ const Mapping = () => {
 
 
     const filteredPrints = React.useMemo(() => {
-        return filteredApiData.filter(print => {
+        return filteredApiDataNoTickets.filter(print => {
             const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
             const status = String(print.status || '').toLowerCase();
             // A printed/procured record must have been physically printed/issued (status is issued/printed, or has OR number/print remarks)
-            const isPrintedRecord = ['issued', 'printed'].includes(status) || 
+            const isPrintedRecord = ['issued', 'printed'].includes(status) ||
                 Boolean(print.or_number || print.print_remarks || (print.ticket_number && !print.ticket_number.startsWith('T-2026-0')));
             return matchesFilter && isPrintedRecord;
         });
-    }, [filteredApiData, activeFilter]);
+    }, [filteredApiDataNoTickets, activeFilter]);
 
     const filteredUploads = React.useMemo(() => {
         return filteredDocsData.filter(doc => {
@@ -574,7 +587,7 @@ const Mapping = () => {
     /** Produces ranked barangay summaries for the analytics panel with memoization. */
     const barangayRankings = React.useMemo(() => {
         const brgyCountsLocal = {};
-        
+
         uniqueIssuances.forEach(i => {
             const brgy = i.barangay || 'Ibayo Silangan';
             if (brgy) {
@@ -658,7 +671,7 @@ const Mapping = () => {
                 {/* Filter Bar */}
                 <div className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm p-2.5 sm:p-3 flex flex-wrap items-center gap-2 sm:gap-3">
                     <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">
-                        <CalendarDaysIcon className="w-3.5 h-3.5 text-[#d4a574]" />
+
                         Period
                     </div>
 
@@ -674,11 +687,10 @@ const Mapping = () => {
                             <button
                                 key={key}
                                 onClick={() => { setQuickFilter(key); setShowDatePicker(false); }}
-                                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                                    quickFilter === key
+                                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${quickFilter === key
                                         ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-sm shadow-slate-800/15'
                                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300'
-                                }`}
+                                    }`}
                             >
                                 {label}
                             </button>
@@ -690,11 +702,10 @@ const Mapping = () => {
                         {/* Custom Range Toggle */}
                         <button
                             onClick={() => { setShowDatePicker(!showDatePicker); }}
-                            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                                quickFilter === 'custom'
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${quickFilter === 'custom'
                                     ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-sm shadow-[#d4a574]/20'
                                     : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
-                            }`}
+                                }`}
                         >
                             <CalendarDaysIcon className="w-3.5 h-3.5" />
                             {quickFilter === 'custom' && dateFrom && dateTo
@@ -772,8 +783,8 @@ const Mapping = () => {
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-0 gap-2 flex-wrap sm:flex-nowrap">
                     <div className="flex items-center gap-1">
                         {[
-                            { key: 'records', label: 'Records Overview', shortLabel: 'Overview', icon: <ChartBarIcon className="w-4 h-4" /> },
-                            { key: 'issued', label: 'Issued Per Category', shortLabel: 'Categories', icon: <ClipboardDocumentCheckIcon className="w-4 h-4" /> },
+                            { key: 'records', label: 'Records Overview', shortLabel: 'Overview' },
+                            { key: 'issued', label: 'Issued Per Category', shortLabel: 'Categories' },
                         ].map(tab => (
                             <button
                                 key={tab.key}
@@ -781,13 +792,11 @@ const Mapping = () => {
                                     setStatsMode(tab.key);
                                     if (isStatsCollapsed) setIsStatsCollapsed(false);
                                 }}
-                                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest border-b-2 transition-all cursor-pointer ${
-                                    statsMode === tab.key
+                                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest border-b-2 transition-all cursor-pointer ${statsMode === tab.key
                                         ? 'border-[#d4a574] text-[#d4a574]'
                                         : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                                }`}
+                                    }`}
                             >
-                                <span>{tab.icon}</span>
                                 <span className="hidden sm:inline">{tab.label}</span>
                                 <span className="sm:hidden">{tab.shortLabel}</span>
                             </button>
@@ -796,7 +805,7 @@ const Mapping = () => {
 
                     <div className="flex items-center gap-2 ml-auto">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:flex items-center gap-1.5">
-                            {quickFilter !== 'all' ? `Filtered · ${filteredApiData.length} records` : `All Time · ${filteredApiData.length} records`}
+                            {quickFilter !== 'all' ? `Filtered · ${filteredApiDataNoTickets.length} records` : `All Time · ${filteredApiDataNoTickets.length} records`}
                             {unmappedCount > 0 && (
                                 <span className="text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/50">
                                     {unmappedCount} Unmapped
@@ -860,24 +869,24 @@ const Mapping = () => {
                                     </div>
                                 ) : (() => {
                                     /* ── Tab 2: Issued Per Category ── */
-                                    const issuedBirth    = filteredApiData.filter(i => getNormalizedType(i) === 'birth').length;
-                                    const issuedDeath    = filteredApiData.filter(i => getNormalizedType(i) === 'death').length;
-                                    const issuedMarriage = filteredApiData.filter(i => getNormalizedType(i) === 'marriage').length;
-                                    const totalIssued    = filteredApiData.length;
-                                    const maxCount       = Math.max(issuedBirth, issuedDeath, issuedMarriage, 1);
+                                    const issuedBirth = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'birth').length;
+                                    const issuedDeath = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'death').length;
+                                    const issuedMarriage = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'marriage').length;
+                                    const totalIssued = filteredApiDataNoTickets.length;
+                                    const maxCount = Math.max(issuedBirth, issuedDeath, issuedMarriage, 1);
 
                                     // Most issued barangay (from issuances only)
                                     const brgyIssuedCounts = {};
-                                    filteredApiData.forEach(i => {
+                                    filteredApiDataNoTickets.forEach(i => {
                                         const brgyName = i.barangay || 'Ibayo Silangan';
                                         brgyIssuedCounts[brgyName] = (brgyIssuedCounts[brgyName] || 0) + 1;
                                     });
-                                    const mostIssuedBrgy = Object.entries(brgyIssuedCounts).sort((a,b) => b[1]-a[1])[0];
+                                    const mostIssuedBrgy = Object.entries(brgyIssuedCounts).sort((a, b) => b[1] - a[1])[0];
 
                                     const categories = [
-                                        { label: 'Birth Issued',    count: issuedBirth,    color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]',     bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/15 border-[#d4a574]/20 dark:border-[#d4a574]/30',  emoji: <UserIcon className="w-5 sm:w-6 h-5 sm:h-6 text-[#d4a574]" /> },
-                                        { label: 'Death Issued',    count: issuedDeath,    color: 'text-rose-500 dark:text-rose-400',  barColor: 'bg-rose-500',       bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/40',            emoji: <DocumentTextIcon className="w-5 sm:w-6 h-5 sm:h-6 text-rose-500 dark:text-rose-400" /> },
-                                        { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500 dark:text-indigo-400', barColor: 'bg-indigo-500',    bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/40',         emoji: <UsersIcon className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-500 dark:text-indigo-400" /> },
+                                        { label: 'Birth Issued', count: issuedBirth, color: 'text-[#d4a574]', barColor: 'bg-[#d4a574]', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/15 border-[#d4a574]/20 dark:border-[#d4a574]/30', emoji: <UserIcon className="w-5 sm:w-6 h-5 sm:h-6 text-[#d4a574]" /> },
+                                        { label: 'Death Issued', count: issuedDeath, color: 'text-rose-500 dark:text-rose-400', barColor: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/40', emoji: <DocumentTextIcon className="w-5 sm:w-6 h-5 sm:h-6 text-rose-500 dark:text-rose-400" /> },
+                                        { label: 'Marriage Issued', count: issuedMarriage, color: 'text-indigo-500 dark:text-indigo-400', barColor: 'bg-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/40', emoji: <UsersIcon className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-500 dark:text-indigo-400" /> },
                                     ];
 
                                     return (
@@ -940,13 +949,13 @@ const Mapping = () => {
                             <span>Showing:</span>
                             <span className="text-[#0f172a] dark:text-white font-black">
                                 {quickFilter === 'today' ? 'Today' :
-                                 quickFilter === 'week' ? 'This Week' :
-                                 quickFilter === 'month' ? 'This Month' :
-                                 quickFilter === 'year' ? 'This Year' :
-                                 quickFilter === 'custom' ? `${dateFrom} → ${dateTo}` : ''}
+                                    quickFilter === 'week' ? 'This Week' :
+                                        quickFilter === 'month' ? 'This Month' :
+                                            quickFilter === 'year' ? 'This Year' :
+                                                quickFilter === 'custom' ? `${dateFrom} → ${dateTo}` : ''}
                             </span>
                             <span className="text-slate-400 font-medium">·</span>
-                            <span className="text-slate-500 dark:text-slate-400 font-semibold">{filteredApiData.length} record{filteredApiData.length !== 1 ? 's' : ''}</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold">{filteredApiDataNoTickets.length} record{filteredApiDataNoTickets.length !== 1 ? 's' : ''}</span>
                             {unmappedCount > 0 && (
                                 <span className="text-amber-500 dark:text-amber-400 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/60 px-1.5 rounded-sm border border-amber-100 dark:border-amber-800/60 ml-1">
                                     {unmappedCount} Unmapped
@@ -1070,8 +1079,7 @@ const Mapping = () => {
                     {rightPanelTab === 'charts' ? (
                         <>
                             <div className="mb-4">
-                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                                    <DocumentChartBarIcon className="w-4 h-4 text-[#d4a574]" />
+                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
                                     Monthly Trajectory
                                 </h3>
                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">6-month document processing trends</p>
@@ -1090,8 +1098,7 @@ const Mapping = () => {
                         <div className="flex flex-col flex-1 overflow-hidden">
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                                        <MapPinIcon className="w-4 h-4 text-[#d4a574]" />
+                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
                                         By Barangay
                                     </h3>
                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Click any row to locate on map</p>
@@ -1126,12 +1133,11 @@ const Mapping = () => {
                                             >
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0 ${
-                                                            idx === 0 ? 'bg-amber-400 text-white'
-                                                            : idx === 1 ? 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
-                                                            : idx === 2 ? 'bg-orange-300 text-white'
-                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                                        }`}>{idx + 1}</span>
+                                                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0 ${idx === 0 ? 'bg-amber-400 text-white'
+                                                                : idx === 1 ? 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                                                                    : idx === 2 ? 'bg-orange-300 text-white'
+                                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                                            }`}>{idx + 1}</span>
                                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover/brgy:text-[#d4a574] transition-colors truncate">{brgy.name}</span>
                                                     </div>
                                                     <span className="text-xs font-black text-slate-800 dark:text-slate-100 shrink-0 ml-1">{brgy.total}</span>
@@ -1181,36 +1187,30 @@ const Mapping = () => {
                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                             <button
                                 type="button"
-                                onClick={() => setTableTab('prints')}
-                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                    tableTab === 'prints'
+                                onClick={() => setTableTab('uploads')}
+                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${tableTab === 'uploads'
                                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
                                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                                }`}
+                                    }`}
                             >
-                                <PrinterIcon className="w-3.5 h-3.5" />
-                                <span>Prints</span>
-                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                                    tableTab === 'prints' ? 'bg-[#d4a574]/20 text-[#9c6e3b] dark:text-[#d4a574]' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                }`}>
-                                    {filteredPrints.length}
+                                <span>Registry Records</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${tableTab === 'uploads' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                    }`}>
+                                    {filteredUploads.length}
                                 </span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setTableTab('uploads')}
-                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                    tableTab === 'uploads'
+                                onClick={() => setTableTab('prints')}
+                                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${tableTab === 'prints'
                                         ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
                                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                                }`}
+                                    }`}
                             >
-                                <ArrowUpTrayIcon className="w-3.5 h-3.5" />
-                                <span>Registry Records</span>
-                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                                    tableTab === 'uploads' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                }`}>
-                                    {filteredUploads.length}
+                                <span>Prints</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${tableTab === 'prints' ? 'bg-[#d4a574]/20 text-[#9c6e3b] dark:text-[#d4a574]' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                    }`}>
+                                    {filteredPrints.length}
                                 </span>
                             </button>
                         </div>
@@ -1228,8 +1228,8 @@ const Mapping = () => {
                                 key={type}
                                 onClick={() => setActiveFilter(type)}
                                 className={`px-3 sm:px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${activeFilter === type
-                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                     }`}
                             >
                                 {type}
@@ -1373,10 +1373,10 @@ const Mapping = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
-                                            <div className="flex items-center justify-end gap-2 opacity-90 sm:opacity-0 sm:group-hover/row:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => locateBarangay(item.barangay)}
-                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-400 hover:text-[#d4a574] transition-all cursor-pointer"
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-[#d4a574] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
                                                     title="Locate on Map"
                                                 >
                                                     <MagnifyingGlassIcon className="w-4 h-4" />
@@ -1385,7 +1385,7 @@ const Mapping = () => {
                                                     href={`/api/documents/view/${item.document_id || item.id}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-500 transition-all cursor-pointer"
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-indigo-500 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
                                                     title="View Full Document"
                                                 >
                                                     <EyeIcon className="w-4 h-4" />

@@ -196,7 +196,10 @@ const Documents = () => {
                 const existing = prev.find(p => p.id === f.id);
                 // If local state or backend state flags duplicate, treat as duplicate.
                 const hasDuplicateVal = (existing && existing.has_duplicate) || f.has_duplicate;
-                return { ...f, has_duplicate: !!hasDuplicateVal };
+                // Carry the pre-fetched candidate so the review panel can jump
+                // straight into the side-by-side comparison with zero wait.
+                const candidateVal = (existing && existing.duplicate_candidate) || f.duplicate_candidate || null;
+                return { ...f, has_duplicate: !!hasDuplicateVal, duplicate_candidate: candidateVal };
             });
         });
     }, [globalFiles, archivedIds]);
@@ -805,6 +808,12 @@ const Documents = () => {
         const detected = String(file.detected_type || '').toLowerCase();
         const uploadType = String(file.type || '').toLowerCase();
         const validTypes = ['birth', 'death', 'marriage'];
+
+        // While queued/processing, detected_type is empty/null in the DB and the
+        // frontend falls it back to 'birth' for display. There is no real
+        // detection yet, so do NOT flag a mismatch before OCR has actually run.
+        if (!detected || detected === 'unknown') return false;
+
         if (!validTypes.includes(detected) || !validTypes.includes(uploadType)) return false;
         return detected !== uploadType;
     };
@@ -1055,6 +1064,20 @@ const Documents = () => {
         { type: 'marriage', icon: <UsersIcon className="w-5 h-5 text-indigo-500" />, name: 'Marriage License', desc: 'Marriage contracts' },
     ];
 
+    /** Opens the OCR review panel for a file flagged as a duplicate and
+     *  requests that the side-by-side comparison view be shown immediately. */
+    const handleOpenDuplicateCompare = (file) => {
+        setActiveOcr({
+            file,
+            ocrResult: {
+                extracted_fields: file.extracted_fields,
+                detected_type: file.detected_type,
+                text: file.ocr_text
+            },
+            forceCompare: true
+        });
+    };
+
     const statusBadge = (file) => {
         const status = file.status;
         const map = {
@@ -1151,14 +1174,15 @@ const Documents = () => {
         // ── Terminal states: original plain pill ─────────────────────────────
         if (file.has_duplicate && s === 'extracted') {
             return (
-                <motion.span
+                <motion.button
                     initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-tight bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)] animate-pulse"
-                    title="Potential duplicate in Master Registry"
+                    onClick={() => handleOpenDuplicateCompare(file)}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-tight bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)] hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:border-amber-400 dark:hover:border-amber-600 transition-all active:scale-95 cursor-pointer"
+                    title="Click to open side-by-side duplicate comparison"
                 >
                     <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     Duplicate
-                </motion.span>
+                </motion.button>
             );
         }
 

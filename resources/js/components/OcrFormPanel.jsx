@@ -412,7 +412,7 @@ const getFieldMaxLength = (field) => {
 };
 
 /** Presents OCR results for correction, validation, and document registration. */
-const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, onDuplicateStatusChange, isSaving = false, isViewOnly = false, hideBoxes = false }) => {
+const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, onDuplicateStatusChange, isSaving = false, isViewOnly = false, hideBoxes = false, forceCompare = false }) => {
     const { stats } = useData();
 
     const detectedType = ocrResult?.detected_type !== 'unknown' ? ocrResult?.detected_type : (docType || file.type || 'unknown');
@@ -701,12 +701,30 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const [savePending, setSavePending] = useState(false);
     const fieldConfidence = ocrResult?.field_confidence || {};
 
-    const [duplicateData, setDuplicateData] = useState(null);
+    const [duplicateData, setDuplicateData] = useState(file?.duplicate_candidate || null);
     const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
+    // When the queue's Duplicate badge is clicked, open the review panel and
+    // immediately drop into the side-by-side comparison view.
+    useEffect(() => {
+        if (forceCompare && duplicateData) {
+            setViewMode('compare');
+        }
+    }, [forceCompare, duplicateData]);
 
 useEffect(() => {
         const docId = file.id || file.file_id || file.document_id || file.realId;
         if (!docId) return;
+
+        // If the document list already pre-fetched the duplicate candidate
+        // (server-side detection during the list query), skip the async
+        // round-trip entirely — the comparison data is already on hand.
+        if (duplicateData) {
+            if (onDuplicateStatusChange) {
+                onDuplicateStatusChange(docId, true);
+            }
+            return;
+        }
 
         const checkDuplicateRecord = async () => {
             if (file.source === 'issuance') {
@@ -726,7 +744,7 @@ useEffect(() => {
             try {
                 const res = await fetch(`/api/documents/${docId}/check-duplicate`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Accept': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
                         type: effectiveType,
                         fields: {
