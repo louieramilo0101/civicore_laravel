@@ -487,9 +487,9 @@ class IssuanceController extends Controller
         }
 
         $filePath = null;
-        if (!empty($record->source_file_path) && \Storage::disk('public')->exists($record->source_file_path)) {
+        if (!empty($record->source_file_path) && \Storage::disk('local')->exists($record->source_file_path)) {
             $filePath = $record->source_file_path;
-        } elseif (!empty($record->file_path) && \Storage::disk('public')->exists($record->file_path)) {
+        } elseif (!empty($record->file_path) && \Storage::disk('local')->exists($record->file_path)) {
             $filePath = $record->file_path;
         }
 
@@ -521,7 +521,7 @@ class IssuanceController extends Controller
             return response()->json(['error' => 'Original document file is not available'], 404);
         }
 
-        $absolutePath = \Storage::disk('public')->path($filePath);
+        $absolutePath = \Storage::disk('local')->path($filePath);
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) ?: 'pdf';
         $rawName = $record->source_file_name ?: basename($filePath);
         $cleanName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($rawName));
@@ -556,11 +556,11 @@ class IssuanceController extends Controller
 
         $uploadedFile = $request->file('file');
         
-        // Save file temporarily in public disk
+        // Save file temporarily in local disk
         $tempPath = 'temp_ocr_search/' . time() . '_' . uniqid() . '.' . $uploadedFile->getClientOriginalExtension();
-        \Storage::disk('public')->put($tempPath, file_get_contents($uploadedFile));
+        \Storage::disk('local')->put($tempPath, file_get_contents($uploadedFile));
         
-        $absolutePath = \Storage::disk('public')->path($tempPath);
+        $absolutePath = \Storage::disk('local')->path($tempPath);
 
         try {
             $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
@@ -576,7 +576,7 @@ class IssuanceController extends Controller
             ]);
 
             // Delete local temp file
-            \Storage::disk('public')->delete($tempPath);
+            \Storage::disk('local')->delete($tempPath);
 
             if ($response->failed() || !($response->json()['success'] ?? false)) {
                 return response()->json(['error' => 'OCR server failed to extract text: ' . $response->body()], 500);
@@ -626,8 +626,8 @@ class IssuanceController extends Controller
 
         } catch (\Exception $e) {
             // Cleanup temp file in case of exception
-            if (\Storage::disk('public')->exists($tempPath)) {
-                \Storage::disk('public')->delete($tempPath);
+            if (\Storage::disk('local')->exists($tempPath)) {
+                \Storage::disk('local')->delete($tempPath);
             }
             \Log::error('OCR search error: ' . $e->getMessage());
             return response()->json(['error' => 'An error occurred during OCR: ' . $e->getMessage()], 500);

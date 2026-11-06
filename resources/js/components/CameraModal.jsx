@@ -43,6 +43,12 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     // Camera Stream Management
     const startCamera = async () => {
         stopCamera();
+        // Mobile: getUserMedia requires HTTPS and is blocked on plain HTTP.
+        // Skip it entirely and use native camera capture instead.
+        if (isMobileDevice) {
+            setHasPermission(false);
+            return;
+        }
         try {
             const newStream = await captureEngine.startPreview({
                 videoElement: videoRef.current,
@@ -203,6 +209,12 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
     const toggleCamera = () => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
 
     const capturePhoto = async () => {
+        // Mobile: no getUserMedia available — open native camera app directly
+        if (isMobileDevice) {
+            nativeCameraInputRef.current?.click();
+            return;
+        }
+
         if (!videoRef.current || !stream) {
             openFilePicker();
             return;

@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ArrowDownTrayIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
 /** Displays a registry document with print and download actions. */
 const DocumentViewerModal = ({ isOpen, onClose, fileUrl, fileName, onPrint, onDownload }) => {
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Reset loading state whenever a new document is opened
+    useEffect(() => {
+        if (isOpen && fileUrl) {
+            setIsLoading(true);
+        }
+    }, [isOpen, fileUrl]);
+
     if (!isOpen || !fileUrl) return null;
 
     // Determine if it's a PDF or an Image based on the URL extension
@@ -51,17 +60,30 @@ const DocumentViewerModal = ({ isOpen, onClose, fileUrl, fileName, onPrint, onDo
 
                     {/* Document Display Area */}
                     <div className="flex-1 w-full bg-slate-200/50 relative overflow-auto flex items-center justify-center p-4">
+
+                        {/* Loading Overlay — shown while document is fetching */}
+                        {isLoading && (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-200/80 backdrop-blur-sm">
+                                <div className="w-12 h-12 rounded-full border-4 border-slate-300 border-t-slate-700 animate-spin mb-4" />
+                                <p className="text-sm text-slate-600 font-medium tracking-wide">Loading document…</p>
+                            </div>
+                        )}
+
                         {isPDF ? (
                             <iframe 
-                                src={`${fileUrl}#toolbar=0`} // #toolbar=0 hides default browser PDF controls for a cleaner look
+                                src={`${fileUrl}#toolbar=0`}
                                 className="w-full h-full rounded shadow-sm bg-white"
                                 title="PDF Viewer"
+                                onLoad={() => setIsLoading(false)}
+                                onError={() => setIsLoading(false)}
                             />
                         ) : (
                             <img 
                                 src={fileUrl} 
                                 alt={fileName} 
-                                className="max-w-full max-h-full object-contain shadow-sm rounded bg-white"
+                                className={`max-w-full max-h-full object-contain shadow-sm rounded bg-white transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                                onLoad={() => setIsLoading(false)}
+                                onError={() => setIsLoading(false)}
                             />
                         )}
                     </div>

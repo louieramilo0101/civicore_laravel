@@ -409,8 +409,8 @@ class DocumentController extends Controller
         } catch (\Exception $e) {
             \Log::error("Document upload failed: " . $e->getMessage());
             
-            if (isset($filePath) && \Storage::disk('public')->exists($filePath)) {
-                \Storage::disk('public')->delete($filePath);
+            if (isset($filePath) && \Storage::disk('local')->exists($filePath)) {
+                \Storage::disk('local')->delete($filePath);
             }
 
             return response()->json([
@@ -472,7 +472,7 @@ class DocumentController extends Controller
         $path = $file->storeAs(
             'documents',
             $filename,
-            'public'
+            'local'
         );
 
         if (!$path) {
@@ -536,8 +536,8 @@ class DocumentController extends Controller
             $newPath = 'documents/' . $newFilename;
 
             // Rename in storage
-            if (\Storage::disk('public')->exists($currentPath)) {
-                \Storage::disk('public')->move($currentPath, $newPath);
+            if (\Storage::disk('local')->exists($currentPath)) {
+                \Storage::disk('local')->move($currentPath, $newPath);
                 \Log::info("File renamed: {$currentPath} -> {$newPath}");
                 return $newPath;
             } else {
@@ -931,7 +931,7 @@ class DocumentController extends Controller
                     $issuanceFilePath  = $doc[0]->file_path;
                     $issuanceImagePath = $doc[0]->image_path ?? null;
 
-                    if (empty($issuanceFilePath) || !\Storage::disk('public')->exists($issuanceFilePath)) {
+                    if (empty($issuanceFilePath) || !\Storage::disk('local')->exists($issuanceFilePath)) {
                         try {
                             $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
                             $pdfService->generateForDocument($id);
@@ -1178,7 +1178,7 @@ class DocumentController extends Controller
         $imagePath = $doc->image_path;
 
         // If imagePath is a PDF, or missing, check if there is an extracted page image in storage
-        if (empty($imagePath) || str_ends_with(strtolower($imagePath), '.pdf') || !\Storage::disk('public')->exists($imagePath)) {
+        if (empty($imagePath) || str_ends_with(strtolower($imagePath), '.pdf') || !\Storage::disk('local')->exists($imagePath)) {
             $basePath = !empty($doc->file_path) ? $doc->file_path : $imagePath;
             if (!empty($basePath)) {
                 $dir = dirname($basePath);
@@ -1190,7 +1190,7 @@ class DocumentController extends Controller
                     $dir . '/' . $filename . '_proc.jpg',
                 ];
                 foreach ($candidates as $cand) {
-                    if (\Storage::disk('public')->exists($cand)) {
+                    if (\Storage::disk('local')->exists($cand)) {
                         $imagePath = $cand;
                         break;
                     }
@@ -1198,12 +1198,12 @@ class DocumentController extends Controller
             }
         }
 
-        if (empty($imagePath) || !\Storage::disk('public')->exists($imagePath)) {
+        if (empty($imagePath) || !\Storage::disk('local')->exists($imagePath)) {
             // Fall back to serveDocument if image_path is empty or missing
             return $this->serveDocument($id, 'inline');
         }
 
-        $fullPath = \Storage::disk('public')->path($imagePath);
+        $fullPath = \Storage::disk('local')->path($imagePath);
         $mimetype = \Illuminate\Support\Facades\File::mimeType($fullPath) ?: 'image/jpeg';
 
         return response()->file($fullPath, [
@@ -1228,7 +1228,7 @@ class DocumentController extends Controller
         $metadata = json_decode($doc->metadata ?? '[]', true) ?: [];
         $status = strtolower($doc->status ?? 'pending');
 
-        if (empty($doc->file_path) || !\Storage::disk('public')->exists($doc->file_path)) {
+        if (empty($doc->file_path) || !\Storage::disk('local')->exists($doc->file_path)) {
             // Attempt to generate official standardized certificate PDF first
             try {
                 $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
@@ -1262,7 +1262,7 @@ class DocumentController extends Controller
             ]);
         }
 
-        $fullPath = \Storage::disk('public')->path($doc->file_path);
+        $fullPath = \Storage::disk('local')->path($doc->file_path);
         $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 
         $mimetype = \Illuminate\Support\Facades\File::mimeType($fullPath)
@@ -1448,22 +1448,22 @@ class DocumentController extends Controller
         return DB::transaction(function () use ($request, $id, $document) {
             // 1. Delete actual file from storage
             if (!empty($document->file_path)) {
-                if (Storage::disk('public')->exists($document->file_path)) {
-                    Storage::disk('public')->delete($document->file_path);
+                if (Storage::disk('local')->exists($document->file_path)) {
+                    Storage::disk('local')->delete($document->file_path);
                 }
             }
 
             // 2. Delete linked issuance files if applicable
             $issuances = DB::table('issuances')->where('document_id', $id)->get();
             foreach ($issuances as $iss) {
-                if (!empty($iss->file_path) && Storage::disk('public')->exists($iss->file_path)) {
-                    Storage::disk('public')->delete($iss->file_path);
+                if (!empty($iss->file_path) && Storage::disk('local')->exists($iss->file_path)) {
+                    Storage::disk('local')->delete($iss->file_path);
                 }
             }
             $ticketIssuances = DB::table('ticket_issuances')->where('document_id', $id)->get();
             foreach ($ticketIssuances as $ti) {
-                if (!empty($ti->file_path) && Storage::disk('public')->exists($ti->file_path)) {
-                    Storage::disk('public')->delete($ti->file_path);
+                if (!empty($ti->file_path) && Storage::disk('local')->exists($ti->file_path)) {
+                    Storage::disk('local')->delete($ti->file_path);
                 }
             }
 

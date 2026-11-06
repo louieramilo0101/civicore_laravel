@@ -26,7 +26,7 @@ class DocumentPdfConverterService
     public function processUploadedFile($file, ?string $customFilename = null): array
     {
         $uniqueBase = $customFilename ?: 'doc-' . time() . '-' . rand(100000000, 999999999);
-        $publicDisk = Storage::disk('public');
+        $publicDisk = Storage::disk('local');
 
         if ($file instanceof UploadedFile) {
             $realPath = $file->getRealPath();
@@ -63,7 +63,7 @@ class DocumentPdfConverterService
         } else if ($originalExt === 'pdf') {
             // Store the PDF directly
             if ($file instanceof UploadedFile) {
-                $file->storeAs('documents', "{$uniqueBase}.pdf", 'public');
+                $file->storeAs('documents', "{$uniqueBase}.pdf", 'local');
             } else {
                 copy($realPath, $fullPdfDiskPath);
             }
@@ -77,7 +77,7 @@ class DocumentPdfConverterService
         } else {
             // Fallback for docx / txt / rtf: save original and wrap in simple PDF
             if ($file instanceof UploadedFile) {
-                $file->storeAs('documents', "{$uniqueBase}.pdf", 'public');
+                $file->storeAs('documents', "{$uniqueBase}.pdf", 'local');
             } else {
                 copy($realPath, $fullPdfDiskPath);
             }

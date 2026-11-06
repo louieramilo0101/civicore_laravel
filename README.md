@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Ollama-Offline%20Vision%20OCR-orange?style=for-the-badge&logo=ollama" alt="Ollama Local OCR">
   <img src="https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=for-the-badge&logo=tailwind-css" alt="Tailwind Version">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge" alt="Status">
-  <img src="https://img.shields.io/badge/Last%20Updated-October%202026-brightgreen?style=for-the-badge" alt="Last Updated">
+  <img src="https://img.shields.io/badge/Last%20Updated-November%202026-brightgreen?style=for-the-badge" alt="Last Updated">
 </p>
 
 ---
@@ -22,12 +22,62 @@ The platform digitizes, automates, and secures civil registry workflows:
   - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed multimodal intelligence via Google GenAI SDK.
   - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline, private, on-premise vision inference ensuring citizen data never leaves the municipal network, with zero recurring API costs.
 - **Scanned Image Post-Processing Engine**: In-browser image adjustment modal featuring 90° lossless rotation, document binarization (high-contrast black & white filter for aged/yellowed archives), and interactive 4-corner perspective/crop adjustment.
-- **Automated Backup & Disaster Recovery (DR)**: Multi-tier automated backup scheduler (Daily, Weekly, Monthly, Semi-Annual) with retention pruning, safety snapshot creation before restore, SuperAdmin web console, and a standalone emergency Windows recovery tool (`civicore_backup_recovery.bat`).
+- **Automated Backup & Disaster Recovery (DR)**: Multi-tier automated backup scheduler (Daily, Weekly, Monthly, Semi-Annual) with retention pruning, AES-256-GCM envelope encryption, safety snapshot creation before restore, SuperAdmin web console, and a standalone emergency Windows recovery tool (`civicore_backup_recovery.bat`).
 - **Account Security & Soft-Disable Architecture**: Role-based access control with zero-data-loss safe account disabling, real-time database session revocation, and immutable audit logs.
 - **Citizen Digital Service Queue & QR Ticketing**: Contactless request submission generating unique QR code tickets with live tracking endpoints (`/ticket-status/{ticket_number}`) and a counter-top camera scanner for municipal staff.
+- **Ticket Issuance Fulfillment Pipeline**: Dedicated separate tracking table (`ticket_issuances`) for requested citizen copies, keeping official civil registry archives separated from issued counter requests.
 - **Geospatial Demographic Analytics**: Interactive GIS mapping powered by Leaflet bounded to Naic barangay coordinates with density heatmaps, birth-to-death demographic ratios, and temporal range filtering.
 - **Enterprise Reporting & Export Suite**: Filtered extraction of civil issuances, registry documents, and service requests into CSV and Excel (`.xlsx`) formats.
 - **Unified High-Aesthetic Pagination & Responsive Design**: Seamless responsiveness across desktop, tablet, and mobile screens with custom paginated data grids.
+
+---
+
+## Documentation Index
+
+| Document | Path | Focus Area |
+|---|---|---|
+| **System Documentation** | `docs/SYSTEM_DOCUMENTATION.md` | Comprehensive architectural blueprints, components, and module details |
+| **Deployment Guide** | `docs/DEPLOYMENT_GUIDE.md` | Production installation, environment, and server setup |
+| **Project Roadmap** | `defense_materials/project_roadmap.md` | Development milestones, deliverables, and project horizon |
+| **Entity Relationship Diagram** | `defense_materials/entity_relationship_diagram.md` | Relational schema diagrams, keys, and model relations |
+| **Database Schema & Flow** | `defense_materials/database_schema_and_flow.md` | Detailed database fields, table structures, and data lifecycles |
+
+---
+
+## Project Structure
+
+```text
+civicore_laravel/
+|-- app/
+|   |-- Console/Commands/       # Backup, prune, restore, maintenance CLI commands
+|   |-- Http/
+|   |   |-- Controllers/        # API and web controllers (Auth, Documents, Issuances, etc.)
+|   |   |-- Middleware/         # Session auth (RequireSessionAuth), admin guards
+|   |   `-- Requests/           # Form validation requests
+|   |-- Models/                 # Eloquent entities (User, Document, Issuance, Ticket, etc.)
+|   |-- Services/               # Core services (BackupService, OcrService, etc.)
+|   `-- Support/                # EncryptedJson helpers, data transformers
+|-- config/                     # Application, database, session, and backup configs
+|-- database/
+|   |-- migrations/             # Incremental database migrations
+|   `-- seeders/                # Initial administrative and reference seeders
+|-- docs/                       # Technical system and deployment documentation
+|-- defense_materials/          # Architecture diagrams, ERDs, schema flows, and roadmaps
+|-- resources/
+|   |-- js/                     # React 19 SPA frontend (Pages, Components, Modals)
+|   |-- css/                    # Tailwind CSS definitions
+|   `-- views/                  # Blade entry templates
+|-- routes/
+|   |-- api.php                 # RESTful API endpoints and protected route groups
+|   |-- web.php                 # Web entry routes
+|   `-- console.php             # Scheduled cron definitions (daily/weekly/monthly backups)
+|-- tests/
+|   |-- Feature/                # End-to-end and API integration tests
+|   `-- Unit/                   # Unit test suite
+|-- ocr_server.py               # Python FastAPI vision and OCR processing daemon
+|-- start-civicore.bat          # Master orchestration launcher for all subsystems
+`-- stop-civicore.bat           # Graceful system shutdown script
+```
 
 ---
 
@@ -78,50 +128,17 @@ npm install
 pip install -r requirements.txt
 ```
 
-### 3. Local Ollama AI Installation & Setup (Offline Vision OCR)
+### 3. Local Ollama AI Setup (Offline Vision OCR)
 
-CiviCORE features a 100% offline, privacy-first Vision OCR engine powered by **Ollama** and the **Qwen2.5-VL (3B)** model. This allows municipal staff to process sensitive civil registry documents locally without internet access or recurring cloud API costs.
+CiviCORE includes an offline, privacy-first Vision OCR engine powered by **Ollama** and **Qwen2.5-VL (3B)** for on-premise document processing without cloud dependencies.
 
-#### A. Download and Install Ollama
-- **Windows**: Download the official Windows installer from [ollama.com/download](https://ollama.com/download) and run `OllamaSetup.exe`. It installs to `%LOCALAPPDATA%\Programs\Ollama\ollama.exe` and registers the `ollama` command in your PATH.
-- **Linux**:
-  ```bash
-  curl -fsSL https://ollama.ai/install.sh | sh
-  ```
-- **macOS**: Download from [ollama.com/download](https://ollama.com/download) and unzip into Applications.
-
-#### B. Verify Ollama CLI
-Confirm the CLI is recognized in your terminal or Command Prompt:
-```bash
-ollama --version
-# Expected: ollama version 0.3.x or higher
-```
-
-#### C. Download the Recommended Vision Model
-Pull the Qwen2.5-VL 3B vision-language model (approx. 1.9 GB download):
-```bash
-ollama pull qwen2.5vl:3b
-```
-> [!TIP]
-> `qwen2.5vl:3b` is specifically optimized for visual character recognition, complex tabular forms, and handwritten timestamps. It operates efficiently on standard multi-core desktop CPUs without requiring high-end dedicated GPUs. If you have an NVIDIA GPU with 8GB+ VRAM, you can optionally pull `ollama pull qwen2.5vl:7b` for even higher precision.
-
-#### D. Start / Verify Ollama Service
-By default, Ollama runs an HTTP service on `http://127.0.0.1:11434`.
-```bash
-ollama serve
-```
-Verify the API and downloaded models:
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-*(Note: When using `start-civicore.bat`, the Ollama service is automatically detected and launched in a dedicated terminal window).*
-
-#### E. Switch to Local Ollama in CiviCORE
-1. Log in with SuperAdmin credentials at `http://localhost:8000`.
-2. Navigate to **Accounts & System Administration** (`/accounts`).
-3. Locate the **OCR Engine Selection** card.
-4. Click **Local Ollama (Qwen2.5-VL)**.
-5. The live status indicator will turn green: **Offline / Private**, confirming zero cloud transmissions for document ingestion.
+1. **Install Ollama**: Download for Windows from [ollama.com/download](https://ollama.com/download). (Linux: `curl -fsSL https://ollama.ai/install.sh | sh`).
+2. **Download Vision Model**:
+   ```bash
+   ollama pull qwen2.5vl:3b
+   ```
+3. **Verify Service**: By default, Ollama listens on `http://127.0.0.1:11434`. When using `start-civicore.bat`, Ollama is detected and started automatically.
+4. **Select Engine**: Navigate to **Accounts & System Administration** (`/accounts`) to switch between Google Gemini and Local Ollama with live health monitoring.
 
 ### 4. Environment Configuration
 Copy the sample environment file and generate a secure application key:
@@ -134,15 +151,28 @@ Configure your `.env` parameters:
 ```env
 APP_NAME=CiviCORE
 APP_ENV=local
+APP_KEY=base64:...
 APP_DEBUG=true
 APP_URL=http://localhost:8000
 
+# Database Configuration (MySQL / MariaDB or SQLite)
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=civicore_laravel
 DB_USERNAME=root
 DB_PASSWORD=
+
+# Session Security & Drivers
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=true
+SESSION_PATH=/
+SESSION_DOMAIN=null
+
+# Backup Envelope Encryption Key (AES-256-GCM - Base64 32 bytes)
+# Generate via: php -r "echo base64_encode(random_bytes(32));"
+BACKUP_ENCRYPTION_KEY=
 
 # Google Gemini AI OCR Engine Key & Model (Optional if using Local Ollama)
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -159,8 +189,21 @@ MAIL_HOST=sandbox.smtp.mailtrap.io
 MAIL_PORT=2525
 MAIL_USERNAME=your_mailtrap_username
 MAIL_PASSWORD=your_mailtrap_password
+MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS="no-reply@civicore.gov.ph"
 MAIL_FROM_NAME="${APP_NAME}"
+
+# Optional Dynamic Mail Providers
+MAILTRAP_USERNAME=
+MAILTRAP_PASSWORD=
+GMAIL_USERNAME=
+GMAIL_PASSWORD=
+
+# Hybrid & Remote Access Configuration (Vercel, Tailscale, Cloudflare)
+PUBLIC_PORTAL_URL=
+CORS_ALLOWED_ORIGINS=https://localhost:5173,https://your-civicore.vercel.app,https://civicore-pc.tailscale.net
+VITE_PUBLIC_PORTAL_ONLY=false
+VITE_API_BASE_URL=
 ```
 
 ### 5. Database Setup & Migrations
@@ -205,10 +248,10 @@ start-civicore.bat
 This concurrently launches all 5 core CiviCORE subsystems:
 1. **Ollama Server**: Offline Vision AI service on `http://127.0.0.1:11434`.
 2. **Laravel HTTP Server**: Core application gateway listening on `http://0.0.0.0:8000`.
-3. **Laravel Queue Workers**:
-   - `high`: Fast-path single-page scanner jobs.
-   - `low`: Multi-page batch processing fan-out.
-   - `default`: Email notifications, OTP dispatches, and system tasks.
+3. **Unified Laravel Queue Worker**: Consolidated worker listening on prioritized queues `--queue=high,default,low` (`--tries=3 --sleep=1 --timeout=1200`):
+   - `high`: Fast-path single-page scanner jobs and priority tasks.
+   - `default`: Email notifications, OTP dispatches, and standard background operations.
+   - `low`: Heavy multi-page batch OCR processing fan-out.
 4. **Persistent OCR Server**: Python FastAPI vision processing daemon on `http://127.0.0.1:8080`.
 5. **Vite Development Server**: Hot Module Replacement on port `5173`.
 
@@ -228,117 +271,54 @@ Access the platform in your browser at:
 
 ## System Architecture & Implemented Capabilities
 
-### 1. Dual-Engine OCR Pipeline: Google Gemini AI & Local Ollama (Qwen2.5-VL)
-- **Engine Selection Architecture**:
-  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed cloud multimodal extraction with multi-key round-robin rotation and automated cooldown tracking (`GEMINI_API_KEYS`). Supports custom model selection via `GEMINI_MODEL` (defaults to `gemini-2.5-flash` with graceful fallback to `gemini-flash-latest`). Legacy endpoints (`gemini-1.5-flash`, `gemini-2.0-flash`) have been deprecated by Google and upgraded to `gemini-2.5-flash`.
-  - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline, privacy-first vision processing. Sensitive civil records containing citizen personal identifiable information (PII) stay strictly inside municipal infrastructure.
-- **Python Vision Bridge (`ocr_server.py`)**:
-  - Persistent FastAPI daemon coordinating OCR execution, signature extraction, and validation.
-  - **Dynamic Resolution Scaling**: Images are automatically pre-scaled (768px for CPU-bound Ollama inference to maximize throughput, 1024px for Gemini Cloud) to achieve optimal performance without losing character definition.
-  - **Strict Structured JSON Prompts**: Zero-hallucination extraction enforced via standardized JSON response schemas.
-  - **Automated Signature Segmentation**: Uses OpenCV (`cv2`) and NumPy to crop and binarize signature zones into clean transparent PNG stamps.
-- **SuperAdmin Engine Control & Real-Time Health Diagnostics**:
-  - Dedicated `/api/settings/ocr-status` endpoint tests live connectivity to Ollama (`http://127.0.0.1:11434/api/tags`) and verifies whether the `qwen2.5vl:3b` model is downloaded.
-  - Single-click switching between Gemini and Ollama directly from the SuperAdmin web UI (`/accounts`).
-- **Multi-Form Civil Registry Support**:
-  - **LCR Form 102** (Live Birth): Child details, parent demographics, birth date/time, attendant, informant.
-  - **LCR Form 103** (Death): Deceased profile, date/place of death, age, causes of death, medical certification.
-  - **LCR Form 101** (Marriage): Contracting parties, parents, solemnizing officer, license numbers.
-- **Variant Handling**: Intelligently handles both legacy forms (e.g., 1958 variants) and modern revised forms (1993+ revisions) without manual coordinate re-calibration.
-- **SVG Preview Fallbacks**: Robust fallback display if scanned image files are missing or in non-standard formats.
+### 1. Dual-Engine OCR Pipeline
+- **Engines Supported**:
+  - **Google Gemini Cloud AI (`gemini-2.5-flash`)**: High-speed cloud multimodal extraction with multi-key round-robin rotation (`GEMINI_API_KEYS`) and automatic fallback.
+  - **Local Ollama Vision AI (`qwen2.5vl:3b`)**: 100% offline vision processing keeping sensitive civil records on municipal hardware.
+- **Python Vision Bridge (`ocr_server.py`)**: Persistent FastAPI daemon handling dynamic resolution scaling (768px CPU Ollama, 1024px Gemini), structured JSON extraction, and OpenCV signature segmentation.
+- **Diagnostics & Switching**: Live connectivity test via `/api/settings/ocr-status` and instant engine switching in `/accounts`.
+- **Form Support**: Standardized extraction for LCR Form 102 (Live Birth), Form 103 (Death), and Form 101 (Marriage) across modern and legacy form variants.
 
 ### 2. Scanned Image Post-Processing Studio (`ImagePostFxModal.jsx`)
-- **Lossless Rotation**: 90° step rotation (0°, 90°, 180°, 270°) to rectify misoriented mobile or flatbed scans.
-- **Binarization Filter (Black & White)**: Dynamic high-contrast threshold filter optimized for fading ink, stamps, carbon copies, and yellowed registry paper, significantly boosting OCR accuracy.
-- **Interactive 4-Corner Crop Bounds**: Draggable corner handles with live visual crop polygon to isolate certificate borders.
-- **Client-Side HTML5 Canvas**: Canvas rendering outputs clean blobs directly into the upload/attachment pipeline.
+- **Lossless Rotation**: 90° step rotation to fix misoriented scans.
+- **Binarization Filter**: High-contrast black-and-white thresholding for yellowed or carbon-copy archives.
+- **Interactive 4-Corner Crop**: Draggable polygon handles isolating document borders via HTML5 Canvas.
 
-### 3. Automated Backup & Disaster Recovery Architecture
-- **Scheduled Automated Backups (`routes/console.php`)**:
-  - **Daily**: Runs every night at 2:00 AM (kept for 7 days).
-  - **Weekly**: Runs every Sunday at 3:00 AM (kept for 4 weeks).
-  - **Monthly**: Runs on the 1st of every month at 4:00 AM (kept for 6 months).
-  - **Semi-Annual (6 Months)**: Runs Jan 1 and Jul 1 at 5:00 AM (kept for 2 years).
-  - **Pruning**: Automated daily retention cleanup at 6:00 AM via `backup:prune`.
-- **Package Anatomy**:
-  - Compressed `.zip` archive containing:
-    - `database.sql` (MySQL dump) or `database.sqlite`.
-    - `files/*` (All physical uploads and attachments from `storage/app/public`).
-    - `manifest.json` (Application metadata, timestamps, checksum, backup type, and file counts).
-- **Point-in-Time Disaster Recovery**:
-  - **Safety Pre-Restore Snapshot**: Automatically creates a `civicore_pre_restore_<timestamp>.zip` snapshot before touching the live database or storage.
-  - **SuperAdmin Web Console (`/backups`)**: View backup history, view disk sizes, trigger on-demand backups, and perform restores with a type-to-confirm modal (`CONFIRM RESTORE`). Direct browser downloads are restricted for data exfiltration defense.
-- **Artisan CLI Suite**:
-  ```bash
-  php artisan backup:run [--type=manual|daily|weekly|monthly|6month]
-  php artisan backup:list
-  php artisan backup:restore <filename>
-  php artisan backup:prune
-  ```
-- **Disaster Recovery Batch Utility (`civicore_backup_recovery.bat`)**:
-  - Standalone interactive batch script allowing immediate recovery even when web servers or web UIs are completely inaccessible.
+### 3. Automated Backup & Disaster Recovery
+- **Schedules (`routes/console.php`)**: Daily (2:00 AM, 7-day retention), Weekly (Sunday 3:00 AM, 4-week retention), Monthly (1st, 6-month retention), and Semi-Annual (Jan/Jul, 2-year retention). Auto-pruned at 6:00 AM.
+- **AES-256-GCM Encryption (`BackupService.php`)**: Encrypted with `BACKUP_ENCRYPTION_KEY`, unique 12-byte IV, and authentication tag for tamper resistance.
+- **Package Anatomy**: Compressed archive containing `database.sql` / `database.sqlite`, `files/*` (attachments), and `manifest.json`.
+- **Point-in-Time Recovery**: Safety snapshot generated prior to restore. SuperAdmin `/backups` interface and interactive CLI utility (`civicore_backup_recovery.bat`).
+- **System Restart Console**: SuperAdmin `/api/system/restart` endpoint flushes caches, restarts queue workers, resets OPcache, and records audit logs.
 
-### 4. Account Security & Soft-Disable Architecture (Zero Data Loss)
-- **Database Schema**: Added indexed boolean `is_active` column to the `users` table (`database/migrations/2026_10_08_000001_add_is_active_to_users_table.php`).
-- **Safe Account Disabling**: Eliminates destructive row deletion. When an administrator deactivates an account:
-  - Account status is set to `is_active = false`.
-  - All foreign keys, issuance signatures, audit history logs, and document records remain 100% intact.
-- **Real-Time Session Revocation**: Disabling a user immediately purges their active sessions from the database `sessions` table.
-- **Access Control & Guards**:
-  - `AuthController::login()` returns `403 Forbidden` for disabled accounts.
-  - `RequireSessionAuth` middleware checks active status on every authenticated request and immediately invalidates rogue sessions.
-  - Self-disablement prevention: SuperAdmins are protected against disabling their own active accounts.
-- **Accounts Management UI (`Accounts.jsx`)**:
-  - Real-time Active / Disabled status badges.
-  - Single-click status toggle with confirmation prompt.
-  - Filter tabs: `All`, `Active`, `Disabled`.
+### 4. Account Security & Soft-Disable (Zero Data Loss)
+- **Soft-Disable**: Indexed `is_active` flag preserves relational integrity, foreign keys, signatures, and audit trails.
+- **Instant Session Revocation**: Disabling a user purges matching database sessions in real time.
+- **Middleware Guard**: `RequireSessionAuth` rejects deactivated sessions with `403 Forbidden`. SuperAdmin accounts are protected from self-disablement.
 
-### 5. Citizen QR Ticketing & Queue Management
-- **Public Request Portal (`/request`)**: Citizens submit digital civil registry document requests without mandatory user registration.
-- **Automatic QR Code Generation**: Generates a verifiable QR code ticket linked to `/ticket-status/{ticket_number}`.
-- **Real-Time Registrar Queue (`PendingRequests.jsx`)**: Staff manage requests across lifecycle states:
-  - `Pending` $\rightarrow$ `Serving` $\rightarrow$ `Completed` $\rightarrow$ `Issued`.
-- **Integrated Ticket Scanner (`TicketScannerModal.jsx`)**: Staff can use counter-top webcams to scan physical or mobile QR tickets to instantly retrieve citizen records.
-- **Document Attachment Pipeline (`AttachDocumentModal.jsx`)**: Directly link scanned archive documents to pending requests.
+### 5. Ticket Issuance Fulfillment Pipeline
+- **Dedicated Counter Pipeline**: Citizen copy requests are recorded in `ticket_issuances`, isolating issued copies from official `documents` records.
+- **Auditing & Undo**: Full tracking via `TicketIssuanceController` with soft-deletion, restoration (`undo`), and registrar report filtering.
 
-### 6. Geospatial Demographic Analytics Dashboard (`Mapping.jsx`)
-- **Interactive Leaflet Mapping**: Geofenced to the Municipality of Naic, Cavite with barangay boundary layers.
-- **Demographic Visualization Modes**:
-  - **Heatmap Layer**: Spatial document concentration and request frequency per barangay.
-  - **Demographic Ratios**: Vital birth-to-death ratios color-coded per locality.
-  - **Barangay Leaderboard**: Real-time ranking of top document-origin jurisdictions.
-- **Date Range Selectors**: Filter demographic trends by All Time, Today, This Week, This Month, This Year, or Custom Date Intervals.
+### 6. Citizen QR Ticketing & Queue Management
+- **Public Portal (`/request`)**: Contactless request submission generating unique QR code tickets tracked via `/ticket-status/{ticket_number}`.
+- **Registrar Queue (`PendingRequests.jsx`)**: Progression states: `Pending` -> `Serving` -> `Completed` -> `Issued`.
+- **Counter Scanner (`TicketScannerModal.jsx`)**: Webcam QR scanner for instant ticket lookup and document attachment.
 
-### 7. Custom Reporting & Export Suite (`Reports.jsx`)
-- Accessible via the navigation sidebar at `/reports`.
-- **Dual Export Engines**: Full data extraction into **CSV** and native **Excel (.xlsx)** formats.
-- **Granular Multi-Dimensional Filters**:
-  - Date Ranges (From - To).
-  - Certificate Types: Birth (102), Death (103), Marriage (101).
-  - Statuses: Issued, Approved, Pending, Archived.
-  - Barangay Jurisdictions.
-- **Real-Time Metric Cards**: Instant calculation of total matching records, distribution percentages, and export previews.
+### 7. Geospatial Demographic Analytics (`Mapping.jsx`)
+- **Interactive Leaflet Map**: Geofenced to Naic barangays with density heatmaps, vital birth-to-death ratios, and jurisdiction leaderboards across customizable date ranges.
 
-### 8. Document Archive & Audit Logs (`ArchiveManager.jsx`)
-- **Soft-Delete Architecture**: Civil documents are safeguarded against accidental deletion.
-- **Restoration & Purge Controls**: Authorised staff can restore mistakenly archived records or permanently purge expired items.
-- **Immutable Audit Trail**: Detailed activity logs capturing timestamp, user IP, user role, action type (view, create, edit, archive, print, restore), and target document IDs.
+### 8. Custom Reporting & Export Suite (`Reports.jsx`)
+- Multi-parameter filtering (dates, certificate types, statuses, barangays) with one-click export to **CSV** and **Excel (.xlsx)** formats.
 
-### 9. Unified Responsive Data Pagination (`Pagination.jsx`)
-- Reusable, accessible pagination component with clean Tailwind UI styling.
-- **Smart Numerical Windowing**: Displays dynamic page clusters with ellipses (`1, 2, ..., 7, 8, 9, ..., 20`).
-- **Configurable Page Sizes**: Select 10, 25, or 50 items per view.
-- **Responsive Layout**: Adapts gracefully to mobile and tablet screens.
-- Standardized across `Documents.jsx`, `Issuances.jsx`, `PendingRequests.jsx`, `ArchiveManager.jsx`, `Reports.jsx`, and `Accounts.jsx`.
+### 9. Document Archive & Audit Logs (`ArchiveManager.jsx`)
+- Soft-delete safeguards with restoration and permanent purge controls.
+- Immutable audit log tracking timestamps, IP addresses, user roles, actions, and document IDs.
 
-### 10. Standardization & Data Integrity Rules
-- **Recipient Naming Standard**:
-  - **Single Subject (Birth / Death)**: `LASTNAME, FIRSTNAME MIDDLENAME SUFFIX` (e.g., `DELA CRUZ, JUAN PEDRO JR.`).
-  - **Joint Subject (Marriage)**: `HUSBAND_LASTNAME, HUSBAND_FIRSTNAME HUSBAND_MIDDLENAME & WIFE_LASTNAME, WIFE_FIRSTNAME WIFE_MIDDLENAME`.
-  - Automatic uppercase formatting enforced on frontend input and backend persistence.
-- **Date Normalization (`normalizeDateToYMD`)**:
-  - Built-in timezone-safe date parser preventing off-by-one calendar shifts.
-  - Normalizes ISO timestamps, slash dates (`MM/DD/YYYY`), dash dates (`YYYY-MM-DD`), and written dates into standard `YYYY-MM-DD`.
+### 10. Data Standardization & Integrity
+- **Recipient Naming**: Automatic uppercase formatting (`LASTNAME, FIRSTNAME MIDDLENAME SUFFIX` or joint marriage format).
+- **Date Normalization**: Timezone-safe parser standardizing inputs into ISO `YYYY-MM-DD`.
+- **Pagination**: Standardized `Pagination.jsx` component across all data grids.
 
 ---
 
@@ -370,7 +350,70 @@ All form inputs are strictly validated on both client (React) and server (Larave
 | `php artisan backup:restore <filename>` | Restores the database and physical files from a specified backup archive. |
 | `php artisan backup:prune` | Enforces retention policy, safely removing expired backup archives. |
 | `php artisan schedule:run` | Manually triggers the Laravel Task Scheduler. |
-| `php artisan queue:work --queue=high,low,default` | Starts processing asynchronous OCR and notification queues. |
+| `php artisan queue:work --queue=high,default,low` | Starts processing asynchronous OCR, email dispatches, and notification queues. |
+| `php artisan test` | Executes the PHPUnit / Pest automated test suite. |
+
+---
+
+## API Reference & Core Endpoints
+
+### Public Endpoints
+- `GET /api/public/config` - Public municipal configurations and portal settings
+- `GET /api/public/stats` - Public counter statistics
+- `GET /api/announcements` - Active municipal portal announcements
+- `GET /api/templates` - Civil registry document templates
+- `POST /api/public/tickets` - Citizen request submission (rate limited: 10 req/min)
+- `GET /api/public/tickets/{token}` - Status verification for citizen ticket token
+- `POST /api/v1/tickets/scan` - Staff counter QR code ticket check-in
+
+### Staff & Ticket Operations (`/v1/tickets/*`)
+- `GET /api/v1/tickets` - List citizen request tickets
+- `GET /api/v1/staff/tickets/digital-stats` - Digital queue volume and throughput metrics
+- `POST /api/v1/tickets/walk-in` - Record walk-in counter applicant
+- `PATCH /api/v1/tickets/{id}/attach` - Link scanned civil registry document to ticket
+- `PATCH /api/v1/tickets/{id}/cancel` - Cancel pending ticket
+- `POST /api/v1/tickets/{id}/issue` - Complete fulfillment and issue official certificate
+- `GET /api/v1/tickets/{id}/consent-form` - Retrieve signed citizen data privacy consent
+
+### Ticket Issuances (`/api/ticket-issuances`)
+- `GET /api/ticket-issuances` - Paginated counter fulfillment records (filterable by type, dates, query)
+- `DELETE /api/ticket-issuances/{id}` - Soft-delete fulfilled ticket issuance
+- `POST /api/ticket-issuances/{id}/undo` - Restore soft-deleted ticket issuance
+
+### System Administration & OCR Diagnostics
+- `GET /api/settings/ocr-status` - Check Ollama/Gemini connectivity, models, and API key counts (Admin/SuperAdmin)
+- `POST /api/system/restart` - Clear application caches, restart workers, and reset OPcache (SuperAdmin)
+
+---
+
+## Automated Testing Suite
+
+CiviCORE includes unit and feature test coverage verifying data security, document extraction, issuance workflows, and RBAC enforcement.
+
+### Test Structure
+- `tests/Feature/RbacSecurityTest.php`: Role-based route authorization and deactivated account access denial
+- `tests/Feature/DocumentOcrNameExtractionTest.php`: Regex name parsing and structured OCR data validation
+- `tests/Feature/DocumentValidationTest.php`: Field constraints, formatting rules, and duplicate detection
+- `tests/Feature/ManualRegistrationDuplicateTest.php`: Duplicate registry number prevention
+- `tests/Feature/PrintApprovalTest.php`: Multi-step issuance print request, approval, and rejection
+- `tests/Feature/DocumentArchiveTest.php`: Soft-deletion, purge safeguards, and restoration
+- `tests/Feature/DashboardStatsTest.php`: Demographic and monthly count aggregation
+- `tests/Feature/CertificatePdfTest.php`: Certificate layout and PDF streaming
+
+### Running Tests
+Execute the entire test suite:
+```bash
+php artisan test
+```
+
+Run a specific test suite or test filter:
+```bash
+# Run RBAC security test
+php artisan test tests/Feature/RbacSecurityTest.php
+
+# Filter by test name
+php artisan test --filter=DocumentValidationTest
+```
 
 ---
 
@@ -409,6 +452,7 @@ For scenarios where the web application or web server cannot be reached, use the
 | **1j** | High-Aesthetic Responsive Pagination | **Completed** | Reusable `Pagination.jsx` component adopted across all primary data tables. |
 | **1k** | System Engine Reboot & Cache Purge | **Completed** | SuperAdmin on-demand system reboot console in Backup & Recovery (`/backups`) and `/api/system/restart` to flush framework caches, reset queue workers, flush OPcache, and purge client session memory. |
 | **1l** | Registry Data Pipeline Integrity | **Completed** | Scoped Export Reports and Geospatial Mapping strictly to verified Registry Database documents (`Processed`, `Issued`, `Active`), eliminating raw draft upload leakage. |
+| **1m** | Ticket Issuance Fulfillment Pipeline | **Completed** | Dedicated `ticket_issuances` pipeline separating citizen copy requests from permanent civil registry database archives. |
 
 ---
 

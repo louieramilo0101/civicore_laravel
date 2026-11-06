@@ -116,9 +116,9 @@ class WipeAllDataExceptUsers extends Command
         ];
 
         foreach ($directories as $dir) {
-            if (Storage::disk('public')->exists($dir)) {
-                Storage::disk('public')->deleteDirectory($dir);
-                $this->line("  ✓ Cleared storage: public/{$dir}");
+            if (Storage::disk('local')->exists($dir)) {
+                Storage::disk('local')->deleteDirectory($dir);
+                $this->line("  ✓ Cleared storage: private/{$dir}");
             }
         }
     }

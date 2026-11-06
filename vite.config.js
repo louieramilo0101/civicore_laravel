@@ -2,12 +2,14 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import fs from 'fs';
+import path from 'path';
 import os from 'os';
 
 /** Selects a non-loopback local address for network-accessible HMR. */
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
-    
+
     // 1. Hunt specifically for the Wi-Fi adapter first
     for (const name of Object.keys(interfaces)) {
         if (name.toLowerCase().includes('wi-fi') || name.toLowerCase().includes('wireless')) {
@@ -27,16 +29,25 @@ function getLocalIp() {
             }
         }
     }
-    
+
     return 'localhost';
 }
 
 const localIp = getLocalIp();
 
+// Use trusted mkcert certificates if available
+const certPath = path.resolve(__dirname, 'civicore.pem');
+const keyPath = path.resolve(__dirname, 'civicore-key.pem');
+const hasMkcert = fs.existsSync(certPath) && fs.existsSync(keyPath);
+
 export default defineConfig({
     server: {
         host: '0.0.0.0',
         port: 5173,
+        https: hasMkcert ? {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath),
+        } : undefined,
         hmr:{
             host: localIp
         },

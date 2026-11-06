@@ -38,7 +38,7 @@ class OcrController extends Controller
         $doc         = $documents[0];
         $filePath = $doc->file_path;
 
-        if (empty($filePath) || !\Storage::disk('public')->exists($filePath)) {
+        if (empty($filePath) || !\Storage::disk('local')->exists($filePath)) {
             return response()->json(['success' => false, 'error' => 'File not found on disk'], 404);
         }
 

@@ -41,16 +41,16 @@ class CleanupExpiredTokens extends Command
 
         $this->info("Cleaned up {$deletedCodes} expired/used verification codes.");
 
-        // 2. Clean up temporary OCR images in storage/app/public/temp/ older than 48 hours
-        if (Storage::disk('public')->exists('temp')) {
-            $files = Storage::disk('public')->files('temp');
+        // 2. Clean up temporary OCR images in storage/app/private/temp/ older than 48 hours
+        if (Storage::disk('local')->exists('temp')) {
+            $files = Storage::disk('local')->files('temp');
             $cleanedFiles = 0;
             $now = time();
 
             foreach ($files as $file) {
-                $lastModified = Storage::disk('public')->lastModified($file);
+                $lastModified = Storage::disk('local')->lastModified($file);
                 if (($now - $lastModified) > 172800) { // 48 hours
-                    Storage::disk('public')->delete($file);
+                    Storage::disk('local')->delete($file);
                     $cleanedFiles++;
                 }
             }

@@ -54,7 +54,7 @@ class CertificatePdfGeneratorService
         $extractedFields = $this->normalizeFieldAliases($type, $extractedFields);
 
         $relativePdfPath = "documents/issuance_{$type}_{$issuanceId}.pdf";
-        $absolutePdfPath = Storage::disk('public')->path($relativePdfPath);
+        $absolutePdfPath = Storage::disk('local')->path($relativePdfPath);
 
         $success = $this->renderCertificatePdf($type, $extractedFields, $absolutePdfPath);
         if (!$success) {
@@ -116,7 +116,7 @@ class CertificatePdfGeneratorService
         $extractedFields = $this->normalizeFieldAliases($type, $extractedFields);
 
         $relativePdfPath = "documents/cert_{$type}_{$documentId}.pdf";
-        $absolutePdfPath = Storage::disk('public')->path($relativePdfPath);
+        $absolutePdfPath = Storage::disk('local')->path($relativePdfPath);
 
         $success = $this->renderCertificatePdf($type, $extractedFields, $absolutePdfPath);
         if (!$success) {
