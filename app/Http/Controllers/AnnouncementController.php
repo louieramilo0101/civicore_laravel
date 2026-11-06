@@ -33,10 +33,12 @@ class AnnouncementController extends Controller
     public function index()
     {
         try {
-            return response()->json(Announcement::orderBy('created_at', 'desc')->get());
+            return response()->json(Announcement::orderBy('created_at', 'desc')->get())
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
         } catch (\Exception $e) {
             \Log::error('Announcements load failure: ' . $e->getMessage());
-            return response()->json([], 200);
+            return response()->json([], 200)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
     }
 
@@ -106,7 +108,7 @@ class AnnouncementController extends Controller
             $announcement->message = $request->input('message');
         }
         if ($request->has('is_active')) {
-            $announcement->is_active = $request->input('is_active');
+            $announcement->is_active = $request->boolean('is_active');
         }
         
         $announcement->save();

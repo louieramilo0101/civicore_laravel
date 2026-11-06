@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useData } from './DataContext.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     TableCellsIcon,
@@ -22,6 +23,63 @@ import {
 import SkeletonLoader from './SkeletonLoader.jsx';
 import Pagination from './Pagination.jsx';
 import useDebounce from '../hooks/useDebounce.js';
+
+// Bump this whenever the shape of cached report data changes. Old caches are ignored,
+// which also clears any ciphertext that may have been cached before server-side decryption.
+const REPORTS_CACHE_VERSION = 'v2';
+const getReportsCacheKey = (src) => `civicore_reports_cache_${REPORTS_CACHE_VERSION}_${src}`;
+
+// Encrypted columns were returned as base64 Laravel payloads (they always start with "eyJpdiI6").
+// Never hand those (or any invalid JSON) to JSON.parse in render paths.
+const parseExtracted = (value) => {
+    if (!value) return {};
+    if (typeof value === 'object') return value;
+    if (typeof value !== 'string') return {};
+
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.startsWith('eyJpdiI6')) return {};
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+const sanitizeReportRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    return {
+        ...record,
+        extracted_fields: parseExtracted(record.extracted_fields ?? record.extracted_data),
+        extracted_data: parseExtracted(record.extracted_data ?? record.extracted_fields),
+    };
+};
+
+const loadReportsCache = (src) => {
+    try {
+        // Drop pre-v2 cache entries; they may contain encrypted column values.
+        try { sessionStorage.removeItem(`civicore_reports_cache_${src}`); } catch { /* ignore */ }
+
+        const raw = sessionStorage.getItem(getReportsCacheKey(src));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed?.records)) {
+            parsed.records = parsed.records.map(sanitizeReportRecord);
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const saveReportsCache = (src, data) => {
+    try {
+        sessionStorage.setItem(getReportsCacheKey(src), JSON.stringify(data));
+    } catch (e) {
+        /* ignore storage quota */
+    }
+};
 
 const BARANGAY_LIST = [
     'Gomez-Zamora (Pob.)', 'Capt. C. Nazareno (Pob.)', 'Ibayo Silangan', 'Ibayo Estacion', 'Kanluran',
@@ -49,6 +107,8 @@ const MONTH_NAMES = [
 
 /** Renders operational reports and export controls with customizable periods, data sources, and document combinations. */
 export default function Reports() {
+    const { onGlobalRefresh } = useData();
+
     const [format, setFormat] = useState('csv'); // 'csv' or 'excel'
 
     // Data Source: 'internal' (Uploaded Documents) | 'procured' (Client Issued Documents) | 'all' (Combined)
@@ -61,7 +121,14 @@ export default function Reports() {
     const [period, setPeriod] = useState('all');
     const [selectedYear, setSelectedYear] = useState(2026);
     const [selectedMonth, setSelectedMonth] = useState('');
-    const [availableMonths, setAvailableMonths] = useState({});
+    const [availableMonths, setAvailableMonths] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('civicore_avail_months_internal');
+            return cached ? JSON.parse(cached) : {};
+        } catch {
+            return {};
+        }
+    });
 
     // Advanced Filter Settings (hidden by default)
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -72,11 +139,12 @@ export default function Reports() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 50);
 
-    const [previewMode, setPreviewMode] = useState('live'); // 'live' or 'export'
-    const [previewRecords, setPreviewRecords] = useState([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [typeCounts, setTypeCounts] = useState({ birth: 0, death: 0, marriage: 0 });
-    const [smartMetrics, setSmartMetrics] = useState({
+    const initialCache = useMemo(() => loadReportsCache('internal'), []);
+
+    const [previewRecords, setPreviewRecords] = useState(() => initialCache?.records || []);
+    const [totalCount, setTotalCount] = useState(() => initialCache?.totalCount || 0);
+    const [typeCounts, setTypeCounts] = useState(() => initialCache?.typeCounts || { birth: 0, death: 0, marriage: 0 });
+    const [smartMetrics, setSmartMetrics] = useState(() => initialCache?.smartMetrics || {
         birthMale: 0,
         birthFemale: 0,
         birthTimely: 0,
@@ -96,141 +164,57 @@ export default function Reports() {
         timelyTotal: 0,
         delayedTotal: 0
     });
+    const [isLoading, setIsLoading] = useState(() => !initialCache?.records?.length);
+    const previewRecordsRef = useRef(previewRecords);
+    useEffect(() => {
+        previewRecordsRef.current = previewRecords;
+    }, [previewRecords]);
 
-    // Calculate export preview statistics
-    const exportPreviewStats = useMemo(() => {
-        if (previewMode !== 'export') return null;
-
-        let bCount = 0;
-        let dCount = 0;
-        let mCount = 0;
-        let seniorDeaths = 0;
-        let residentDeaths = 0;
-        let naturalDeaths = 0;
-        let birthMale = 0;
-        let birthFemale = 0;
-        let birthTimely = 0;
-        let birthDelayed = 0;
-        let birthHospital = 0;
-        let birthHome = 0;
-        let deathMale = 0;
-        let deathFemale = 0;
-        let civilMarriages = 0;
-        let churchMarriages = 0;
-        let totalMales = 0;
-        let totalFemales = 0;
-        let timelyTotal = 0;
-        let delayedTotal = 0;
-
-        previewRecords.forEach(d => {
-            const t = (d.type || '').toLowerCase();
-            let ef = d.extracted_fields || d.extracted_data || {};
-            if (typeof ef === 'string') {
-                try { ef = JSON.parse(ef); } catch { }
-            }
-
-            const rawSex = (ef.sex || ef.gender || '').toLowerCase();
-            const isMale = rawSex === 'male' || rawSex === 'm';
-            const isFemale = rawSex === 'female' || rawSex === 'f';
-            if (isMale) totalMales++;
-            if (isFemale) totalFemales++;
-
-            const isDelayed = Boolean(
-                ef.delayed_registration === true ||
-                ef.delayed_registration === 'true' ||
-                ef.delayed_registration === 1 ||
-                ef.is_delayed === true ||
-                ef.registration_type === 'delayed' ||
-                ef.remarks?.toLowerCase()?.includes('delayed') ||
-                ef.remarks?.toLowerCase()?.includes('late')
-            );
-            if (isDelayed) delayedTotal++;
-            else timelyTotal++;
-
-            if (t === 'birth') {
-                bCount++;
-                if (isMale) birthMale++;
-                if (isFemale) birthFemale++;
-                if (isDelayed) birthDelayed++;
-                else birthTimely++;
-                const hospStr = (ef.place_of_birth_hospital || ef.place_of_birth_type || ef.attendant_type || '').toLowerCase();
-                if (hospStr.includes('hosp') || hospStr.includes('clinic') || hospStr.includes('center') || hospStr.includes('physician') || hospStr.includes('midwife')) {
-                    birthHospital++;
-                } else {
-                    birthHome++;
-                }
-            } else if (t === 'death') {
-                dCount++;
-                if (isMale) deathMale++;
-                if (isFemale) deathFemale++;
-                const age = parseInt(ef.age_completed_years || ef.age || 0, 10);
-                if (age >= 60) seniorDeaths++;
-                const res = (ef.residence || d.barangay || '').toLowerCase();
-                if (res.includes('naic') || (d.barangay && d.barangay !== 'N/A' && d.barangay !== 'Unspecified')) {
-                    residentDeaths++;
-                }
-                const manner = (ef.manner_of_death || '').toLowerCase();
-                if (manner !== '' && (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide')))) {
-                    naturalDeaths++;
-                }
-            } else if (t === 'marriage') {
-                mCount++;
-                const officer = (ef.solemnizing_officer_name || ef.solemnizing_officer_title || ef.ceremony_type || '').toLowerCase();
-                if (officer.includes('mayor') || officer.includes('judge') || officer.includes('civil')) {
-                    civilMarriages++;
-                } else {
-                    churchMarriages++;
-                }
-            }
-        });
-
-        const pctNatural = dCount > 0 ? Math.round((naturalDeaths / dCount) * 100) : 0;
-        const pctSenior = dCount > 0 ? Math.round((seniorDeaths / dCount) * 100) : 0;
-
-        return {
-            bCount: bCount,
-            dCount: dCount,
-            mCount: mCount,
-            seniorDeaths: seniorDeaths,
-            residentDeaths: residentDeaths,
-            naturalDeaths: naturalDeaths,
-            birthMale: birthMale,
-            birthFemale: birthFemale,
-            birthTimely: birthTimely,
-            birthDelayed: birthDelayed,
-            birthHospital: birthHospital,
-            birthHome: birthHome,
-            deathMale: deathMale,
-            deathFemale: deathFemale,
-            civilMarriages: civilMarriages,
-            churchMarriages: churchMarriages,
-            totalMales: totalMales,
-            totalFemales: totalFemales,
-            timelyTotal: timelyTotal,
-            delayedTotal: delayedTotal,
-            pctNatural: pctNatural,
-            pctSenior: pctSenior
-        };
-    }, [previewMode, previewRecords]);
-
-    const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [downloadSuccess, setDownloadSuccess] = useState(false);
+    const [showFormatPicker, setShowFormatPicker] = useState(false);
     const [isStatsCollapsed, setIsStatsCollapsed] = useState(() => {
         return typeof window !== 'undefined' && window.innerWidth < 768;
     });
 
+    const handleDataSourceChange = (newSource) => {
+        if (newSource === dataSource) return;
+        setDataSource(newSource);
+        const cached = loadReportsCache(newSource);
+        if (cached?.records?.length) {
+            setPreviewRecords(cached.records);
+            setTotalCount(cached.totalCount || cached.records.length);
+            setTypeCounts(cached.typeCounts || { birth: 0, death: 0, marriage: 0 });
+            if (cached.smartMetrics) setSmartMetrics(cached.smartMetrics);
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+        }
+    };
+
     // Fetch months that contain records for the selected data source
     useEffect(() => {
         const fetchAvailableMonths = async () => {
+            const cacheKey = `civicore_avail_months_${dataSource}`;
+            try {
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    setAvailableMonths(parsed);
+                    const keys = Object.keys(parsed);
+                    if (keys.length > 0) setSelectedMonth(prev => prev || keys[0]);
+                }
+            } catch (e) { /* ignore */ }
+
             try {
                 const res = await fetch(`/api/documents/available-months?source=${dataSource}`, { credentials: 'include' });
                 const json = await res.json();
                 if (json.success && json.months) {
                     setAvailableMonths(json.months);
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.months)); } catch (e) { /* ignore */ }
                     const monthsWithRecords = Object.keys(json.months);
                     if (monthsWithRecords.length > 0) {
-                        setSelectedMonth(monthsWithRecords[0]);
+                        setSelectedMonth(prev => prev || monthsWithRecords[0]);
                     } else {
                         setSelectedMonth('');
                     }
@@ -280,7 +264,9 @@ export default function Reports() {
 
     // Fetch live documents or issuances for preview
     const fetchPreviewData = useCallback(async () => {
-        setIsLoading(true);
+        if (!previewRecordsRef.current || previewRecordsRef.current.length === 0) {
+            setIsLoading(true);
+        }
         try {
             const typeParam = selectedDocTypes.length === 3 ? '' : selectedDocTypes.join(',');
             const params = new URLSearchParams({
@@ -295,53 +281,56 @@ export default function Reports() {
             let records = [];
 
             if (dataSource === 'procured') {
-                // Fetch issuances (client procured)
+                // Fetch from dedicated ticket_issuances table (citizen-request copies)
                 const issParams = new URLSearchParams(params);
-                issParams.append('source', 'procured');
-                const res = await fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' });
+                const res = await fetch(`/api/ticket-issuances?${issParams.toString()}`, { credentials: 'include' });
                 const data = await res.json();
                 records = (data.data || [])
-                    .filter(r => Boolean(r.or_number || r.requested_by || r.print_remarks || (r.ticket_number && !String(r.ticket_number).startsWith('T-2026-0'))))
                     .map(r => ({
                         ...r,
                         _source: 'procured',
                         _sourceLabel: 'Client Procured'
                     }));
             } else if (dataSource === 'all') {
-                // Fetch both internal master records and distinct client procured issuances
+                // Fetch both internal master records (from Registry Database issuances) and ticket issuances
                 const issParams = new URLSearchParams(params);
-                issParams.append('source', 'procured');
-                const docParams = new URLSearchParams(params);
-                docParams.append('status', 'processed');
-                const [docRes, issRes] = await Promise.all([
-                    fetch(`/api/documents?${docParams.toString()}`, { credentials: 'include' }),
-                    fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' })
+                issParams.set('per_page', '500');
+                const [regRes, procRes] = await Promise.all([
+                    fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' }),
+                    fetch(`/api/ticket-issuances?${issParams.toString()}`, { credentials: 'include' })
                 ]);
-                const docData = await docRes.json();
-                const issData = await issRes.json();
-                const docs = (docData.data || [])
-                    .filter(r => ['processed', 'issued', 'active'].includes((r.status || '').toLowerCase()))
-                    .map(r => ({ ...r, _source: 'internal', _sourceLabel: 'Internal Registration' }));
-                const issuances = (issData.data || [])
-                    .filter(r => Boolean(r.or_number || r.requested_by || r.print_remarks || (r.ticket_number && !String(r.ticket_number).startsWith('T-2026-0'))))
-                    .map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
-                records = [...docs, ...issuances];
-            } else {
-                // Fetch internal master registry documents (only approved documents uploaded into the registry database)
-                const docParams = new URLSearchParams(params);
-                docParams.append('status', 'processed');
-                const res = await fetch(`/api/documents?${docParams.toString()}`, { credentials: 'include' });
-                const data = await res.json();
-                records = (data.data || [])
-                    .filter(r => ['processed', 'issued', 'active'].includes((r.status || '').toLowerCase()))
+                const regData = await regRes.json();
+                const procData = await procRes.json();
+                const registryDocs = (regData.data || [])
                     .map(r => ({
                         ...r,
+                        personName: r.name || r.personName,
+                        date: r.issuanceDate || (r.extracted_data && (r.extracted_data.date_of_birth || r.extracted_data.date_of_death || r.extracted_data.date_of_marriage)) || (r.created_at ? r.created_at.substring(0, 10) : 'N/A'),
+                        _source: 'internal',
+                        _sourceLabel: 'Internal Registration'
+                    }));
+                const procuredDocs = (procData.data || [])
+                    .map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
+                records = [...registryDocs, ...procuredDocs];
+            } else {
+                // Fetch internal master registry database records (issuances)
+                const issParams = new URLSearchParams(params);
+                issParams.set('per_page', '500');
+                const res = await fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' });
+                const data = await res.json();
+                records = (data.data || [])
+                    .map(r => ({
+                        ...r,
+                        personName: r.name || r.personName,
+                        date: r.issuanceDate || (r.extracted_data && (r.extracted_data.date_of_birth || r.extracted_data.date_of_death || r.extracted_data.date_of_marriage)) || (r.created_at ? r.created_at.substring(0, 10) : 'N/A'),
                         _source: 'internal',
                         _sourceLabel: 'Internal Registration'
                     }));
             }
 
-            let filtered = records;
+            // Normalize JSON columns defensively: never let ciphertext or malformed
+            // strings reach the render path (parseExtracted returns {} instead).
+            let filtered = records.map(sanitizeReportRecord);
 
             // Client-side category filtering safety
             if (selectedDocTypes.length > 0 && selectedDocTypes.length < 3) {
@@ -455,8 +444,8 @@ export default function Reports() {
                         residentDeaths++;
                     }
 
-                    const manner = (ef.manner_of_death || '').toLowerCase();
-                    if (manner !== '' && (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide')))) {
+                    const manner = (ef.manner_of_death || ef.cause_of_death_immediate || '').toLowerCase();
+                    if (manner.includes('natural') || (!manner.includes('accident') && !manner.includes('homicide') && !manner.includes('suicide'))) {
                         naturalDeaths++;
                     }
                 } else if (t === 'marriage') {
@@ -469,7 +458,7 @@ export default function Reports() {
                 }
             });
 
-            setSmartMetrics({
+            const computedMetrics = {
                 birthMale,
                 birthFemale,
                 birthTimely,
@@ -488,6 +477,16 @@ export default function Reports() {
                 distinctBarangays: brgySet.size,
                 timelyTotal,
                 delayedTotal
+            };
+
+            setSmartMetrics(computedMetrics);
+
+            // Persist to session cache for instant future loads
+            saveReportsCache(dataSource, {
+                records: filtered,
+                totalCount: filtered.length,
+                typeCounts: { birth: bCount, death: dCount, marriage: mCount },
+                smartMetrics: computedMetrics
             });
 
         } catch (err) {
@@ -501,14 +500,41 @@ export default function Reports() {
         fetchPreviewData();
     }, [fetchPreviewData]);
 
+    // When a deletion/restore/purge fires anywhere in the app, clear the reports
+    // session cache and re-fetch so deleted records never linger in the preview.
+    useEffect(() => {
+        const unsubscribe = onGlobalRefresh(() => {
+            ['internal', 'procured', 'all'].forEach(src => {
+                try { sessionStorage.removeItem(getReportsCacheKey(src)); } catch { /* ignore */ }
+                try { sessionStorage.removeItem(`civicore_avail_months_${src}`); } catch { /* ignore */ }
+            });
+            fetchPreviewData();
+        });
+        return unsubscribe;
+    }, [onGlobalRefresh, fetchPreviewData]);
+
     // Pagination States
     const [reportsPage, setReportsPage] = useState(1);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [reportsPageSize, setReportsPageSize] = useState(10);
 
     // Reset pagination when data source, filters, or date range changes
     useEffect(() => {
         setReportsPage(1);
     }, [dataSource, selectedDocTypes, effectiveDates, barangay, status, debouncedSearchQuery]);
+
+    // Close the export format picker when clicking outside of it
+    useEffect(() => {
+        if (!showFormatPicker) return;
+        const handleClick = (e) => {
+            const picker = document.getElementById('export-format-picker');
+            if (picker && !picker.contains(e.target)) {
+                setShowFormatPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showFormatPicker]);
 
     const totalReportsPages = Math.max(1, Math.ceil(previewRecords.length / reportsPageSize));
     const safeReportsPage = Math.min(reportsPage, totalReportsPages);
@@ -534,7 +560,7 @@ export default function Reports() {
     };
 
     /** Exports the report with chosen period, source, and document type combinations. */
-    const handleExport = (targetFormat = 'csv') => {
+    const handleExport = async (targetFormat = 'csv') => {
         setFormat(targetFormat);
         setIsExporting(true);
         setDownloadSuccess(false);
@@ -553,19 +579,79 @@ export default function Reports() {
 
         const exportUrl = `/api/documents/export?${params.toString()}`;
 
-        const link = document.createElement('a');
-        link.href = exportUrl;
-        const sourcePrefix = dataSource === 'procured' ? 'client_issuances' : dataSource === 'all' ? 'all_records' : 'master_registry';
-        link.setAttribute('download', `${sourcePrefix}_report_${Date.now()}.${targetFormat === 'excel' ? 'xls' : 'csv'}`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const response = await fetch(exportUrl, {
+                method: 'GET',
+                credentials: 'include'
+            });
 
-        setTimeout(() => {
-            setIsExporting(false);
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+
+            const blob = await response.blob();
+            const sourcePrefix = dataSource === 'procured' ? 'client_issuances' : dataSource === 'all' ? 'all_records' : 'master_registry';
+            const fileExt = targetFormat === 'excel' ? 'xlsx' : targetFormat === 'xls' ? 'xls' : 'csv';
+            const defaultFilename = `${sourcePrefix}_report_${Date.now()}.${fileExt}`;
+
+            // Modern File System Access API: Native OS Save Dialog
+            if (typeof window.showSaveFilePicker === 'function') {
+                try {
+                    let pickerTypes = [];
+                    if (targetFormat === 'excel') {
+                        pickerTypes = [{
+                            description: 'Excel Workbook (.xlsx)',
+                            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+                        }];
+                    } else if (targetFormat === 'xls') {
+                        pickerTypes = [{
+                            description: 'Excel HTML Spreadsheet (.xls)',
+                            accept: { 'application/vnd.ms-excel': ['.xls'] }
+                        }];
+                    } else {
+                        pickerTypes = [{
+                            description: 'CSV Spreadsheet (.csv)',
+                            accept: { 'text/csv': ['.csv'] }
+                        }];
+                    }
+
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: defaultFilename,
+                        types: pickerTypes
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    setDownloadSuccess(true);
+                    setTimeout(() => setDownloadSuccess(false), 4000);
+                    return;
+                } catch (pickerErr) {
+                    if (pickerErr.name === 'AbortError') {
+                        // User cancelled Save dialog; do not trigger success remarks
+                        return;
+                    }
+                }
+            }
+
+            // Fallback for browsers without showSaveFilePicker
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = defaultFilename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            // Retain blob URL long enough for browser download manager to finish stream
+            setTimeout(() => window.URL.revokeObjectURL(url), 15000);
+
             setDownloadSuccess(true);
             setTimeout(() => setDownloadSuccess(false), 4000);
-        }, 800);
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('Could not download report. Please check your connection and try again.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     // Count how many advanced filters are active
@@ -605,735 +691,710 @@ export default function Reports() {
 
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <button
-                        onClick={fetchPreviewData}
+                        onClick={async () => { setIsRefreshing(true); fetchPreviewData(); setTimeout(() => setIsRefreshing(false), 800); }}
                         className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 cursor-pointer active:scale-95"
                     >
-                        <ArrowPathIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">Refresh Preview</span>
-                        <span className="sm:hidden">Refresh</span>
+                        <ArrowPathIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     </button>
 
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                        <button
-                            onClick={() => handleExport('csv')}
-                            disabled={isExporting || totalCount === 0}
-                            className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <ArrowDownTrayIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isExporting && format === 'csv' ? 'animate-bounce' : ''}`} />
-                            <span>Export CSV</span>
-                        </button>
+                        <div className="relative" id="export-format-picker">
+                            <button
+                                onClick={() => setShowFormatPicker(prev => !prev)}
+                                disabled={isExporting || totalCount === 0}
+                                className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-600/20 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <ArrowDownTrayIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isExporting ? 'animate-bounce' : ''}`} />
+                                <span>Export Report</span>
+                                <ChevronDownIcon className="w-3.5 h-3.5" />
+                            </button>
 
-                        <button
-                            onClick={() => handleExport('excel')}
-                            disabled={isExporting || totalCount === 0}
-                            className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-600/20 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <ArrowDownTrayIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isExporting && format === 'excel' ? 'animate-bounce' : ''}`} />
-                            <span>Export Excel</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Data Source Selector Tabs - 3 column responsive layout */}
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                <div className="grid grid-cols-3 gap-1 sm:gap-1.5 w-full">
-                    <button
-                        type="button"
-                        onClick={() => setDataSource('internal')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'internal'
-                            ? 'bg-[#1a2f4a] dark:bg-slate-800 text-white dark:text-[#d4a574] shadow-md border dark:border-[#d4a574]/30'
-                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                            }`}
-                    >
-                        <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="hidden sm:inline">Registry Database</span>
-                        <span className="sm:hidden truncate">Registry</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setDataSource('procured')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'procured'
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                            }`}
-                    >
-                        <TicketIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="hidden sm:inline">Client Procured</span>
-                        <span className="sm:hidden truncate">Procured</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setDataSource('all')}
-                        className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'all'
-                            ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
-                            : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                            }`}
-                    >
-                        <CircleStackIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="hidden sm:inline">All Records (Combined)</span>
-                        <span className="sm:hidden truncate">All Combined</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Quick Metrics Bar - Collapsible to preserve mobile space */}
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-all text-slate-800 dark:text-slate-100">
-                {/* Header / Toggle Row */}
-                <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 border-b border-slate-100 dark:border-slate-800 gap-2">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
-                            <TableCellsIcon className="w-4 h-4" />
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight truncate">
-                                Data Summary & Statistics
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40 shrink-0">
-                                {totalCount} Records
-                            </span>
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setIsStatsCollapsed(prev => !prev)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 text-xs font-bold"
-                        title={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
-                        aria-label={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
-                    >
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                            {isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}
-                        </span>
-                        {isStatsCollapsed ? (
-                            <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                        ) : (
-                            <ChevronUpIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                        )}
-                    </button>
-                </div>
-
-                {/* Collapsible Metrics Grid: 2 columns on mobile instead of 1 */}
-                <AnimatePresence initial={false}>
-                    {!isStatsCollapsed && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: 'easeInOut' }}
-                            className="overflow-hidden"
-                        >
-                            <div className="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-slate-50/30 dark:bg-slate-950/40">
-                                {/* Total Card */}
-                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
-                                        <TableCellsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            {showFormatPicker && (
+                                    <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1.5 z-50 overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleExport('excel'); setShowFormatPicker(false); }}
+                                            className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-2 cursor-pointer"
+                                        >
+                                            Excel Workbook (.xlsx)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleExport('xls'); setShowFormatPicker(false); }}
+                                            className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:text-sky-700 dark:hover:text-sky-300 flex items-center gap-2 cursor-pointer"
+                                        >
+                                            Excel HTML Sheet (.xls)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleExport('csv'); setShowFormatPicker(false); }}
+                                            className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-2 cursor-pointer"
+                                        >
+                                            CSV File (.csv)
+                                        </button>
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{totalCount}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
-                                            {dataSource === 'procured' ? 'Procured' : dataSource === 'internal' ? 'Uploaded' : 'Total'}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Birth Card */}
-                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-[#d4a574] shrink-0">
-                                        <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.birth}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Birth Certs</div>
-                                    </div>
-                                </div>
-
-                                {/* Death Card */}
-                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center text-rose-500 shrink-0">
-                                        <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.death}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Death Certs</div>
-                                    </div>
-                                </div>
-
-                                {/* Marriage Card */}
-                                <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-500 shrink-0">
-                                        <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.marriage}</div>
-                                        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Marriage</div>
-                                    </div>
-                                </div>
-
-                                {/* Dynamic Smart Category Breakdown */}
-                                <div className="col-span-2 lg:col-span-4 bg-white dark:bg-slate-900/90 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                                    {selectedDocTypes.length === 1 && selectedDocTypes[0] === 'birth' ? (
-                                        /* Mode 1: Births Only */
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Timely vs. Delayed registrations">
-                                                <span className="font-black text-amber-700 dark:text-amber-400">Registration:</span>
-                                                <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.birthTimely} Timely • {smartMetrics.birthDelayed} Delayed</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Hospital/Clinic delivery vs Home delivery">
-                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Facility:</span>
-                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.birthHospital} Facility • {smartMetrics.birthHome} Home</span>
-                                            </div>
-                                        </div>
-                                    ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'death' ? (
-                                        /* Mode 2: Deaths Only */
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-rose-50/90 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/80 dark:border-rose-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-rose-100/80 dark:hover:bg-rose-900/60" title="Senior citizen deaths (Age 60 and above)">
-                                                <span className="font-black text-rose-600 dark:text-rose-400">Seniors (≥60):</span>
-                                                <span className="font-extrabold text-rose-950 dark:text-rose-100 tabular-nums">{smartMetrics.seniorDeaths} of {typeCounts.death}</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Deceased whose usual residence was Naic municipality">
-                                                <span className="font-black text-indigo-600 dark:text-indigo-400">Resident Deaths:</span>
-                                                <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.residentDeaths} of {typeCounts.death}</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Natural causes vs external causes">
-                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Manner of Death:</span>
-                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.naturalDeaths} Natural • {typeCounts.death - smartMetrics.naturalDeaths} External</span>
-                                            </div>
-                                        </div>
-                                    ) : selectedDocTypes.length === 1 && selectedDocTypes[0] === 'marriage' ? (
-                                        /* Mode 3: Marriages Only */
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Civil ceremonies officiated by Mayor or Judge">
-                                                <span className="font-black text-amber-700 dark:text-amber-400">Civil Weddings:</span>
-                                                <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.civilMarriages} of {typeCounts.marriage}</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Religious ceremonies in churches or chapels">
-                                                <span className="font-black text-indigo-600 dark:text-indigo-400">Church Weddings:</span>
-                                                <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.churchMarriages} of {typeCounts.marriage}</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Total marriages registered in Naic">
-                                                <span className="font-black text-emerald-600 dark:text-emerald-400">Solemnized in Naic:</span>
-                                                <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{typeCounts.marriage} Weddings</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 border border-sky-200/80 dark:border-sky-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80 dark:hover:bg-sky-900/60" title="All marriage records certified">
-                                                <span className="font-black text-sky-600 dark:text-sky-400">Certified Status:</span>
-                                                <span className="font-extrabold text-sky-950 dark:text-sky-100 tabular-nums">{typeCounts.marriage > 0 ? '100% Registered' : '0 Registered'}</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        /* Mode 4: All / Multiple Categories Combined */
-                                        null
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* Main Report Configuration Card */}
-            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-6 text-slate-800 dark:text-slate-100">
-
-                {/* Top Quick Settings: Period Dropdown + Document Types Checklist */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100 dark:border-slate-800">
-
-                    {/* Period Selector (Month / 6 Months / Year / All Time / Custom) */}
-                    <div className="lg:col-span-5 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
-                                <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Export Timeframe
-                            </label>
-                            {effectiveDates.from && (
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                    {effectiveDates.from} to {effectiveDates.to}
-                                </span>
                             )}
-                        </div>
-
-                        {/* Period Type Dropdown without Emojis */}
-                        <div className="relative">
-                            <select
-                                value={period}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setPeriod(val);
-                                    if (val === 'custom') {
-                                        setIsAdvancedOpen(true);
-                                    }
-                                }}
-                                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all cursor-pointer"
-                            >
-                                <option value="all">All Time (All available records)</option>
-                                <option value="month">Specific Month (Only months with records)</option>
-                                <option value="6months">Past 6 Months (Rolling 6 months)</option>
-                                <option value="year">Annual Report ({selectedYear})</option>
-                                <option value="custom">Custom Date Range (Set specific dates)</option>
-                            </select>
-                        </div>
-
-                        {/* Interactive Month Picker with Greyed-Out Unavailable Months */}
-                        {period === 'month' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="pt-2 space-y-2.5 bg-slate-50/80 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800"
-                            >
-                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                                    <span>Select Month in {selectedYear}:</span>
-                                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                        Grey = No records
-                                    </span>
                                 </div>
+                    </div>
+                    </div>
+                </div>
 
-                                {/* 12-Month Grid: Months with 0 records are strictly greyed out and unselectable */}
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                                    {MONTH_NAMES.map((m) => {
-                                        const monthKey = `${selectedYear}-${String(m.num).padStart(2, '0')}`;
-                                        const count = availableMonths[monthKey] || 0;
-                                        const hasRecords = count > 0;
-                                        const isSelected = selectedMonth === monthKey;
+                {/* Data Source Selector Tabs - 3 column responsive layout */}
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl p-1 sm:p-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                    <div className="grid grid-cols-3 gap-1 sm:gap-1.5 w-full">
+                        <button
+                            type="button"
+                            onClick={() => handleDataSourceChange('internal')}
+                            className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'internal'
+                                ? 'bg-[#1a2f4a] dark:bg-slate-800 text-white dark:text-[#d4a574] shadow-md border dark:border-[#d4a574]/30'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                        >
+                            <ArchiveBoxIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="hidden sm:inline">Registry Database</span>
+                            <span className="sm:hidden truncate">Registry</span>
+                        </button>
 
-                                        return (
-                                            <button
-                                                key={monthKey}
-                                                type="button"
-                                                disabled={!hasRecords}
-                                                onClick={() => setSelectedMonth(monthKey)}
-                                                className={`p-2 rounded-xl text-center text-xs transition-all relative flex flex-col items-center justify-center min-h-[52px] ${isSelected && hasRecords
-                                                    ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/30'
-                                                    : hasRecords
-                                                        ? 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer'
-                                                        : 'bg-slate-100/60 dark:bg-slate-800/40 text-slate-300 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800/50 cursor-not-allowed select-none'
-                                                    }`}
-                                                title={hasRecords ? `${m.name} ${selectedYear}: ${count} record(s)` : `${m.name} ${selectedYear}: No records recorded`}
-                                            >
-                                                <span className="text-[11px] leading-none">{m.short}</span>
-                                                <span className={`text-[9px] mt-1 font-semibold leading-none ${isSelected && hasRecords
-                                                    ? 'text-indigo-100'
-                                                    : hasRecords
-                                                        ? 'text-indigo-600 dark:text-indigo-400 font-black'
-                                                        : 'text-slate-300 dark:text-slate-600'
-                                                    }`}>
-                                                    {hasRecords ? `${count} rec` : '0'}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
+                        <button
+                            type="button"
+                            onClick={() => handleDataSourceChange('procured')}
+                            className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'procured'
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                        >
+                            <TicketIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="hidden sm:inline">Client Procured</span>
+                            <span className="sm:hidden truncate">Procured</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleDataSourceChange('all')}
+                            className={`px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 cursor-pointer text-center ${dataSource === 'all'
+                                ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                        >
+                            <CircleStackIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="hidden sm:inline">All Records (Combined)</span>
+                            <span className="sm:hidden truncate">All Combined</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Quick Metrics Bar - Collapsible to preserve mobile space */}
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-all text-slate-800 dark:text-slate-100">
+                    {/* Header / Toggle Row */}
+                    <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 border-b border-slate-100 dark:border-slate-800 gap-2">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
+                                <TableCellsIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight truncate">
+                                    Data Summary & Statistics
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40 shrink-0">
+                                    {totalCount} Records
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsStatsCollapsed(prev => !prev)}
+                            className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0 text-xs font-bold"
+                            title={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
+                            aria-label={isStatsCollapsed ? "Expand Statistics" : "Collapse Statistics"}
+                        >
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
+                                {isStatsCollapsed ? 'Show Stats' : 'Hide Stats'}
+                            </span>
+                            {isStatsCollapsed ? (
+                                <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                            ) : (
+                                <ChevronUpIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Collapsible Metrics Grid: 2 columns on mobile instead of 1 */}
+                    <AnimatePresence initial={false}>
+                        {!isStatsCollapsed && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                className="overflow-hidden"
+                            >
+                                <div className="p-3 sm:p-5 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-slate-50/30 dark:bg-slate-950/40">
+                                    {/* Total Card */}
+                                    <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 shrink-0">
+                                            <TableCellsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{totalCount}</div>
+                                            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">
+                                                {dataSource === 'procured' ? 'Procured' : dataSource === 'internal' ? 'Uploaded' : 'Total'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Birth Card */}
+                                    <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center text-[#d4a574] shrink-0">
+                                            <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.birth}</div>
+                                            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Birth Certs</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Death Card */}
+                                    <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center text-rose-500 shrink-0">
+                                            <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.death}</div>
+                                            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Death Certs</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Marriage Card */}
+                                    <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3 sm:p-4 border border-slate-200/70 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3">
+                                        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-500 shrink-0">
+                                            <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{typeCounts.marriage}</div>
+                                            <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Marriage</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Dynamic Smart Category Breakdown */}
+                                    {selectedDocTypes.length === 1 && (
+                                        <div className="col-span-2 lg:col-span-4 bg-white dark:bg-slate-900/90 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                                            {selectedDocTypes[0] === 'birth' ? (
+                                                /* Mode 1: Births Only */
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Timely vs. Delayed registrations">
+                                                        <span className="font-black text-amber-700 dark:text-amber-400">Registration:</span>
+                                                        <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.birthTimely} Timely • {smartMetrics.birthDelayed} Delayed</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Hospital/Clinic delivery vs Home delivery">
+                                                        <span className="font-black text-emerald-600 dark:text-emerald-400">Facility:</span>
+                                                        <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.birthHospital} Facility • {smartMetrics.birthHome} Home</span>
+                                                    </div>
+                                                </div>
+                                            ) : selectedDocTypes[0] === 'death' ? (
+                                                /* Mode 2: Deaths Only */
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-rose-50/90 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/80 dark:border-rose-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-rose-100/80 dark:hover:bg-rose-900/60" title="Senior citizen deaths (Age 60 and above)">
+                                                        <span className="font-black text-rose-600 dark:text-rose-400">Seniors (≥60):</span>
+                                                        <span className="font-extrabold text-rose-950 dark:text-rose-100 tabular-nums">{smartMetrics.seniorDeaths} of {typeCounts.death}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Deceased whose usual residence was Naic municipality">
+                                                        <span className="font-black text-indigo-600 dark:text-indigo-400">Resident Deaths:</span>
+                                                        <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.residentDeaths} of {typeCounts.death}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Natural causes vs external causes">
+                                                        <span className="font-black text-emerald-600 dark:text-emerald-400">Manner of Death:</span>
+                                                        <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{smartMetrics.naturalDeaths} Natural • {typeCounts.death - smartMetrics.naturalDeaths} External</span>
+                                                    </div>
+                                                </div>
+                                            ) : selectedDocTypes[0] === 'marriage' ? (
+                                                /* Mode 3: Marriages Only */
+                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-amber-100/80 dark:hover:bg-amber-900/60" title="Civil ceremonies officiated by Mayor or Judge">
+                                                        <span className="font-black text-amber-700 dark:text-amber-400">Civil Weddings:</span>
+                                                        <span className="font-extrabold text-amber-950 dark:text-amber-100 tabular-nums">{smartMetrics.civilMarriages} of {typeCounts.marriage}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60" title="Religious ceremonies in churches or chapels">
+                                                        <span className="font-black text-indigo-600 dark:text-indigo-400">Church Weddings:</span>
+                                                        <span className="font-extrabold text-indigo-950 dark:text-indigo-100 tabular-nums">{smartMetrics.churchMarriages} of {typeCounts.marriage}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60" title="Total marriages registered in Naic">
+                                                        <span className="font-black text-emerald-600 dark:text-emerald-400">Solemnized in Naic:</span>
+                                                        <span className="font-extrabold text-emerald-950 dark:text-emerald-100 tabular-nums">{typeCounts.marriage} Weddings</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-lg bg-sky-50/90 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 border border-sky-200/80 dark:border-sky-900/50 font-bold text-xs sm:text-[13px] transition-all hover:bg-sky-100/80 dark:hover:bg-sky-900/60" title="All marriage records certified">
+                                                        <span className="font-black text-sky-600 dark:text-sky-400">Certified Status:</span>
+                                                        <span className="font-extrabold text-sky-950 dark:text-sky-100 tabular-nums">{typeCounts.marriage > 0 ? '100% Registered' : '0 Registered'}</span>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
-                    </div>
+                    </AnimatePresence>
+                </div>
 
-                    {/* Document Categories Checklist (Pagsamahin: Birth + Death + Marriage) */}
-                    <div className="lg:col-span-7 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
-                                <DocumentTextIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Document Types to Include
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
-                                    {selectedDocTypes.length} of 3 selected
-                                </span>
-                                {selectedDocTypes.length < 3 && (
-                                    <button
-                                        type="button"
-                                        onClick={selectAllTypes}
-                                        className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer underline"
-                                    >
-                                        Select All
-                                    </button>
+                {/* Main Report Configuration Card */}
+                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 sm:space-y-6 text-slate-800 dark:text-slate-100">
+
+                    {/* Top Quick Settings: Period Dropdown + Document Types Checklist */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-6 border-b border-slate-100 dark:border-slate-800">
+
+                        {/* Period Selector (Month / 6 Months / Year / All Time / Custom) */}
+                        <div className="lg:col-span-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                    <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Export Timeframe
+                                </label>
+                                {effectiveDates.from && (
+                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                        {effectiveDates.from} to {effectiveDates.to}
+                                    </span>
                                 )}
                             </div>
+
+                            {/* Period Type Dropdown without Emojis */}
+                            <div className="relative">
+                                <select
+                                    value={period}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPeriod(val);
+                                        if (val === 'custom') {
+                                            setIsAdvancedOpen(true);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 hover:bg-white dark:hover:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none shadow-sm transition-all cursor-pointer"
+                                >
+                                    <option value="all">All Time (All available records)</option>
+                                    <option value="month">Specific Month (Only months with records)</option>
+                                    <option value="6months">Past 6 Months (Rolling 6 months)</option>
+                                    <option value="year">Annual Report ({selectedYear})</option>
+                                    <option value="custom">Custom Date Range (Set specific dates)</option>
+                                </select>
+                            </div>
+
+                            {/* Interactive Month Picker with Greyed-Out Unavailable Months */}
+                            {period === 'month' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="pt-2 space-y-2.5 bg-slate-50/80 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800"
+                                >
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                        <span>Select Month in {selectedYear}:</span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                            Grey = No records
+                                        </span>
+                                    </div>
+
+                                    {/* 12-Month Grid: Months with 0 records are strictly greyed out and unselectable */}
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                                        {MONTH_NAMES.map((m) => {
+                                            const monthKey = `${selectedYear}-${String(m.num).padStart(2, '0')}`;
+                                            const count = availableMonths[monthKey] || 0;
+                                            const hasRecords = count > 0;
+                                            const isSelected = selectedMonth === monthKey;
+
+                                            return (
+                                                <button
+                                                    key={monthKey}
+                                                    type="button"
+                                                    disabled={!hasRecords}
+                                                    onClick={() => setSelectedMonth(monthKey)}
+                                                    className={`p-2 rounded-xl text-center text-xs transition-all relative flex flex-col items-center justify-center min-h-[52px] ${isSelected && hasRecords
+                                                        ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/30'
+                                                        : hasRecords
+                                                            ? 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer'
+                                                            : 'bg-slate-100/60 dark:bg-slate-800/40 text-slate-300 dark:text-slate-600 border border-slate-200/40 dark:border-slate-800/50 cursor-not-allowed select-none'
+                                                        }`}
+                                                    title={hasRecords ? `${m.name} ${selectedYear}: ${count} record(s)` : `${m.name} ${selectedYear}: No records recorded`}
+                                                >
+                                                    <span className="text-[11px] leading-none">{m.short}</span>
+                                                    <span className={`text-[9px] mt-1 font-semibold leading-none ${isSelected && hasRecords
+                                                        ? 'text-indigo-100'
+                                                        : hasRecords
+                                                            ? 'text-indigo-600 dark:text-indigo-400 font-black'
+                                                            : 'text-slate-300 dark:text-slate-600'
+                                                        }`}>
+                                                        {hasRecords ? `${count} rec` : '0'}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
 
-                        {/* Interactive Toggle Cards / Checklist without Emojis */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                            {/* Birth */}
-                            <div
-                                onClick={() => toggleDocType('birth')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('birth')
-                                    ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-orange-400/20'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('birth') ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                        }`}>
-                                        <UserIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-xs font-black leading-tight truncate">Birth</p>
-                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Live Birth</p>
-                                    </div>
+                        {/* Document Categories Checklist (Pagsamahin: Birth + Death + Marriage) */}
+                        <div className="lg:col-span-7 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                                    <DocumentTextIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Document Types to Include
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                                        {selectedDocTypes.length} of 3 selected
+                                    </span>
+                                    {selectedDocTypes.length < 3 && (
+                                        <button
+                                            type="button"
+                                            onClick={selectAllTypes}
+                                            className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer underline"
+                                        >
+                                            Select All
+                                        </button>
+                                    )}
                                 </div>
-                                <input
-                                    type="checkbox"
-                                    checked={selectedDocTypes.includes('birth')}
-                                    onChange={() => { }}
-                                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-                                />
                             </div>
 
-                            {/* Death */}
-                            <div
-                                onClick={() => toggleDocType('death')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('death')
-                                    ? 'bg-red-50/50 dark:bg-red-950/30 border-red-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-red-400/20'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('death') ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                        }`}>
-                                        <DocumentTextIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-xs font-black leading-tight truncate">Death</p>
-                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Deceased</p>
-                                    </div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={selectedDocTypes.includes('death')}
-                                    onChange={() => { }}
-                                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-                                />
-                            </div>
+                            {/* Interactive Toggle Cards / Checklist without Emojis */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-                            {/* Marriage */}
-                            <div
-                                onClick={() => toggleDocType('marriage')}
-                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('marriage')
-                                    ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-blue-400/20'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('marriage') ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                        }`}>
-                                        <UsersIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-xs font-black leading-tight truncate">Marriage</p>
-                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Contract</p>
-                                    </div>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={selectedDocTypes.includes('marriage')}
-                                    onChange={() => { }}
-                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-                                />
-                            </div>
-
-                        </div>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium pl-1">
-                            You can check multiple categories (e.g. Birth and Death together) to export them combined in one report.
-                        </p>
-                    </div>
-
-                </div>
-
-                {/* Collapsible Advanced Filter Settings Toggle Button */}
-                <div className="flex items-center justify-between pt-1">
-                    <button
-                        type="button"
-                        onClick={() => setIsAdvancedOpen(prev => !prev)}
-                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${isAdvancedOpen || activeAdvancedFilterCount > 0
-                            ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-sm'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                            }`}
-                    >
-                        <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>Advanced Filter Settings</span>
-                        {activeAdvancedFilterCount > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">
-                                {activeAdvancedFilterCount}
-                            </span>
-                        )}
-                        {isAdvancedOpen ? (
-                            <ChevronUpIcon className="w-3.5 h-3.5 text-slate-400 ml-1" />
-                        ) : (
-                            <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400 ml-1" />
-                        )}
-                    </button>
-
-                    {activeAdvancedFilterCount > 0 && (
-                        <button
-                            type="button"
-                            onClick={resetAdvancedFilters}
-                            className="text-xs font-bold text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1 cursor-pointer"
-                        >
-                            <XMarkIcon className="w-4 h-4" /> Reset Filters
-                        </button>
-                    )}
-                </div>
-
-                {/* Collapsible Content: Barangay, Custom Dates, Search, Status */}
-                <AnimatePresence>
-                    {isAdvancedOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                            animate={{ opacity: 1, height: 'auto', overflow: 'visible' }}
-                            exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                            transition={{ duration: 0.25 }}
-                            className="pt-2"
-                        >
-                            <div className="bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 space-y-4">
-                                <div className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                                    Granular Filters & Search
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-                                    {/* Search by Name or Registry No */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                                            Search Keyword
-                                        </label>
-                                        <div className="relative">
-                                            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                placeholder="Name, registry no..."
-                                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm placeholder-slate-400 dark:placeholder-slate-500"
-                                            />
+                                {/* Birth */}
+                                <div
+                                    onClick={() => toggleDocType('birth')}
+                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('birth')
+                                        ? 'bg-orange-50/50 dark:bg-orange-950/30 border-orange-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-orange-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('birth') ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                            }`}>
+                                            <UserIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="truncate">
+                                            <p className="text-xs font-black leading-tight truncate">Birth</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Live Birth</p>
                                         </div>
                                     </div>
-
-                                    {/* Barangay Filter */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                                            Barangay
-                                        </label>
-                                        <select
-                                            value={barangay}
-                                            onChange={(e) => setBarangay(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm cursor-pointer"
-                                        >
-                                            <option value="all">All Barangays (Entire Municipality)</option>
-                                            {BARANGAY_LIST.map((b) => (
-                                                <option key={b} value={b}>{b}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Custom Date From */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered From
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={dateFrom}
-                                            onChange={(e) => {
-                                                setDateFrom(e.target.value);
-                                                if (period !== 'custom') setPeriod('custom');
-                                            }}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
-                                        />
-                                    </div>
-
-                                    {/* Custom Date To */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered To
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={dateTo}
-                                            onChange={(e) => {
-                                                setDateTo(e.target.value);
-                                                if (period !== 'custom') setPeriod('custom');
-                                            }}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
-                                        />
-                                    </div>
-
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDocTypes.includes('birth')}
+                                        onChange={() => { }}
+                                        className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
+                                    />
                                 </div>
+
+                                {/* Death */}
+                                <div
+                                    onClick={() => toggleDocType('death')}
+                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('death')
+                                        ? 'bg-red-50/50 dark:bg-red-950/30 border-red-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-red-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('death') ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                            }`}>
+                                            <DocumentTextIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="truncate">
+                                            <p className="text-xs font-black leading-tight truncate">Death</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Deceased</p>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDocTypes.includes('death')}
+                                        onChange={() => { }}
+                                        className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
+                                    />
+                                </div>
+
+                                {/* Marriage */}
+                                <div
+                                    onClick={() => toggleDocType('marriage')}
+                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${selectedDocTypes.includes('marriage')
+                                        ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-blue-400/20'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${selectedDocTypes.includes('marriage') ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                                            }`}>
+                                            <UsersIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="truncate">
+                                            <p className="text-xs font-black leading-tight truncate">Marriage</p>
+                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Contract</p>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDocTypes.includes('marriage')}
+                                        onChange={() => { }}
+                                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
+                                    />
+                                </div>
+
                             </div>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium pl-1">
+                                You can check multiple categories (e.g. Birth and Death together) to export them combined in one report.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    {/* Collapsible Advanced Filter Settings Toggle Button */}
+                    <div className="flex items-center justify-between pt-1">
+                        <button
+                            type="button"
+                            onClick={() => setIsAdvancedOpen(prev => !prev)}
+                            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${isAdvancedOpen || activeAdvancedFilterCount > 0
+                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-sm'
+                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            <AdjustmentsHorizontalIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Advanced Filter Settings</span>
+                            {activeAdvancedFilterCount > 0 && (
+                                <span className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white text-[10px] font-black flex items-center justify-center">
+                                    {activeAdvancedFilterCount}
+                                </span>
+                            )}
+                            {isAdvancedOpen ? (
+                                <ChevronUpIcon className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                            ) : (
+                                <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                            )}
+                        </button>
+
+                        {activeAdvancedFilterCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={resetAdvancedFilters}
+                                className="text-xs font-bold text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1 cursor-pointer"
+                            >
+                                <XMarkIcon className="w-4 h-4" /> Reset Filters
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Collapsible Content: Barangay, Custom Dates, Search, Status */}
+                    <AnimatePresence>
+                        {isAdvancedOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                                animate={{ opacity: 1, height: 'auto', overflow: 'visible' }}
+                                exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                                transition={{ duration: 0.25 }}
+                                className="pt-2"
+                            >
+                                <div className="bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+                                    <div className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                        Granular Filters & Search
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                                        {/* Search by Name or Registry No */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                                Search Keyword
+                                            </label>
+                                            <div className="relative">
+                                                <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input
+                                                    type="text"
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    placeholder="Name, registry no..."
+                                                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm placeholder-slate-400 dark:placeholder-slate-500"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Barangay Filter */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                                Barangay
+                                            </label>
+                                            <select
+                                                value={barangay}
+                                                onChange={(e) => setBarangay(e.target.value)}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm cursor-pointer"
+                                            >
+                                                <option value="all">All Barangays (Entire Municipality)</option>
+                                                {BARANGAY_LIST.map((b) => (
+                                                    <option key={b} value={b}>{b}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Custom Date From */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                                                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered From
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={dateFrom}
+                                                onChange={(e) => {
+                                                    setDateFrom(e.target.value);
+                                                    if (period !== 'custom') setPeriod('custom');
+                                                }}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                            />
+                                        </div>
+
+                                        {/* Custom Date To */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                                                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> Date Registered To
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={dateTo}
+                                                onChange={(e) => {
+                                                    setDateTo(e.target.value);
+                                                    if (period !== 'custom') setPeriod('custom');
+                                                }}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                                            />
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {downloadSuccess && (
+                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs font-bold text-emerald-800">
+                            <CheckCircleIcon className="w-6 h-6 text-emerald-600 shrink-0" />
+                            <span>Civil Registry report generated and downloaded successfully!</span>
                         </motion.div>
                     )}
-                </AnimatePresence>
+                </div>
 
-                {downloadSuccess && (
-                    <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs font-bold text-emerald-800">
-                        <CheckCircleIcon className="w-6 h-6 text-emerald-600 shrink-0" />
-                        <span>Civil Registry report generated and downloaded successfully!</span>
-                    </motion.div>
-                )}
-            </div>
-
-            {/* Live Records Preview Table */}
-            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
-                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
-                    <div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Live Data Export Preview</h3>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">
-                            <strong className="text-slate-700 dark:text-slate-300">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Registry Database (Approved Records)'}</strong>
-                            {' • '}Categories: ({selectedDocTypes.join(', ')})
-                            {effectiveDates.from ? ` • Between ${effectiveDates.from} and ${effectiveDates.to}` : ''}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
+                {/* Live Records Preview Table */}
+                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
+                    <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">Live Data Export Preview</h3>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                                <strong className="text-slate-700 dark:text-slate-300">{dataSource === 'procured' ? 'Client Procured Issuances' : dataSource === 'all' ? 'All Records (Combined)' : 'Registry Database (Approved Records)'}</strong>
+                                {' • '}Categories: ({selectedDocTypes.join(', ')})
+                                {effectiveDates.from ? ` • Between ${effectiveDates.from} and ${effectiveDates.to}` : ''}
+                            </p>
+                        </div>
                         <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-3.5 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
                             Previewing {previewRecords.length} records
                         </span>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPreviewMode('live')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === 'live' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                            >
-                                Live Data
-                            </button>
-                            <button
-                                onClick={() => setPreviewMode('export')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === 'export' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                            >
-                                Export Preview
-                            </button>
-                        </div>
                     </div>
+
+                    {isLoading && previewRecords.length === 0 ? (
+                        <SkeletonLoader type="reports" rows={6} />
+                    ) : previewRecords.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400">
+                            <TableCellsIcon className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No matching registry records found</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try selecting other months or adjust your document categories above</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className={`overflow-x-auto transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                            {dataSource === 'all' && (
+                                                <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Record Scope</th>
+                                            )}
+                                            <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">ID / Reg No.</th>
+                                            {dataSource !== 'internal' && (
+                                                <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Ticket #</th>
+                                            )}
+                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Category</th>
+                                            <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">Person / Client Name</th>
+                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">
+                                                {dataSource === 'procured' ? 'Issuance Date' : 'Event Date'}
+                                            </th>
+                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs text-slate-700 dark:text-slate-200 font-medium">
+                                        {paginatedReports.map((doc) => {
+                                            const ef = parseExtracted(doc.extracted_fields ?? doc.extracted_data);
+                                            const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
+                                            const isProcured = doc._source === 'procured';
+
+                                            return (
+                                                <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                                                    {dataSource === 'all' && (
+                                                        <td className="px-4 py-4">
+                                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${isProcured
+                                                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50'
+                                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                                                }`}>
+                                                                {isProcured ? 'Procured' : 'Registry'}
+                                                            </span>
+                                                        </td>
+                                                    )}
+                                                    <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-slate-100">
+                                                        #{doc.id} <span className="text-[11px] text-slate-400 dark:text-slate-500 block font-sans font-normal">{regNo}</span>
+                                                    </td>
+                                                    {dataSource !== 'internal' && (
+                                                        <td className="px-4 py-4 font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                                            {isProcured && doc.ticket_number ? (
+                                                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300">
+                                                                    {doc.ticket_number}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-slate-300 dark:text-slate-600 font-normal select-none">—</span>
+                                                            )}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-4">
+                                                        {(() => {
+                                                            const t = (doc.type || '').toLowerCase();
+                                                            const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                            return (
+                                                                <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                    {doc.type || 'Birth'}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
+                                                        {doc.personName || doc.name || 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
+                                                        {doc.issuanceDate || doc.date || 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
+                                                        {doc.barangay || 'N/A'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Report Records Pagination */}
+                            <Pagination
+                                currentPage={safeReportsPage}
+                                totalItems={previewRecords.length}
+                                pageSize={reportsPageSize}
+                                onPageChange={(p) => setReportsPage(p)}
+                                onPageSizeChange={(s) => {
+                                    setReportsPageSize(s);
+                                    setReportsPage(1);
+                                }}
+                                itemLabel="records"
+                            />
+                        </>
+                    )}
                 </div>
 
-                {isLoading ? (
-                    <div className="p-6"><SkeletonLoader type="table" rows={6} /></div>
-                ) : previewRecords.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400">
-                        <TableCellsIcon className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
-                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No matching registry records found</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try selecting other months or adjust your document categories above</p>
-                    </div>
-                ) : (
-                    <>
-                        {previewMode === 'export' && exportPreviewStats && (
-                            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40">
-                                <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-2">Export Preview Summary</div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Records</div>
-                                        <div className="text-lg font-black text-slate-900 dark:text-white">{previewRecords.length}</div>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Births</div>
-                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.bCount}</div>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deaths</div>
-                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.dCount}</div>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Marriages</div>
-                                        <div className="text-lg font-black text-slate-900 dark:text-white">{exportPreviewStats.mCount}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/80 dark:bg-slate-950/70 text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                                        {dataSource === 'all' && (
-                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Record Scope</th>
-                                        )}
-                                        <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">ID / Reg No.</th>
-                                        {dataSource !== 'internal' && (
-                                            <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Ticket #</th>
-                                        )}
-                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Category</th>
-                                        <th className="px-6 py-3.5 font-black text-slate-500 dark:text-slate-400">Person / Client Name</th>
-                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">
-                                            {dataSource === 'procured' ? 'Issuance Date' : 'Event Date'}
-                                        </th>
-                                        <th className="px-4 py-3.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs text-slate-700 dark:text-slate-200 font-medium">
-                                    {paginatedReports.map((doc) => {
-                                        const ef = typeof doc.extracted_fields === 'string' ? JSON.parse(doc.extracted_fields || '{}') : (doc.extracted_fields || {});
-                                        const regNo = doc.certNumber || ef.registry_number || ef.registry_no || doc.id;
-                                        const isProcured = doc._source === 'procured';
-
-                                        return (
-                                            <tr key={`${doc._source || 'rec'}-${doc.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                                                {dataSource === 'all' && (
-                                                    <td className="px-4 py-4">
-                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${isProcured
-                                                            ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50'
-                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                                                            }`}>
-                                                            {isProcured ? 'Procured' : 'Registry'}
-                                                        </span>
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-slate-100">
-                                                    #{doc.id} <span className="text-[11px] text-slate-400 dark:text-slate-500 block font-sans font-normal">{regNo}</span>
-                                                </td>
-                                                {dataSource !== 'internal' && (
-                                                    <td className="px-4 py-4 font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
-                                                        {isProcured && doc.ticket_number ? (
-                                                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300">
-                                                                {doc.ticket_number}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-slate-300 dark:text-slate-600 font-normal select-none">—</span>
-                                                        )}
-                                                    </td>
-                                                )}
-                                                <td className="px-4 py-4">
-                                                    {(() => {
-                                                        const t = (doc.type || '').toLowerCase();
-                                                        const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
-                                                        return (
-                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
-                                                                {doc.type || 'Birth'}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
-                                                    {doc.personName || doc.name || 'N/A'}
-                                                </td>
-                                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
-                                                    {doc.issuanceDate || doc.date || 'N/A'}
-                                                </td>
-                                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
-                                                    {doc.barangay || 'N/A'}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Report Records Pagination */}
-                        <Pagination
-                            currentPage={safeReportsPage}
-                            totalItems={previewRecords.length}
-                            pageSize={reportsPageSize}
-                            onPageChange={(p) => setReportsPage(p)}
-                            onPageSizeChange={(s) => {
-                                setReportsPageSize(s);
-                                setReportsPage(1);
-                            }}
-                            itemLabel="records"
-                        />
-                    </>
-                )}
             </div>
-
-        </div>
-    );
+            );
 }
 
 /** Provides the string predicate expected by the report formatter. */
-function is_string(val) {
-    return typeof val === 'string';
-}
+const is_string = (val) => typeof val === 'string';

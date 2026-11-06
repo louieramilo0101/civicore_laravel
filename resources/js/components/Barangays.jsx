@@ -46,7 +46,7 @@ function Barangays() {
                 </motion.h2>
                 
                 {loading ? (
-                    <div className="flex items-center justify-center py-8"><SkeletonLoader type="cards" rows={4} /></div>
+                    <SkeletonLoader type="barangays" rows={4} />
                 ) : barangays.length === 0 ? (
                     <motion.div className="text-center py-8 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
                         <div className="mb-2 flex justify-center text-slate-300">

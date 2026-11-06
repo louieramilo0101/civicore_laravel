@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\EncryptedJson;
 
 class DummyDataSeeder extends Seeder
 {
@@ -78,8 +79,8 @@ class DummyDataSeeder extends Seeder
                 'personName' => $item['name'],
                 'barangay' => $item['barangay'],
                 'ocr_text' => "CERTIFICATE OF LIVE BIRTH\nName: {$item['name']}\nDate of Birth: {$formattedDate}\nPlace of Birth: Naic, Cavite\nFather: {$item['father']}\nMother: {$item['mother']}",
-                'extracted_fields' => json_encode($extractedFields),
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_fields' => EncryptedJson::encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'encoded_by' => $encoder,
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
@@ -94,7 +95,7 @@ class DummyDataSeeder extends Seeder
                 'issuanceDate' => $formattedDate,
                 'status' => 'Active',
                 'encoded_by' => $encoder,
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
             ]);
@@ -157,8 +158,8 @@ class DummyDataSeeder extends Seeder
                 'personName' => $item['name'],
                 'barangay' => $item['barangay'],
                 'ocr_text' => "CERTIFICATE OF DEATH\nDeceased: {$item['name']}\nDate of Death: {$formattedDate}\nCause of Death: {$item['cause']}\nPlace of Death: Naic, Cavite",
-                'extracted_fields' => json_encode($extractedFields),
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_fields' => EncryptedJson::encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'encoded_by' => $encoder,
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
@@ -173,7 +174,7 @@ class DummyDataSeeder extends Seeder
                 'issuanceDate' => $formattedDate,
                 'status' => 'Active',
                 'encoded_by' => $encoder,
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
             ]);
@@ -235,8 +236,8 @@ class DummyDataSeeder extends Seeder
                 'personName' => $coupleName,
                 'barangay' => $item['barangay'],
                 'ocr_text' => "CERTIFICATE OF MARRIAGE\nHusband: {$item['husband']}\nWife: {$item['wife']}\nDate of Marriage: {$formattedDate}\nPlace of Marriage: Naic, Cavite",
-                'extracted_fields' => json_encode($extractedFields),
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_fields' => EncryptedJson::encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'encoded_by' => $encoder,
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
@@ -251,7 +252,7 @@ class DummyDataSeeder extends Seeder
                 'issuanceDate' => $formattedDate,
                 'status' => 'Active',
                 'encoded_by' => $encoder,
-                'extracted_data' => json_encode($extractedFields),
+                'extracted_data' => EncryptedJson::encode($extractedFields),
                 'created_at' => $dateObj,
                 'updated_at' => $dateObj,
             ]);

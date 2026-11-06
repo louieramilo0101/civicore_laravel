@@ -17,11 +17,23 @@ class BackupService
     /** Path to private backups directory (outside web root). */
     protected string $backupPath;
 
+    /** Backup encryption key from env (base64-encoded 32 bytes) */
+    protected ?string $encryptionKey = null;
+
     public function __construct()
     {
         $this->backupPath = storage_path('app/backups');
         if (!File::isDirectory($this->backupPath)) {
             File::makeDirectory($this->backupPath, 0700, true);
+        }
+
+        $key = env('BACKUP_ENCRYPTION_KEY');
+        if ($key) {
+            $this->encryptionKey = base64_decode($key);
+            if (strlen($this->encryptionKey) !== 32) {
+                Log::warning('BACKUP_ENCRYPTION_KEY must be 32 bytes (base64-encoded). Encryption disabled.');
+                $this->encryptionKey = null;
+            }
         }
     }
 
@@ -96,14 +108,26 @@ class BackupService
             File::delete($tempSqlFile);
         }
 
+        // Encrypt the backup if key is available
+        $encrypted = false;
+        $encryptedPath = $zipPath;
+        if ($this->encryptionKey) {
+            $encryptedPath = $this->encryptBackup($zipPath);
+            if ($encryptedPath !== $zipPath) {
+                $encrypted = true;
+                File::delete($zipPath); // Remove unencrypted version
+                $fileName = basename($encryptedPath);
+            }
+        }
+
         // Auto-prune old backups after creation (except pre_restore)
         if ($type !== 'pre_restore') {
             $this->pruneOldBackups();
         }
 
-        $size = File::size($zipPath);
+        $size = File::size($encryptedPath);
 
-        Log::info("CiviCORE backup created successfully: {$fileName} ({$size} bytes)");
+        Log::info("CiviCORE backup created successfully: {$fileName} ({$size} bytes)" . ($encrypted ? ' [ENCRYPTED]' : ''));
 
         return [
             'filename'   => $fileName,
@@ -112,7 +136,81 @@ class BackupService
             'size_human' => $this->formatBytes($size),
             'files_count'=> $fileCount,
             'created_at' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+            'encrypted'  => $encrypted,
         ];
+    }
+
+    /**
+     * Encrypt a backup zip file using AES-256-GCM.
+     *
+     * @param string $zipPath
+     * @return string Path to encrypted file
+     */
+    protected function encryptBackup(string $zipPath): string
+    {
+        $encryptedPath = $zipPath . '.enc';
+        $iv = random_bytes(16); // 128-bit IV for GCM
+
+        $plaintext = File::get($zipPath);
+        $ciphertext = openssl_encrypt(
+            $plaintext,
+            'aes-256-gcm',
+            $this->encryptionKey,
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag
+        );
+
+        if ($ciphertext === false) {
+            throw new \RuntimeException('Failed to encrypt backup: ' . openssl_error_string());
+        }
+
+        // Store: IV (16 bytes) + tag (16 bytes) + ciphertext
+        $encryptedData = $iv . $tag . $ciphertext;
+        File::put($encryptedPath, $encryptedData);
+
+        return $encryptedPath;
+    }
+
+    /**
+     * Decrypt an encrypted backup file.
+     *
+     * @param string $encryptedPath
+     * @return string Path to decrypted zip file
+     */
+    protected function decryptBackup(string $encryptedPath): string
+    {
+        if (!$this->encryptionKey) {
+            throw new \RuntimeException('Cannot decrypt backup: BACKUP_ENCRYPTION_KEY not configured');
+        }
+
+        $data = File::get($encryptedPath);
+        
+        if (strlen($data) < 32) {
+            throw new \RuntimeException('Invalid encrypted backup file: too short');
+        }
+
+        $iv = substr($data, 0, 16);
+        $tag = substr($data, 16, 16);
+        $ciphertext = substr($data, 32);
+
+        $plaintext = openssl_decrypt(
+            $ciphertext,
+            'aes-256-gcm',
+            $this->encryptionKey,
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag
+        );
+
+        if ($plaintext === false) {
+            throw new \RuntimeException('Failed to decrypt backup: wrong key or corrupted data');
+        }
+
+        $decryptedPath = $encryptedPath . '.decrypted.zip';
+        File::put($decryptedPath, $plaintext);
+
+        return $decryptedPath;
     }
 
     /**
@@ -128,16 +226,30 @@ class BackupService
 
         $files = File::files($this->backupPath);
         $backups = [];
+        $processed = [];
 
         foreach ($files as $file) {
             $name = $file->getFilename();
-            if (pathinfo($name, PATHINFO_EXTENSION) !== 'zip') {
+            $isEncrypted = false;
+            $baseName = $name;
+
+            // Handle both .zip and .enc files
+            if (str_ends_with($name, '.enc')) {
+                $isEncrypted = true;
+                $baseName = substr($name, 0, -4); // Remove .enc
+            } elseif (!str_ends_with($name, '.zip')) {
                 continue;
             }
 
+            // Skip if we already processed the base name (e.g., both .zip and .enc exist)
+            if (isset($processed[$baseName])) {
+                continue;
+            }
+            $processed[$baseName] = true;
+
             // Parse filename format: civicore_{type}_{Ymd_His}.zip
             $type = 'manual';
-            if (preg_match('/^civicore_([a-z0-9_]+?)_(\d{8}_\d{6})\.zip$/', $name, $matches)) {
+            if (preg_match('/^civicore_([a-z0-9_]+?)_(\d{8}_\d{6})\.zip$/', $baseName, $matches)) {
                 $type = $matches[1];
                 $dateString = $matches[2];
                 try {
@@ -159,6 +271,7 @@ class BackupService
                 'size_human'  => $this->formatBytes($size),
                 'created_at'  => $createdAt,
                 'is_safety'   => $type === 'pre_restore',
+                'encrypted'   => $isEncrypted,
             ];
         }
 
@@ -177,26 +290,54 @@ class BackupService
      */
     public function restoreBackup(string $filename): array
     {
-        $targetZip = "{$this->backupPath}/{$filename}";
-        if (!File::exists($targetZip)) {
+        $targetFile = "{$this->backupPath}/{$filename}";
+        if (!File::exists($targetFile)) {
             throw new \InvalidArgumentException("Backup archive not found: {$filename}");
         }
 
         // 1. Create immediate Pre-Restore Safety Snapshot of current state
         $safetySnapshot = $this->createBackup('pre_restore');
 
-        // 2. Extract backup zip to a temporary folder
+        // 2. Handle encrypted backups
+        $targetZip = $targetFile;
+        $decryptedTempFile = null;
+        
+        if (str_ends_with($targetFile, '.enc')) {
+            if (!$this->encryptionKey) {
+                throw new \RuntimeException('Cannot restore encrypted backup: BACKUP_ENCRYPTION_KEY not configured');
+            }
+            $targetZip = $this->decryptBackup($targetFile);
+            $decryptedTempFile = $targetZip;
+        } elseif (!str_ends_with($targetFile, '.zip')) {
+            // Check if corresponding .enc file exists
+            $encFile = $targetFile . '.enc';
+            if (File::exists($encFile)) {
+                if (!$this->encryptionKey) {
+                    throw new \RuntimeException('Cannot restore encrypted backup: BACKUP_ENCRYPTION_KEY not configured');
+                }
+                $targetZip = $this->decryptBackup($encFile);
+                $decryptedTempFile = $targetZip;
+            }
+        }
+
+        // 3. Extract backup zip to a temporary folder
         $tempExtractDir = storage_path("app/backups/restore_temp_" . uniqid());
         File::makeDirectory($tempExtractDir, 0700, true);
 
         $zip = new ZipArchive();
         if ($zip->open($targetZip) !== true) {
             File::deleteDirectory($tempExtractDir);
+            if ($decryptedTempFile) File::delete($decryptedTempFile);
             throw new \RuntimeException("Failed to open backup archive: {$filename}");
         }
 
         $zip->extractTo($tempExtractDir);
         $zip->close();
+
+        // Clean up decrypted temp file
+        if ($decryptedTempFile) {
+            File::delete($decryptedTempFile);
+        }
 
         try {
             $connection = config('database.default');
@@ -285,6 +426,18 @@ class BackupService
 
             if ($shouldDelete) {
                 File::delete($filePath);
+                // Also delete the counterpart (.enc for .zip, .zip for .enc)
+                if (str_ends_with($filePath, '.enc')) {
+                    $zipPath = substr($filePath, 0, -4);
+                    if (File::exists($zipPath)) {
+                        File::delete($zipPath);
+                    }
+                } elseif (str_ends_with($filePath, '.zip')) {
+                    $encPath = $filePath . '.enc';
+                    if (File::exists($encPath)) {
+                        File::delete($encPath);
+                    }
+                }
                 $deleted[] = $backup['filename'];
             }
         }

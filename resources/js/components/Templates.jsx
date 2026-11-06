@@ -95,9 +95,7 @@ function Templates() {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map(i => <SkeletonLoader key={i} type="cards" rows={1} />)}
-                </div>
+                <SkeletonLoader type="templates" rows={3} />
             ) : templates.length === 0 ? (
                 <motion.div className="text-center py-20 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border-2 border-dashed border-slate-200" variants={itemVariants}>
                     <div className="mb-4 flex justify-center opacity-20 text-slate-300">

@@ -109,7 +109,7 @@ export const MarriageConfig = [
         fields: [
             ...NAME_FIELDS('husband_'),
             { key: 'husband_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'husband_age', label: '2b. Age', type: 'number', min: 18, max: 120, placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
+            { key: 'husband_age', label: '2b. Age', type: 'text', placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
             { key: 'husband_place_of_birth', label: '3. Place of Birth', type: 'text', required: false },
             { key: 'husband_citizenship', label: '4b. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'husband_residence', label: '5. Residence', type: 'text', required: false },
@@ -129,7 +129,7 @@ export const MarriageConfig = [
         fields: [
             ...NAME_FIELDS('wife_'),
             { key: 'wife_dob', label: '2a. Date of Birth', type: 'date', required: false, width: 'sm:col-span-1' },
-            { key: 'wife_age', label: '2b. Age', type: 'number', min: 18, max: 120, placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
+            { key: 'wife_age', label: '2b. Age', type: 'text', placeholder: 'Age (18+)', required: false, width: 'sm:col-span-1' },
             { key: 'wife_place_of_birth', label: '3. Place of Birth', type: 'text', required: false },
             { key: 'wife_citizenship', label: '4b. Citizenship', type: 'select', options: CITIZENSHIP_OPTIONS, required: false, width: 'sm:col-span-1' },
             { key: 'wife_residence', label: '5. Residence', type: 'text', required: false },

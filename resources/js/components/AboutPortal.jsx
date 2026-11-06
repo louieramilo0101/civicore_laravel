@@ -100,8 +100,8 @@ export default function AboutPortal() {
                     <div className="w-full max-w-sm aspect-square bg-gradient-to-br from-[#d4a574]/15 via-white/[0.02] to-transparent rounded-[2.5rem] border border-[#d4a574]/30 relative overflow-hidden group shadow-2xl shadow-black/40 flex items-center justify-center p-8 backdrop-blur-sm">
                         <div className="absolute inset-0 bg-[#d4a574]/5 rounded-[2.5rem] pointer-events-none" />
                         <img
-                            src="/images/Civil%20Registry/logo%20civil%20registry.jpg"
-                            alt="Civil Registry of Naic Logo"
+                            src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                            alt="Civil Registry of Naic & Naic Municipal Seal"
                             className="w-full h-full object-contain rounded-2xl shadow-md group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute -top-24 -right-24 w-60 h-60 bg-[#d4a574]/15 rounded-full blur-[80px] pointer-events-none" />

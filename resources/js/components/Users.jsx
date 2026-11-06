@@ -60,7 +60,7 @@ function Users() {
                 </motion.h2>
                 
                 {loading ? (
-                    <div className="flex items-center justify-center py-8"><SkeletonLoader type="table" rows={5} /></div>
+                    <SkeletonLoader type="users" rows={5} />
                 ) : users.length === 0 ? (
                     <motion.div className="text-center py-8 text-gray-500" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
                         <UsersIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />

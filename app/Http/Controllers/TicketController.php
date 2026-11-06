@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
+use App\Support\EncryptedJson;
 
 /**
  * Represents the Ticket Controller application component.
@@ -510,11 +511,11 @@ class TicketController extends Controller
                   ->orWhere('contact_number', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%")
                   ->orWhere('purpose', 'LIKE', "%{$search}%")
-                  ->orWhere('details', 'LIKE', "%{$search}%")
+                  // details is encrypted at rest; free-text matching happens client-side
                   ->orWhereHas('document', function ($docQ) use ($search) {
                       $docQ->where('name', 'LIKE', "%{$search}%")
-                           ->orWhere('personName', 'LIKE', "%{$search}%")
-                           ->orWhere('extracted_fields', 'LIKE', "%{$search}%");
+                           ->orWhere('personName', 'LIKE', "%{$search}%");
+                      // Note: extracted_fields is now encrypted, search is handled client-side on decrypted data
                   });
             });
         }
@@ -875,64 +876,67 @@ class TicketController extends Controller
         }
 
         $details = is_array($ticket->details) ? $ticket->details : [];
-        $existingFields = json_decode($document->extracted_fields, true) ?: [];
+        // Decrypt extracted_fields (handles both encrypted and legacy plaintext)
+        $existingFields = $this->decryptForExport($document->extracted_fields);
 
         // Merge! The citizen's input takes precedence.
         $mergedFields = array_merge($existingFields, $details);
-        $mergedData = json_encode($mergedFields, JSON_UNESCAPED_UNICODE);
+        $mergedData = EncryptedJson::encode($mergedFields);
+
+        // Extract registry_number for the new searchable column
+        $registryNumber = $mergedFields['registry_number'] ?? $mergedFields['registry_no'] ?? $mergedFields['certNumber'] ?? null;
 
         $personName = $ticket->client_name;
         $orNumber = $this->generateOfficialReceiptNumber();
         $requestedBy = $requestedBy ?: 'System';
 
-        $existing = DB::table('issuances')
+        // Resolve ticket_id FK
+        $ticketId = $ticket->id;
+
+        $existing = DB::table('ticket_issuances')
             ->where('document_id', $documentId)
             ->where('ticket_number', $ticket->ticket_number)
             ->first();
 
         if ($existing) {
-            DB::table('issuances')
+            DB::table('ticket_issuances')
                 ->where('id', $existing->id)
                 ->update([
-                    'ticket_number' => $ticket->ticket_number,
-                    'extracted_data' => $mergedData,
-                    'name' => $personName,
-                    'status' => 'Approved',
-                    'or_number' => $existing->or_number ?: $orNumber,
-                    'print_remarks' => $printRemarks,
-                    'requested_by' => $requestedBy,
-                    'updated_at' => Carbon::now()
+                    'extracted_data'  => $mergedData,
+                    'registry_number' => $registryNumber,
+                    'name'            => $personName,
+                    'status'          => 'Approved',
+                    'or_number'       => $existing->or_number ?: $orNumber,
+                    'print_remarks'   => $printRemarks,
+                    'requested_by'    => $requestedBy,
+                    'updated_at'      => Carbon::now(),
                 ]);
         } else {
-            $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
-            $year = date('Y');
-
-            $results = DB::select("SELECT MAX(id) as max_id FROM issuances");
-            $nextNum = 1;
-            if (count($results) > 0 && $results[0]->max_id !== null) {
-                $nextNum = intval($results[0]->max_id) + 1;
-            }
-
-            $certNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+            $prefix       = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
+            $year         = date('Y');
+            $maxId        = DB::table('ticket_issuances')->max('id') ?? 0;
+            $certNumber   = $prefix . '-' . $year . '-TKT-' . str_pad($maxId + 1, 3, '0', STR_PAD_LEFT);
             $issuanceDate = date('m/d/Y');
 
-            DB::table('issuances')->insert([
-                'certNumber' => $certNumber,
-                'type' => $docType,
-                'certificate_type' => $normCertType,
-                'name' => $personName,
-                'barangay' => $document->barangay ?: 'N/A',
-                'issuanceDate' => $issuanceDate,
-                'status' => 'Approved',
-                'encoded_by' => 'System',
-                'document_id' => $documentId,
-                'extracted_data' => $mergedData,
-                'or_number' => $orNumber,
-                'print_remarks' => $printRemarks,
-                'requested_by' => $requestedBy,
-                'ticket_number' => $ticket->ticket_number,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
+            DB::table('ticket_issuances')->insert([
+                'ticket_id'       => $ticketId,
+                'ticket_number'   => $ticket->ticket_number,
+                'document_id'     => $documentId,
+                'certNumber'      => $certNumber,
+                'type'            => $docType,
+                'certificate_type'=> $normCertType,
+                'name'            => $personName,
+                'barangay'        => $document->barangay ?: 'N/A',
+                'issuanceDate'    => $issuanceDate,
+                'status'          => 'Approved',
+                'encoded_by'      => 'System',
+                'extracted_data'  => $mergedData,
+                'registry_number' => $registryNumber,
+                'or_number'       => $orNumber,
+                'print_remarks'   => $printRemarks,
+                'requested_by'    => $requestedBy,
+                'created_at'      => Carbon::now(),
+                'updated_at'      => Carbon::now(),
             ]);
         }
     }
@@ -1050,40 +1054,34 @@ class TicketController extends Controller
         $dbUser = $userId ? \App\Models\User::find($userId) : null;
         $userName = $dbUser ? $dbUser->name : $request->session()->get('user_name', 'System');
 
-        $issuancesQuery = DB::table('issuances');
+        // Update ticket_issuances rows linked to this ticket to status=Issued
+        $tiQuery = DB::table('ticket_issuances');
         if ($ticket->ticket_number) {
-            $issuancesQuery->where('ticket_number', $ticket->ticket_number);
+            $tiQuery->where('ticket_number', $ticket->ticket_number);
             if ($ticket->document_id) {
-                $issuancesQuery->orWhere('document_id', $ticket->document_id);
+                $tiQuery->orWhere('document_id', $ticket->document_id);
             }
         } elseif ($ticket->document_id) {
-            $issuancesQuery->where('document_id', $ticket->document_id);
+            $tiQuery->where('document_id', $ticket->document_id);
         }
 
-        $issuances = $issuancesQuery->get();
-
-        foreach ($issuances as $issuance) {
-            $updateData = [
-                'status' => 'Issued',
-                'encoded_by' => $userName,
-                'updated_at' => Carbon::now()
-            ];
-
-            if (empty($issuance->or_number)) {
-                $updateData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+        foreach ($tiQuery->get() as $ti) {
+            $upd = ['status' => 'Issued', 'encoded_by' => $userName, 'updated_at' => Carbon::now()];
+            if (empty($ti->or_number)) {
+                $upd['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
             }
-
-            if (empty($issuance->requested_by)) {
-                $updateData['requested_by'] = $userName;
+            if (empty($ti->requested_by)) {
+                $upd['requested_by'] = $userName;
             }
+            DB::table('ticket_issuances')->where('id', $ti->id)->update($upd);
+        }
 
-            if (empty($issuance->ticket_number) && $ticket->ticket_number) {
-                $updateData['ticket_number'] = $ticket->ticket_number;
-            }
-
+        // Also mark the linked registry issuance as Issued (if document was uploaded to registry)
+        if ($ticket->document_id) {
             DB::table('issuances')
-                ->where('id', $issuance->id)
-                ->update($updateData);
+                ->where('document_id', $ticket->document_id)
+                ->whereNull('deleted_at')
+                ->update(['status' => 'Issued', 'updated_at' => Carbon::now()]);
         }
 
         return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
@@ -1219,5 +1217,63 @@ class TicketController extends Controller
 
         $fullPath = Storage::disk('public')->path($ticket->consent_form_path);
         return response()->file($fullPath);
+    }
+
+    /**
+     * Decrypt extracted_data/extracted_fields for API response, handling both encrypted and legacy plaintext.
+     *
+     * @param string|null $data
+     * @return array
+     */
+    private function decryptForExport($data)
+    {
+        if (empty($data)) {
+            return [];
+        }
+
+        // If already an array (legacy or already decrypted), return as-is
+        if (is_array($data)) {
+            return $data;
+        }
+
+        // Try to decrypt if it's encrypted (Laravel encrypted cast produces base64 JSON)
+        $decrypted = null;
+        if (is_string($data) && $this->looksEncrypted($data)) {
+            try {
+                $decrypted = \Illuminate\Support\Facades\Crypt::decrypt($data);
+            } catch (\Throwable $e) {
+                // Fall through to legacy fallback
+            }
+        }
+
+        // If decryption didn't work, use the raw data for legacy fallback
+        if ($decrypted === null) {
+            $decrypted = $data;
+        }
+
+        // Decode JSON string to array
+        $decoded = json_decode($decrypted, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        return [];
+    }
+
+    /**
+     * Check if a value looks like Laravel-encrypted data.
+     *
+     * @param string $value
+     * @return bool
+     */
+    private function looksEncrypted(string $value): bool
+    {
+        if (strlen($value) < 50) return false;
+        
+        $decoded = @base64_decode($value, true);
+        if ($decoded === false) return false;
+        
+        // Laravel Crypt::encrypt() produces base64-encoded JSON with "iv","value","mac"/"tag" keys
+        return str_starts_with($decoded, '{"iv"') || str_starts_with($decoded, '{"value"');
     }
 }

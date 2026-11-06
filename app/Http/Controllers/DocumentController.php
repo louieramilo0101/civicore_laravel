@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Document;
 use App\Jobs\ProcessDocumentOcr;
+use App\Support\EncryptedJson;
 
 /**
  * Represents the Document Controller application component.
@@ -80,9 +81,12 @@ class DocumentController extends Controller
         $total = $totalResult[0]->total;
         
         // Get paginated results without duplicate row inflation from 1-to-many joins
+        // NOTE: ticket_number comes only from the tickets table. The issuances table
+        // is the pure Registry Database and no longer carries ticket_number
+        // (migrated to ticket_issuances, then column dropped).
         $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
-                         COALESCE(t.ticket_number, i.ticket_number) as ticket_number,
-                         i.certNumber as certNumber
+                          t.ticket_number as ticket_number,
+                          i.certNumber as certNumber
                   FROM documents d
                   LEFT JOIN (
                       SELECT document_id, MIN(ticket_number) as ticket_number
@@ -91,7 +95,7 @@ class DocumentController extends Controller
                       GROUP BY document_id
                   ) t ON t.document_id = d.id
                   LEFT JOIN (
-                      SELECT document_id, MIN(certNumber) as certNumber, MIN(ticket_number) as ticket_number
+                      SELECT document_id, MIN(certNumber) as certNumber
                       FROM issuances
                       WHERE deleted_at IS NULL
                       GROUP BY document_id
@@ -124,7 +128,7 @@ class DocumentController extends Controller
                 // Check if similar records already exist in the issuances table.
                 // Fetch the full candidate now so the review panel can jump straight
                 // into the side-by-side comparison without an extra async round-trip.
-                $fields = json_decode($doc->extracted_fields, true) ?: [];
+                $fields = EncryptedJson::decode($doc->extracted_fields);
                 $type = $doc->detected_type ?: $doc->type;
                 if ($type === 'marriage_license') {
                     $type = 'marriage';
@@ -141,10 +145,15 @@ class DocumentController extends Controller
                         'barangay' => $candidate->barangay,
                         'issuanceDate' => $candidate->issuanceDate,
                         'encoded_by' => $candidate->encoded_by,
-                        'extracted_fields' => json_decode($candidate->extracted_data, true) ?: []
+                        'extracted_fields' => EncryptedJson::decode($candidate->extracted_data)
                     ];
                 }
             }
+        }
+        
+        // Decrypt extracted_fields for API response (handles both encrypted and legacy plaintext)
+        foreach ($documents as $doc) {
+            $doc->extracted_fields = $this->decryptForExport($doc->extracted_fields);
         }
         
         return response()->json([
@@ -697,7 +706,7 @@ class DocumentController extends Controller
         $docData = DB::selectOne("SELECT * FROM documents WHERE id = ?", [$id]);
         if (!$docData) return response()->json(['error' => 'Document not found'], 404);
         
-        $fields = json_decode($docData->extracted_fields, true) ?? [];
+        $fields = EncryptedJson::decode($docData->extracted_fields);
         $barangay = $fields['barangay'] ?? '';
         $detectedType = $docData->detected_type ?: $docData->type;
         $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
@@ -740,8 +749,9 @@ class DocumentController extends Controller
 
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
-        $query = DB::table('issuances')
-            ->whereNull('deleted_at');
+        // Only check the pure Registry Database (issuances table).
+        // ticket_issuances are citizen-request copies and must NOT trigger duplicate warnings.
+        $query = DB::table('issuances')->whereNull('deleted_at');
 
         if ($normType === 'marriage') {
             $query->whereIn('type', ['marriage', 'marriage_license']);
@@ -755,8 +765,7 @@ class DocumentController extends Controller
 
         return $query->where(function ($q) use ($regNo) {
             $q->where('certNumber', $regNo)
-              ->orWhere('extracted_data->registry_number', $regNo)
-              ->orWhere('extracted_data->registry_no', $regNo);
+              ->orWhere('registry_number', $regNo);
         })->exists();
     }
 
@@ -776,8 +785,8 @@ class DocumentController extends Controller
 
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
-        $query = DB::table('issuances')
-            ->whereNull('deleted_at');
+        // Only check the pure Registry Database — ticket_issuances are not registry entries.
+        $query = DB::table('issuances')->whereNull('deleted_at');
 
         if ($normType === 'marriage') {
             $query->whereIn('type', ['marriage', 'marriage_license']);
@@ -791,8 +800,7 @@ class DocumentController extends Controller
 
         return $query->where(function ($q) use ($regNo) {
             $q->where('certNumber', $regNo)
-              ->orWhere('extracted_data->registry_number', $regNo)
-              ->orWhere('extracted_data->registry_no', $regNo);
+              ->orWhere('registry_number', $regNo);
         })->first();
     }
 
@@ -887,6 +895,9 @@ class DocumentController extends Controller
             DB::update(
                 "UPDATE documents SET extracted_fields = ?, ocr_text = ?, personName = ?, barangay = ?, status = ?, parental_consent = ?, encoded_by = ?, detected_type = ? WHERE id = ?",
                 [
+                    // documents.extracted_fields is plaintext JSON during the draft/review
+                    // phase. Encryption is applied only when promoting to the registry
+                    // database (issuances.extracted_data) below.
                     json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
                     $ocrText,
                     $personName,
@@ -942,6 +953,10 @@ class DocumentController extends Controller
 
                     if (count($existing) > 0) {
                         // 2. UPDATE existing Master Record (Sync certNumber if registry_number provided)
+                        // Extract registry_number for the new searchable column
+                        $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
+                        $registryNumber = !empty($userRegNo) ? $userRegNo : null;
+
                         $updateData = [
                             'type' => $docType,
                             'certificate_type' => $normCertType,
@@ -949,17 +964,12 @@ class DocumentController extends Controller
                             'barangay' => $barangay,
                             'status' => 'Active',
                             'encoded_by' => $encodedBy,
-                            'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                            'extracted_data' => EncryptedJson::encode($extractedFields),
+                            'registry_number' => $registryNumber,
                             'file_path' => $issuanceFilePath,
                             'image_path' => $issuanceImagePath,
-                            'ticket_number' => $ticketNumber,
                             'updated_at' => now()
                         ];
-
-                        $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
-                        if (!empty($userRegNo)) {
-                            $updateData['certNumber'] = $userRegNo;
-                        }
 
                         // If a ticket is linked, set or_number and requested_by if they aren't already set
                         $existingRecord = DB::table('issuances')->where('document_id', $id)->first();
@@ -988,6 +998,7 @@ class DocumentController extends Controller
                             $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
                             $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
                             $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
+                            $registryNumber = !empty($userRegNo) ? $userRegNo : null;
                             $issuanceDate = date('m/d/Y');
 
                             $insertData = [
@@ -1000,10 +1011,10 @@ class DocumentController extends Controller
                                 'status' => 'Active',
                                 'encoded_by' => $encodedBy,
                                 'document_id' => $id,
-                                'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                                'extracted_data' => EncryptedJson::encode($extractedFields),
+                                'registry_number' => $registryNumber,
                                 'file_path' => $issuanceFilePath,
                                 'image_path' => $issuanceImagePath,
-                                'ticket_number' => $ticketNumber,
                                 'created_at' => now(),
                                 'updated_at' => now()
                             ];
@@ -1068,10 +1079,17 @@ class DocumentController extends Controller
                 'updated_at' => now(),
             ]);
 
-DB::table('issuances')->where('document_id', $id)->update([
-                    'deleted_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Soft-delete linked registry issuance rows
+            DB::table('issuances')->where('document_id', $id)->update([
+                'deleted_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Soft-delete linked ticket issuances (citizen-request copies)
+            DB::table('ticket_issuances')->where('document_id', $id)->update([
+                'deleted_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
             $recentlyLogged = DB::table('activity_logs')
@@ -1401,6 +1419,10 @@ DB::table('issuances')->where('document_id', $id)->update([
 
         $documents = DB::select($query, $params);
 
+        foreach ($documents as $doc) {
+            $doc->extracted_fields = EncryptedJson::decode($doc->extracted_fields);
+        }
+
         return response()->json([
             'data' => $documents,
             'meta' => [
@@ -1434,10 +1456,14 @@ DB::table('issuances')->where('document_id', $id)->update([
             // 2. Delete linked issuance files if applicable
             $issuances = DB::table('issuances')->where('document_id', $id)->get();
             foreach ($issuances as $iss) {
-                if (!empty($iss->file_path)) {
-                    if (Storage::disk('public')->exists($iss->file_path)) {
-                        Storage::disk('public')->delete($iss->file_path);
-                    }
+                if (!empty($iss->file_path) && Storage::disk('public')->exists($iss->file_path)) {
+                    Storage::disk('public')->delete($iss->file_path);
+                }
+            }
+            $ticketIssuances = DB::table('ticket_issuances')->where('document_id', $id)->get();
+            foreach ($ticketIssuances as $ti) {
+                if (!empty($ti->file_path) && Storage::disk('public')->exists($ti->file_path)) {
+                    Storage::disk('public')->delete($ti->file_path);
                 }
             }
 
@@ -1449,9 +1475,10 @@ DB::table('issuances')->where('document_id', $id)->update([
                 'barangay' => $document->barangay
             ]);
 
-            // 4. Delete DB records
-            DB::table('documents')->where('id', $id)->delete();
+            // 4. Delete DB records - delete issuances FIRST due to FK ON DELETE SET NULL
             DB::table('issuances')->where('document_id', $id)->delete();
+            DB::table('ticket_issuances')->where('document_id', $id)->delete();
+            DB::table('documents')->where('id', $id)->delete();
             DB::table('document_ocr_pages')->where('document_id', $id)->delete();
 
             \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
@@ -1512,8 +1539,7 @@ DB::table('issuances')->where('document_id', $id)->update([
 
         $candidate = $query->where(function ($q) use ($regNo) {
             $q->where('certNumber', $regNo)
-              ->orWhere('extracted_data->registry_number', $regNo)
-              ->orWhere('extracted_data->registry_no', $regNo);
+              ->orWhere('registry_number', $regNo);
         })->first();
 
         if ($candidate) {
@@ -1528,7 +1554,8 @@ DB::table('issuances')->where('document_id', $id)->update([
                     'barangay' => $candidate->barangay,
                     'issuanceDate' => $candidate->issuanceDate,
                     'encoded_by' => $candidate->encoded_by,
-                    'extracted_fields' => json_decode($candidate->extracted_data, true) ?: []
+                    'registry_number' => $candidate->registry_number,
+                    'extracted_fields' => EncryptedJson::decode($candidate->extracted_data)
                 ]
             ]);
         }
@@ -1673,16 +1700,17 @@ DB::table('issuances')->where('document_id', $id)->update([
         $source = $request->query('source', 'internal');
         
         if ($source === 'procured') {
-            $rows = DB::table('issuances')
+            // Client Procured data is in ticket_issuances, not issuances
+            $rows = DB::table('ticket_issuances')
                 ->whereNull('deleted_at')
-                ->selectRaw("SUBSTRING(created_at, 1, 7) as year_month, COUNT(*) as count")
-                ->groupBy('year_month')
-                ->orderBy('year_month', 'desc')
+                ->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")
+                ->groupBy('ym')
+                ->orderBy('ym', 'desc')
                 ->get();
         } elseif ($source === 'all') {
             $docRows = DB::table('documents')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $issRows = DB::table('issuances')->whereNull('deleted_at')->whereNull('ticket_number')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $procRows = DB::table('issuances')->whereNull('deleted_at')->whereNotNull('ticket_number')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $issRows = DB::table('issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $procRows = DB::table('ticket_issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
             $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($issRows), array_keys($procRows)));
             rsort($allKeys);
             $monthCounts = [];
@@ -1693,19 +1721,19 @@ DB::table('issuances')->where('document_id', $id)->update([
             }
             return response()->json(['success' => true, 'months' => $monthCounts]);
         } else {
+            // Internal Master Registry (pure issuances table — no ticket_number column)
             $rows = DB::table('issuances')
                 ->whereNull('deleted_at')
-                ->whereNull('ticket_number')
-                ->selectRaw("SUBSTRING(created_at, 1, 7) as year_month, COUNT(*) as count")
-                ->groupBy('year_month')
-                ->orderBy('year_month', 'desc')
+                ->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")
+                ->groupBy('ym')
+                ->orderBy('ym', 'desc')
                 ->get();
         }
 
         $monthCounts = [];
         foreach ($rows as $row) {
-            if (!empty($row->year_month)) {
-                $monthCounts[$row->year_month] = (int) $row->count;
+            if (!empty($row->ym)) {
+                $monthCounts[$row->ym] = (int) $row->c;
             }
         }
 
@@ -1734,61 +1762,62 @@ DB::table('issuances')->where('document_id', $id)->update([
 
         $records = [];
 
-// 1. Fetch from Issuances (Procured) if needed
+// 1. Fetch from ticket_issuances (Client Procured) if needed.
+    // Citizen-request copies live in ticket_issuances, NOT the pure Registry
+    // Database (issuances). The old ticket_number-based split is gone.
         if ($source === 'procured' || $source === 'all') {
-            $conditions = ["i.deleted_at IS NULL"];
+            $conditions = ["ti.deleted_at IS NULL"];
             $params = [];
 
             if (!empty($types) && !in_array('all', $types)) {
                 $placeholders = implode(',', array_fill(0, count($types), '?'));
-                $conditions[] = "LOWER(i.type) IN ($placeholders)";
+                $conditions[] = "LOWER(ti.type) IN ($placeholders)";
                 foreach ($types as $t) {
                     $params[] = $t;
                 }
             }
 
             if (!empty($barangay) && $barangay !== 'all') {
-                $conditions[] = "i.barangay = ?";
+                $conditions[] = "ti.barangay = ?";
                 $params[] = $barangay;
             }
 
             if (!empty($status) && $status !== 'all') {
-                $conditions[] = "LOWER(i.status) = ?";
+                $conditions[] = "LOWER(ti.status) = ?";
                 $params[] = strtolower($status);
             }
 
             if (!empty($dateFrom)) {
-                $conditions[] = "DATE(i.created_at) >= ?";
+                $conditions[] = "DATE(ti.created_at) >= ?";
                 $params[] = $dateFrom;
             }
 
             if (!empty($dateTo)) {
-                $conditions[] = "DATE(i.created_at) <= ?";
+                $conditions[] = "DATE(ti.created_at) <= ?";
                 $params[] = $dateTo;
             }
 
             $whereClause = " WHERE " . implode(" AND ", $conditions);
-            $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
-                             i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
-                             i.ticket_number, i.extracted_data, i.created_at
-                       FROM issuances i" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
+            $query = "SELECT ti.id, ti.certNumber, ti.type, ti.name, ti.barangay, ti.status, ti.issuanceDate,
+                             ti.encoded_by, ti.or_number, ti.print_remarks, ti.requested_by, ti.approved_by,
+                             ti.ticket_number, ti.extracted_data, ti.created_at
+                       FROM ticket_issuances ti" . $whereClause . " ORDER BY ti.id DESC LIMIT 5000";
 
             $issRecords = DB::select($query, $params);
             foreach ($issRecords as $r) {
-                // Filter out ticket-only records with T-2026- prefix (matches frontend preview behavior)
-                if (!empty($r->ticket_number) && String($r->ticket_number)->startsWith('T-2026-') &&
-                    empty($r->or_number) && empty($r->requested_by) && empty($r->print_remarks)) {
-                    continue;
-                }
                 $r->_source = 'Client Procured';
-                $r->extracted_fields = $r->extracted_data;
+                // Decrypt extracted_data for export (handles both encrypted and legacy plaintext)
+                $r->extracted_fields = $this->decryptForExport($r->extracted_data);
                 $records[] = $r;
             }
         }
 
 // 2. Fetch from Issuances (Internal Master Registry) if needed
         if ($source === 'internal' || $source === 'all') {
-            $conditions = ["i.deleted_at IS NULL", "i.ticket_number IS NULL"];
+            $conditions = [
+                "i.deleted_at IS NULL",
+                "(d.id IS NULL OR d.deleted_at IS NULL)"
+            ];
             $params = [];
 
             if (!empty($types) && !in_array('all', $types)) {
@@ -1822,14 +1851,16 @@ DB::table('issuances')->where('document_id', $id)->update([
             $whereClause = " WHERE " . implode(" AND ", $conditions);
             $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
                              i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
-                             i.ticket_number, i.extracted_data, i.created_at, d.personName, d.date, d.extracted_fields, d.status as doc_status
+                             i.extracted_data, i.created_at, d.personName, d.date, d.extracted_fields, d.ocr_text, d.status as doc_status
                        FROM issuances i
                        LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
 
             $docRecords = DB::select($query, $params);
             foreach ($docRecords as $r) {
                 $r->_source = 'Internal Master Registry';
-                $r->extracted_fields = $r->extracted_data;
+                // Decrypt extracted_data for export (handles both encrypted and legacy plaintext). Fallback to d.extracted_fields if empty.
+                $dataPayload = !empty($r->extracted_data) ? $r->extracted_data : ($r->extracted_fields ?? null);
+                $r->extracted_fields = $this->decryptForExport($dataPayload);
                 $records[] = $r;
             }
         }
@@ -1937,7 +1968,16 @@ DB::table('issuances')->where('document_id', $id)->update([
         foreach ($records as $doc) {
             $ef = [];
             if (!empty($doc->extracted_fields)) {
-                $ef = is_string($doc->extracted_fields) ? json_decode($doc->extracted_fields, true) : (array) $doc->extracted_fields;
+                $ef = EncryptedJson::decode($doc->extracted_fields);
+            }
+
+            // Fallback parsing from OCR text (Gemini structured extraction) if present
+            $ocrData = [];
+            if (!empty($doc->ocr_text)) {
+                $trimmedOcr = trim($doc->ocr_text);
+                if (str_starts_with($trimmedOcr, '{') && str_ends_with($trimmedOcr, '}')) {
+                    $ocrData = json_decode($trimmedOcr, true) ?: [];
+                }
             }
 
             $docType = strtolower($doc->type ?? 'birth');
@@ -1945,45 +1985,69 @@ DB::table('issuances')->where('document_id', $id)->update([
             elseif ($docType === 'death') $dCount++;
             elseif ($docType === 'marriage') $mCount++;
 
-            $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? $doc->certNumber ?? 'N/A';
-            $sex = ucfirst($ef['sex'] ?? 'N/A');
-            $brgy = $doc->barangay ?? $ef['barangay'] ?? 'N/A';
+            $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? $ocrData['registry_number'] ?? $doc->certNumber ?? 'N/A';
+            $sex = ucfirst($ef['sex'] ?? $ocrData['sex'] ?? 'N/A');
+            $brgy = $doc->barangay ?? $ef['barangay'] ?? $ocrData['barangay'] ?? 'N/A';
             $encodedBy = $doc->encoded_by ?? 'System Staff';
-            $registeredAt = date('Y-m-d', strtotime($doc->created_at));
+            $registeredAt = $this->formatReportDate($doc->created_at);
             $recordSource = $doc->_source ?? 'Civil Registry';
 
-            // Senior status calculation (Death)
-            $ageVal = (int) ($ef['age_completed_years'] ?? $ef['age'] ?? 0);
+            // Senior status calculation (Death) - cascading fallbacks + calculated age from DOB/DOD
+            $ageVal = (int) ($ef['age_completed_years'] ?? $ef['age'] ?? $ocrData['age_completed_years'] ?? $ocrData['age'] ?? 0);
+            $deathDob = $ef['date_of_birth'] ?? $ocrData['date_of_birth'] ?? null;
+            $deathDod = $ef['date_of_death'] ?? $ocrData['date_of_death'] ?? null;
+            if ($ageVal === 0 && !empty($deathDob) && !empty($deathDod)) {
+                try {
+                    $cDob = \Carbon\Carbon::parse($deathDob);
+                    $cDod = \Carbon\Carbon::parse($deathDod);
+                    $ageVal = max(0, $cDob->diffInYears($cDod));
+                } catch (\Throwable $e) {}
+            }
             $isSenior = ($ageVal >= 60);
             if ($docType === 'death' && $isSenior) $seniorCount++;
 
             // Residence calculation (Resident vs Non-Resident of Naic) — death records only
-            $residence = strtolower($ef['residence'] ?? $doc->barangay ?? '');
+            $residence = strtolower($ef['residence'] ?? $ocrData['residence'] ?? $doc->barangay ?? '');
             $isResident = (str_contains($residence, 'naic') || (!empty($doc->barangay) && $doc->barangay !== 'N/A'));
             if ($docType === 'death' && $isResident) $residentCount++;
             $residentStatusLabel = $isResident ? 'Local Resident' : 'Non-Resident';
 
-            // Natural cause calculation (Death) — only when manner_of_death is explicitly set
-            $immediateCause = $ef['cause_of_death_immediate'] ?? $ef['cause_of_death'] ?? 'N/A';
-            $mannerRaw = $ef['manner_of_death'] ?? null;
-            $manner = is_string($mannerRaw) ? strtolower($mannerRaw) : '';
-            $isNatural = (!empty($manner) && (str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide'))));
+            // Natural cause calculation (Death) — non-negotiable field fallback
+            $immediateCause = $ef['cause_of_death_immediate'] 
+                ?? $ef['cause_of_death'] 
+                ?? $ef['cause_of_death_antecedent'] 
+                ?? $ef['cause_of_death_underlying'] 
+                ?? $ocrData['cause_of_death_immediate'] 
+                ?? $ocrData['cause_of_death'] 
+                ?? 'N/A';
+            
+            $mannerRaw = $ef['manner_of_death'] ?? $ocrData['manner_of_death'] ?? null;
+            $manner = is_string($mannerRaw) ? strtolower(trim($mannerRaw)) : '';
+            $isNatural = true;
+            if (!empty($manner)) {
+                $isNatural = str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide') && !str_contains($manner, 'external') && !str_contains($manner, 'trauma'));
+            } else {
+                $lowerCause = strtolower($immediateCause);
+                if (str_contains($lowerCause, 'accident') || str_contains($lowerCause, 'homicide') || str_contains($lowerCause, 'suicide') || str_contains($lowerCause, 'gunshot') || str_contains($lowerCause, 'trauma') || str_contains($lowerCause, 'drowning')) {
+                    $isNatural = false;
+                }
+            }
             if ($docType === 'death' && $isNatural) $naturalCount++;
             $mannerLabel = $isNatural ? 'Natural Cause' : 'External / Non-Natural';
 
             // --- Rich category-specific metrics (aligned with frontend Reports.jsx) ---
-            $rawSex = strtolower($ef['sex'] ?? $ef['gender'] ?? '');
+            $rawSex = strtolower($ef['sex'] ?? $ocrData['sex'] ?? $ef['gender'] ?? '');
             $isMale = ($rawSex === 'male' || $rawSex === 'm');
             $isFemale = ($rawSex === 'female' || $rawSex === 'f');
             if ($isMale) $totalMales++;
             if ($isFemale) $totalFemales++;
 
-            $isDelayed = Boolean(
-                $ef['delayed_registration'] === true ||
-                $ef['delayed_registration'] === 'true' ||
-                $ef['delayed_registration'] === 1 ||
-                $ef['is_delayed'] === true ||
-                $ef['registration_type'] === 'delayed' ||
+            $isDelayed = (bool) (
+                ($ef['delayed_registration'] ?? false) === true ||
+                ($ef['delayed_registration'] ?? '') === 'true' ||
+                ($ef['delayed_registration'] ?? 0) === 1 ||
+                ($ef['is_delayed'] ?? false) === true ||
+                ($ef['registration_type'] ?? '') === 'delayed' ||
                 (is_string($ef['remarks'] ?? null) && str_contains(strtolower($ef['remarks']), 'delayed')) ||
                 (is_string($ef['remarks'] ?? null) && str_contains(strtolower($ef['remarks']), 'late'))
             );
@@ -2005,7 +2069,7 @@ DB::table('issuances')->where('document_id', $id)->update([
                 if ($isMale) $deathMale++;
                 if ($isFemale) $deathFemale++;
             } elseif ($docType === 'marriage') {
-                $officer = strtolower($ef['solemnizing_officer_name'] ?? $ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? '');
+                $officer = strtolower($ef['solemnizing_officer_name'] ?? $ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? $ocrData['solemnizing_officer_name'] ?? '');
                 if (str_contains($officer, 'mayor') || str_contains($officer, 'judge') || str_contains($officer, 'civil')) {
                     $civilMarriages++;
                 } else {
@@ -2018,14 +2082,17 @@ DB::table('issuances')->where('document_id', $id)->update([
                 $dobDay = $ef['dob_day'] ?? '';
                 $dobMonth = $ef['dob_month'] ?? '';
                 $dobYear = $ef['dob_year'] ?? '';
-                $dobFormatted = ($dobDay || $dobMonth || $dobYear) ? trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ") : ($doc->date ?? 'N/A');
+                $rawDob = ($dobDay || $dobMonth || $dobYear) 
+                    ? trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ") 
+                    : ($ef['date_of_birth'] ?? $ocrData['date_of_birth'] ?? $doc->date ?? 'N/A');
+                $dobFormatted = $this->formatReportDate($rawDob);
 
-                $hospital = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? 'N/A';
-                $city = $ef['place_of_birth_city'] ?? $ef['city_municipality'] ?? 'Naic';
-                $province = $ef['place_of_birth_province'] ?? $ef['province'] ?? 'Cavite';
+                $hospital = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? $ocrData['place_of_birth'] ?? 'N/A';
+                $city = $ef['place_of_birth_city'] ?? $ef['city_municipality'] ?? $ocrData['city_municipality'] ?? 'Naic';
+                $province = $ef['place_of_birth_province'] ?? $ef['province'] ?? $ocrData['province'] ?? 'Cavite';
 
-                $fatherName = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_middle_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? '')) ?: 'N/A';
-                $motherName = trim(($ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '') . ' ' . ($ef['mother_middle_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '')) ?: 'N/A';
+                $fatherName = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_middle_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? '')) ?: ($ocrData['father_name'] ?? 'N/A');
+                $motherName = trim(($ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '') . ' ' . ($ef['mother_middle_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '')) ?: ($ocrData['mother_maiden_name'] ?? 'N/A');
 
                 $rows[] = [
                     $regNo,
@@ -2044,8 +2111,9 @@ DB::table('issuances')->where('document_id', $id)->update([
                 ];
             } elseif ($singleType === 'death') {
                 $deceasedName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
-                $dod = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
-                $pod = $ef['place_of_death'] ?? $ef['place_of_death_hospital'] ?? 'N/A';
+                $rawDod = $ef['date_of_death'] ?? $ocrData['date_of_death'] ?? $doc->date ?? 'N/A';
+                $dod = $this->formatReportDate($rawDod);
+                $pod = $ef['place_of_death'] ?? $ef['place_of_death_hospital'] ?? $ocrData['place_of_death'] ?? 'N/A';
 
                 $rows[] = [
                     $regNo,
@@ -2064,20 +2132,36 @@ DB::table('issuances')->where('document_id', $id)->update([
                     $encodedBy
                 ];
             } elseif ($singleType === 'marriage') {
-                $husbandName = trim(($ef['husband_first_name'] ?? '') . ' ' . ($ef['husband_middle_name'] ?? '') . ' ' . ($ef['husband_last_name'] ?? '')) ?: 'N/A';
-                $wifeName = trim(($ef['wife_first_name'] ?? '') . ' ' . ($ef['wife_middle_name'] ?? '') . ' ' . ($ef['wife_last_name'] ?? '')) ?: 'N/A';
-                $dom = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
-                $pom = $ef['place_of_marriage'] ?? 'N/A';
+                $hFirst = $ef['husband_first_name'] ?? $ocrData['husband_first_name'] ?? '';
+                $hMid = $ef['husband_middle_name'] ?? $ocrData['husband_middle_name'] ?? '';
+                $hLast = $ef['husband_last_name'] ?? $ocrData['husband_last_name'] ?? '';
+                $husbandName = trim("{$hFirst} {$hMid} {$hLast}") ?: 'N/A';
 
-                // Solemnizing Officer / Ceremony
-                $officer = $ef['solemnizing_officer_name'] ?? $ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? '';
-                $ceremony = 'Civil / Church';
-                $lowerOff = strtolower($officer);
-                if (str_contains($lowerOff, 'mayor')) $ceremony = 'Mayor (Civil)';
-                elseif (str_contains($lowerOff, 'judge')) $ceremony = 'Judge (Civil)';
-                elseif (str_contains($lowerOff, 'church') || str_contains($lowerOff, 'priest') || str_contains($lowerOff, 'pastor') || str_contains($lowerOff, 'parish')) $ceremony = 'Church / Religious';
-                elseif (str_contains($lowerOff, 'islam') || str_contains($lowerOff, 'imam')) $ceremony = 'Islamic Rites';
-                elseif (!empty($officer)) $ceremony = $officer;
+                $wFirst = $ef['wife_first_name'] ?? $ocrData['wife_first_name'] ?? '';
+                $wMid = $ef['wife_middle_name'] ?? $ocrData['wife_middle_name'] ?? '';
+                $wLast = $ef['wife_last_name'] ?? $ocrData['wife_last_name'] ?? '';
+                $wifeName = trim("{$wFirst} {$wMid} {$wLast}") ?: 'N/A';
+
+                $rawDom = $ef['date_of_marriage'] ?? $ocrData['date_of_marriage'] ?? $doc->date ?? 'N/A';
+                $dom = $this->formatReportDate($rawDom);
+                $pom = $ef['place_of_marriage'] ?? $ocrData['place_of_marriage'] ?? 'N/A';
+
+                // Solemnizing Officer / Ceremony - cascading fallback
+                $officerName = trim($ef['solemnizing_officer_name'] ?? $ocrData['solemnizing_officer_name'] ?? '');
+                $officerTitle = trim($ef['solemnizing_officer_title'] ?? $ocrData['solemnizing_officer_title'] ?? '');
+                $ceremonyType = trim($ef['ceremony_type'] ?? $ocrData['ceremony_type'] ?? '');
+
+                if (!empty($officerName) && !empty($officerTitle)) {
+                    $ceremony = "{$officerName} ({$officerTitle})";
+                } elseif (!empty($officerName)) {
+                    $ceremony = $officerName;
+                } elseif (!empty($officerTitle)) {
+                    $ceremony = $officerTitle;
+                } elseif (!empty($ceremonyType)) {
+                    $ceremony = $ceremonyType;
+                } else {
+                    $ceremony = 'Civil / Church';
+                }
 
                 $rows[] = [
                     $regNo,
@@ -2103,22 +2187,37 @@ DB::table('issuances')->where('document_id', $id)->update([
                     $dobDay = $ef['dob_day'] ?? '';
                     $dobMonth = $ef['dob_month'] ?? '';
                     $dobYear = $ef['dob_year'] ?? '';
-                    if ($dobDay || $dobMonth || $dobYear) $eventDate = trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ");
-                    $place = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? 'Naic';
-                    $f = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? ''));
-                    $m = trim(($ef['mother_first_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? ''));
+                    $rawDob = ($dobDay || $dobMonth || $dobYear) 
+                        ? trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ") 
+                        : ($ef['date_of_birth'] ?? $ocrData['date_of_birth'] ?? $doc->date ?? 'N/A');
+                    $eventDate = $this->formatReportDate($rawDob);
+                    $place = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? $ocrData['place_of_birth'] ?? 'Naic';
+                    $f = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? '')) ?: ($ocrData['father_name'] ?? '');
+                    $m = trim(($ef['mother_first_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? '')) ?: ($ocrData['mother_maiden_name'] ?? '');
                     $parentsRel = trim("Father: {$f} | Mother: {$m}", " |");
                 } elseif ($docType === 'death') {
-                    $eventDate = $ef['date_of_death'] ?? $doc->date ?? 'N/A';
-                    $place = $ef['place_of_death'] ?? 'Naic';
+                    $rawDod = $ef['date_of_death'] ?? $ocrData['date_of_death'] ?? $doc->date ?? 'N/A';
+                    $eventDate = $this->formatReportDate($rawDod);
+                    $place = $ef['place_of_death'] ?? $ocrData['place_of_death'] ?? 'Naic';
                     $details = "Cause: {$immediateCause} ({$mannerLabel})";
                 } elseif ($docType === 'marriage') {
-                    $h = trim(($ef['husband_first_name'] ?? '') . ' ' . ($ef['husband_last_name'] ?? ''));
-                    $w = trim(($ef['wife_first_name'] ?? '') . ' ' . ($ef['wife_last_name'] ?? ''));
-                    $primaryName = trim("{$h} & {$w}", " &");
-                    $eventDate = $ef['date_of_marriage'] ?? $doc->date ?? 'N/A';
-                    $place = $ef['place_of_marriage'] ?? 'Naic';
-                    $details = "Ceremony: " . ($ef['solemnizing_officer_title'] ?? $ef['ceremony_type'] ?? 'Civil/Church');
+                    $hFirst = $ef['husband_first_name'] ?? $ocrData['husband_first_name'] ?? '';
+                    $hLast = $ef['husband_last_name'] ?? $ocrData['husband_last_name'] ?? '';
+                    $wFirst = $ef['wife_first_name'] ?? $ocrData['wife_first_name'] ?? '';
+                    $wLast = $ef['wife_last_name'] ?? $ocrData['wife_last_name'] ?? '';
+                    $h = trim("{$hFirst} {$hLast}");
+                    $w = trim("{$wFirst} {$wLast}");
+                    $primaryName = trim("{$h} & {$w}", " &") ?: $primaryName;
+
+                    $rawDom = $ef['date_of_marriage'] ?? $ocrData['date_of_marriage'] ?? $doc->date ?? 'N/A';
+                    $eventDate = $this->formatReportDate($rawDom);
+                    $place = $ef['place_of_marriage'] ?? $ocrData['place_of_marriage'] ?? 'Naic';
+
+                    $officerName = trim($ef['solemnizing_officer_name'] ?? $ocrData['solemnizing_officer_name'] ?? '');
+                    $officerTitle = trim($ef['solemnizing_officer_title'] ?? $ocrData['solemnizing_officer_title'] ?? '');
+                    $ceremonyType = trim($ef['ceremony_type'] ?? $ocrData['ceremony_type'] ?? '');
+                    $offStr = $officerName ?: ($officerTitle ?: ($ceremonyType ?: 'Civil/Church'));
+                    $details = "Ceremony: " . $offStr;
                 }
 
                 $rows[] = [
@@ -2141,12 +2240,10 @@ DB::table('issuances')->where('document_id', $id)->update([
             }
         }
 
-        $filename = "civil_registry_psa_report_" . date('Y_m_d_His') . ($format === 'excel' ? '.xls' : '.csv');
-        $delimiter = $format === 'excel' ? "\t" : ",";
+        $filename = "civil_registry_psa_report_" . date('Y_m_d_His') . ($format === 'excel' ? '.xlsx' : ($format === 'xls' ? '.xls' : '.csv'));
+        $delimiter = ($format === 'excel' || $format === 'xls') ? "\t" : ",";
 
-        $output = "\xEF\xBB\xBF"; // UTF-8 BOM for Microsoft Excel / LibreOffice
-
-// PSA-Aligned Summary Header Block
+        // PSA-Aligned Summary Header Block
         $periodLabel = ($dateFrom ? $dateFrom : 'All') . " to " . ($dateTo ? $dateTo : 'Present');
         $scopeLabel = ucfirst($source) . ' Records (' . ucfirst($singleType) . ')';
 
@@ -2161,6 +2258,17 @@ DB::table('issuances')->where('document_id', $id)->update([
         if ($singleType === 'birth' || $singleType === 'all') $richMetrics[] = "Births (M/F: {$birthMale}/{$birthFemale}, Timely/Delayed: {$birthTimely}/{$birthDelayed}, Facility/Home: {$birthHospital}/{$birthHome})";
         if ($singleType === 'death' || $singleType === 'all') $richMetrics[] = "Deaths (M/F: {$deathMale}/{$deathFemale})";
         if ($singleType === 'marriage' || $singleType === 'all') $richMetrics[] = "Marriages (Civil/Church: {$civilMarriages}/{$churchMarriages})";
+
+        if ($format === 'excel') {
+            return $this->generateXlsxReport($records, $singleType, $periodLabel, $scopeLabel, $summaryStatsLine, $richMetrics, $filename);
+        }
+
+        if ($format === 'xls') {
+            return $this->generateHtmlXlsReport($records, $periodLabel, $scopeLabel, $summaryStatsLine, $richMetrics, $filename);
+        }
+
+        // CSV Logic (Keep existing)
+        $output = "\xEF\xBB\xBF";
         
         $summaryHeaders = [
             ["OFFICE OF THE MUNICIPAL CIVIL REGISTRAR - NAIC, CAVITE"],
@@ -2201,5 +2309,412 @@ DB::table('issuances')->where('document_id', $id)->update([
             'Expires' => '0'
         ]);
     }
-}
+
+    /**
+     * Helper to get headers for specific document type
+     */
+    private function getHeadersForType(string $type): array
+    {
+        if ($type === 'birth') {
+            return ['Registry Number', 'Child Full Name', 'Sex', 'Date of Birth', 'Place of Birth (Hospital / Address)', 'City / Municipality', 'Province', 'Father Full Name', 'Mother Maiden Name', 'Barangay', 'Record Source', 'Date Registered', 'Encoded By'];
+        } elseif ($type === 'death') {
+            return ['Registry Number', 'Deceased Full Name', 'Sex', 'Date of Death', 'Place of Death', 'Age', 'Senior Citizen (≥60)', 'Residence Status', 'Cause of Death (Immediate)', 'Manner of Death / Natural Cause', 'Barangay', 'Record Source', 'Date Registered', 'Encoded By'];
+        }
+        return ['Registry Number', 'Husband Full Name', 'Wife Full Name', 'Date of Marriage', 'Place of Marriage', 'Solemnizing Officer / Ceremony Type', 'Barangay', 'Record Source', 'Date Registered', 'Encoded By'];
+    }
+
+    /**
+     * Helper to format a single row of data for HTML/Excel grouping
+     */
+    private function formatRowForType($doc, $ef, $type): array
+    {
+        $ocrData = [];
+        if (!empty($doc->ocr_text)) {
+            $trimmedOcr = trim($doc->ocr_text);
+            if (str_starts_with($trimmedOcr, '{') && str_ends_with($trimmedOcr, '}')) {
+                $ocrData = json_decode($trimmedOcr, true) ?: [];
+            }
+        }
+
+        $regNo = $ef['registry_number'] ?? $ef['registry_no'] ?? $ocrData['registry_number'] ?? $doc->certNumber ?? 'N/A';
+        $sex = ucfirst($ef['sex'] ?? $ocrData['sex'] ?? 'N/A');
+        $brgy = $doc->barangay ?? $ef['barangay'] ?? $ocrData['barangay'] ?? 'N/A';
+        $encodedBy = $doc->encoded_by ?? 'System Staff';
+        $registeredAt = $this->formatReportDate($doc->created_at);
+        $recordSource = $doc->_source ?? 'Internal Master Registry';
+
+        if ($type === 'birth') {
+            $childName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
+            $dobDay = $ef['dob_day'] ?? '';
+            $dobMonth = $ef['dob_month'] ?? '';
+            $dobYear = $ef['dob_year'] ?? '';
+            $rawDob = ($dobDay || $dobMonth || $dobYear) 
+                ? trim("{$dobMonth} {$dobDay}, {$dobYear}", ", ") 
+                : ($ef['date_of_birth'] ?? $ocrData['date_of_birth'] ?? $doc->date ?? 'N/A');
+            $dobFormatted = $this->formatReportDate($rawDob);
+
+            $hospital = $ef['place_of_birth_hospital'] ?? $ef['place_of_birth'] ?? $ocrData['place_of_birth'] ?? 'N/A';
+            $city = $ef['place_of_birth_city'] ?? $ef['city_municipality'] ?? $ocrData['city_municipality'] ?? 'Naic';
+            $province = $ef['place_of_birth_province'] ?? $ef['province'] ?? $ocrData['province'] ?? 'Cavite';
+
+            $fatherName = trim(($ef['father_first_name'] ?? '') . ' ' . ($ef['father_middle_name'] ?? '') . ' ' . ($ef['father_last_name'] ?? '')) ?: ($ocrData['father_name'] ?? 'N/A');
+            $motherName = trim(($ef['mother_first_name'] ?? $ef['mother_maiden_first_name'] ?? '') . ' ' . ($ef['mother_middle_name'] ?? '') . ' ' . ($ef['mother_last_name'] ?? $ef['mother_maiden_last_name'] ?? '')) ?: ($ocrData['mother_maiden_name'] ?? 'N/A');
+
+            return [
+                $regNo, $childName ?: 'N/A', $sex, $dobFormatted,
+                $hospital, $city, $province,
+                $fatherName, $motherName,
+                $brgy, $recordSource, $registeredAt, $encodedBy
+            ];
+        } elseif ($type === 'death') {
+            $ageVal = (int) ($ef['age_completed_years'] ?? $ef['age'] ?? $ocrData['age_completed_years'] ?? $ocrData['age'] ?? 0);
+            $deathDob = $ef['date_of_birth'] ?? $ocrData['date_of_birth'] ?? null;
+            $deathDod = $ef['date_of_death'] ?? $ocrData['date_of_death'] ?? null;
+            if ($ageVal === 0 && !empty($deathDob) && !empty($deathDod)) {
+                try {
+                    $cDob = \Carbon\Carbon::parse($deathDob);
+                    $cDod = \Carbon\Carbon::parse($deathDod);
+                    $ageVal = max(0, $cDob->diffInYears($cDod));
+                } catch (\Throwable $e) {}
+            }
+            $isSenior = ($ageVal >= 60);
+
+            $residence = strtolower($ef['residence'] ?? $ocrData['residence'] ?? $doc->barangay ?? '');
+            $isResident = (str_contains($residence, 'naic') || (!empty($doc->barangay) && $doc->barangay !== 'N/A'));
+
+            $immediateCause = $ef['cause_of_death_immediate'] 
+                ?? $ef['cause_of_death'] 
+                ?? $ef['cause_of_death_antecedent'] 
+                ?? $ef['cause_of_death_underlying'] 
+                ?? $ocrData['cause_of_death_immediate'] 
+                ?? $ocrData['cause_of_death'] 
+                ?? 'N/A';
+
+            $mannerRaw = $ef['manner_of_death'] ?? $ocrData['manner_of_death'] ?? null;
+            $manner = is_string($mannerRaw) ? strtolower(trim($mannerRaw)) : '';
+            $isNatural = true;
+            if (!empty($manner)) {
+                $isNatural = str_contains($manner, 'natural') || (!str_contains($manner, 'accident') && !str_contains($manner, 'homicide') && !str_contains($manner, 'suicide') && !str_contains($manner, 'external') && !str_contains($manner, 'trauma'));
+            } else {
+                $lowerCause = strtolower($immediateCause);
+                if (str_contains($lowerCause, 'accident') || str_contains($lowerCause, 'homicide') || str_contains($lowerCause, 'suicide') || str_contains($lowerCause, 'gunshot') || str_contains($lowerCause, 'trauma') || str_contains($lowerCause, 'drowning')) {
+                    $isNatural = false;
+                }
+            }
+            $mannerLabel = $isNatural ? 'Natural Cause' : 'External / Non-Natural';
+
+            $deceasedName = !empty($doc->personName) ? $doc->personName : trim(($ef['first_name'] ?? '') . ' ' . ($ef['middle_name'] ?? '') . ' ' . ($ef['last_name'] ?? ''));
+            $rawDod = $ef['date_of_death'] ?? $ocrData['date_of_death'] ?? $doc->date ?? 'N/A';
+            $dod = $this->formatReportDate($rawDod);
+            $pod = $ef['place_of_death'] ?? $ef['place_of_death_hospital'] ?? $ocrData['place_of_death'] ?? 'N/A';
+
+            return [
+                $regNo, $deceasedName ?: 'N/A', $sex, $dod,
+                $pod, $ageVal > 0 ? (string)$ageVal : 'N/A',
+                $isSenior ? 'Yes (Senior Citizen ≥60)' : ($ageVal > 0 ? 'No (<60)' : 'N/A'),
+                $isResident ? 'Local Resident' : 'Non-Resident',
+                $immediateCause, $mannerLabel,
+                $brgy, $recordSource, $registeredAt, $encodedBy
+            ];
+        } else {
+            $hFirst = $ef['husband_first_name'] ?? $ocrData['husband_first_name'] ?? '';
+            $hMid = $ef['husband_middle_name'] ?? $ocrData['husband_middle_name'] ?? '';
+            $hLast = $ef['husband_last_name'] ?? $ocrData['husband_last_name'] ?? '';
+            $husbandName = trim("{$hFirst} {$hMid} {$hLast}") ?: 'N/A';
+
+            $wFirst = $ef['wife_first_name'] ?? $ocrData['wife_first_name'] ?? '';
+            $wMid = $ef['wife_middle_name'] ?? $ocrData['wife_middle_name'] ?? '';
+            $wLast = $ef['wife_last_name'] ?? $ocrData['wife_last_name'] ?? '';
+            $wifeName = trim("{$wFirst} {$wMid} {$wLast}") ?: 'N/A';
+
+            $rawDom = $ef['date_of_marriage'] ?? $ocrData['date_of_marriage'] ?? $doc->date ?? 'N/A';
+            $dom = $this->formatReportDate($rawDom);
+            $pom = $ef['place_of_marriage'] ?? $ocrData['place_of_marriage'] ?? 'N/A';
+
+            $officerName = trim($ef['solemnizing_officer_name'] ?? $ocrData['solemnizing_officer_name'] ?? '');
+            $officerTitle = trim($ef['solemnizing_officer_title'] ?? $ocrData['solemnizing_officer_title'] ?? '');
+            $ceremonyType = trim($ef['ceremony_type'] ?? $ocrData['ceremony_type'] ?? '');
+
+            if (!empty($officerName) && !empty($officerTitle)) {
+                $ceremony = "{$officerName} ({$officerTitle})";
+            } elseif (!empty($officerName)) {
+                $ceremony = $officerName;
+            } elseif (!empty($officerTitle)) {
+                $ceremony = $officerTitle;
+            } elseif (!empty($ceremonyType)) {
+                $ceremony = $ceremonyType;
+            } else {
+                $ceremony = 'Civil / Church';
+            }
+
+            return [
+                $regNo, $husbandName, $wifeName, $dom,
+                $pom, $ceremony,
+                $brgy, $recordSource, $registeredAt, $encodedBy
+            ];
+        }
+    }
+
+    /**
+     * Standardize date formatting across export reports.
+     *
+     * @param string|null $dateStr
+     * @param string $format
+     * @return string
+     */
+    private function formatReportDate(?string $dateStr, string $format = 'M d, Y'): string
+    {
+        if (empty($dateStr) || $dateStr === 'N/A' || $dateStr === 'null') {
+            return 'N/A';
+        }
+
+        $trimmed = trim($dateStr);
+        try {
+            $ts = strtotime($trimmed);
+            if ($ts && $ts > 0 && (int) date('Y', $ts) > 1900) {
+                return date($format, $ts);
+            }
+            $c = \Carbon\Carbon::parse($trimmed);
+            return $c->format($format);
+        } catch (\Throwable $e) {
+            return $trimmed;
+        }
+    }
+
+    /**
+     * Generate native .xlsx report using PhpOffice\PhpSpreadsheet.
+     */
+    private function generateXlsxReport($records, string $singleType, string $periodLabel, string $scopeLabel, string $summaryStatsLine, array $richMetrics, string $filename)
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet->getProperties()
+            ->setCreator('CivicCore Civil Registry')
+            ->setTitle('Civil Registry Data Report');
+
+        // Group records by type
+        $grouped = [];
+        foreach ($records as $doc) {
+            $t = strtolower($doc->type ?? 'birth');
+            $grouped[$t][] = $doc;
+        }
+
+        // Maintain specific tab order
+        $typeOrder = ['birth', 'death', 'marriage'];
+        $activeSheets = [];
+        foreach ($typeOrder as $t) {
+            if (isset($grouped[$t]) && count($grouped[$t]) > 0) {
+                $activeSheets[$t] = $grouped[$t];
+            }
+        }
+        if (empty($activeSheets)) {
+            $activeSheets[$singleType !== 'all' ? $singleType : 'birth'] = [];
+        }
+
+        $sheetIndex = 0;
+        foreach ($activeSheets as $type => $docs) {
+            if ($sheetIndex === 0) {
+                $sheet = $spreadsheet->getActiveSheet();
+            } else {
+                $sheet = $spreadsheet->createSheet();
+            }
+            $sheetTitle = ucfirst($type) . ' Records';
+            $sheet->setTitle(substr($sheetTitle, 0, 31));
+
+            // Summary Header block
+            $sheet->setCellValue('A1', 'OFFICE OF THE MUNICIPAL CIVIL REGISTRAR - NAIC, CAVITE');
+            $sheet->setCellValue('A2', 'CIVIL REGISTRY DATA REPORT (PHILIPPINE STATISTICS AUTHORITY - PSA ALIGNED)');
+            $sheet->setCellValue('A3', "Reporting Period: {$periodLabel} | Scope: {$scopeLabel}");
+            $sheet->setCellValue('A4', "SUMMARY: {$summaryStatsLine}");
+            if (!empty($richMetrics)) {
+                $sheet->setCellValue('A5', 'METRICS: ' . implode(' | ', $richMetrics));
+            }
+
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+            $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11);
+            $sheet->getStyle('A3:A5')->getFont()->setSize(9)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('555555'));
+
+            // Table headers
+            $headers = $this->getHeadersForType($type);
+            $startRow = 7;
+            
+            foreach ($headers as $colIdx => $headerText) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+                $cellCoordinate = "{$colLetter}{$startRow}";
+                $sheet->setCellValue($cellCoordinate, $headerText);
+            }
+
+            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+            $headerRange = "A{$startRow}:{$lastColLetter}{$startRow}";
+            $sheet->getStyle($headerRange)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '1A2F4A']
+                ],
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT
+                ]
+            ]);
+            $sheet->getRowDimension($startRow)->setRowHeight(24);
+
+            // Data rows
+            $currentRow = $startRow + 1;
+            foreach ($docs as $d) {
+                $dEf = EncryptedJson::decode($d->extracted_data ?? $d->extracted_fields ?? []);
+                $rowData = $this->formatRowForType($d, $dEf, $type);
+
+                foreach ($rowData as $colIdx => $val) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+                    $sheet->setCellValueExplicit(
+                        "{$colLetter}{$currentRow}",
+                        (string)$val,
+                        \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                    );
+                }
+
+                if ($currentRow % 2 === 0) {
+                    $sheet->getStyle("A{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'F8FAFC']
+                        ]
+                    ]);
+                }
+                $sheet->getRowDimension($currentRow)->setRowHeight(20);
+                $currentRow++;
+            }
+
+            // Borders for table
+            $dataEndRow = max($startRow, $currentRow - 1);
+            $sheet->getStyle("A{$startRow}:{$lastColLetter}{$dataEndRow}")->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => 'E2E8F0']
+                    ]
+                ],
+                'font' => ['size' => 9]
+            ]);
+
+            // Auto-size columns with sane max widths
+            for ($col = 1; $col <= count($headers); $col++) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+                $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+            }
+
+            $sheetIndex++;
+        }
+
+        // Set active sheet back to first tab
+        $spreadsheet->setActiveSheetIndex(0);
+
+        // Stream output to temporary stream
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $tempPath = tempnam(sys_get_temp_dir(), 'civicore_export_') . '.xlsx';
+        $writer->save($tempPath);
+
+        $content = file_get_contents($tempPath);
+        @unlink($tempPath);
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ]);
+    }
+
+    /**
+     * Generate HTML-styled .xls report (legacy single-page spreadsheet format).
+     */
+    private function generateHtmlXlsReport($records, string $periodLabel, string $scopeLabel, string $summaryStatsLine, array $richMetrics, string $filename)
+    {
+        $html = "<html><head><meta charset='UTF-8'><style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+            th { background-color: #1a2f4a; color: #ffffff; padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 11px; text-align: left; }
+            td { padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 10px; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            h2 { font-size: 13px; color: #1a2f4a; margin: 14px 0 4px; }
+            p { font-size: 11px; color: #475569; margin: 2px 0; }
+        </style></head><body>";
+
+        $html .= "<p>OFFICE OF THE MUNICIPAL CIVIL REGISTRAR - NAIC, CAVITE</p>";
+        $html .= "<p>CIVIL REGISTRY DATA REPORT (PHILIPPINE STATISTICS AUTHORITY - PSA ALIGNED)</p>";
+        $html .= "<p>Generated At: " . date('Y-m-d H:i') . " | Reporting Period: " . $periodLabel . " | Scope: " . $scopeLabel . "</p>";
+        $html .= "<p>SUMMARY AT A GLANCE: " . $summaryStatsLine . "</p>";
+        if (!empty($richMetrics)) {
+            $html .= "<p>DETAILED METRICS: " . implode(" | ", $richMetrics) . "</p>";
+        }
+
+        // Group records by type
+        $grouped = [];
+        foreach ($records as $doc) {
+            $t = strtolower($doc->type ?? 'birth');
+            $grouped[$t][] = $doc;
+        }
+
+        $typeOrder = ['birth', 'death', 'marriage'];
+        foreach ($typeOrder as $type) {
+            if (!isset($grouped[$type]) || count($grouped[$type]) === 0) continue;
+            $docs = $grouped[$type];
+
+            $html .= "<h2>" . strtoupper($type) . " CERTIFICATES (" . count($docs) . ")</h2><table><thead><tr>";
+            $typeHeaders = $this->getHeadersForType($type);
+            foreach ($typeHeaders as $h) {
+                $html .= "<th>" . htmlspecialchars($h) . "</th>";
+            }
+            $html .= "</tr></thead><tbody>";
+
+            foreach ($docs as $d) {
+                $html .= "<tr>";
+                $dEf = EncryptedJson::decode($d->extracted_data ?? $d->extracted_fields ?? []);
+                $rowData = $this->formatRowForType($d, $dEf, $type);
+                foreach ($rowData as $cell) {
+                    $html .= "<td>" . htmlspecialchars((string)$cell) . "</td>";
+                }
+                $html .= "</tr>";
+            }
+            $html .= "</tbody></table>";
+        }
+
+        $html .= "</body></html>";
+
+        return response($html, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
+        ]);
+    }
+
+    /**
+     * Decrypt extracted_data for export, handling both encrypted and legacy plaintext.
+     *
+     * @param string|null $data
+     * @return array
+     */
+    private function decryptForExport($data)
+    {
+        if (empty($data)) {
+            return [];
+        }
+
+        // If already an array (legacy or already decrypted), return as-is
+        if (is_array($data)) {
+            return $data;
+        }
+
+        // EncryptedJson::decode handles both encrypted (encryptString) payloads
+        // and legacy plaintext JSON, so it is safe to call on any stored value.
+        // NOTE: do NOT use Crypt::decrypt() here directly — it unserializes by
+        // default, but EncryptedJson::encode() uses encryptString() (no
+        // serialization). The mismatch silently fails and returns [].
+        return EncryptedJson::decode($data);
+    }
+
+    }
 

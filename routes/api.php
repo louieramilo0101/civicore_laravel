@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\IssuanceController;
+use App\Http\Controllers\TicketIssuanceController;
 use App\Http\Controllers\BarangayController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\OcrController;
@@ -116,6 +117,11 @@ Route::middleware('web')->group(function () {
         Route::get('/issuances/next-cert-number/{type}',  [IssuanceController::class, 'nextCertNumber']);
 
         Route::post('/issuances/ocr-search',              [IssuanceController::class, 'ocrSearch']);
+
+        // Ticket Issuances (citizen-request copies — separate from Registry Database)
+        Route::get('/ticket-issuances',           [TicketIssuanceController::class, 'index']);
+        Route::delete('/ticket-issuances/{id}',   [TicketIssuanceController::class, 'destroy']);
+        Route::post('/ticket-issuances/{id}/undo',[TicketIssuanceController::class, 'undo']);
 
         // Barangays
         Route::get('/barangays', [BarangayController::class, 'index']);

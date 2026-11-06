@@ -35,6 +35,7 @@ class Document extends Model
         'detected_type',
         'parental_consent',
         'encoded_by',
+        'registry_number',
     ];
 
     /** Stores the hidden value to prevent payload bloat. */
@@ -47,8 +48,8 @@ class Document extends Model
     /** Stores the casts value used by this component. */
     protected $casts = [
         'metadata' => 'json',
-        'extracted_fields' => 'json',
-        'extracted_data' => 'json',
+        'extracted_fields' => 'encrypted:array',
+        'extracted_data' => 'encrypted:array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

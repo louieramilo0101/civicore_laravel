@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Support\EncryptedJson;
 
 /**
  * Represents the Issuance Controller application component.
@@ -17,9 +18,11 @@ class IssuanceController extends Controller
     public function index(Request $request)
     {
         $page = (int) $request->query('page', 1);
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) $request->query('per_page', 20), 500);
         $type = $request->query('type', '');
         $search = $request->query('search', '');
+        $barangay = $request->query('barangay', '');
+        $status = $request->query('status', '');
         
         // Build query
         $whereClause = "";
@@ -27,22 +30,26 @@ class IssuanceController extends Controller
         $source = $request->query('source', '');
         $conditions = [];
 
-        if (!empty($type)) {
+        if (!empty($type) && $type !== 'all') {
             $conditions[] = "i.type = ?";
             $params[] = $type;
         }
+        if (!empty($barangay) && $barangay !== 'all') {
+            $conditions[] = "i.barangay = ?";
+            $params[] = $barangay;
+        }
+        if (!empty($status) && $status !== 'all') {
+            $conditions[] = "LOWER(i.status) = ?";
+            $params[] = strtolower($status);
+        }
         if (!empty($search)) {
-            $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ? OR i.extracted_data LIKE ? OR i.ticket_number LIKE ? OR i.or_number LIKE ? OR i.barangay LIKE ?)";
+            $conditions[] = "(i.name LIKE ? OR i.certNumber LIKE ? OR i.extracted_data LIKE ? OR i.or_number LIKE ? OR i.barangay LIKE ?)";
             $searchTerm = "%{$search}%";
-            for ($k = 0; $k < 6; $k++) {
+            for ($k = 0; $k < 5; $k++) {
                 $params[] = $searchTerm;
             }
         }
-        if ($source === 'procured' || $request->query('procured') === '1') {
-            $conditions[] = "(i.or_number IS NOT NULL OR i.requested_by IS NOT NULL OR i.print_remarks IS NOT NULL OR (i.ticket_number IS NOT NULL AND i.ticket_number NOT LIKE 'T-2026-0%'))";
-        } elseif ($source === 'registry' || $request->query('registry') === '1') {
-            $conditions[] = "i.ticket_number IS NULL";
-        }
+        // issuances table is now pure Registry Database — no ticket_number column
 
         if (!empty($conditions)) {
             $whereClause = " WHERE " . implode(" AND ", $conditions) . " AND i.deleted_at IS NULL";
@@ -56,7 +63,7 @@ class IssuanceController extends Controller
         $total = $totalResult[0]->total;
         
         // Get paginated results
-        $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.issuanceDate, i.status, i.encoded_by, i.document_id, i.extracted_data, i.or_number, i.print_remarks, i.requested_by, i.approved_by, i.ticket_number, i.created_at, i.updated_at, i.deleted_at, d.file_path AS source_file_path, d.image_path AS source_image_path FROM issuances i LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT ? OFFSET ?";
+        $query = "SELECT i.id, i.certNumber, i.registry_number, i.type, i.certificate_type, i.name, i.barangay, i.issuanceDate, i.status, i.encoded_by, i.document_id, i.extracted_data, i.or_number, i.print_remarks, i.requested_by, i.approved_by, i.created_at, i.updated_at, i.deleted_at, d.file_path AS source_file_path, d.image_path AS source_image_path FROM issuances i LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
         
@@ -68,6 +75,8 @@ class IssuanceController extends Controller
             $issuance->download_url = $issuance->document_id
                 ? url('/api/documents/download/' . $issuance->document_id . '?raw=1')
                 : null;
+            // Decrypt extracted_data for API response (handles both encrypted and legacy plaintext)
+            $issuance->extracted_data = $this->decryptForExport($issuance->extracted_data);
         }
         
         return response()->json([
@@ -150,12 +159,8 @@ class IssuanceController extends Controller
                 'updated_at' => now(),
             ]);
 
-            if ($issuance->document_id) {
-                DB::table('documents')->where('id', $issuance->document_id)->update([
-                    'deleted_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+            // NOTE: Deleting a registry issuance does NOT delete the source document.
+            // The document lives independently in the Documents tab.
 
             // Ensure deletion is captured in activity_logs (avoid duplicate if recently logged from frontend)
             $recentlyLogged = DB::table('activity_logs')
@@ -261,7 +266,7 @@ class IssuanceController extends Controller
         foreach ($data as $key => $value) {
             $fields[] = "$key = ?";
             if ($key === 'extracted_data') {
-                $params[] = is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
+                $params[] = EncryptedJson::encode($value);
             } else {
                 $params[] = $value;
             }
@@ -318,16 +323,12 @@ class IssuanceController extends Controller
         }
 
         $updateData = [
-            'status' => 'Pending Approval',
-            'or_number' => $orNumber,
+            'status'        => 'Pending Approval',
+            'or_number'     => $orNumber,
             'print_remarks' => $request->input('print_remarks', ''),
-            'requested_by' => $userName,
-            'updated_at' => now(),
+            'requested_by'  => $userName,
+            'updated_at'    => now(),
         ];
-
-        if ($request->has('ticket_id') && $request->input('ticket_id')) {
-            $updateData['ticket_number'] = DB::table('tickets')->where('id', $request->input('ticket_id'))->value('ticket_number');
-        }
 
         DB::table('issuances')->where('id', $id)->update($updateData);
 
@@ -442,22 +443,15 @@ class IssuanceController extends Controller
 
         DB::table('issuances')->where('id', $id)->update($updateData);
         
-        // Sync corresponding active ticket to completed status
-        if ($record) {
-            $ticketQuery = \App\Models\Ticket::where(function($q) use ($record) {
-                if (!empty($record->document_id)) {
-                    $q->where('document_id', $record->document_id);
-                }
-                if (!empty($record->ticket_number)) {
-                    $q->orWhere('ticket_number', $record->ticket_number);
-                }
-            })->whereNotIn('request_status', ['completed', 'cancelled']);
-
-            $ticket = $ticketQuery->first();
+        // Sync corresponding active ticket to completed status (look up via document_id)
+        if (!empty($record->document_id)) {
+            $ticket = \App\Models\Ticket::where('document_id', $record->document_id)
+                ->whereNotIn('request_status', ['completed', 'cancelled'])
+                ->first();
             if ($ticket) {
                 $ticket->request_status = 'completed';
-                $ticket->queue_status = 'not_in_lobby';
-                $ticket->issued_at = now();
+                $ticket->queue_status   = 'not_in_lobby';
+                $ticket->issued_at      = now();
                 $ticket->save();
             }
         }
@@ -660,5 +654,63 @@ class IssuanceController extends Controller
         if (!$last && !$first) return null;
         
         return trim("$last, $first $middle $suffix");
+    }
+
+    /**
+     * Decrypt extracted_data for API response, handling both encrypted and legacy plaintext.
+     *
+     * @param string|null $data
+     * @return array
+     */
+    private function decryptForExport($data)
+    {
+        if (empty($data)) {
+            return [];
+        }
+
+        // If already an array (legacy or already decrypted), return as-is
+        if (is_array($data)) {
+            return $data;
+        }
+
+        // Try to decrypt if it's encrypted (Laravel encrypted cast produces base64 JSON)
+        $decrypted = null;
+        if (is_string($data) && $this->looksEncrypted($data)) {
+            try {
+                $decrypted = \Illuminate\Support\Facades\Crypt::decrypt($data);
+            } catch (\Throwable $e) {
+                // Fall through to legacy fallback
+            }
+        }
+
+        // If decryption didn't work, use the raw data for legacy fallback
+        if ($decrypted === null) {
+            $decrypted = $data;
+        }
+
+        // Decode JSON string to array
+        $decoded = json_decode($decrypted, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        return [];
+    }
+
+    /**
+     * Check if a value looks like Laravel-encrypted data.
+     *
+     * @param string $value
+     * @return bool
+     */
+    private function looksEncrypted(string $value): bool
+    {
+        if (strlen($value) < 50) return false;
+        
+        $decoded = @base64_decode($value, true);
+        if ($decoded === false) return false;
+        
+        // Laravel Crypt::encrypt() produces base64-encoded JSON with "iv","value","mac"/"tag" keys
+        return str_starts_with($decoded, '{"iv"') || str_starts_with($decoded, '{"value"');
     }
 }

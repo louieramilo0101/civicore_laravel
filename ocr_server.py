@@ -19,6 +19,15 @@ import base64
 from google import genai
 from functools import wraps
 
+# Windows consoles/files default to cp1252, which cannot encode the box-drawing
+# characters used in the progress logs. Force UTF-8 so logging can never crash OCR.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 process_lock = threading.Lock()
 
 def serialize_processing(func):
@@ -127,7 +136,7 @@ def crop_and_binarize_signatures(image_path: str, doc_type: str) -> dict:
             black_ratio = black_pixels / total_pixels if total_pixels > 0 else 0.0
             
             if black_ratio < 0.005:
-                signatures[key] = None
+                signatures[key] = "n/a"
                 continue
             
             rgba = cv2.cvtColor(crop, cv2.COLOR_BGR2BGRA)

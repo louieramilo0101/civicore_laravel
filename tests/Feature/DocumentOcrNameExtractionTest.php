@@ -6,6 +6,7 @@ use App\Http\Controllers\DocumentController;
 use App\Models\Document;
 use App\Models\Issuance;
 use App\Services\OcrParserService;
+use App\Support\EncryptedJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,8 @@ class DocumentOcrNameExtractionTest extends TestCase
             'date' => date('m/d/Y'),
             'size' => '1.5 MB',
             'status' => 'Pending',
+            'extracted_fields' => EncryptedJson::encode([]),
+            'extracted_data' => EncryptedJson::encode([]),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

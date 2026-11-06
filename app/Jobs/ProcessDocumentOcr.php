@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Bus;
 use App\Jobs\ProcessImageOcrJob;
+use App\Support\EncryptedJson;
 use Throwable;
 
 /**
@@ -240,8 +241,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
 
                 $dupQuery->where(function ($q) use ($regNo) {
                     $q->where('certNumber', $regNo)
-                      ->orWhere('extracted_data->registry_number', $regNo)
-                      ->orWhere('extracted_data->registry_no', $regNo);
+                      ->orWhere('registry_number', $regNo);
                 });
 
                 if ($dupQuery->exists()) {
@@ -281,6 +281,11 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             $computedPersonName = $this->buildFullName($extractedFields, $detectedType);
 
             // Update database record with final values and status = extracted
+            // NOTE: documents.extracted_fields is stored as PLAINTEXT JSON during the
+            // draft/review phase. Encryption is applied only when the record is
+            // promoted to the registry database (issuances.extracted_data) in
+            // DocumentController::performSave(). This keeps the hot review/edit path
+            // free of decryption overhead and avoids silent decrypt failures.
             DB::table('documents')->where('id', $this->documentId)->update([
                 'ocr_text' => $ocrText,
                 'detected_type' => $detectedType,

@@ -349,9 +349,7 @@ const Backups = () => {
 
                 <div>
                     {isLoading ? (
-                        <div className="p-6">
-                            <SkeletonLoader type="list" rows={5} />
-                        </div>
+                        <SkeletonLoader type="backups" rows={5} />
                     ) : backups.length === 0 ? (
                         <div className="p-8 sm:p-12 text-center">
                             <CircleStackIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />

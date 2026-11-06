@@ -102,14 +102,11 @@ const Layout = ({ children }) => {
             <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] text-slate-300 flex flex-col border-r border-slate-800 shadow-2xl md:shadow-none translate-x-0 md:static md:shrink-0">
                 {/* Header branding */}
                 <div className="p-6 text-white border-b border-slate-800/40 bg-[#0f172a]/90 flex items-center gap-4 group">
-                    <div className="w-12 h-12 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
-                        <img src="/logo.png" alt="CiviCORE Icon" className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(212,165,116,0.2)]" />
-                    </div>
+                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-28 h-14 object-contain filter drop-shadow-[0_0_12px_rgba(212,165,116,0.2)] group-hover:scale-105 transition-transform duration-500" />
                     <div>
                         <h2 className="font-black text-[10px] tracking-[0.2em] text-[#d4a574] uppercase leading-none opacity-80 mb-1.5 font-sans">Civil Registry</h2>
                         <div className="flex items-center gap-2">
                             <span className="text-white font-black text-xl tracking-tight font-sans">NAIC</span>
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-white/10 text-slate-400 uppercase tracking-widest border border-white/5 font-mono">v1.0</span>
                         </div>
                     </div>
                 </div>

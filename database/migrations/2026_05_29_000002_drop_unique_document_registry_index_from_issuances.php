@@ -14,9 +14,16 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // On MySQL, the unique index on document_id is also used as the
+        // foreign key constraint, so we must drop the FK first.
+        Schema::table('issuances', function (Blueprint $table) {
+            $table->dropForeign(['document_id']);
+        });
+
         Schema::table('issuances', function (Blueprint $table) {
             $table->dropUnique('unique_document_registry');
             $table->index('document_id', 'document_id_index');
+            $table->foreign('document_id')->references('id')->on('documents')->nullOnDelete();
         });
     }
 

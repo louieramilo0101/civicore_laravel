@@ -13,7 +13,7 @@ import useDebounce from '../hooks/useDebounce.js';
 
 /** Manages archived records and restore or purge operations. */
 const ArchiveManager = () => {
-    const { backgroundTasks, runBackgroundTask, refreshAll } = useData();
+    const { backgroundTasks, runBackgroundTask, refreshAll, onGlobalRefresh } = useData();
 
     const [archivedFiles, setArchivedFiles] = useState(() => {
         try {
@@ -54,7 +54,12 @@ const ArchiveManager = () => {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     const canPurge = ['SuperAdmin', 'Admin'].includes(user.role);
 
-    const fetchArchivedFiles = useCallback(async () => {
+    const CACHE_TTL_MS = 300000; // 5 minutes — skip refetch if data was loaded recently
+
+    const fetchArchivedFiles = useCallback(async (force = false) => {
+        const lastFetch = Number(sessionStorage.getItem('civicore_archived_files_time') || 0);
+        if (!force && Date.now() - lastFetch < CACHE_TTL_MS) return;
+
         setIsLoadingArchived(true);
         try {
             const params = new URLSearchParams({
@@ -72,6 +77,7 @@ const ArchiveManager = () => {
                 if (!debouncedArchiveSearch && archiveTypeFilter === 'all') {
                     try {
                         sessionStorage.setItem('civicore_archived_files', JSON.stringify(files));
+                        sessionStorage.setItem('civicore_archived_files_time', String(Date.now()));
                     } catch (e) {
                         console.warn('Failed to cache archived files:', e);
                     }
@@ -84,7 +90,10 @@ const ArchiveManager = () => {
         }
     }, [debouncedArchiveSearch, archiveTypeFilter]);
 
-    const fetchArchivedTickets = useCallback(async () => {
+    const fetchArchivedTickets = useCallback(async (force = false) => {
+        const lastFetch = Number(sessionStorage.getItem('civicore_archived_tickets_time') || 0);
+        if (!force && Date.now() - lastFetch < CACHE_TTL_MS) return;
+
         setIsLoadingTickets(true);
         try {
             const res = await fetch('/api/tickets/archived', { credentials: 'include' });
@@ -94,6 +103,7 @@ const ArchiveManager = () => {
                 setArchivedTickets(tickets);
                 try {
                     sessionStorage.setItem('civicore_archived_tickets', JSON.stringify(tickets));
+                    sessionStorage.setItem('civicore_archived_tickets_time', String(Date.now()));
                 } catch (e) {
                     console.warn('Failed to cache archived tickets:', e);
                 }
@@ -109,6 +119,14 @@ const ArchiveManager = () => {
         fetchArchivedFiles();
         fetchArchivedTickets();
     }, [fetchArchivedFiles, fetchArchivedTickets]);
+
+    // Subscribe to global refresh events (e.g. from Documents.jsx delete)
+    useEffect(() => {
+        return onGlobalRefresh(() => {
+            fetchArchivedFiles(true);
+            fetchArchivedTickets(true);
+        });
+    }, [onGlobalRefresh, fetchArchivedFiles, fetchArchivedTickets]);
 
     // Separate archives based on status with memoization
     const scansArchive = useMemo(() => {
@@ -184,7 +202,7 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/documents/${fileId}/undo`, { method: 'POST', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchivedFiles();
+                        fetchArchivedFiles(true);
                         return { success: true, message: 'Record restored successfully' };
                     }
                     throw new Error('Restore failed');
@@ -207,7 +225,7 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/tickets/${ticketId}/restore`, { method: 'POST', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchivedTickets();
+                        fetchArchivedTickets(true);
                         return { success: true, message: 'Ticket restored successfully' };
                     }
                     throw new Error('Restore failed');
@@ -230,7 +248,7 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/documents/${fileId}/purge`, { method: 'DELETE', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchivedFiles();
+                        fetchArchivedFiles(true);
                         return { success: true, message: 'Record permanently deleted' };
                     }
                     throw new Error('Purge failed');
@@ -253,7 +271,7 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/tickets/${ticketId}/purge`, { method: 'DELETE', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchivedTickets();
+                        fetchArchivedTickets(true);
                         return { success: true, message: 'Ticket permanently deleted' };
                     }
                     throw new Error('Purge failed');
@@ -285,7 +303,7 @@ const ArchiveManager = () => {
                     }
                     setSelectedArchiveIds([]);
                     refreshAll();
-                    fetchArchivedFiles();
+                    fetchArchivedFiles(true);
                     return { success: true, message: `Successfully restored ${successCount} records.` };
                 });
             },
@@ -315,7 +333,7 @@ const ArchiveManager = () => {
                     }
                     setSelectedArchiveIds([]);
                     refreshAll();
-                    fetchArchivedFiles();
+                    fetchArchivedFiles(true);
                     return { success: true, message: `Successfully permanently deleted ${successCount} records.` };
                 });
             },
@@ -351,12 +369,10 @@ const ArchiveManager = () => {
                 </div>
 
                 {/* Info and Policy Warning Alert Box (Collapsible on mobile) */}
-                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-3 sm:p-5 text-xs text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800/50 dark:text-indigo-300">
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-3 sm:p-5 pl-4 sm:pl-8 text-xs text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800/50 dark:text-indigo-300">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-200 shrink-0 dark:bg-indigo-500/10 dark:border-indigo-700">
 
-                            </div>
                             <h4 className="font-bold text-xs sm:text-[13px] text-indigo-900 truncate dark:text-indigo-200">Archive Policy & Audit Trail Compliance</h4>
                         </div>
                         <button
@@ -381,7 +397,7 @@ const ArchiveManager = () => {
                                 transition={{ duration: 0.2 }}
                                 className="overflow-hidden"
                             >
-                                <p className="leading-relaxed text-indigo-700/80 pt-2 sm:pt-2.5 pl-9 sm:pl-12 text-[11px] sm:text-xs dark:text-indigo-300/80">
+                                <p className="leading-relaxed text-indigo-700/80 pt-2 sm:pt-2.5 text-[11px] sm:text-xs dark:text-indigo-300/80">
                                     CiviCORE maintains immutable transaction histories to ensure complete accountability for LCR and PSA state audit workflows.
                                     While scanned queues and database registry documents can be deleted and subsequently recovered in this panel, <strong>Activity Logs and printed transaction history cannot be deleted or purged</strong> by design.
                                 </p>
@@ -458,12 +474,23 @@ const ArchiveManager = () => {
                                 <option value="death">Death Certificates</option>
                                 <option value="marriage">Marriage Licenses</option>
                             </select>
+                            <button
+                                onClick={() => {
+                                    fetchArchivedFiles(true);
+                                    fetchArchivedTickets(true);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-xs"
+                                title="Force refresh archive (bypass cache)"
+                            >
+                                <ArrowPathIcon className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Refresh</span>
+                            </button>
                         </div>
                     </div>
 
                     {/* Table / List View */}
                     {showLoading ? (
-                        <div className="p-6 sm:p-8"><SkeletonLoader type="table" rows={6} /></div>
+                        <SkeletonLoader type="archive" rows={6} />
                     ) : activeArchiveList.length === 0 ? (
                         <div className="flex flex-col items-center justify-center p-10 sm:p-16 text-slate-400 dark:text-slate-500 text-center">
                             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-3 sm:mb-4 border border-slate-100 dark:border-slate-700 shadow-xs">

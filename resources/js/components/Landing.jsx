@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { 
-    ClockIcon, 
-    MegaphoneIcon, 
+import {
+    ClockIcon,
+    MegaphoneIcon,
     ArrowRightIcon,
     DocumentTextIcon,
     HeartIcon,
@@ -174,7 +174,12 @@ export default function Landing() {
     }, [t.dynamicWords.length]);
 
     useEffect(() => {
-        axios.get('/api/public/config')
+        // Use a short cache (5 min) instead of cache-busting every request.
+        // The server also sends Cache-Control headers; we let the browser
+        // cache this so repeat visitors don't pay for a DB round-trip.
+        axios.get('/api/public/config', {
+            headers: { 'Cache-Control': 'max-age=300' }
+        })
             .then(res => setConfig(res.data))
             .catch(err => console.error(err));
     }, []);
@@ -183,6 +188,13 @@ export default function Landing() {
     const [activeAnnIndex, setActiveAnnIndex] = useState(0);
     const [isAnnPaused, setIsAnnPaused] = useState(false);
     const announcements = config?.announcements || [];
+
+    // Ensure active index stays within bounds when announcements update
+    useEffect(() => {
+        if (announcements.length > 0 && activeAnnIndex >= announcements.length) {
+            setActiveAnnIndex(0);
+        }
+    }, [announcements.length, activeAnnIndex]);
 
     // Auto-advance carousel every 6 seconds when not hovered and multiple exist
     useEffect(() => {
@@ -222,8 +234,8 @@ export default function Landing() {
     };
 
     // Sanitize opening hours to remove raw em-dashes
-    const sanitizedHours = config?.opening_hours 
-        ? config.opening_hours.replace(/[\u2014\u2013]/g, '-') 
+    const sanitizedHours = config?.opening_hours
+        ? config.opening_hours.replace(/[\u2014\u2013]/g, '-')
         : (lang === 'fil' ? 'Lunes - Biyernes: 8:00 AM - 5:00 PM' : 'Monday - Friday: 8:00 AM - 5:00 PM');
 
     const currentAnnouncement = announcements[activeAnnIndex];
@@ -261,9 +273,9 @@ export default function Landing() {
             <div className="absolute top-[20%] right-[10%] w-[40%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)] pointer-events-none" />
 
             {/* Hero Section */}
-            <section className="pt-2 sm:pt-4 md:pt-6 pb-12 sm:pb-16 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
+            <section className="pt-0 sm:pt-1 md:pt-2 pb-12 sm:pb-16 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 z-10 relative">
                 <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
-                    
+
                     {/* Left Column: Hero Title, Subtitle, and CTAs */}
                     <motion.div
                         variants={containerVars}
@@ -272,7 +284,7 @@ export default function Landing() {
                         className="lg:col-span-7 xl:col-span-7 w-full"
                     >
                         {/* Official Institutional Eyebrow */}
-                        <motion.div variants={itemVars} className="mb-4 sm:mb-5 flex flex-wrap items-center gap-3">
+                        <motion.div variants={itemVars} className="mb-2 sm:mb-3 flex flex-wrap items-center gap-3">
                             <div className="w-1 h-5 bg-[#d4a574] rounded-full shadow-[0_0_8px_rgba(212,165,116,0.6)]" />
                             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs sm:text-sm font-semibold tracking-wider uppercase">
                                 <span className="text-[#d4a574]">{t.eyebrowOffice}</span>
@@ -340,7 +352,7 @@ export default function Landing() {
 
                         {/* Content Container */}
                         <div className="relative z-10 space-y-4 max-w-md w-full ml-auto lg:mr-0 mr-auto">
-                            
+
                             {/* Announcements Carousel (Top) - Translucent Rose Glass */}
                             {config === null ? (
                                 <div className="space-y-3 animate-pulse">
@@ -351,13 +363,16 @@ export default function Landing() {
                                 </div>
                             ) : announcements.length > 0 ? (
                                 <motion.div
-                                    variants={itemVars}
+                                    key="announcements-carousel-card"
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                                     onMouseEnter={() => setIsAnnPaused(true)}
                                     onMouseLeave={() => setIsAnnPaused(false)}
                                     className="bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/25 hover:border-rose-500/40 rounded-2xl p-4 sm:p-5 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-rose-950/20 transition-all group"
                                 >
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-rose-400 to-rose-600" />
-                                    
+
                                     {/* Header with Counter and Navigation Controls */}
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
@@ -412,10 +427,10 @@ export default function Landing() {
                                                 <div className="text-[10px] text-rose-300/80 mt-1.5 font-medium">
                                                     {currentAnnouncement?.created_at
                                                         ? new Date(currentAnnouncement.created_at).toLocaleDateString(lang === 'fil' ? 'fil-PH' : 'en-US', {
-                                                              month: 'short',
-                                                              day: 'numeric',
-                                                              year: 'numeric'
-                                                          })
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            year: 'numeric'
+                                                        })
                                                         : t.announcementNotice}
                                                 </div>
                                             </motion.div>
@@ -430,11 +445,10 @@ export default function Landing() {
                                                     key={idx}
                                                     type="button"
                                                     onClick={() => setActiveAnnIndex(idx)}
-                                                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                                                        activeAnnIndex === idx
+                                                    className={`h-1.5 rounded-full transition-all cursor-pointer ${activeAnnIndex === idx
                                                             ? 'w-5 bg-rose-400'
                                                             : 'w-1.5 bg-rose-300/30 hover:bg-rose-300/60'
-                                                    }`}
+                                                        }`}
                                                     aria-label={`Jump to announcement ${idx + 1}`}
                                                 />
                                             ))}
@@ -457,7 +471,10 @@ export default function Landing() {
                             ) : config?.opening_hours ? (
                                 <Tooltip content={t.hoursTooltip} position="top" className="w-full block">
                                     <motion.div
-                                        variants={itemVars}
+                                        key="operating-hours-card"
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
                                         whileHover={{ y: -2, borderColor: 'rgba(212,165,116,0.3)' }}
                                         className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl shadow-xl shadow-black/20 transition-all group relative overflow-hidden text-left"
                                     >
@@ -492,7 +509,7 @@ export default function Landing() {
             <section className="pt-12 pb-20 sm:pt-16 sm:pb-24 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10">
                 <div className="absolute top-1/2 -right-12 w-64 h-64 bg-[radial-gradient(ellipse_at_center,rgba(212,165,116,0.1)_0%,transparent_70%)] pointer-events-none" />
                 <div className="w-full space-y-10 relative">
-                    
+
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -544,7 +561,7 @@ export default function Landing() {
             {/* Section 3: Civil Registry Documents (Bilingual) */}
             <section className="pt-20 pb-28 sm:pt-28 sm:pb-36 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10">
                 <div className="w-full space-y-10 relative">
-                    
+
                     {/* Section Header */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
@@ -569,7 +586,7 @@ export default function Landing() {
 
                     {/* Asymmetric Bento Grid matching original translucent glass cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-                        
+
                         {/* Birth Certificate (Featured Wide Tile: 7 cols) */}
                         <motion.div
                             initial={{ opacity: 0, y: 35 }}
@@ -682,11 +699,10 @@ export default function Landing() {
             {/* Subtle, Translucent Floating Language Switch (Scroll-reactive: hides on scroll down, shows on scroll up) */}
             <aside aria-label="Language selection" className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
                 <div
-                    className={`transition-all duration-300 transform ${
-                        isLangPillVisible 
-                            ? 'translate-y-0 opacity-100 pointer-events-auto' 
+                    className={`transition-all duration-300 transform ${isLangPillVisible
+                            ? 'translate-y-0 opacity-100 pointer-events-auto'
                             : 'translate-y-8 opacity-0 pointer-events-none'
-                    }`}
+                        }`}
                 >
                     <div className="inline-flex items-center gap-1 p-1 rounded-full bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-md border border-white/10 shadow-lg shadow-black/20 text-xs">
                         <div className="pl-2 pr-1 flex items-center gap-1.5 text-slate-400">
@@ -695,11 +711,10 @@ export default function Landing() {
                         <button
                             type="button"
                             onClick={() => handleLanguageChange('en')}
-                            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${
-                                lang === 'en'
+                            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${lang === 'en'
                                     ? 'bg-[#d4a574] text-slate-950 shadow-sm'
                                     : 'text-slate-300 hover:text-white'
-                            }`}
+                                }`}
                             aria-pressed={lang === 'en'}
                             title="English"
                         >
@@ -708,11 +723,10 @@ export default function Landing() {
                         <button
                             type="button"
                             onClick={() => handleLanguageChange('fil')}
-                            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${
-                                lang === 'fil'
+                            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full transition-all cursor-pointer ${lang === 'fil'
                                     ? 'bg-[#d4a574] text-slate-950 shadow-sm'
                                     : 'text-slate-300 hover:text-white'
-                            }`}
+                                }`}
                             aria-pressed={lang === 'fil'}
                             title="Filipino"
                         >

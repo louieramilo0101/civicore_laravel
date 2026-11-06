@@ -157,7 +157,7 @@ const Documents = () => {
         refreshDocuments,
         refreshHistory,
         refreshStats,
-        refreshAll
+        refreshAfterMutation,
     } = useData();
     const isLoadingData = dataLoading.documents;
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -277,7 +277,10 @@ const Documents = () => {
     };
 
     useEffect(() => {
-        const hasProcessing = files.some(f => f.status === 'processing' || f.status === 'uploading' || f.status === 'checking');
+        const hasProcessing = files.some(f => {
+            const s = String(f.status || '').toLowerCase();
+            return s === 'processing' || s === 'uploading' || s === 'checking' || s === 'pending';
+        });
         if (!hasProcessing) return;
 
         const interval = setInterval(() => {
@@ -358,7 +361,7 @@ const Documents = () => {
             }
 
             if (successCount > 0) {
-                refreshAll();
+                refreshAfterMutation();
                 const message = isBulk
                     ? `Successfully uploaded ${successCount} of ${acceptedFiles.length} files`
                     : 'Document uploaded successfully';
@@ -367,7 +370,7 @@ const Documents = () => {
             refreshDocuments(true);
             throw new Error(lastError || 'Upload failed');
         }, { silent: true });
-    }, [selectedDocType, refreshAll, runBackgroundTask, refreshDocuments]);
+    }, [selectedDocType, runBackgroundTask, refreshDocuments]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -524,7 +527,7 @@ const Documents = () => {
                         console.error('Failed to link ticket to document:', linkErr);
                     }
 
-                    refreshAll();
+                    refreshAfterMutation();
                     return { success: true };
                 }
 
@@ -550,7 +553,7 @@ const Documents = () => {
                                     });
                                     const forceData = await forceRes.json();
                                     if (forceData.success) {
-                                        refreshAll();
+                                        refreshAfterMutation();
                                         resolve({ success: true });
                                     } else {
                                         refreshDocuments(true);
@@ -619,7 +622,7 @@ const Documents = () => {
                             const res = await fetch(`/api/documents/${f.id}/quick-approve`, { method: 'POST', credentials: 'include' });
                             if (res.ok) ok++;
                         }
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, message: `Successfully approved ${ok} records.` };
                     } catch (err) {
                         refreshDocuments(true);
@@ -778,7 +781,7 @@ const Documents = () => {
      */
     const getMissingRequiredFields = (file) => {
         const fields = file.extracted_fields || {};
-        const detectedType = (file.detected_type || file.type || 'birth').toLowerCase();
+        let detectedType = (file.detected_type || file.type || 'birth').toLowerCase();
         if (detectedType === 'marriage_license') {
             detectedType = 'marriage';
         }
@@ -935,7 +938,7 @@ const Documents = () => {
                         console.error('Failed to link ticket to document:', linkErr);
                     }
 
-                    refreshAll();
+                    refreshAfterMutation();
                     return { success: true, message: `Data for ${personName} has been secured.` };
                 }
                 const saveErr = new Error(data.message || data.error || 'Save failed');
@@ -965,11 +968,11 @@ const Documents = () => {
                 runBackgroundTask(`${file.name}`, async () => {
                     const res = await fetch(`/api/documents/${fileId}`, { method: 'DELETE', credentials: 'include' });
                     if (res.ok) {
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, type: 'delete', message: 'Document deleted successfully' };
                     }
                     // Revert on failure
-                    refreshAll();
+                    refreshAfterMutation();
                     throw new Error('Deletion failed');
                 }, {
                     type: 'delete',
@@ -1007,7 +1010,7 @@ const Documents = () => {
                         }
                     }
                     setSelectedIds([]); // Clear selection after delete
-                    refreshAll();
+                    refreshAfterMutation();
                     return { success: true, message: `Successfully deleted ${successCount} files.` };
                 });
             },
@@ -1601,7 +1604,7 @@ const Documents = () => {
                                 </div>
 
                                 {isLoadingData ? (
-                                    <div className="p-4"><SkeletonLoader type="table" rows={5} /></div>
+                                    <SkeletonLoader type="documents" rows={5} />
                                 ) : filteredQueue.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center flex-1 p-12 text-slate-400 text-center">
                                         <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
@@ -1894,7 +1897,7 @@ const Documents = () => {
                                 </div>
 
                                 {isLoadingData ? (
-                                    <div className="p-4"><SkeletonLoader type="table" rows={8} /></div>
+                                    <SkeletonLoader type="documents" rows={8} />
                                 ) : filteredHistory.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center flex-1 p-16 text-slate-400 text-center">
                                         <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-6">

@@ -89,7 +89,7 @@ class CertificatePdfTest extends TestCase
             'barangay' => 'Muzon',
             'issuanceDate' => '09/22/2026',
             'status' => 'Active',
-            'extracted_data' => json_encode([
+            'extracted_data' => \App\Support\EncryptedJson::encode([
                 'first_name' => 'Juan',
                 'last_name' => 'Dela Cruz',
                 'registry_number' => 'BC-2024-001',

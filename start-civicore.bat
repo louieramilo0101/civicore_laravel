@@ -7,13 +7,6 @@ echo ===================================================
 echo   CiviCORE: Starting All Systems (V4 Queue Profiles)...
 echo ===================================================
 echo.
-echo ===================================================
-echo   [YOUR NETWORK IP ADDRESSES FOR OTHER DEVICES / PHONES]
-echo   ---------------------------------------------------
-ipconfig | findstr /i "IPv4 Address Ethernet Wireless Wi-Fi Adapter"
-echo   ---------------------------------------------------
-echo ===================================================
-echo.
 
 :: -----------------------------------------------------------------
 :: Queue profile selection
@@ -48,14 +41,19 @@ if /I "%RAM_PROFILE%"=="4GB" (
 :: CPU-aware safety cap for low queue fan-out workers.
 if %CPU_CORES% LEQ 4 set "LOW_WORKERS=1"
 
-:: Detect Local IP Address
+:: Detect Local IP Address - more robust method
 set "PC_IP=localhost"
-for /f "tokens=2 delims=:" %%a in ('ipconfig ^| find "IPv4 Address"') do (
+for /f "tokens=2 delims=[]" %%a in ('ping -n 1 -4 "%COMPUTERNAME%" ^| findstr "["') do (
     set "PC_IP=%%a"
-    goto :found_ip
 )
-:found_ip
-if defined PC_IP set "PC_IP=%PC_IP:~1%"
+if "%PC_IP%"=="" (
+    for /f "tokens=2 delims=:" %%a in ('ipconfig ^| find "IPv4 Address"') do (
+        set "PC_IP=%%a"
+        goto :found_ip
+    )
+    :found_ip
+    if defined PC_IP set "PC_IP=%PC_IP:~1%"
+)
 
 :: Detect Ollama Executable
 set "OLLAMA_BIN=ollama"
@@ -82,30 +80,33 @@ start "CiviCORE Queue Worker" cmd /k "title CiviCORE Queue Worker && echo Runnin
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
 start "OCR Server" cmd /k "title OCR Server && C:\laragon\bin\python\python-3.13\python.exe ocr_server.py"
 
-:: 5. Start Vite (Frontend)
-set "START_VITE=y"
-echo [5/5] Do you want to run Vite Dev Server for hot-reloading? (y/n)
-set /p START_VITE="Enter choice (y/n, default y): "
-if /I "%START_VITE%"=="n" (
-    echo Bypassing Vite Dev Server (Running in Production Mode).
-    if exist public\hot del public\hot
-) else (
-    echo Launching Vite Frontend (npm run dev)...
-    start "Vite Dev" cmd /k "title Vite Dev && npm run dev"
-)
+:: 5. Start Vite (Frontend) - ALWAYS run dev server for HMR
+echo [5/5] Launching Vite Dev Server with Hot Module Replacement...
+echo.
+echo   ============================================================
+echo   YOUR NETWORK ACCESS (also shown in Vite window title):
+echo   ------------------------------------------------------------
+echo   Local PC:      http://localhost:8000
+echo   Mobile/Phone:  http://%PC_IP%:8000
+echo   (For HTTPS camera access, run start-tunnel.bat)
+echo   ============================================================
+echo.
+
+start "Vite Dev [%PC_IP%]" cmd /k "title Vite Dev Server - Mobile: http://%PC_IP%:8000 && echo. && echo Vite Dev Server with HMR && echo Network IP: %PC_IP% && echo. && npm run dev"
 
 echo ===================================================
 echo   ALL SYSTEMS GO!
 echo   1. Check the "Ollama Server" window to verify local AI status.
 echo   2. Wait for "OCR Reader ready" in the OCR window.
-echo   3. If running dev mode, wait for "VITE ready" in the Vite window.
+echo   3. Wait for "VITE ready" in the Vite window.
+echo   4. The Vite window title shows your mobile IP: %PC_IP%
 echo.
 echo   [NETWORK IP ADDRESSES FOR OTHER DEVICES / PHONES]
 echo   ---------------------------------------------------
 ipconfig | findstr /i "IPv4 Address Ethernet Wireless Wi-Fi Adapter"
 echo   ---------------------------------------------------
-echo   * Visit on Local PC:       http://localhost:8000
-echo   * Visit on Mobile Phone:   http://%PC_IP%:8000
+echo   * Visit on local PC:       http://localhost:8000
+echo   * Visit on mobile phone:   http://%PC_IP%:8000
 echo   (For full mobile camera WebRTC access over HTTPS, run start-tunnel.bat)
 echo ===================================================
 echo.

@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
+// Simple event emitter for cross-component cache invalidation
+const globalRefreshEmitter = {
+    listeners: new Set(),
+    subscribe: (fn) => { globalRefreshEmitter.listeners.add(fn); return () => globalRefreshEmitter.listeners.delete(fn); },
+    emit: () => { globalRefreshEmitter.listeners.forEach(fn => fn()); }
+};
+
 const DataContext = createContext();
 
 /** Returns shared cached civic data and refresh operations. */
@@ -15,6 +22,13 @@ export const useData = () => {
 export const DataProvider = ({ children }) => {
     const DATA_VERSION = '1.0.5';
 
+    // Ensure session storage has user cached from localStorage across new tabs/windows
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('user') && localStorage.getItem('user')) {
+        try {
+            sessionStorage.setItem('user', localStorage.getItem('user'));
+        } catch (e) { /* ignore */ }
+    }
+
     const safeCache = (key, value) => {
         try {
             sessionStorage.setItem(key, value);
@@ -23,19 +37,23 @@ export const DataProvider = ({ children }) => {
             try { sessionStorage.removeItem(key); } catch (e) { /* ignore */ }
         }
     };
-    
+
     // ── State for Stats ──────────────────────────────────────────────────────
     const [stats, setStats] = useState(() => {
         const cached = sessionStorage.getItem('civicore_stats');
         const version = sessionStorage.getItem('civicore_version');
-        
+
         // Force clear if version mismatch or first time
         if (version !== DATA_VERSION) {
+            const preservedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
             sessionStorage.clear();
+            if (preservedUser) {
+                try { sessionStorage.setItem('user', preservedUser); } catch (e) { /* ignore */ }
+            }
             sessionStorage.setItem('civicore_version', DATA_VERSION);
             return { totalDocs: 0, processedDocs: 0, pendingDocs: 0, totalUsers: 0, totalIssuances: 0, pendingIssuances: 0 };
         }
-        
+
         return cached ? JSON.parse(cached) : {
             totalDocs: 0,
             processedDocs: 0,
@@ -72,7 +90,7 @@ export const DataProvider = ({ children }) => {
 
     const [loading, setLoading] = useState({
         stats: !sessionStorage.getItem('civicore_stats'),
-        documents: !sessionStorage.getItem('civicore_documents'),
+        documents: true,
         issuances: !sessionStorage.getItem('civicore_issuances'),
         history: !sessionStorage.getItem('civicore_history'),
         templates: !sessionStorage.getItem('civicore_templates')
@@ -94,7 +112,7 @@ export const DataProvider = ({ children }) => {
     const runBackgroundTask = useCallback(async (name, actionFn, options = {}) => {
         // High-precision ID to prevent state-update collisions
         const taskId = `${options.id || Math.random().toString(36).substring(2, 9)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        
+
         // Add "Running" task immediately for UI feedback
         if (!options.silent) {
             setBackgroundTasks(prev => [...prev, {
@@ -107,7 +125,7 @@ export const DataProvider = ({ children }) => {
 
         try {
             const result = await actionFn();
-            
+
             // Update or remove task
             setBackgroundTasks(prev => {
                 const filtered = prev.filter(t => t.id !== taskId);
@@ -132,11 +150,11 @@ export const DataProvider = ({ children }) => {
                     setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
                 }, 4000);
             }
-            
+
             return result;
         } catch (err) {
             console.error(`Task ${name} failed:`, err);
-            
+
             // Update to error status
             setBackgroundTasks(prev => {
                 const filtered = prev.filter(t => t.id !== taskId);
@@ -148,7 +166,7 @@ export const DataProvider = ({ children }) => {
                     timestamp: new Date()
                 }];
             });
-            
+
             setTimeout(() => {
                 setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
             }, 6000);
@@ -161,10 +179,16 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     // ── Fetching Logic ────────────────────────────────────────────────────────
-    
+
     /** Checks whether the session contains a user with an assigned role. */
     const isAuthenticated = () => {
-        const userJson = sessionStorage.getItem('user');
+        let userJson = sessionStorage.getItem('user');
+        if (!userJson && typeof window !== 'undefined') {
+            userJson = localStorage.getItem('user');
+            if (userJson) {
+                try { sessionStorage.setItem('user', userJson); } catch (e) { /* ignore */ }
+            }
+        }
         if (!userJson) return false;
         try {
             const user = JSON.parse(userJson);
@@ -177,15 +201,18 @@ export const DataProvider = ({ children }) => {
     const CACHE_TTL_MS = 300000; // 5 minutes cache to prevent repetitive loading
 
     const refreshStats = useCallback(async (force = false) => {
-        if (!isAuthenticated()) return;
+        if (!isAuthenticated()) {
+            setLoading(prev => ({ ...prev, stats: false }));
+            return;
+        }
         const now = Date.now();
         if (!force && now - lastFetch.current.stats < CACHE_TTL_MS) return;
-        
+
         try {
             const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch stats');
             const data = await response.json();
-            
+
             if (data.stats) {
                 setStats(data.stats);
                 safeCache('civicore_stats', JSON.stringify(data.stats));
@@ -202,15 +229,18 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const refreshDocuments = useCallback(async (force = false) => {
-        if (!isAuthenticated()) return;
+        if (!isAuthenticated()) {
+            setLoading(prev => ({ ...prev, documents: false }));
+            return;
+        }
         const now = Date.now();
         if (!force && now - lastFetch.current.documents < CACHE_TTL_MS) return;
 
         try {
-            const response = await fetch('/api/documents', { credentials: 'include' });
+            const response = await fetch('/api/documents?per_page=100', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch documents');
             const data = await response.json();
-            
+
             if (data.data) {
                 const mapped = data.data.map(doc => {
                     let ef = doc.extracted_fields;
@@ -224,38 +254,40 @@ export const DataProvider = ({ children }) => {
                             }
                         });
                     }
-                    
+
                     let meta = doc.metadata;
                     if (typeof meta === 'string') {
                         try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
                     }
 
                     return {
-                        id:               doc.id,
-                        name:             doc.name,
-                        type:             (doc.type && doc.type.toLowerCase() !== 'unknown') ? doc.type : 'birth',
-                        size:             doc.size,
-                        status:           doc.status ? doc.status.toLowerCase() : 'pending',
-                        date:             doc.date || '',
-                        detected_type:    (doc.detected_type && doc.detected_type.toLowerCase() !== 'unknown') ? doc.detected_type : null,
+                        id: doc.id,
+                        name: doc.name,
+                        type: (doc.type && doc.type.toLowerCase() !== 'unknown') ? doc.type : 'birth',
+                        size: doc.size,
+                        status: doc.status ? doc.status.toLowerCase() : 'pending',
+                        date: doc.date || '',
+                        detected_type: (doc.detected_type && doc.detected_type.toLowerCase() !== 'unknown') ? doc.detected_type : null,
                         extracted_fields: ef,
-                        ocr_text:         doc.ocr_text,
-                        encoded_by:       doc.encoded_by,
-                        personName:       doc.personName || '',
-                        barangay:         doc.barangay || '',
-                        metadata:         meta || {},
-                        created_at:       doc.created_at,
-                        file_path:        doc.file_path,
-                        has_duplicate:    !!doc.has_duplicate,
-                        _search:          `${doc.name || ''} ${doc.personName || ''} ${doc.barangay || ''} ${doc.type || ''} ${doc.encoded_by || ''}`.toLowerCase(),
+                        ocr_text: doc.ocr_text,
+                        encoded_by: doc.encoded_by,
+                        personName: doc.personName || '',
+                        barangay: doc.barangay || '',
+                        metadata: meta || {},
+                        created_at: doc.created_at,
+                        file_path: doc.file_path,
+                        has_duplicate: !!doc.has_duplicate,
+                        _search: `${doc.name || ''} ${doc.personName || ''} ${doc.barangay || ''} ${doc.type || ''} ${doc.encoded_by || ''}`.toLowerCase(),
                         // batch progress fields (populated by server for active processing docs)
-                        batch_progress:   doc.batch_progress,
-                        batch_total:      doc.batch_total,
-                        batch_processed:  doc.batch_processed,
+                        batch_progress: doc.batch_progress,
+                        batch_total: doc.batch_total,
+                        batch_processed: doc.batch_processed,
                     };
                 });
                 setDocuments(mapped);
-                safeCache('civicore_documents', JSON.stringify(mapped));
+                if (mapped.length > 0) {
+                    safeCache('civicore_documents', JSON.stringify(mapped));
+                }
             }
             lastFetch.current.documents = now;
         } catch (err) {
@@ -266,7 +298,10 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const refreshIssuances = useCallback(async (force = false) => {
-        if (!isAuthenticated()) return;
+        if (!isAuthenticated()) {
+            setLoading(prev => ({ ...prev, issuances: false }));
+            return;
+        }
         const now = Date.now();
         if (!force && now - lastFetch.current.issuances < CACHE_TTL_MS) return;
 
@@ -274,26 +309,25 @@ export const DataProvider = ({ children }) => {
             const response = await fetch('/api/issuances', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch issuances');
             const data = await response.json();
-            
+
             if (data.data) {
                 const mapped = data.data.map(i => ({
-                    id:              i.id,
-                    number:          i.certNumber,
-                    type:            (i.type && i.type.toLowerCase() !== 'unknown') ? i.type : 'birth',
-                    name:            i.name,
-                    barangay:        i.barangay,
-                    date:            i.issuanceDate,
-                    status:          i.status || 'Pending',
-                    encoded_by:      i.encoded_by,
-                    document_id:     i.document_id,
-                    or_number:       i.or_number,
-                    print_remarks:   i.print_remarks,
-                    requested_by:    i.requested_by,
-                    approved_by:     i.approved_by,
-                    ticket_number:   i.ticket_number,
-                    created_at:      i.created_at,
-                    _search:         `${i.certNumber || ''} ${i.name || ''} ${i.barangay || ''} ${i.type || ''} ${i.encoded_by || ''} ${i.ticket_number || ''} ${i.or_number || ''}`.toLowerCase(),
-                    source:          'issuance',
+                    id: i.id,
+                    number: i.certNumber,
+                    type: (i.type && i.type.toLowerCase() !== 'unknown') ? i.type : 'birth',
+                    name: i.name,
+                    barangay: i.barangay,
+                    date: i.issuanceDate,
+                    status: i.status || 'Pending',
+                    encoded_by: i.encoded_by,
+                    document_id: i.document_id,
+                    or_number: i.or_number,
+                    print_remarks: i.print_remarks,
+                    requested_by: i.requested_by,
+                    approved_by: i.approved_by,
+                    created_at: i.created_at,
+                    _search: `${i.certNumber || ''} ${i.name || ''} ${i.barangay || ''} ${i.type || ''} ${i.encoded_by || ''} ${i.or_number || ''}`.toLowerCase(),
+                    source: 'issuance',
                     raw: {
                         ...i,
                         type: (i.type && i.type.toLowerCase() !== 'unknown') ? i.type : 'birth',
@@ -312,7 +346,10 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const refreshHistory = useCallback(async (force = false) => {
-        if (!isAuthenticated()) return;
+        if (!isAuthenticated()) {
+            setLoading(prev => ({ ...prev, history: false }));
+            return;
+        }
         const now = Date.now();
         if (!force && now - lastFetch.current.history < CACHE_TTL_MS) return;
 
@@ -320,7 +357,7 @@ export const DataProvider = ({ children }) => {
             const response = await fetch('/api/documents/history', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch history');
             const data = await response.json();
-            
+
             if (data.data) {
                 setHistory(data.data);
                 safeCache('civicore_history', JSON.stringify(data.data));
@@ -334,7 +371,10 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const refreshTemplates = useCallback(async (force = false) => {
-        if (!isAuthenticated()) return;
+        if (!isAuthenticated()) {
+            setLoading(prev => ({ ...prev, templates: false }));
+            return;
+        }
         const now = Date.now();
         if (!force && now - lastFetch.current.templates < CACHE_TTL_MS) return;
 
@@ -345,7 +385,7 @@ export const DataProvider = ({ children }) => {
                 throw new Error(`Failed to fetch templates: ${response.status} ${text}`);
             }
             const data = await response.json();
-            
+
             if (data) {
                 setTemplates(data);
                 safeCache('civicore_templates', JSON.stringify(data));
@@ -367,6 +407,17 @@ export const DataProvider = ({ children }) => {
         refreshIssuances(true);
         refreshHistory(true);
         refreshTemplates(true);
+        // DO NOT emit global event — this is for polling/visibility, not mutations
+    }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
+
+    // Call this after explicit mutations (delete, restore, purge, etc.)
+    const refreshAfterMutation = useCallback(() => {
+        refreshStats(true);
+        refreshDocuments(true);
+        refreshIssuances(true);
+        refreshHistory(true);
+        refreshTemplates(true);
+        globalRefreshEmitter.emit(); // notify ArchiveManager & others
     }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
 
     const stopPolling = useCallback(() => {
@@ -436,6 +487,10 @@ export const DataProvider = ({ children }) => {
         refreshTemplates,
         // Helper to refresh everything at once (e.g. after a mutation)
         refreshAll,
+        // Call this after explicit mutations (delete, restore, purge, etc.)
+        refreshAfterMutation,
+        // Subscribe to global refresh events (for ArchiveManager, etc.)
+        onGlobalRefresh: globalRefreshEmitter.subscribe,
     };
 
     return (

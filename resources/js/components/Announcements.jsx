@@ -91,8 +91,9 @@ export default function Announcements() {
             }
         } catch (e) {
             console.error(e);
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     const toggleStatus = async (id, currentStatus) => {

@@ -192,9 +192,7 @@ const SystemRestartModal = ({ isOpen, onClose }) => {
                                 {/* Orbiting glow rings */}
                                 <div className="absolute inset-0 rounded-full border-2 border-amber-500/30 border-t-amber-400 animate-spin" />
                                 <div className="absolute inset-2 rounded-full border-2 border-emerald-500/30 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }} />
-                                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center shadow-xl">
-                                    <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain animate-pulse" />
-                                </div>
+                                <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_0_16px_rgba(212,165,116,0.4)]" />
                             </div>
 
                             <div>

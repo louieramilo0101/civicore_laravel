@@ -49,12 +49,29 @@ export const ModalProvider = ({ children }) => {
         }
     }, [config]);
 
+    const showSessionExpired = useCallback((onLoginAgain = null) => {
+        setConfig({
+            title: 'Session Expired',
+            message: 'Your session has expired due to inactivity. Please log in again to continue.',
+            type: 'warning',
+            confirmText: 'Login Again',
+            cancelText: 'Dismiss',
+            showCancel: false,
+            autoDismiss: false,
+            onConfirm: () => {
+                setIsOpen(false);
+                if (onLoginAgain) onLoginAgain();
+            }
+        });
+        setIsOpen(true);
+    }, []);
+
     return (
-        <ModalContext.Provider value={{ showAlert }}>
+        <ModalContext.Provider value={{ showAlert, showSessionExpired }}>
             {children}
-            <AlertModal 
-                isOpen={isOpen} 
-                {...config} 
+            <AlertModal
+                isOpen={isOpen}
+                {...config}
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
             />

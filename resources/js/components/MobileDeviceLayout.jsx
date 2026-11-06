@@ -118,7 +118,7 @@ const MobileDeviceLayout = ({ children }) => {
             >
                 {/* Left Side: Logo & Title */}
                 <div className="flex items-center gap-3">
-                    <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain filter drop-shadow-[0_0_8px_rgba(212,165,116,0.3)]" />
+                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-9 h-9 object-contain filter drop-shadow-[0_0_8px_rgba(212,165,116,0.3)]" />
                     <div>
                         <h1 className="font-black text-sm text-white tracking-tight leading-tight line-clamp-1">{activeItem.label}</h1>
                         <p className="text-[10px] font-bold text-[#d4a574] tracking-widest uppercase font-mono">Naic Civil Registry</p>
@@ -208,7 +208,7 @@ const MobileDeviceLayout = ({ children }) => {
                             {/* Drawer Header */}
                             <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
                                 <div className="flex items-center gap-3">
-                                    <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+                                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-10 h-10 object-contain" />
                                     <div>
                                         <h2 className="font-black text-white text-base tracking-tight">Civil Registry</h2>
                                         <p className="text-xs text-[#d4a574] font-bold">Municipality of Naic</p>

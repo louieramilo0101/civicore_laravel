@@ -28,11 +28,19 @@ class Issuance extends Model
         'extracted_data',
         'file_path',
         'image_path',
+        'registry_number',
     ];
 
     /** Stores the hidden value to prevent payload bloat. */
     protected $hidden = [
         'file_data',
+    ];
+
+    /** Stores the casts value used by this component. */
+    protected $casts = [
+        'extracted_data' => 'encrypted:array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**

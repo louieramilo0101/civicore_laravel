@@ -363,12 +363,12 @@ const getInitialFormData = (type, ocrFields, fileObj) => {
     if (init.husband_dob && (!init.husband_age || init.husband_age === 'n/a')) {
         const hY = parseInt(String(init.husband_dob).split('-')[0], 10);
         const cY = new Date().getFullYear();
-        if (cY - hY >= 0) init.husband_age = cY - hY;
+        if (cY - hY >= 0) init.husband_age = String(cY - hY);
     }
     if (init.wife_dob && (!init.wife_age || init.wife_age === 'n/a')) {
         const wY = parseInt(String(init.wife_dob).split('-')[0], 10);
         const cY = new Date().getFullYear();
-        if (cY - wY >= 0) init.wife_age = cY - wY;
+        if (cY - wY >= 0) init.wife_age = String(cY - wY);
     }
 
     // Death: auto-calculate completed years if date_of_birth and date_of_death are known

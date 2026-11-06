@@ -46,7 +46,7 @@ class Ticket extends Model
 
     /** Stores the casts value used by this component. */
     protected $casts = [
-        'details'      => 'array',
+        'details'      => 'encrypted:array',
         'expires_at'    => 'datetime',
         'scheduled_date' => 'date',
         'verified_at'   => 'datetime',

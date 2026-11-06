@@ -7,6 +7,7 @@ use Dompdf\Options;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Support\EncryptedJson;
 
 /**
  * CertificatePdfGeneratorService
@@ -31,20 +32,14 @@ class CertificatePdfGeneratorService
 
         $extractedFields = [];
         if (!empty($issuance->extracted_data)) {
-            $decoded = json_decode($issuance->extracted_data, true);
-            if (is_array($decoded)) {
-                $extractedFields = $decoded;
-            }
+            $extractedFields = EncryptedJson::decode($issuance->extracted_data);
         }
 
         // If issuance extracted data is empty or minimal, merge from linked document if available
         if (empty($extractedFields) && !empty($issuance->document_id)) {
             $doc = DB::table('documents')->where('id', $issuance->document_id)->first();
             if ($doc && !empty($doc->extracted_fields)) {
-                $docDecoded = json_decode($doc->extracted_fields, true);
-                if (is_array($docDecoded)) {
-                    $extractedFields = $docDecoded;
-                }
+                $extractedFields = EncryptedJson::decode($doc->extracted_fields);
             }
         }
 
@@ -111,10 +106,7 @@ class CertificatePdfGeneratorService
 
         $extractedFields = [];
         if (!empty($document->extracted_fields)) {
-            $decoded = json_decode($document->extracted_fields, true);
-            if (is_array($decoded)) {
-                $extractedFields = $decoded;
-            }
+            $extractedFields = EncryptedJson::decode($document->extracted_fields);
         }
 
         if (empty($extractedFields['barangay']) && !empty($document->barangay)) {

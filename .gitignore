@@ -30,3 +30,7 @@ Thumbs.db
 __pycache__/
 scratch/
 /graphify-out/cache/
+
+# SQL exports with sensitive data
+civicore-export-*.sql
+*.sql

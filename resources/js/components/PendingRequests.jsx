@@ -163,6 +163,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [isPostPrintConfirmOpen, setIsPostPrintConfirmOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIdPreviewOpen, setIsIdPreviewOpen] = useState(false);
+    const [isIdImageLoading, setIsIdImageLoading] = useState(true);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isIssuing, setIsIssuing] = useState(false);
     /** Holds ticket data for immediate post-attachment print confirmation prompt */
@@ -587,9 +588,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                     /** Keep the selected record synchronized with refreshed server data without deselecting */
                     const matched = ticketsRes.data.find(t => t.id === selectedTicket.id);
                     setSelectedTicket(matched || selectedTicket);
-                } else {
-                    setSelectedTicket(ticketsRes.data[0]);
                 }
+                // Do NOT auto-select first ticket on refresh — user must explicitly click to select
             } else {
                 if (!isVerifyOpen && !isIdPreviewOpen) {
                     setSelectedTicket(null);
@@ -632,7 +632,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
                 setScannedData(prev => prev ? { ...prev, ...updatedTicket } : prev);
                 setIsAttachOpen(false);
-                setAttachedPrintPromptTicket(updatedTicket);
+                // Removed auto-open print prompt; "Verify ID & Issue" button appears naturally
                 showAlert({
                     title: 'File Attached!',
                     message: `Ticket ${selectedTicket.ticket_number} was linked and marked ready for release.`,
@@ -1199,7 +1199,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => setIsIdPreviewOpen(true)}
+                                                onClick={() => {
+                                                    setIsIdImageLoading(true);
+                                                    setIsIdPreviewOpen(true);
+                                                }}
                                                 className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 active:scale-95"
                                                 title="Inspect Citizen ID or Authorization Letter"
                                             >
@@ -1349,11 +1352,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                 }
                                             }}
                                             placeholder="e.g. Juan Dela Cruz"
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm font-semibold transition-all ${
-                                                walkinTouched && walkinErrors.client_name
-                                                    ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                    : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/50 focus:border-[#d4a574]'
-                                            }`}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm font-semibold transition-all ${walkinTouched && walkinErrors.client_name
+                                                ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/50 focus:border-[#d4a574]'
+                                                }`}
                                         />
                                         {walkinTouched && walkinErrors.client_name && (
                                             <p className="text-[10px] text-rose-500 font-bold mt-1 flex items-center gap-1">
@@ -1371,11 +1373,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             <button
                                                 type="button"
                                                 onClick={() => setWalkinPurpose('birth')}
-                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                                                    walkinPurpose === 'birth'
-                                                        ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-500 text-orange-700 dark:text-orange-300 ring-2 ring-orange-500/20 shadow-xs'
-                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                }`}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${walkinPurpose === 'birth'
+                                                    ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-500 text-orange-700 dark:text-orange-300 ring-2 ring-orange-500/20 shadow-xs'
+                                                    : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                    }`}
                                             >
                                                 <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'birth' ? 'bg-orange-500 dark:bg-orange-400' : 'bg-slate-400'}`} />
                                                 <span>Birth Certificate</span>
@@ -1383,11 +1384,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             <button
                                                 type="button"
                                                 onClick={() => setWalkinPurpose('death')}
-                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                                                    walkinPurpose === 'death'
-                                                        ? 'bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-500 text-red-700 dark:text-red-300 ring-2 ring-red-500/20 shadow-xs'
-                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                }`}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${walkinPurpose === 'death'
+                                                    ? 'bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-500 text-red-700 dark:text-red-300 ring-2 ring-red-500/20 shadow-xs'
+                                                    : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                    }`}
                                             >
                                                 <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'death' ? 'bg-red-500 dark:bg-red-400' : 'bg-slate-400'}`} />
                                                 <span>Death Certificate</span>
@@ -1395,11 +1395,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             <button
                                                 type="button"
                                                 onClick={() => setWalkinPurpose('marriage')}
-                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                                                    walkinPurpose === 'marriage'
-                                                        ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shadow-xs'
-                                                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                }`}
+                                                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${walkinPurpose === 'marriage'
+                                                    ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 shadow-xs'
+                                                    : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                    }`}
                                             >
                                                 <span className={`w-2 h-2 rounded-full ${walkinPurpose === 'marriage' ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400'}`} />
                                                 <span>Marriage License</span>
@@ -1430,11 +1429,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.first_name}
                                                     onChange={e => handleWalkinDetailChange('first_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.first_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.first_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.first_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.first_name}</p>
@@ -1452,11 +1450,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.last_name}
                                                     onChange={e => handleWalkinDetailChange('last_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.last_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.last_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.last_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.last_name}</p>
@@ -1471,11 +1468,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     max="2099-12-31"
                                                     value={walkinDetails.date_of_birth}
                                                     onChange={e => handleWalkinDetailChange('date_of_birth', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.date_of_birth
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.date_of_birth
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.date_of_birth && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_birth}</p>
@@ -1506,11 +1502,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.deceased_first_name}
                                                     onChange={e => handleWalkinDetailChange('deceased_first_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.deceased_first_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.deceased_first_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.deceased_first_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.deceased_first_name}</p>
@@ -1528,11 +1523,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.deceased_last_name}
                                                     onChange={e => handleWalkinDetailChange('deceased_last_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.deceased_last_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.deceased_last_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.deceased_last_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.deceased_last_name}</p>
@@ -1547,11 +1541,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     max="2099-12-31"
                                                     value={walkinDetails.date_of_death}
                                                     onChange={e => handleWalkinDetailChange('date_of_death', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.date_of_death
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.date_of_death
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.date_of_death && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_death}</p>
@@ -1575,11 +1568,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.husband_first_name}
                                                     onChange={e => handleWalkinDetailChange('husband_first_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.husband_first_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.husband_first_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.husband_first_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.husband_first_name}</p>
@@ -1597,11 +1589,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.husband_last_name}
                                                     onChange={e => handleWalkinDetailChange('husband_last_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.husband_last_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.husband_last_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.husband_last_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.husband_last_name}</p>
@@ -1617,11 +1608,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.wife_first_name}
                                                     onChange={e => handleWalkinDetailChange('wife_first_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.wife_first_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.wife_first_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.wife_first_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.wife_first_name}</p>
@@ -1639,11 +1629,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     type="text"
                                                     value={walkinDetails.wife_last_name}
                                                     onChange={e => handleWalkinDetailChange('wife_last_name', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.wife_last_name
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.wife_last_name
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.wife_last_name && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.wife_last_name}</p>
@@ -1659,11 +1648,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     max="2099-12-31"
                                                     value={walkinDetails.date_of_marriage}
                                                     onChange={e => handleWalkinDetailChange('date_of_marriage', e.target.value)}
-                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${
-                                                        walkinTouched && walkinErrors.date_of_marriage
-                                                            ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
-                                                            : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
-                                                    }`}
+                                                    className={`w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 dark:[color-scheme:dark] focus:outline-none focus:ring-2 ${walkinTouched && walkinErrors.date_of_marriage
+                                                        ? 'border-rose-400 dark:border-rose-500 focus:ring-rose-500/30'
+                                                        : 'border-slate-200 dark:border-slate-700 focus:ring-[#d4a574]/40'
+                                                        }`}
                                                 />
                                                 {walkinTouched && walkinErrors.date_of_marriage && (
                                                     <p className="text-[10px] text-rose-500 font-semibold">{walkinErrors.date_of_marriage}</p>
@@ -2217,7 +2205,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <XMarkIcon className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="flex-1 overflow-auto p-4 bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[320px]">
+                            <div className="flex-1 overflow-auto p-4 bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[320px] relative">
                                 {selectedTicket.consent_form_path.toLowerCase().endsWith('.pdf') ? (
                                     <iframe
                                         src={`/api/v1/tickets/${selectedTicket.id}/consent-form#toolbar=0`}
@@ -2225,11 +2213,21 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                         className="w-full h-[65vh] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                                     />
                                 ) : (
-                                    <img
-                                        src={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
-                                        alt="Citizen ID or Authorization Document"
-                                        className="max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                                    />
+                                    <div className="relative max-h-[65vh] max-w-full flex items-center justify-center">
+                                        {isIdImageLoading && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-8 bg-slate-200/60 dark:bg-slate-900/60 rounded-xl backdrop-blur-xs z-10">
+                                                <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Loading document image...</span>
+                                            </div>
+                                        )}
+                                        <img
+                                            src={`/api/v1/tickets/${selectedTicket.id}/consent-form`}
+                                            alt="Citizen ID or Authorization Document"
+                                            onLoad={() => setIsIdImageLoading(false)}
+                                            onError={() => setIsIdImageLoading(false)}
+                                            className={`max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 ${isIdImageLoading ? 'opacity-40 filter blur-sm scale-98' : 'opacity-100 filter blur-0 scale-100'}`}
+                                        />
+                                    </div>
                                 )}
                             </div>
                             <div className="px-5 py-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">

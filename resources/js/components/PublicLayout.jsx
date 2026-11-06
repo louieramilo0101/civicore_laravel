@@ -41,20 +41,15 @@ export default function PublicLayout({ children }) {
             <motion.header
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-5 sm:px-6 md:px-12 pt-4 pb-2 sm:pt-6 sm:pb-3 flex justify-between items-center z-50 relative"
+                className="px-5 sm:px-6 md:px-12 pt-3 pb-1 sm:pt-4 sm:pb-2 flex justify-between items-center z-50 relative"
             >
                 <Link to="/" className="flex items-center gap-3 sm:gap-4 group cursor-pointer">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-[#d4a574]/10 to-transparent rounded-2xl flex items-center justify-center border border-[#d4a574]/20 shadow-lg shadow-[#d4a574]/5 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
-                        <img src="/logo.png" alt="CiviCORE Logo" className="w-full h-full object-contain p-2" />
-                    </div>
+                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry of Naic" className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_12px_rgba(212,165,116,0.25)] group-hover:scale-110 transition-transform duration-300" />
                     <div>
                         <div className="font-extrabold text-white text-xl sm:text-2xl tracking-tight leading-none uppercase drop-shadow-sm">
                             Civi<span className="text-[#d4a574]">CORE</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-1.5 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#d4a574] inline-block shadow-[0_0_8px_rgba(212,165,116,0.8)]"></span>
-                            Naic, Cavite
-                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-1.5">Naic, Cavite</div>
                     </div>
                 </Link>
 
@@ -111,8 +106,8 @@ export default function PublicLayout({ children }) {
                                         to={link.path}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${isActive
-                                                ? 'bg-[#d4a574]/15 text-[#d4a574] border border-[#d4a574]/30'
-                                                : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                            ? 'bg-[#d4a574]/15 text-[#d4a574] border border-[#d4a574]/30'
+                                            : 'text-slate-300 hover:text-white hover:bg-white/5'
                                             }`}
                                     >
                                         <span>{link.name}</span>
@@ -171,7 +166,7 @@ export default function PublicLayout({ children }) {
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">
                 <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
                     <div className="flex items-center gap-4">
-                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain opacity-50" />
+                        <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-8 h-8 object-contain opacity-50" />
                         <span className="text-white font-black tracking-widest uppercase text-sm opacity-50">CiviCORE</span>
                         <span className="text-slate-600">•</span>
                         <a

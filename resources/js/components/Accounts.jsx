@@ -301,8 +301,12 @@ const Accounts = () => {
                 }));
                 setUsers(updatedUsers);
                 try {
-                    sessionStorage.setItem('civicore_users', JSON.stringify(updatedUsers));
-                    sessionStorage.setItem('civicore_users_time', String(Date.now()));
+                    const usersJson = JSON.stringify(updatedUsers);
+                    // Only cache if it fits within sessionStorage quota (~5MB)
+                    if (usersJson.length < 4 * 1024 * 1024) {
+                        sessionStorage.setItem('civicore_users', usersJson);
+                        sessionStorage.setItem('civicore_users_time', String(Date.now()));
+                    }
                 } catch (e) {
                     console.warn('Failed to cache users:', e);
                 }
@@ -506,8 +510,8 @@ const Accounts = () => {
         const isStale = Date.now() - lastFetchTime > 300000; // 5 min TTL
         const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
-        // Only SuperAdmin has access to the full accounts list; Admins view personal profile
-        if (user.role === 'SuperAdmin' && (!cachedUsers || isStale)) {
+        // SuperAdmin manages all; Admin manages self. Both should benefit from caching.
+        if (!cachedUsers || isStale) {
             fetchUsers(!cachedUsers);
         }
     }, []);
@@ -616,11 +620,11 @@ const Accounts = () => {
             {/* Header */}
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-3">
                         <ShieldCheckIcon className="w-8 h-8 text-[#d4a574]" />
                         {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin' ? 'System Accounts' : 'My Account'}
                     </h2>
-                    <p className="text-slate-500 font-medium text-sm mt-1">
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm mt-1">
                         {JSON.parse(sessionStorage.getItem('user') || '{}').role === 'SuperAdmin'
                             ? 'Manage personnel access, rate limits, and permission levels.'
                             : 'View and manage your account security settings.'}
@@ -770,7 +774,7 @@ const Accounts = () => {
 
                         <div className="overflow-y-auto flex-1 p-3 space-y-2">
                             {isLoading ? (
-                                <SkeletonLoader type="list" rows={8} />
+                                <SkeletonLoader type="accounts" rows={8} />
                             ) : filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
                                     <div
@@ -852,9 +856,7 @@ const Accounts = () => {
                         </div>
 
                         {isLoading ? (
-                            <div className="p-5 sm:p-8">
-                                <SkeletonLoader type="default" />
-                            </div>
+                            <SkeletonLoader type="accounts-detail" />
                         ) : selectedUser ? (
                             <div className="px-4 sm:px-8 pb-6 sm:pb-8">
                                 {/* Profile Avatar popping up over banner */}
@@ -977,9 +979,7 @@ const Accounts = () => {
                                 </button>
                             </div>
                         ) : (
-                            <div className="p-8">
-                                <SkeletonLoader type="default" />
-                            </div>
+                            <SkeletonLoader type="accounts-detail" />
                         )}
                     </div>
 

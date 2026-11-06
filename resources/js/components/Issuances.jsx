@@ -96,7 +96,7 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
     }, [onClose]);
 
     return createPortal(
-        <div 
+        <div
             className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300 select-none"
             onContextMenu={(e) => e.preventDefault()}
         >
@@ -115,34 +115,6 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {/* View Switcher: Captured Image vs Generated PDF */}
-                    {imageUrl && (
-                        <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-white/10 mr-1">
-                            <button
-                                type="button"
-                                onClick={() => setPreviewMode('image')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                    previewMode === 'image'
-                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
-                            >
-                                Captured Image
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPreviewMode('pdf')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                                    previewMode === 'pdf'
-                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
-                            >
-                                Live PDF
-                            </button>
-                        </div>
-                    )}
-
                     {/* Action Buttons */}
                     <div className="w-px h-6 bg-white/10 mx-1" />
 
@@ -159,13 +131,12 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
             {/* Immersive Preview Content */}
             <div className="flex-1 overflow-hidden p-8 flex justify-center bg-slate-950">
                 <div className="w-full max-w-5xl h-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
-                    {previewMode === 'image' && imageUrl ? (
+                    {imageUrl ? (
                         <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
                             <img
                                 src={imageUrl}
                                 alt={cert.name}
                                 className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all"
-                                onError={() => setPreviewMode('pdf')}
                             />
                         </div>
                     ) : (
@@ -194,7 +165,7 @@ const Issuances = () => {
         refreshIssuances,
         refreshDocuments,
         refreshStats,
-        refreshAll,
+        refreshAfterMutation,
         stats
     } = useData();
 
@@ -294,9 +265,9 @@ const Issuances = () => {
     const [ocrError, setOcrError] = useState('');
     const [isSearchCameraOpen, setIsSearchCameraOpen] = useState(false);
 
-    const startCamera = async () => {};
-    const stopCamera = () => {};
-    const capturePhoto = () => {};
+    const startCamera = async () => { };
+    const stopCamera = () => { };
+    const capturePhoto = () => { };
 
     const handleOcrSearchUpload = async (file) => {
         setIsScanning(true);
@@ -370,48 +341,35 @@ const Issuances = () => {
     };
 
     useEffect(() => {
-        // Create a set of IDs that are already issued to prevent duplicates
-        // Use Number() to ensure type consistency across database drivers
-        const issuedDocIds = new Set(rawIssuances.map(i => i.document_id ? Number(i.document_id) : null).filter(id => id !== null));
+        // All issuances are now pure registry records (ticket copies live in ticket_issuances table)
+        const combined = rawIssuances.map(i => {
+            const linkedDoc = rawDocuments.find(d => Number(d.id) === Number(i.document_id));
+            const rawType = (i.type || 'birth').toLowerCase();
+            const type = rawType === 'unknown' ? 'birth' : rawType;
 
-        // Only include official registry documents uploaded/processed by the civil registry (exclude citizen ticket requests)
-        const registryIssuances = rawIssuances.filter(i => !i.ticket_number);
-
-        const combined = [
-            // Finalized Issuances (The main records)
-            ...registryIssuances.map(i => {
-                const linkedDoc = rawDocuments.find(d => Number(d.id) === Number(i.document_id));
-                const rawType = (i.type || 'birth').toLowerCase();
-                const type = rawType === 'unknown' ? 'birth' : rawType;
-
-                return {
-                    id: `iss-${i.id}`,
-                    realId: i.id,
-                    number: i.certNumber || i.number || ('ISS-' + i.id),
+            return {
+                id: `iss-${i.id}`,
+                realId: i.id,
+                number: i.certNumber || i.number || ('ISS-' + i.id),
+                type,
+                name: i.name || 'Unnamed Record',
+                barangay: i.barangay || '—',
+                date: i.issuanceDate || i.date,
+                status: i.status || 'Active',
+                encoded_by: i.encoded_by,
+                source: 'issuance',
+                document_id: i.document_id || linkedDoc?.id || null,
+                image_path: linkedDoc?.image_path || i.source_image_path || null,
+                raw: {
+                    ...i,
                     type,
-                    name: i.name || 'Unnamed Record',
-                    barangay: i.barangay || '—',
-                    date: i.issuanceDate || i.date,
-                    status: i.status || 'Active',
-                    encoded_by: i.encoded_by,
-                    source: 'issuance',
-                    ticket_number: i.ticket_number || null,
-                    document_id: i.document_id || linkedDoc?.id || null,
-                    image_path: linkedDoc?.image_path || i.source_image_path || null,
-                    raw: {
-                        ...i,
-                        type,
-                        // Pull essential data from linked document if missing
-                        ocr_text: i.ocr_text || linkedDoc?.ocr_text || '',
-                        file_path: i.file_path || linkedDoc?.file_path || '',
-                        image_path: linkedDoc?.image_path || i.source_image_path || '',
-                        // Normalize data structure for the edit form panel
-                        extracted_fields: i.extracted_data || i.extracted_fields || linkedDoc?.extracted_fields
-                    }
-                };
-            }),
-            // Non-issued Documents removed as requested
-        ];
+                    ocr_text: i.ocr_text || linkedDoc?.ocr_text || '',
+                    file_path: i.file_path || linkedDoc?.file_path || '',
+                    image_path: linkedDoc?.image_path || i.source_image_path || '',
+                    extracted_fields: i.extracted_data || i.extracted_fields || linkedDoc?.extracted_fields
+                }
+            };
+        });
         // Sort by date descending, fallback to realId
         combined.sort((a, b) => {
             const dateA = new Date(a.date);
@@ -509,7 +467,7 @@ const Issuances = () => {
             if (res.data.success) {
                 showAlert({ title: 'Request Submitted', message: 'Print request submitted for SuperAdmin approval.', type: 'success' });
                 setRequestingPrintCert(null);
-                refreshAll();
+                refreshAfterMutation();
             }
         } catch (err) {
             console.error(err);
@@ -528,7 +486,7 @@ const Issuances = () => {
                 await runBackgroundTask(`Approving print for: ${cert.name}`, async () => {
                     const res = await axios.post(`/api/issuances/${cert.realId}/approve-print`);
                     if (res.data.success) {
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, message: 'Print request authorized.' };
                     }
                     throw new Error('Failed to approve print request.');
@@ -546,7 +504,7 @@ const Issuances = () => {
                 await runBackgroundTask(`Rejecting print for: ${cert.name}`, async () => {
                     const res = await axios.post(`/api/issuances/${cert.realId}/reject-print`);
                     if (res.data.success) {
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, message: 'Print request denied.' };
                     }
                     throw new Error('Failed to reject print request.');
@@ -630,7 +588,7 @@ const Issuances = () => {
                     console.error('Failed to clear draft cache:', cacheErr);
                 }
                 logActivity('Edited', certToClear);
-                refreshAll();
+                refreshAfterMutation();
                 return { success: true, message: `Successfully updated record for ${personName}` };
             }
             throw new Error('Update failed');
@@ -649,7 +607,7 @@ const Issuances = () => {
                     const res = await axios.delete(endpoint);
                     if (res.data.success) {
                         logActivity('Deleted', cert);
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, type: 'delete' };
                     }
                     throw new Error('Delete failed');
@@ -682,7 +640,7 @@ const Issuances = () => {
 
                         if (cert.status === 'Approved') {
                             await axios.post(`/api/issuances/${cert.realId}/issue`);
-                            refreshAll();
+                            refreshAfterMutation();
                         }
                     } finally {
                         window.setTimeout(() => {
@@ -743,7 +701,7 @@ const Issuances = () => {
                             failed++;
                         }
                     }
-                    refreshAll();
+                    refreshAfterMutation();
                     return {
                         success: true,
                         message: `Successfully removed ${ok} records.${failed > 0 ? ` Failed to remove ${failed} records.` : ''}`,
@@ -807,10 +765,10 @@ const Issuances = () => {
                                 ok++;
                             }
                         }
-                        refreshAll();
+                        refreshAfterMutation();
                         return { success: true, message: `Successfully issued ${ok} certificates.` };
                     } catch (err) {
-                        refreshAll();
+                        refreshAfterMutation();
                         throw err;
                     }
                 });
@@ -999,8 +957,8 @@ const Issuances = () => {
                     />
                 )}
                 {requestingPrintCert && (() => {
-                    const activeLinkedTicket = tickets.find(t => 
-                        t.document_id && 
+                    const activeLinkedTicket = tickets.find(t =>
+                        t.document_id &&
                         Number(t.document_id) === Number(requestingPrintCert.raw?.document_id) &&
                         t.request_status !== 'completed' &&
                         t.request_status !== 'cancelled'
@@ -1061,9 +1019,9 @@ const Issuances = () => {
                                                     className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                                                 >
                                                     <option value="">-- Select Active Ticket to Link --</option>
-                                                    {tickets.filter(t => 
-                                                        !t.document_id && 
-                                                        t.request_status !== 'completed' && 
+                                                    {tickets.filter(t =>
+                                                        !t.document_id &&
+                                                        t.request_status !== 'completed' &&
                                                         t.request_status !== 'cancelled'
                                                     ).map(t => (
                                                         <option key={t.id} value={t.id}>
@@ -1228,14 +1186,14 @@ const Issuances = () => {
                 <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 gap-2">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="flex items-center gap-2 pr-3 border-r border-slate-200/80 dark:border-slate-700 hidden md:flex shrink-0">
-                            <ChartBarIcon className="w-5 h-5 text-[#d4a574]" />
+
                             <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Analytics & Stats</span>
                         </div>
                         <div className="grid grid-cols-3 gap-1 w-full sm:flex sm:w-auto">
                             {[
-                                { key: 'overview', label: 'Overview', Icon: ChartBarIcon },
-                                { key: 'categories', label: 'Categories', Icon: PresentationChartLineIcon },
-                                { key: 'top', label: 'Top Records', Icon: TrophyIcon },
+                                { key: 'overview', label: 'Overview' },
+                                { key: 'categories', label: 'Categories' },
+                                { key: 'top', label: 'Top Records' },
                             ].map(tab => (
                                 <button
                                     key={tab.key}
@@ -1243,13 +1201,11 @@ const Issuances = () => {
                                         setDashboardTab(tab.key);
                                         if (isAnalyticsCollapsed) setIsAnalyticsCollapsed(false);
                                     }}
-                                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${
-                                        dashboardTab === tab.key && !isAnalyticsCollapsed
-                                            ? 'bg-slate-900 text-[#d4a574] dark:bg-slate-800 dark:text-[#d4a574] dark:border dark:border-[#d4a574]/40 shadow-xs'
-                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                                    }`}
+                                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${dashboardTab === tab.key && !isAnalyticsCollapsed
+                                        ? 'bg-slate-900 text-[#d4a574] dark:bg-slate-800 dark:text-[#d4a574] dark:border dark:border-[#d4a574]/40 shadow-xs'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                                        }`}
                                 >
-                                    <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 hidden sm:inline-block" />
                                     <span className="truncate">{tab.label}</span>
                                 </button>
                             ))}
@@ -1286,298 +1242,296 @@ const Issuances = () => {
                             className="overflow-hidden"
                         >
 
-                {/* Tab 1: Overview */}
-                {dashboardTab === 'overview' && (
-                    <div className="p-4 sm:p-6">
-                        {isLoading ? (
-                            <SkeletonLoader type="cards" rows={1} />
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                                {/* Master Database */}
-                                <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-2xl shadow-sm border border-slate-700/60 overflow-hidden group hover:scale-[1.01] transition-transform duration-200">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-white/5 rounded-full" />
-                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Master Database</p>
-                                    <h3 className="text-3xl font-black text-white tracking-tighter">{certificates.length}</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
-                                    <div className="absolute bottom-4 right-4 w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center">
-                                        <DocumentMinusIcon className="w-5 h-5 text-slate-400" />
-                                    </div>
-                                </div>
-                                {/* Birth Records */}
-                                <div className="relative bg-white dark:bg-slate-900/90 border border-[#d4a574]/30 dark:border-[#d4a574]/20 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-[#d4a574]/5 rounded-full" />
-                                    <p className="text-[#d4a574] text-[10px] font-black uppercase tracking-widest mb-1">Birth Records</p>
-                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length}</h3>
-                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Live Birth Certs</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
-                                        <UserIcon className="w-9 h-9" />
-                                    </div>
-                                </div>
-                                {/* Death Records */}
-                                <div className="relative bg-white dark:bg-slate-900/90 border border-rose-200/80 dark:border-rose-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-rose-50/50 dark:bg-rose-950/20 rounded-full" />
-                                    <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">Death Records</p>
-                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'death').length}</h3>
-                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Death Certificates</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
-                                        <DocumentTextIcon className="w-9 h-9" />
-                                    </div>
-                                </div>
-                                {/* Marriage Records */}
-                                <div className="relative bg-white dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
-                                    <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-full" />
-                                    <p className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-1">Marriage Records</p>
-                                    <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length}</h3>
-                                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Marriage Certificates</p>
-                                    <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
-                                        <UsersIcon className="w-9 h-9" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Tab 2: Per Category */}
-                {dashboardTab === 'categories' && (() => {
-                    const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
-                    const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
-                    const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
-                    const total = certificates.length || 1;
-                    const issuedCount = certificates.filter(c => c.status === 'Issued').length;
-                    const approvedCount = certificates.filter(c => c.status === 'Approved').length;
-                    const pendingCount = certificates.filter(c => c.status === 'Active').length;
-                    const pendingApprovalCount = certificates.filter(c => c.status === 'Pending Approval').length;
-
-                    const categories = [
-                        { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/5', bar: 'bg-[#d4a574]', emoji: 'BR' },
-                        { label: 'Death Certificates', count: deathCount, color: '#f43f5e', bg: 'bg-rose-50 dark:bg-rose-950/30', bar: 'bg-rose-500', emoji: 'DC' },
-                        { label: 'Marriage Certificates', count: marriageCount, color: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/30', bar: 'bg-indigo-500', emoji: 'MC' },
-                    ];
-
-                    // SVG Donut Chart calculations
-                    const radius = 50;
-                    const circumference = 2 * Math.PI * radius;
-                    let offset = 0;
-                    const donutSegments = categories.map(cat => {
-                        const pct = cat.count / total;
-                        const dash = pct * circumference;
-                        const seg = { ...cat, dash, gap: circumference - dash, offset };
-                        offset += dash;
-                        return seg;
-                    });
-
-                    return (
-                        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Left: Progress bars */}
-                            <div className="space-y-5">
-                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Certificate Type Breakdown</h4>
-                                {categories.map(cat => (
-                                    <div key={cat.label}>
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">{cat.emoji}</span>
-                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{cat.label}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl font-black text-slate-800 dark:text-slate-100">{cat.count}</span>
-                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{total > 0 ? Math.round((cat.count / total) * 100) : 0}%</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full ${cat.bar} rounded-full transition-all duration-700`}
-                                                style={{ width: `${total > 0 ? (cat.count / total) * 100 : 0}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
-                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            { label: 'Issued', count: issuedCount, color: 'text-indigo-600 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' },
-                                            { label: 'Approved', count: approvedCount, color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
-                                            { label: 'Active', count: pendingCount, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700' },
-                                            { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
-                                        ].map(s => (
-                                            <div key={s.label} className={`p-3 rounded-xl border ${s.bg} flex items-center justify-between`}>
-                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</span>
-                                                <span className={`text-lg font-black ${s.color}`}>{s.count}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right: SVG Donut Chart */}
-                            <div className="flex flex-col items-center justify-center">
-                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Distribution</h4>
-                                <div className="relative w-48 h-48">
-                                    <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                                        {total === 0 ? (
-                                            <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="16" />
-                                        ) : (
-                                            donutSegments.map((seg, i) => (
-                                                <circle
-                                                    key={i}
-                                                    cx="60" cy="60" r={radius}
-                                                    fill="none"
-                                                    stroke={seg.color}
-                                                    strokeWidth="16"
-                                                    strokeDasharray={`${seg.dash} ${seg.gap}`}
-                                                    strokeDashoffset={-seg.offset}
-                                                    className="transition-all duration-700"
-                                                />
-                                            ))
-                                        )}
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total - 1}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap justify-center gap-3 mt-4">
-                                    {categories.map(cat => (
-                                        <div key={cat.label} className="flex items-center gap-1.5">
-                                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.color }} />
-                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{cat.label.replace(' Certificates', '')}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })()}
-
-                {/* Tab 3: Top Issued */}
-                {dashboardTab === 'top' && (() => {
-                    // Compute barangay rankings
-                    const brgyCounts = {};
-                    certificates.forEach(cert => {
-                        const brgy = cert.barangay && cert.barangay !== '—' ? cert.barangay : null;
-                        if (!brgy) return;
-                        if (!brgyCounts[brgy]) brgyCounts[brgy] = { births: 0, deaths: 0, marriages: 0, total: 0 };
-                        const t = (cert.type || '').toLowerCase();
-                        if (t === 'birth') brgyCounts[brgy].births++;
-                        else if (t === 'death') brgyCounts[brgy].deaths++;
-                        else if (t.includes('marriage')) brgyCounts[brgy].marriages++;
-                        brgyCounts[brgy].total++;
-                    });
-                    const rankList = Object.entries(brgyCounts)
-                        .map(([name, d]) => ({ name, ...d }))
-                        .sort((a, b) => b.total - a.total);
-                    const top5 = rankList.slice(0, 5);
-                    const maxBrgyTotal = top5[0]?.total || 1;
-
-                    // Most active type
-                    const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
-                    const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
-                    const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
-                    const mostActiveType = birthCount >= deathCount && birthCount >= marriageCount ? 'Birth'
-                        : deathCount >= marriageCount ? 'Death' : 'Marriage';
-                    const mostActiveTypeColor = mostActiveType === 'Birth' ? 'text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/5 border-[#d4a574]/20'
-                        : mostActiveType === 'Death' ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50'
-                        : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50';
-                    const mostActiveTypeEmoji = mostActiveType === 'Birth' ? 'BR' : mostActiveType === 'Death' ? 'DC' : 'MC';
-
-                    // Most recently issued
-                    const recentIssued = [...certificates]
-                        .filter(c => c.status === 'Issued')
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .slice(0, 3);
-
-                    return (
-                        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Left: Top 5 Barangays */}
-                            <div>
-                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
-                                {top5.length === 0 ? (
-                                    <div className="text-center text-slate-400 py-8">
-                                        <p className="text-sm font-semibold">No barangay data available</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {top5.map((brgy, idx) => (
-                                            <div key={brgy.name} className="flex items-center gap-3 group">
-                                                <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                                                    idx === 0 ? 'bg-amber-400 text-white shadow-md shadow-amber-200'
-                                                    : idx === 1 ? 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
-                                                    : idx === 2 ? 'bg-orange-300 text-white'
-                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                                }`}>
-                                                    {idx + 1}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate pr-2">{brgy.name}</span>
-                                                        <span className="text-sm font-black text-slate-800 dark:text-slate-100 shrink-0">{brgy.total}</span>
-                                                    </div>
-                                                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-gradient-to-r from-[#d4a574] to-[#c49060] rounded-full transition-all duration-700"
-                                                            style={{ width: `${(brgy.total / maxBrgyTotal) * 100}%` }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-[9px] text-[#d4a574] font-bold">{brgy.births}B</span>
-                                                        <span className="text-[9px] text-rose-400 font-bold">{brgy.deaths}D</span>
-                                                        <span className="text-[9px] text-indigo-400 font-bold">{brgy.marriages}M</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Right: Most Active Type + Recent Issued */}
-                            <div className="space-y-5">
-                                <div>
-                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Most Active Document Type</h4>
-                                    <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border font-black text-sm ${mostActiveTypeColor}`}>
-                                        <span className="text-2xl">{mostActiveTypeEmoji}</span>
-                                        {mostActiveType} Certificates
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Recently Issued</h4>
-                                    {recentIssued.length === 0 ? (
-                                        <p className="text-sm text-slate-400 font-medium">No issued records yet.</p>
+                            {/* Tab 1: Overview */}
+                            {dashboardTab === 'overview' && (
+                                <div className="p-4 sm:p-6">
+                                    {isLoading ? (
+                                        <SkeletonLoader type="issuances" rows={1} />
                                     ) : (
-                                        <div className="space-y-2">
-                                            {recentIssued.map(cert => (
-                                                <div key={cert.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${
-                                                        (cert.type || '').toLowerCase() === 'birth' ? 'bg-[#d4a574]/10 text-[#d4a574]'
-                                                        : (cert.type || '').toLowerCase() === 'death' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
-                                                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500'
-                                                    }`}>
-                                                        {(cert.type || '').toLowerCase() === 'birth' ? 'BR' : (cert.type || '').toLowerCase() === 'death' ? 'DC' : 'MC'}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{cert.name}</p>
-                                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{cert.number} · {cert.barangay}</p>
-                                                    </div>
-                                                    <span className="ml-auto text-[9px] font-black text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Issued</span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                                            {/* Master Database */}
+                                            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-2xl shadow-sm border border-slate-700/60 overflow-hidden group hover:scale-[1.01] transition-transform duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-white/5 rounded-full" />
+                                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Master Database</p>
+                                                <h3 className="text-3xl font-black text-white tracking-tighter">{certificates.length}</h3>
+                                                <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
+                                                <div className="absolute bottom-4 right-4 w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center">
+                                                    <DocumentMinusIcon className="w-5 h-5 text-slate-400" />
                                                 </div>
-                                            ))}
+                                            </div>
+                                            {/* Birth Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-[#d4a574]/30 dark:border-[#d4a574]/20 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-[#d4a574]/5 rounded-full" />
+                                                <p className="text-[#d4a574] text-[10px] font-black uppercase tracking-widest mb-1">Birth Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Live Birth Certs</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <UserIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
+                                            {/* Death Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-rose-200/80 dark:border-rose-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-rose-50/50 dark:bg-rose-950/20 rounded-full" />
+                                                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">Death Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'death').length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Death Certificates</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <DocumentTextIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
+                                            {/* Marriage Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-full" />
+                                                <p className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-1">Marriage Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Marriage Certificates</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <UsersIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
+                            )}
 
-                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Coverage</h4>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                                        <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays have records
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })()}
+                            {/* Tab 2: Per Category */}
+                            {dashboardTab === 'categories' && (() => {
+                                const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
+                                const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
+                                const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
+                                const total = certificates.length || 1;
+                                const issuedCount = certificates.filter(c => c.status === 'Issued').length;
+                                const approvedCount = certificates.filter(c => c.status === 'Approved').length;
+                                const pendingCount = certificates.filter(c => c.status === 'Active').length;
+                                const pendingApprovalCount = certificates.filter(c => c.status === 'Pending Approval').length;
+
+                                const categories = [
+                                    { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/5', bar: 'bg-[#d4a574]', emoji: 'BR' },
+                                    { label: 'Death Certificates', count: deathCount, color: '#f43f5e', bg: 'bg-rose-50 dark:bg-rose-950/30', bar: 'bg-rose-500', emoji: 'DC' },
+                                    { label: 'Marriage Certificates', count: marriageCount, color: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/30', bar: 'bg-indigo-500', emoji: 'MC' },
+                                ];
+
+                                // SVG Donut Chart calculations
+                                const radius = 50;
+                                const circumference = 2 * Math.PI * radius;
+                                let offset = 0;
+                                const donutSegments = categories.map(cat => {
+                                    const pct = cat.count / total;
+                                    const dash = pct * circumference;
+                                    const seg = { ...cat, dash, gap: circumference - dash, offset };
+                                    offset += dash;
+                                    return seg;
+                                });
+
+                                return (
+                                    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Left: Progress bars */}
+                                        <div className="space-y-5">
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Certificate Type Breakdown</h4>
+                                            {categories.map(cat => (
+                                                <div key={cat.label}>
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg">{cat.emoji}</span>
+                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{cat.label}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{cat.count}</span>
+                                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{total > 0 ? Math.round((cat.count / total) * 100) : 0}%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full ${cat.bar} rounded-full transition-all duration-700`}
+                                                            style={{ width: `${total > 0 ? (cat.count / total) * 100 : 0}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {[
+                                                        { label: 'Issued', count: issuedCount, color: 'text-indigo-600 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' },
+                                                        { label: 'Approved', count: approvedCount, color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
+                                                        { label: 'Active', count: pendingCount, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700' },
+                                                        { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
+                                                    ].map(s => (
+                                                        <div key={s.label} className={`p-3 rounded-xl border ${s.bg} flex items-center justify-between`}>
+                                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</span>
+                                                            <span className={`text-lg font-black ${s.color}`}>{s.count}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right: SVG Donut Chart */}
+                                        <div className="flex flex-col items-center justify-center">
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Distribution</h4>
+                                            <div className="relative w-48 h-48">
+                                                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                                                    {total === 0 ? (
+                                                        <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="16" />
+                                                    ) : (
+                                                        donutSegments.map((seg, i) => (
+                                                            <circle
+                                                                key={i}
+                                                                cx="60" cy="60" r={radius}
+                                                                fill="none"
+                                                                stroke={seg.color}
+                                                                strokeWidth="16"
+                                                                strokeDasharray={`${seg.dash} ${seg.gap}`}
+                                                                strokeDashoffset={-seg.offset}
+                                                                className="transition-all duration-700"
+                                                            />
+                                                        ))
+                                                    )}
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total - 1}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap justify-center gap-3 mt-4">
+                                                {categories.map(cat => (
+                                                    <div key={cat.label} className="flex items-center gap-1.5">
+                                                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.color }} />
+                                                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{cat.label.replace(' Certificates', '')}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Tab 3: Top Issued */}
+                            {dashboardTab === 'top' && (() => {
+                                // Compute barangay rankings
+                                const brgyCounts = {};
+                                certificates.forEach(cert => {
+                                    const brgy = cert.barangay && cert.barangay !== '—' ? cert.barangay : null;
+                                    if (!brgy) return;
+                                    if (!brgyCounts[brgy]) brgyCounts[brgy] = { births: 0, deaths: 0, marriages: 0, total: 0 };
+                                    const t = (cert.type || '').toLowerCase();
+                                    if (t === 'birth') brgyCounts[brgy].births++;
+                                    else if (t === 'death') brgyCounts[brgy].deaths++;
+                                    else if (t.includes('marriage')) brgyCounts[brgy].marriages++;
+                                    brgyCounts[brgy].total++;
+                                });
+                                const rankList = Object.entries(brgyCounts)
+                                    .map(([name, d]) => ({ name, ...d }))
+                                    .sort((a, b) => b.total - a.total);
+                                const top5 = rankList.slice(0, 5);
+                                const maxBrgyTotal = top5[0]?.total || 1;
+
+                                // Most active type
+                                const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
+                                const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
+                                const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
+                                const mostActiveType = birthCount >= deathCount && birthCount >= marriageCount ? 'Birth'
+                                    : deathCount >= marriageCount ? 'Death' : 'Marriage';
+                                const mostActiveTypeColor = mostActiveType === 'Birth' ? 'text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/5 border-[#d4a574]/20'
+                                    : mostActiveType === 'Death' ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50'
+                                        : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50';
+                                const mostActiveTypeEmoji = mostActiveType === 'Birth' ? 'BR' : mostActiveType === 'Death' ? 'DC' : 'MC';
+
+                                // Most recently issued
+                                const recentIssued = [...certificates]
+                                    .filter(c => c.status === 'Issued')
+                                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                    .slice(0, 3);
+
+                                return (
+                                    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Left: Top 5 Barangays */}
+                                        <div>
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
+                                            {top5.length === 0 ? (
+                                                <div className="text-center text-slate-400 py-8">
+                                                    <p className="text-sm font-semibold">No barangay data available</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {top5.map((brgy, idx) => (
+                                                        <div key={brgy.name} className="flex items-center gap-3 group">
+                                                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${idx === 0 ? 'bg-amber-400 text-white shadow-md shadow-amber-200'
+                                                                : idx === 1 ? 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
+                                                                    : idx === 2 ? 'bg-orange-300 text-white'
+                                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                                                }`}>
+                                                                {idx + 1}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate pr-2">{brgy.name}</span>
+                                                                    <span className="text-sm font-black text-slate-800 dark:text-slate-100 shrink-0">{brgy.total}</span>
+                                                                </div>
+                                                                <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-gradient-to-r from-[#d4a574] to-[#c49060] rounded-full transition-all duration-700"
+                                                                        style={{ width: `${(brgy.total / maxBrgyTotal) * 100}%` }}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-[9px] text-[#d4a574] font-bold">{brgy.births}B</span>
+                                                                    <span className="text-[9px] text-rose-400 font-bold">{brgy.deaths}D</span>
+                                                                    <span className="text-[9px] text-indigo-400 font-bold">{brgy.marriages}M</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Right: Most Active Type + Recent Issued */}
+                                        <div className="space-y-5">
+                                            <div>
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Most Active Document Type</h4>
+                                                <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border font-black text-sm ${mostActiveTypeColor}`}>
+                                                    <span className="text-2xl">{mostActiveTypeEmoji}</span>
+                                                    {mostActiveType} Certificates
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Recently Issued</h4>
+                                                {recentIssued.length === 0 ? (
+                                                    <p className="text-sm text-slate-400 font-medium">No issued records yet.</p>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {recentIssued.map(cert => (
+                                                            <div key={cert.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${(cert.type || '').toLowerCase() === 'birth' ? 'bg-[#d4a574]/10 text-[#d4a574]'
+                                                                    : (cert.type || '').toLowerCase() === 'death' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
+                                                                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500'
+                                                                    }`}>
+                                                                    {(cert.type || '').toLowerCase() === 'birth' ? 'BR' : (cert.type || '').toLowerCase() === 'death' ? 'DC' : 'MC'}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{cert.name}</p>
+                                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{cert.number} · {cert.barangay}</p>
+                                                                </div>
+                                                                <span className="ml-auto text-[9px] font-black text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Issued</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Coverage</h4>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                    <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays have records
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1684,7 +1638,7 @@ const Issuances = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                     {isLoading ? (
-                                        <tr><td colSpan="6"><SkeletonLoader type="table" rows={8} /></td></tr>
+                                        <tr><td colSpan="6"><SkeletonLoader type="issuances" rows={8} /></td></tr>
                                     ) : filteredCertificates.length === 0 ? (
                                         <tr><td colSpan="6" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
                                     ) : (
@@ -1740,7 +1694,7 @@ const Issuances = () => {
                         {/* Mobile View: Clean Card List (Zero side-scrolling, 100% width) */}
                         <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                             {isLoading ? (
-                                <div className="p-4"><SkeletonLoader type="table" rows={4} /></div>
+                                <SkeletonLoader type="issuances" rows={4} />
                             ) : filteredCertificates.length === 0 ? (
                                 <div className="p-8 text-center text-slate-400">
                                     <DocumentMinusIcon className="w-10 h-10 mx-auto mb-2 opacity-20" />
@@ -1749,10 +1703,10 @@ const Issuances = () => {
                             ) : (
                                 paginatedCertificates.map((cert) => {
                                     const t = (cert.type || '').toLowerCase();
-                                    const colorClass = t === 'birth' 
-                                        ? 'bg-[#d4a574]/10 dark:bg-[#d4a574]/20 text-[#d4a574] border-[#d4a574]/30' 
-                                        : t === 'death' 
-                                            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900/50' 
+                                    const colorClass = t === 'birth'
+                                        ? 'bg-[#d4a574]/10 dark:bg-[#d4a574]/20 text-[#d4a574] border-[#d4a574]/30'
+                                        : t === 'death'
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900/50'
                                             : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50';
 
                                     return (
@@ -1797,7 +1751,6 @@ const Issuances = () => {
                                             <div className="pl-5.5 flex flex-col gap-0.5">
                                                 <p className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-tight">{cert.name}</p>
                                                 <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
-                                                    <span>📍</span>
                                                     <span>{cert.barangay}</span>
                                                 </p>
                                             </div>
@@ -1884,11 +1837,10 @@ const Issuances = () => {
                                         <button
                                             type="button"
                                             onClick={() => setShowAdvancedLogsFilter(prev => !prev)}
-                                            className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                                                showAdvancedLogsFilter || historyUserFilter !== 'all' || historyStartDate || historyEndDate
-                                                    ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-extrabold'
-                                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                            }`}
+                                            className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${showAdvancedLogsFilter || historyUserFilter !== 'all' || historyStartDate || historyEndDate
+                                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-extrabold'
+                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                                }`}
                                             title="Toggle advanced filters (Staff, Date Range)"
                                         >
                                             <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
@@ -1973,7 +1925,7 @@ const Issuances = () => {
                         </div>
 
                         {logsLoading ? (
-                            <div className="p-6"><SkeletonLoader type="table" rows={10} /></div>
+                            <SkeletonLoader type="issuances" rows={10} />
                         ) : filteredLogs.length === 0 ? (
                             <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-100 dark:border-slate-800 m-6 rounded-3xl">
                                 <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 opacity-10 text-slate-500" />

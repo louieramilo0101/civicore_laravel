@@ -85,12 +85,13 @@ const Mapping = () => {
         issuances: apiData,
         documents: docsData,
         loading: dataLoading,
-        refreshAll,
+        refreshAfterMutation,
         stats: backendStats
     } = useData();
 
 
     const isLoading = dataLoading.issuances || dataLoading.documents;
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [activeFilter, setActiveFilter] = useState('all');
     const [hoveredBrgy, setHoveredBrgy] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
@@ -147,14 +148,29 @@ const Mapping = () => {
         } else if (quickFilter === 'custom' && dateFrom && dateTo) {
             const from = new Date(dateFrom);
             const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
-            return recordDate >= from && recordDate <= to;
+            // Clamp to today so future dates are excluded
+            const today = new Date(); today.setHours(23, 59, 59, 999);
+            const effectiveTo = to > today ? today : to;
+            return recordDate >= from && recordDate <= effectiveTo;
         }
         return true; // 'all'
     };
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
     /** Clears the active map date filter and closes its picker. */
     const clearFilter = () => { setQuickFilter('all'); setDateFrom(''); setDateTo(''); setShowDatePicker(false); };
-    const applyCustomRange = () => { if (dateFrom && dateTo) { setQuickFilter('custom'); setShowDatePicker(false); } };
+
+    /** Validates and applies the custom date range, blocking future dates. */
+    const applyCustomRange = () => {
+        if (!dateFrom || !dateTo) return;
+        // Block future dates
+        if (dateFrom > todayStr || dateTo > todayStr) return;
+        // Ensure from <= to
+        if (dateFrom > dateTo) return;
+        setQuickFilter('custom');
+        setShowDatePicker(false);
+    };
 
     const filteredApiData = React.useMemo(() => {
         return apiData.filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
@@ -164,13 +180,8 @@ const Mapping = () => {
         return docsData.filter(d => isWithinTimeframe(d.created_at));
     }, [docsData, quickFilter, dateFrom, dateTo]);
 
-    // Exclude ticket copies (records where ticket_number starts with 'T-2026-0')
-    // to align with Dashboard stats
-    const filteredApiDataNoTickets = React.useMemo(() => {
-        return filteredApiData.filter(i =>
-            !(i.ticket_number && String(i.ticket_number).startsWith('T-2026-0'))
-        );
-    }, [filteredApiData]);
+    // issuances table is now pure registry records; no ticket_number filter needed
+    const filteredApiDataNoTickets = filteredApiData;
 
     const uniqueIssuances = React.useMemo(() => {
         const seenDocIds = new Set();
@@ -194,7 +205,7 @@ const Mapping = () => {
 
     // Fetch API Data
     // Global fetch is handled by DataProvider
-    const fetchData = () => refreshAll();
+    const fetchData = () => refreshAfterMutation();
 
     useEffect(() => {
         // cleanup on unmount
@@ -658,11 +669,11 @@ const Mapping = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => fetchData()}
-                            className="flex items-center gap-2 bg-[#0f172a] dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-800 transition-all cursor-pointer active:scale-95 shrink-0 border border-transparent dark:border-slate-700"
+                            onClick={async () => { setIsRefreshing(true); refreshAfterMutation(); setTimeout(() => setIsRefreshing(false), 800); }}
+                            className="flex items-center gap-2 bg-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-200 dark:border-slate-700"
                         >
-                            <ArrowPathIcon className={`w-4 h-4 transition-transform duration-500 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                            <span>Refresh</span>
+                            <ArrowPathIcon className={`w-4 h-4 transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+
                         </button>
                     </div>
                 </div>
@@ -688,8 +699,8 @@ const Mapping = () => {
                                 key={key}
                                 onClick={() => { setQuickFilter(key); setShowDatePicker(false); }}
                                 className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${quickFilter === key
-                                        ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-sm shadow-slate-800/15'
-                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300'
+                                    ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-sm shadow-slate-800/15'
+                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300'
                                     }`}
                             >
                                 {label}
@@ -703,8 +714,8 @@ const Mapping = () => {
                         <button
                             onClick={() => { setShowDatePicker(!showDatePicker); }}
                             className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${quickFilter === 'custom'
-                                    ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-sm shadow-[#d4a574]/20'
-                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
+                                ? 'bg-[#d4a574] text-white border-[#d4a574] shadow-sm shadow-[#d4a574]/20'
+                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/30 hover:text-[#d4a574]'
                                 }`}
                         >
                             <CalendarDaysIcon className="w-3.5 h-3.5" />
@@ -744,7 +755,7 @@ const Mapping = () => {
                                     id="date-from"
                                     value={dateFrom}
                                     onChange={e => setDateFrom(e.target.value)}
-                                    max={dateTo || undefined}
+                                    max={todayStr}
                                     className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
                                 />
                             </div>
@@ -756,12 +767,13 @@ const Mapping = () => {
                                     value={dateTo}
                                     onChange={e => setDateTo(e.target.value)}
                                     min={dateFrom || undefined}
+                                    max={todayStr}
                                     className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/40 focus:border-[#d4a574] transition-all cursor-pointer"
                                 />
                             </div>
                             <button
                                 onClick={applyCustomRange}
-                                disabled={!dateFrom || !dateTo}
+                                disabled={!dateFrom || !dateTo || dateFrom > dateTo || dateFrom > todayStr || dateTo > todayStr}
                                 className="flex items-center gap-2 bg-[#d4a574] hover:bg-[#c49060] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-md shadow-[#d4a574]/20"
                             >
                                 Apply Range
@@ -793,8 +805,8 @@ const Mapping = () => {
                                     if (isStatsCollapsed) setIsStatsCollapsed(false);
                                 }}
                                 className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest border-b-2 transition-all cursor-pointer ${statsMode === tab.key
-                                        ? 'border-[#d4a574] text-[#d4a574]'
-                                        : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                    ? 'border-[#d4a574] text-[#d4a574]'
+                                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                                     }`}
                             >
                                 <span className="hidden sm:inline">{tab.label}</span>
@@ -834,7 +846,7 @@ const Mapping = () => {
                         >
                             <div className="p-3 sm:p-4">
                                 {isLoading ? (
-                                    <SkeletonLoader type="cards" rows={1} />
+                                    <SkeletonLoader type="mapping" rows={1} />
                                 ) : statsMode === 'records' ? (
                                     /* ── Tab 1: Records Overview ── */
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 sm:gap-3">
@@ -869,15 +881,15 @@ const Mapping = () => {
                                     </div>
                                 ) : (() => {
                                     /* ── Tab 2: Issued Per Category ── */
-                                    const issuedBirth = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'birth').length;
-                                    const issuedDeath = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'death').length;
-                                    const issuedMarriage = filteredApiDataNoTickets.filter(i => getNormalizedType(i) === 'marriage').length;
-                                    const totalIssued = filteredApiDataNoTickets.length;
+                                    const issuedBirth = filteredPrints.filter(i => getNormalizedType(i) === 'birth').length;
+                                    const issuedDeath = filteredPrints.filter(i => getNormalizedType(i) === 'death').length;
+                                    const issuedMarriage = filteredPrints.filter(i => getNormalizedType(i) === 'marriage').length;
+                                    const totalIssued = filteredPrints.length;
                                     const maxCount = Math.max(issuedBirth, issuedDeath, issuedMarriage, 1);
 
-                                    // Most issued barangay (from issuances only)
+                                    // Most issued barangay (from actually-printed issuances only)
                                     const brgyIssuedCounts = {};
-                                    filteredApiDataNoTickets.forEach(i => {
+                                    filteredPrints.forEach(i => {
                                         const brgyName = i.barangay || 'Ibayo Silangan';
                                         brgyIssuedCounts[brgyName] = (brgyIssuedCounts[brgyName] || 0) + 1;
                                     });
@@ -1086,9 +1098,7 @@ const Mapping = () => {
                             </div>
                             <div className="flex-1 relative w-full overflow-hidden">
                                 {isLoading ? (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <SkeletonLoader type="default" />
-                                    </div>
+                                    <SkeletonLoader type="mapping" rows={4} />
                                 ) : (
                                     <canvas ref={canvasRef}></canvas>
                                 )}
@@ -1134,9 +1144,9 @@ const Mapping = () => {
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0 ${idx === 0 ? 'bg-amber-400 text-white'
-                                                                : idx === 1 ? 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
-                                                                    : idx === 2 ? 'bg-orange-300 text-white'
-                                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                                            : idx === 1 ? 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                                                                : idx === 2 ? 'bg-orange-300 text-white'
+                                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                                                             }`}>{idx + 1}</span>
                                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover/brgy:text-[#d4a574] transition-colors truncate">{brgy.name}</span>
                                                     </div>
@@ -1189,8 +1199,8 @@ const Mapping = () => {
                                 type="button"
                                 onClick={() => setTableTab('uploads')}
                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${tableTab === 'uploads'
-                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                     }`}
                             >
                                 <span>Registry Records</span>
@@ -1203,8 +1213,8 @@ const Mapping = () => {
                                 type="button"
                                 onClick={() => setTableTab('prints')}
                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${tableTab === 'prints'
-                                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                     }`}
                             >
                                 <span>Prints</span>
@@ -1241,9 +1251,7 @@ const Mapping = () => {
                 {/* Mobile Card List (md:hidden) — No horizontal side-scrolling */}
                 <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                     {isLoading ? (
-                        <div className="p-4">
-                            <SkeletonLoader type="table" rows={3} />
-                        </div>
+                        <SkeletonLoader type="mapping" rows={3} />
                     ) : activeTableData.length === 0 ? (
                         <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs font-medium">
                             {tableTab === 'prints' ? 'No prints found.' : 'No registry records found.'}
@@ -1325,7 +1333,7 @@ const Mapping = () => {
                             {isLoading ? (
                                 <tr>
                                     <td colSpan="6" className="p-0">
-                                        <SkeletonLoader type="table" rows={4} />
+                                        <SkeletonLoader type="mapping" rows={4} />
                                     </td>
                                 </tr>
                             ) : activeTableData.length === 0 ? (
