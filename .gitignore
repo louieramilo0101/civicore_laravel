@@ -1,36 +1,58 @@
-*.log
-.DS_Store
-.env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-.agent
-.agents
-/storage/app/backups/*
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
-/public/build
-/dist
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
+# Laravel / PHP
 /vendor
-Homestead.json
-Homestead.yaml
-Thumbs.db
+/.env
+/.env.*
+!/env.example
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/logs/*.log
+/storage/app/backups/*
+!/storage/app/backups/.gitignore
+/storage/app/public/storage
+/storage/qrcodes/*
+!/storage/qrcodes/.gitignore
+/public/storage
+/public/hot
 
+# Python
 __pycache__/
-scratch/
-/graphify-out/cache/
+*.pyc
+*.pyo
+*.pyd
 
-# SQL exports with sensitive data
-civicore-export-*.sql
+# Node / Vite
+/node_modules
+/dist
+/npm-debug.log*
+
+# Build artifacts & caches
+/.vite
+/.cache
+/.parcel-cache
+
+# OS & editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Stale backups & disabled files
+*.bak
+*.disabled
+*.old
+*.orig
+
+# Private keys & certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# One-off SQL dumps
 *.sql
+
+# Temp OCR search images
+/public/storage/temp_ocr_search/*
+
+# Vercel
+/.vercel

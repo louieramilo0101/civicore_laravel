@@ -36,11 +36,11 @@ The platform digitizes, automates, and secures civil registry workflows:
 
 | Document | Path | Focus Area |
 |---|---|---|
-| **System Documentation** | `docs/SYSTEM_DOCUMENTATION.md` | Comprehensive architectural blueprints, components, and module details |
-| **Deployment Guide** | `docs/DEPLOYMENT_GUIDE.md` | Production installation, environment, and server setup |
-| **Project Roadmap** | `defense_materials/project_roadmap.md` | Development milestones, deliverables, and project horizon |
-| **Entity Relationship Diagram** | `defense_materials/entity_relationship_diagram.md` | Relational schema diagrams, keys, and model relations |
-| **Database Schema & Flow** | `defense_materials/database_schema_and_flow.md` | Detailed database fields, table structures, and data lifecycles |
+| **System Documentation** | `docs/SYSTEM_DOCUMENTATION.md` | Comprehensive architectural blueprints, components, directory breakdowns, and data flow |
+| **Deployment Guide** | `docs/DEPLOYMENT_GUIDE.md` | Hybrid and local production installation, environment, and server setup |
+| **Project Roadmap** | `docs/project_roadmap.md` | Development milestones, phase breakdown, deliverables, and project horizon |
+| **Entity Relationship Diagram** | `docs/entity_relationship_diagram.md` | Relational Mermaid schema diagrams, keys, and model relations |
+| **Database Schema & Flow** | `docs/database_schema_and_flow.md` | Detailed database fields, 20-table dictionary, migrations, and data lifecycles |
 
 ---
 
@@ -61,8 +61,7 @@ civicore_laravel/
 |-- database/
 |   |-- migrations/             # Incremental database migrations
 |   `-- seeders/                # Initial administrative and reference seeders
-|-- docs/                       # Technical system and deployment documentation
-|-- defense_materials/          # Architecture diagrams, ERDs, schema flows, and roadmaps
+|-- docs/                       # Consolidated technical documentation and defense blueprints
 |-- resources/
 |   |-- js/                     # React 19 SPA frontend (Pages, Components, Modals)
 |   |-- css/                    # Tailwind CSS definitions
