@@ -94,4 +94,15 @@ class Ticket extends Model
     {
         return $query->whereIn('queue_status', ['waiting', 'serving']);
     }
+
+    /**
+     * Scope to exclude tickets that have expired (past 5 PM on their scheduled day).
+     */
+    public function scopeNotExpired($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('expires_at')
+              ->orWhere('expires_at', '>', now());
+        });
+    }
 }

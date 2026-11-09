@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './bootstrap';
 import '../css/app.css';
+import { initRum } from './utils/rum.js';
 
 // Shared providers (lightweight, needed on all routes)
 import { ModalProvider, useModal } from './components/ModalContext.jsx';
@@ -34,6 +35,7 @@ const AboutPortal           = React.lazy(() => import('./components/AboutPortal.
 const DigitalServices       = React.lazy(() => import('./components/DigitalServices.jsx'));
 const ContactDirectory      = React.lazy(() => import('./components/ContactDirectory.jsx'));
 const Ticketing             = React.lazy(() => import('./components/Ticketing.jsx'));
+const RumDashboard          = React.lazy(() => import('./components/RumDashboard.jsx'));
 const PublicRestrictedNotice = React.lazy(() => import('./components/PublicRestrictedNotice.jsx'));
 
 // Preloads every route chunk in the background after the first paint so
@@ -54,6 +56,7 @@ const LAZY_CHUNKS = [
     () => import('./components/DigitalServices.jsx'),
     () => import('./components/ContactDirectory.jsx'),
     () => import('./components/Ticketing.jsx'),
+    () => import('./components/RumDashboard.jsx'),
     () => import('./components/PublicRestrictedNotice.jsx'),
 ];
 
@@ -324,6 +327,13 @@ function App() {
                             </ProtectedRoute>
                         } />
 
+                        {/* Real User Monitoring — SuperAdmin only */}
+                        <Route path="/rum" element={
+                            <ProtectedRoute allowedRoles={['SuperAdmin']}>
+                                <Layout><Suspense fallback={<ContentFallback />}><RumDashboard /></Suspense></Layout>
+                            </ProtectedRoute>
+                        } />
+
                         {/* Fallback */}
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
@@ -341,3 +351,7 @@ root.render(
         <App />
     </ErrorBoundary>
 );
+
+// Initialize Real User Monitoring after the app mounts so we don't
+// compete with the initial render for CPU / network resources.
+initRum();

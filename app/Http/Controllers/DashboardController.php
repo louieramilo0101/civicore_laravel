@@ -129,6 +129,7 @@ class DashboardController extends Controller
                 'totalDocs' => (int) $totalDocuments,
                 'pendingDocs' => (int) $uploadPending,
                 'totalIssuances' => (int) $totalIssuances,
+                'pendingTickets' => (int) DB::table('tickets')->whereIn('request_status', ['pending', 'ready_for_pickup'])->count(),
                 'totalUsers' => (int) $usersCount,
                 'processedDocs' => (int) $processedDocs,
                 'tokensUsed' => (int) $tokensUsed,

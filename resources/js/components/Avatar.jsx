@@ -21,7 +21,7 @@ const Avatar = ({ name, src, size = 12, className = '' }) => {
             }}
         >
             {src && !src.startsWith('LIBRARY_PICK:') ? (
-                <img src={src} className="w-full h-full object-cover" alt={name} />
+                <img src={src} width={pixelSize} height={pixelSize} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={name} />
             ) : (
                 <BoringAvatar
                     size={pixelSize}

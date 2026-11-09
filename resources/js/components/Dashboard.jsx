@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
 import { AnimatedStatCard } from './AnimatedCounter';
 import SkeletonLoader from './SkeletonLoader';
@@ -64,10 +64,28 @@ const BorderBeam = ({ color = "#4f46e5", duration = 8, delay = 0 }) => (
 
 /** Renders staff dashboard metrics, charts, and operational summaries. */
 function Dashboard() {
-    const { stats, refreshStats, loading: dataLoading } = useData();
+    const { stats: rawStats, refreshStats, loading: dataLoading } = useData();
     const [chartData, setChartData] = useState(null);
+    const [rotateIssued, setRotateIssued] = useState(false);
     const loading = dataLoading.stats;
     const chartRefs = useRef({});
+
+    // Default stats to prevent undefined access during loading
+    const stats = rawStats || {
+        totalDocs: 0, pendingDocs: 0, totalIssuances: 0,
+        pendingTickets: 0, totalUsers: 0, processedDocs: 0,
+        tokensUsed: 0, tokenBudget: 0, birthsCount: 0,
+        deathsCount: 0, marriagesCount: 0
+    };
+
+    // Auto-rotate the "TOTAL ISSUED FILES" card every 3 seconds
+    // between total issued and pending queue count
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setRotateIssued(prev => !prev);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, []);
 
     const mottos = [
         "Empowering citizens through digital excellence.",
@@ -304,6 +322,9 @@ function Dashboard() {
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
     const itemVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
+    const showUsersCard = user.role === 'SuperAdmin';
+    const gridCols = showUsersCard ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3';
+
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 sm:space-y-5 pb-10 max-w-7xl mx-auto font-['Inter'] min-h-screen relative z-10 text-slate-800 dark:text-slate-100">
             {/* Compact Welcome Hero Banner */}
@@ -344,28 +365,47 @@ function Dashboard() {
             ) : (
                 <>
                     {/* Compact Human-Centric Stats Grid */}
-                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className={`grid ${gridCols} gap-2.5 sm:gap-4`}>
                         {[
-                            { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master' },
-                            { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Action Needed' },
-                            { label: 'TOTAL ISSUED FILES', val: stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Finalized' },
-                            { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Current' }
-                        ].map((s, i) => (
+                            { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master', to: '/issuances' },
+                            { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Action Needed', to: '/documents' },
+                            { label: 'TOTAL ISSUED FILES', val: rotateIssued ? (stats.pendingTickets || 0) : stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: rotateIssued ? 'Pending Queue' : 'Finalized', to: '/tickets', altLabel: rotateIssued ? 'PENDING QUEUE' : 'TOTAL ISSUED FILES' },
+                            { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Current', to: '/accounts', show: showUsersCard }
+                        ].filter(s => s.show !== false).map((s, i) => (
                             <motion.div
                                 key={i}
                                 variants={itemVariants}
-                                className={`${s.bg} rounded-xl sm:rounded-2xl p-3 sm:p-5 border ${s.border} shadow-xs relative group hover:shadow-md hover:scale-[1.01] transition-all duration-200 ease-out`}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`${s.bg} rounded-xl sm:rounded-2xl p-3 sm:p-5 border ${s.border} shadow-xs relative group hover:shadow-md transition-all duration-200 ease-out overflow-hidden`}
                             >
-                                <div className="flex justify-between items-start mb-2 sm:mb-3 relative z-10">
+                                <Link to={s.to} className="absolute inset-0 z-10" />
+                                <div className="flex justify-between items-start mb-2 sm:mb-3 relative z-0">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg.includes('bg-indigo-600') ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                         <s.icon className={`w-4 h-4 ${s.bg.includes('bg-indigo-600') ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
                                     </div>
                                 </div>
-                                <div className="space-y-0.5 relative z-10">
-                                    <h3 className={`text-xl sm:text-3xl font-black tracking-tight ${s.color} tabular-nums leading-none`}>{s.val}</h3>
-                                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-100' : 'text-slate-700 dark:text-slate-300'}`}>{s.label}</p>
+                                <div className="space-y-0.5 relative z-0">
+                                    {s.altLabel ? (
+                                        <AnimatePresence mode="wait">
+                                            <motion.h3
+                                                key={rotateIssued ? 'alt' : 'main'}
+                                                initial={{ opacity: 0, y: 5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -5 }}
+                                                transition={{ duration: 0.3 }}
+                                                className={`text-xl sm:text-3xl font-black tracking-tight ${s.color} tabular-nums leading-none`}>
+                                                {s.val}
+                                            </motion.h3>
+                                        </AnimatePresence>
+                                    ) : (
+                                        <h3 className={`text-xl sm:text-3xl font-black tracking-tight ${s.color} tabular-nums leading-none`}>{s.val}</h3>
+                                    )}
+                                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                                        {s.altLabel || s.label}
+                                    </p>
                                 </div>
-                                <p className={`text-[9px] sm:text-[10px] font-bold mt-1.5 uppercase tracking-tight relative z-10 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-200/80' : 'text-slate-400 dark:text-slate-500'}`}>{s.sub} Volume</p>
+                                <p className={`text-[9px] sm:text-[10px] font-bold mt-1.5 uppercase tracking-tight relative z-0 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-200/80' : 'text-slate-400 dark:text-slate-500'}`}>{s.sub} Volume</p>
                             </motion.div>
                         ))}
                     </motion.div>

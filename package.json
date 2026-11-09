@@ -5,6 +5,7 @@
     "scripts": {
         "build": "vite build",
         "build:vercel": "vite build --config vite.config.vercel.js",
+        "build:analyze": "cross-env ANALYZE=true vite build",
         "test": "jest",
         "dev": "vite"
     },
@@ -19,9 +20,11 @@
         "axios": "^1.13.6",
         "babel-jest": "^25.0.0",
         "concurrently": "^10.0.5",
+        "cross-env": "^10.1.0",
         "jest": "^25.0.0",
         "jest-environment-jsdom": "^30.0.5",
         "laravel-vite-plugin": "^2.0.0",
+        "rollup-plugin-visualizer": "^7.1.3",
         "tailwindcss": "^4.0.0",
         "vite": "^7.0.7"
     },
@@ -41,7 +44,8 @@
         "react-dropzone": "^15.0.0",
         "react-leaflet": "^5.0.0",
         "react-router-dom": "^7.13.1",
-        "scanic": "^1.7.1"
+        "scanic": "^1.7.1",
+        "web-vitals": "^6.2.3"
     },
     "allowScripts": {
         "unrs-resolver@1.12.2": true,

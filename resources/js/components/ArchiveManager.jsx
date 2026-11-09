@@ -592,7 +592,7 @@ const ArchiveManager = () => {
                                                                 <button
                                                                     onClick={canPurge ? () => purgeTicket(ticket.id) : undefined}
                                                                     disabled={!canPurge}
-                                                                    title={canPurge ? "Permanently Delete" : "Only Admins and SuperAdmins can permanently purge tickets"}
+                                                                    title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge tickets"}
                                                                     className={`p-2 border rounded-xl transition-all ${canPurge
                                                                         ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-90"
                                                                         : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
@@ -651,7 +651,7 @@ const ArchiveManager = () => {
                                                             <button
                                                                 onClick={canPurge ? () => purgeArchived(file.id) : undefined}
                                                                 disabled={!canPurge}
-                                                                title={canPurge ? "Permanently Delete" : "Only Admins and SuperAdmins can permanently purge records"}
+                                                                title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge records"}
                                                                 className={`p-2 border rounded-xl transition-all ${canPurge
                                                                     ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-90"
                                                                     : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
@@ -860,7 +860,7 @@ const ArchiveManager = () => {
                                         <button
                                             onClick={canPurge ? bulkPurgeArchived : undefined}
                                             disabled={!canPurge}
-                                            title={canPurge ? "Permanently Delete Selected Records" : "Only Admins and SuperAdmins can permanently delete records"}
+                                            title={canPurge ? "Permanently Delete Selected Records" : "Only Admins can permanently delete records"}
                                             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 ${canPurge
                                                 ? "bg-rose-500 hover:bg-rose-600 text-white shadow-rose-900/20 cursor-pointer"
                                                 : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"

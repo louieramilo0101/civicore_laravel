@@ -85,7 +85,7 @@ const Mapping = () => {
         issuances: apiData,
         documents: docsData,
         loading: dataLoading,
-        refreshAfterMutation,
+        refreshAll,
         stats: backendStats
     } = useData();
 
@@ -205,7 +205,7 @@ const Mapping = () => {
 
     // Fetch API Data
     // Global fetch is handled by DataProvider
-    const fetchData = () => refreshAfterMutation();
+    const fetchData = () => refreshAll();
 
     useEffect(() => {
         // cleanup on unmount
@@ -669,7 +669,7 @@ const Mapping = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={async () => { setIsRefreshing(true); refreshAfterMutation(); setTimeout(() => setIsRefreshing(false), 800); }}
+                            onClick={async () => { setIsRefreshing(true); refreshAll(); setTimeout(() => setIsRefreshing(false), 800); }}
                             className="flex items-center gap-2 bg-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-slate-800/15 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95 shrink-0 border border-slate-200 dark:border-slate-700"
                         >
                             <ArrowPathIcon className={`w-4 h-4 transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -874,9 +874,7 @@ const Mapping = () => {
                                             <div className="absolute right-[-10%] top-[-10%] w-24 h-24 bg-[#d4a574]/10 rounded-full blur-xl"></div>
                                             <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Top Barangay</p>
                                             <h3 className="text-base sm:text-lg font-black text-white truncate">{stats.mostActiveBrgy}</h3>
-                                            <p className="text-[9px] text-slate-500 font-bold mt-1">
-                                                {stats.mostActiveBrgy !== 'N/A' ? `${stats.maxTotal} issued` : '0 issued'}
-                                            </p>
+
                                         </div>
                                     </div>
                                 ) : (() => {
@@ -933,8 +931,7 @@ const Mapping = () => {
                                                 </div>
                                                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 p-3 rounded-2xl flex flex-col justify-center flex-1 hover:scale-[1.02] transition-transform">
                                                     <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider mb-0.5">Top Barangay</p>
-                                                    <p className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">{mostIssuedBrgy ? mostIssuedBrgy[0] : 'N/A'}</p>
-                                                    {mostIssuedBrgy && <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{mostIssuedBrgy[1]} issued</p>}
+
                                                 </div>
                                             </div>
                                         </div>

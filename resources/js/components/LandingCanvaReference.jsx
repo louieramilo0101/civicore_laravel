@@ -174,6 +174,10 @@ export default function LandingCanvaReference() {
                             <img
                                 src="/images/naic-municipal-hall-perfect.png"
                                 alt="Naic Municipal Hall"
+                                width={700}
+                                height={400}
+                                fetchPriority="high"
+                                decoding="async"
                                 className="w-full h-auto object-contain filter drop-shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
                             />
                         </motion.div>

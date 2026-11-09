@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { roleLabel } from '../utils/role.js';
 import {
     ChartBarIcon,
     ArrowUpTrayIcon,
@@ -37,11 +38,35 @@ const MobileDeviceLayout = ({ children }) => {
     const [isNavVisible, setIsNavVisible] = useState(true);
     const lastScrollTopRef = useRef(0);
     const mainScrollRef = useRef(null);
-    
+
     const { backgroundTasks } = useData();
     const location = useLocation();
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        const syncUser = () => {
+            try {
+                const updated = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+                setUser(updated);
+            } catch {
+                // ignore
+            }
+        };
+
+        window.addEventListener('user-updated', syncUser);
+        window.addEventListener('storage', syncUser);
+        return () => {
+            window.removeEventListener('user-updated', syncUser);
+            window.removeEventListener('storage', syncUser);
+        };
+    }, []);
 
     const allMenuItems = [
         { path: '/dashboard', icon: ChartBarIcon, label: 'Dashboard', roles: ['SuperAdmin', 'Admin'] },
@@ -76,7 +101,7 @@ const MobileDeviceLayout = ({ children }) => {
                 credentials: 'include'
             });
             await new Promise(r => setTimeout(r, 400));
-        } catch (e) {}
+        } catch (e) { }
         localStorage.removeItem('user');
         sessionStorage.clear();
         navigate('/login', { replace: true });
@@ -118,7 +143,14 @@ const MobileDeviceLayout = ({ children }) => {
             >
                 {/* Left Side: Logo & Title */}
                 <div className="flex items-center gap-3">
-                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-9 h-9 object-contain filter drop-shadow-[0_0_8px_rgba(212,165,116,0.3)]" />
+                    <img
+                        src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                        alt="Civil Registry & Naic Seal"
+                        width={36}
+                        height={36}
+                        decoding="async"
+                        className="w-9 h-9 object-contain filter drop-shadow-[0_0_8px_rgba(212,165,116,0.3)]"
+                    />
                     <div>
                         <h1 className="font-black text-sm text-white tracking-tight leading-tight line-clamp-1">{activeItem.label}</h1>
                         <p className="text-[10px] font-bold text-[#d4a574] tracking-widest uppercase font-mono">Naic Civil Registry</p>
@@ -162,9 +194,8 @@ const MobileDeviceLayout = ({ children }) => {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all active:scale-95 ${
-                                isActive ? 'text-[#d4a574] font-extrabold' : 'text-slate-400 hover:text-slate-200'
-                            }`}
+                            className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all active:scale-95 ${isActive ? 'text-[#d4a574] font-extrabold' : 'text-slate-400 hover:text-slate-200'
+                                }`}
                         >
                             <div className={`p-1 rounded-xl transition-colors ${isActive ? 'bg-[#d4a574]/20 border border-[#d4a574]/40' : ''}`}>
                                 <Icon className="w-5 h-5" />
@@ -208,7 +239,14 @@ const MobileDeviceLayout = ({ children }) => {
                             {/* Drawer Header */}
                             <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
                                 <div className="flex items-center gap-3">
-                                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-10 h-10 object-contain" />
+                                    <img
+                                        src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                                        alt="Civil Registry & Naic Seal"
+                                        width={40}
+                                        height={40}
+                                        decoding="async"
+                                        className="w-10 h-10 object-contain"
+                                    />
                                     <div>
                                         <h2 className="font-black text-white text-base tracking-tight">Civil Registry</h2>
                                         <p className="text-xs text-[#d4a574] font-bold">Municipality of Naic</p>
@@ -233,11 +271,10 @@ const MobileDeviceLayout = ({ children }) => {
                                             key={item.path}
                                             to={item.path}
                                             onClick={() => setDrawerOpen(false)}
-                                            className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                                                isActive
+                                            className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${isActive
                                                     ? 'bg-[#d4a574]/15 text-[#d4a574] border border-[#d4a574]/30 shadow-md'
                                                     : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                                            }`}
+                                                }`}
                                         >
                                             <Icon className={`w-5 h-5 ${isActive ? 'text-[#d4a574]' : 'text-slate-400'}`} />
                                             <span>{item.label}</span>
@@ -264,7 +301,7 @@ const MobileDeviceLayout = ({ children }) => {
                                     <Avatar name={user.name} src={user.avatar} size={10} className="ring-2 ring-[#d4a574]" />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-black text-white truncate">{user.name || 'User Account'}</p>
-                                        <p className="text-xs text-slate-400 font-medium truncate">{user.role || 'Admin'} · Naic, Cavite</p>
+                                        <p className="text-xs text-slate-400 font-medium truncate">{roleLabel(user.role)} · Naic, Cavite</p>
                                     </div>
                                 </div>
 

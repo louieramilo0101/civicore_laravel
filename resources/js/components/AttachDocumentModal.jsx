@@ -18,7 +18,7 @@ import useDebounce from '../hooks/useDebounce.js';
 /** Lets staff attach an existing registry document to a pending request. */
 export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach }) {
     const [ocrQuery, setOcrQuery] = useState('');
-    const debouncedQuery = useDebounce(ocrQuery, 50);
+    const debouncedQuery = useDebounce(ocrQuery, 250);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchingOcr, setIsSearchingOcr] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState(null);
@@ -26,10 +26,22 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
     const [isLinking, setIsLinking] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const abortControllerRef = useRef(null);
+    const lastSearchedQueryRef = useRef('');
 
     const performSearch = useCallback(async (queryText, purposeType) => {
-        const term = queryText !== undefined ? queryText : ocrQuery;
+        const term = (queryText !== undefined ? queryText : ocrQuery)?.trim() || '';
         const type = purposeType || ticket?.purpose;
+
+        // Skip empty queries — no point scanning the entire registry
+        if (!term) {
+            setSearchResults([]);
+            setIsSearchingOcr(false);
+            return;
+        }
+
+        // Deduplicate: skip if we already searched for this exact term + type
+        const cacheKey = `${term}||${type || ''}`;
+        if (cacheKey === lastSearchedQueryRef.current) return;
 
         // Abort previous in-flight search
         if (abortControllerRef.current) {
@@ -38,6 +50,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
+        lastSearchedQueryRef.current = cacheKey;
         setIsSearchingOcr(true);
         try {
             const params = {
@@ -48,9 +61,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
             if (type) {
                 params.type = type === 'marriage' ? 'marriage' : type;
             }
-            if (term && term.trim()) {
-                params.search = term.trim();
-            }
+            params.search = term;
 
             const res = await axios.get('/api/documents', {
                 params,
@@ -113,7 +124,8 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
             setSelectedDoc(null);
             setPrintRemarks('');
             setIsMinimized(false);
-            performSearch(suggestedQuery, ticket.purpose);
+            // performSearch is NOT called here — the debounced effect below
+            // will fire automatically when debouncedQuery updates.
         }
     }, [isOpen, ticket?.id]);
 
@@ -245,6 +257,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                             <button
                                                 type="button"
                                                 onClick={() => {
+                                                    lastSearchedQueryRef.current = '';
                                                     setOcrQuery('');
                                                     performSearch('', ticket?.purpose);
                                                 }}
@@ -257,7 +270,10 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                     )}
                                 </div>
                                 <button
-                                    onClick={() => performSearch(ocrQuery, ticket?.purpose)}
+                                    onClick={() => {
+                                        lastSearchedQueryRef.current = '';
+                                        performSearch(ocrQuery, ticket?.purpose);
+                                    }}
                                     disabled={isSearchingOcr}
                                     className="px-5 py-3.5 bg-slate-900 text-white dark:bg-[#d4a574] dark:hover:bg-[#bc8a59] dark:text-slate-950 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shrink-0 shadow-sm"
                                     title="Refresh search"

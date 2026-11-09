@@ -13,7 +13,7 @@ import {
 
 /**
  * SystemRestartModal
- * Provides SuperAdmin with an interface to reboot the application,
+ * Provides admin-level system control for rebooting the application,
  * flush backend framework caches (views, routes, queries, OPcache),
  * purge local browser memory/session caches, and smoothly re-initialize CiviCORE.
  */
@@ -124,7 +124,7 @@ const SystemRestartModal = ({ isOpen, onClose }) => {
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-xl font-black text-white tracking-tight">Restart Application</h3>
                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                            SuperAdmin
+                                            Admin
                                         </span>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -192,7 +192,14 @@ const SystemRestartModal = ({ isOpen, onClose }) => {
                                 {/* Orbiting glow rings */}
                                 <div className="absolute inset-0 rounded-full border-2 border-amber-500/30 border-t-amber-400 animate-spin" />
                                 <div className="absolute inset-2 rounded-full border-2 border-emerald-500/30 border-b-emerald-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }} />
-                                <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_0_16px_rgba(212,165,116,0.4)]" />
+                                <img
+                                    src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                                    alt="Civil Registry & Naic Seal"
+                                    width={64}
+                                    height={64}
+                                    decoding="async"
+                                    className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_0_16px_rgba(212,165,116,0.4)]"
+                                />
                             </div>
 
                             <div>

@@ -9,7 +9,7 @@ import { useData } from './DataContext.jsx';
 
 /** Presents the staff action queue and its selection controls. */
 const ActionCenter = () => {
-    const { undoableTasks, clearUndoableTask, refreshAfterMutation } = useData();
+    const { undoableTasks, clearUndoableTask, emitEvent, Events } = useData();
     const [isOpen, setIsOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
 
@@ -23,7 +23,7 @@ const ActionCenter = () => {
         try {
             await task.undoFn();
             clearUndoableTask(task.id);
-            refreshAfterMutation();
+            emitEvent(Events.DOCUMENT_RESTORED, { id: task.id });
         } catch (err) {
             console.error("Undo failed:", err);
         }

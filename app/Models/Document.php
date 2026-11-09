@@ -48,7 +48,7 @@ class Document extends Model
     /** Stores the casts value used by this component. */
     protected $casts = [
         'metadata' => 'json',
-        'extracted_fields' => 'encrypted:array',
+        'extracted_fields' => 'array',
         'extracted_data' => 'encrypted:array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

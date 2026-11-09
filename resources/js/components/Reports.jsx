@@ -264,9 +264,12 @@ export default function Reports() {
 
     // Fetch live documents or issuances for preview
     const fetchPreviewData = useCallback(async () => {
-        if (!previewRecordsRef.current || previewRecordsRef.current.length === 0) {
+        // Don't show loading if we already have cached data for this source
+        const existingCache = loadReportsCache(dataSource);
+        if (!existingCache?.records?.length) {
             setIsLoading(true);
         }
+
         try {
             const typeParam = selectedDocTypes.length === 3 ? '' : selectedDocTypes.join(',');
             const params = new URLSearchParams({

@@ -11,7 +11,7 @@ import Pagination from './Pagination.jsx';
 import SystemRestartModal from './SystemRestartModal.jsx';
 
 /**
- * SuperAdmin-exclusive system backup and point-in-time disaster recovery interface.
+ * Admin-exclusive system backup and point-in-time disaster recovery interface.
  * Direct file download is omitted to safeguard government records and database privacy.
  */
 const Backups = () => {
@@ -73,7 +73,7 @@ const Backups = () => {
             } else {
                 showAlert({
                     title: 'Access Restricted',
-                    message: data.error || 'Only SuperAdmins may access system backups.',
+                    message: data.error || 'Only Admins may access system backups.',
                     type: 'error'
                 });
             }
@@ -254,10 +254,9 @@ const Backups = () => {
                     </button>
                     <button
                         onClick={() => setIsRestartModalOpen(true)}
-                        className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 text-slate-700 dark:text-slate-200 hover:text-amber-800 dark:hover:text-amber-300 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer group active:scale-95"
+                        className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 text-slate-700 dark:text-slate-200 hover:text-amber-800 dark:hover:text-amber-300 font-bold rounded-xl transition-all shadow-sm flex items-center justify-center text-xs sm:text-sm cursor-pointer group active:scale-95"
                         title="Reboot system engine & flush application caches"
                     >
-                        <ArrowPathIcon className="w-4 h-4 text-amber-500 group-hover:rotate-180 transition-transform duration-500" />
                         <span>Restart Application</span>
                     </button>
                     <button
@@ -511,7 +510,7 @@ const Backups = () => {
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                        Your SuperAdmin Password <span className="text-rose-500 text-lg leading-none">*</span>
+                                        Your Admin Password <span className="text-rose-500 text-lg leading-none">*</span>
                                     </label>
                                     <div className="relative">
                                         <input

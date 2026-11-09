@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { roleLabel } from '../utils/role.js';
 import {
     ChartBarIcon,
     ArrowUpTrayIcon,
@@ -47,7 +48,31 @@ const Layout = ({ children }) => {
     const { backgroundTasks } = useData();
     const location = useLocation();
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        const syncUser = () => {
+            try {
+                const updated = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+                setUser(updated);
+            } catch {
+                // ignore
+            }
+        };
+
+        window.addEventListener('user-updated', syncUser);
+        window.addEventListener('storage', syncUser);
+        return () => {
+            window.removeEventListener('user-updated', syncUser);
+            window.removeEventListener('storage', syncUser);
+        };
+    }, []);
 
     // If viewport width is inside mobile or tablet range (< 1024px), use dedicated MobileDeviceLayout
     if (isMobileDevice) {
@@ -102,7 +127,14 @@ const Layout = ({ children }) => {
             <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] text-slate-300 flex flex-col border-r border-slate-800 shadow-2xl md:shadow-none translate-x-0 md:static md:shrink-0">
                 {/* Header branding */}
                 <div className="p-6 text-white border-b border-slate-800/40 bg-[#0f172a]/90 flex items-center gap-4 group">
-                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-28 h-14 object-contain filter drop-shadow-[0_0_12px_rgba(212,165,116,0.2)] group-hover:scale-105 transition-transform duration-500" />
+                    <img
+                        src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                        alt="Civil Registry & Naic Seal"
+                        width={112}
+                        height={56}
+                        decoding="async"
+                        className="w-28 h-14 object-contain filter drop-shadow-[0_0_12px_rgba(212,165,116,0.2)] group-hover:scale-105 transition-transform duration-500"
+                    />
                     <div>
                         <h2 className="font-black text-[10px] tracking-[0.2em] text-[#d4a574] uppercase leading-none opacity-80 mb-1.5 font-sans">Civil Registry</h2>
                         <div className="flex items-center gap-2">
@@ -175,7 +207,7 @@ const Layout = ({ children }) => {
                             >
                                 <div className="flex flex-col text-right">
                                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-none group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{user.name || 'User'}</span>
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{user.role || 'Admin'}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{roleLabel(user.role)}</span>
                                 </div>
                                 <Avatar name={user.name} src={user.avatar} size={10} className="shadow-md ring-2 ring-white dark:ring-slate-800 group-hover:ring-[#d4a574] transition-all" />
                             </button>

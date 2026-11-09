@@ -503,6 +503,16 @@ class TicketController extends Controller
     {
         $query = Ticket::query()->with('document');
 
+        // Hide expired tickets from the active staff queue (past 5 PM on scheduled day)
+        // unless explicitly requested via ?show_expired=true
+        $showExpired = filter_var($request->query('show_expired', false), FILTER_VALIDATE_BOOLEAN);
+        if (!$showExpired) {
+            $query->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            });
+        }
+
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -633,7 +643,11 @@ class TicketController extends Controller
         $start = Carbon::today(config('app.timezone'))->startOfDay();
         $end = Carbon::today(config('app.timezone'))->endOfDay();
 
-        $waitingCount = Ticket::whereIn('request_status', ['pending', 'ready_for_pickup'])
+        $waitingCount = Ticket::where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->whereIn('request_status', ['pending', 'ready_for_pickup'])
             ->count();
 
         $attachedToday = Ticket::where('request_status', 'ready_for_pickup')
@@ -811,15 +825,28 @@ class TicketController extends Controller
 
         $ticket->request_status = 'cancelled';
 
-        // Also cancel issuance if it exists
-        $issuance = \Illuminate\Support\Facades\DB::table('issuances')
+        // Also cancel issuance if it exists (check ticket_issuances since issuances no longer has ticket_number)
+        $issuance = \Illuminate\Support\Facades\DB::table('ticket_issuances')
             ->where('ticket_number', $ticket->ticket_number)
             ->first();
             
         if ($issuance && $issuance->status !== 'completed') {
-            \Illuminate\Support\Facades\DB::table('issuances')
+            \Illuminate\Support\Facades\DB::table('ticket_issuances')
                 ->where('id', $issuance->id)
                 ->update(['status' => 'cancelled', 'updated_at' => now()]);
+        }
+
+        // Also cancel the master registry issuance if linked to the same document
+        if ($ticket->document_id) {
+            $masterIssuance = \Illuminate\Support\Facades\DB::table('issuances')
+                ->where('document_id', $ticket->document_id)
+                ->whereNull('deleted_at')
+                ->first();
+            if ($masterIssuance && $masterIssuance->status !== 'completed') {
+                \Illuminate\Support\Facades\DB::table('issuances')
+                    ->where('id', $masterIssuance->id)
+                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            }
         }
 
         // We can optionally store the cancellation reason in the details JSON

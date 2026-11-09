@@ -79,8 +79,11 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        // 2. Get the actual physical path on your Windows machine in the local disk
-        $sourceFilePath = storage_path('app/public/' . $doc->file_path);
+        // 2. Resolve the physical path via the configured 'local' disk.
+        //    Laravel 12 points the local disk at storage/app/private, not
+        //    storage/app/public. Hardcoding the public path made every
+        //    uploaded file look "missing" and forced documents to 'failed'.
+        $sourceFilePath = \Storage::disk('local')->path($doc->file_path);
 
         if (!file_exists($sourceFilePath)) {
             Log::error("Physical file is missing from storage folder: " . $sourceFilePath);

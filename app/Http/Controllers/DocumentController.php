@@ -732,6 +732,106 @@ class DocumentController extends Controller
     }
 
     /**
+     * Bulk approve multiple extracted documents in a single request.
+     * Replaces N sequential quick-approve calls with one batched request.
+     */
+    public function bulkApprove(Request $request)
+    {
+        $ids = $request->validate([
+            'ids'   => 'required|array|max:500',
+            'ids.*' => 'integer|exists:documents,id',
+        ])['ids'];
+
+        $results = [];
+        $ok = 0;
+
+        DB::transaction(function () use ($request, $ids, &$results, &$ok) {
+            foreach ($ids as $id) {
+                $docData = DB::selectOne("SELECT * FROM documents WHERE id = ?", [$id]);
+                if (!$docData) {
+                    $results[] = ['id' => $id, 'ok' => false, 'error' => 'not_found'];
+                    continue;
+                }
+
+                $fields = EncryptedJson::decode($docData->extracted_fields);
+                $barangay = $fields['barangay'] ?? '';
+                $detectedType = $docData->detected_type ?: $docData->type;
+                $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+
+                if ($detectedType === 'marriage_license') {
+                    $detectedType = 'marriage';
+                }
+
+                if (!$force && $this->hasTrueDuplicate($detectedType, $fields, (int)$id)) {
+                    $results[] = ['id' => $id, 'ok' => false, 'error' => 'duplicate'];
+                    continue;
+                }
+
+                $personName = $this->buildFullName($fields, $detectedType) ?: $docData->name;
+                $saveResult = $this->performSave($request, $id, $fields, $docData->ocr_text, $personName, $barangay, 'Processed', false, $detectedType);
+
+                if ($saveResult) {
+                    $results[] = ['id' => $id, 'ok' => true];
+                    $ok++;
+                } else {
+                    $results[] = ['id' => $id, 'ok' => false, 'error' => 'save_failed'];
+                }
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'approved' => $ok,
+            'results' => $results,
+        ]);
+    }
+
+    /**
+     * Bulk delete multiple documents in a single request.
+     * Replaces N sequential destroy calls with one batched request.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->validate([
+            'ids'   => 'required|array|max:500',
+            'ids.*' => 'integer|exists:documents,id',
+        ])['ids'];
+
+        $deletedCount = 0;
+
+        DB::transaction(function () use ($ids, &$deletedCount) {
+            foreach ($ids as $id) {
+                $document = DB::table('documents')->where('id', $id)->first();
+                if (!$document) continue;
+
+                $this->logHistory($id, 'Deleted');
+
+                DB::table('documents')->where('id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                DB::table('issuances')->where('document_id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                DB::table('ticket_issuances')->where('document_id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $deletedCount++;
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'deleted' => $deletedCount,
+        ]);
+    }
+
+    /**
      * Single-factor duplicate detection: Registry Number scoped strictly by certificate type.
      * In civil registry operations, each civil registry book maintains its own registry series.
      * Registry Numbers are strictly unique within their respective certificate type.

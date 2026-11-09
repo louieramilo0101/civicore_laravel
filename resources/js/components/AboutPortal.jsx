@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-    CheckCircleIcon, 
-    ShieldCheckIcon, 
-    UserIcon, 
-    AcademicCapIcon, 
-    CodeBracketIcon, 
-    DocumentTextIcon 
+import {
+    CheckCircleIcon,
+    ShieldCheckIcon,
+    UserIcon,
+    AcademicCapIcon,
+    CodeBracketIcon,
+    DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 // Team member card with circular photo frame
-function ProfileCard({ name, role, imagePath, icon: Icon = UserIcon }) {
+function ProfileCard({ name, role, imagePath, icon: Icon = UserIcon, imageClassName = "object-center" }) {
     const [imgFailed, setImgFailed] = useState(false);
 
     return (
@@ -25,8 +25,12 @@ function ProfileCard({ name, role, imagePath, icon: Icon = UserIcon }) {
                     <img
                         src={imagePath}
                         alt={name}
+                        width={208}
+                        height={208}
+                        loading="lazy"
+                        decoding="async"
                         onError={() => setImgFailed(true)}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${imageClassName}`}
                     />
                 ) : (
                     <div className="flex flex-col items-center justify-center gap-2 p-4 text-slate-400">
@@ -50,7 +54,7 @@ function ProfileCard({ name, role, imagePath, icon: Icon = UserIcon }) {
 export default function AboutPortal() {
     return (
         <div className="py-12 sm:py-16 md:py-20 px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20 space-y-20 max-w-7xl mx-auto">
-            
+
             {/* 1. Hero Section: Overview & Official Logo */}
             <section className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
                 <div className="flex-1">
@@ -66,7 +70,7 @@ export default function AboutPortal() {
                         <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
                             The Municipal Civil Registrar's Office of Naic is dedicated to the proper registration, archival, and administration of the fundamental civic events of our citizens. We record the milestones of our local community—Births, Marriages, and Deaths—to ensure permanent, secure, and valid civil identification.
                         </p>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-2">
                             <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                                 <div className="text-white font-bold text-base mb-1.5 flex items-center gap-2">
@@ -102,6 +106,10 @@ export default function AboutPortal() {
                         <img
                             src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
                             alt="Civil Registry of Naic & Naic Municipal Seal"
+                            width={400}
+                            height={400}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-contain rounded-2xl shadow-md group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute -top-24 -right-24 w-60 h-60 bg-[#d4a574]/15 rounded-full blur-[80px] pointer-events-none" />
@@ -124,6 +132,10 @@ export default function AboutPortal() {
                     <img
                         src="/images/Civil%20Registry/picture%20of%20civil%20registry%20employee.png"
                         alt="Civil Registry of Naic Employees"
+                        width={1200}
+                        height={800}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-auto max-h-[560px] object-cover object-top group-hover:scale-[1.01] transition-transform duration-500"
                     />
                     <div className="p-4 sm:p-6 bg-slate-900/90 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -156,12 +168,14 @@ export default function AboutPortal() {
                         role="Technical Adviser"
                         imagePath="/images/TA%20and%20TC/henry_balanza.png"
                         icon={AcademicCapIcon}
+                        imageClassName="object-[50%_15%]"
                     />
                     <ProfileCard
                         name="Sir Gabriel Arcega"
                         role="Technical Critic"
                         imagePath="/images/TA%20and%20TC/gabriel_arcega.png"
                         icon={AcademicCapIcon}
+                        imageClassName="object-[50%_5%]"
                     />
                 </div>
             </section>

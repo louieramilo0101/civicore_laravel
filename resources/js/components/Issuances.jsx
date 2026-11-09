@@ -7,7 +7,7 @@ import {
     AdjustmentsHorizontalIcon, EyeIcon,
     TrashIcon, CheckCircleIcon, ClockIcon, ArrowDownTrayIcon,
     PencilSquareIcon, ShieldCheckIcon, XMarkIcon, ArrowPathIcon,
-    ChevronDownIcon, ChevronUpIcon, CameraIcon,
+    ChevronDownIcon, ChevronUpIcon, CameraIcon, ExclamationTriangleIcon,
     UserIcon, DocumentTextIcon, UsersIcon,
     ChartBarIcon, PresentationChartLineIcon, TrophyIcon
 } from '@heroicons/react/24/outline';
@@ -36,6 +36,8 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
     const docId = cert.document_id || cert.raw?.document_id || (cert.source !== 'issuance' ? cert.realId : null);
     const hasImage = Boolean(cert.image_path || cert.raw?.image_path || cert.source_image_path || docId);
     const [previewMode, setPreviewMode] = useState(hasImage ? 'image' : 'pdf');
+    const [isImageLoading, setIsImageLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
 
     const viewUrl = cert.source === 'issuance'
         ? `/api/issuances/view/${cert.realId}`
@@ -132,12 +134,37 @@ export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openR
             <div className="flex-1 overflow-hidden p-8 flex justify-center bg-slate-950">
                 <div className="w-full max-w-5xl h-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
                     {imageUrl ? (
-                        <div className="w-full h-full flex items-center justify-center p-6 overflow-auto">
-                            <img
-                                src={imageUrl}
-                                alt={cert.name}
-                                className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all"
-                            />
+                        <div className="w-full h-full flex items-center justify-center p-6 overflow-auto relative">
+                            {isImageLoading && !loadFailed && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-12 h-12 border-4 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin" />
+                                        <span className="text-xs text-slate-400 font-medium">Loading document…</span>
+                                    </div>
+                                </div>
+                            )}
+                            {loadFailed ? (
+                                <div className="flex flex-col items-center justify-center gap-4 text-slate-500">
+                                    <ExclamationTriangleIcon className="w-16 h-16 opacity-20" />
+                                    <span className="text-sm font-medium">Unable to load document preview</span>
+                                    <button
+                                        onClick={() => { setLoadFailed(false); setIsImageLoading(true); }}
+                                        className="px-4 py-2 bg-[#d4a574]/10 text-[#d4a574] border border-[#d4a574]/30 rounded-xl text-xs font-bold hover:bg-[#d4a574] hover:text-[#0f172a] transition-all"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : (
+                                <img
+                                    src={imageUrl}
+                                    alt={cert.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className={`max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300 ${isImageLoading ? 'opacity-0 scale-98' : 'opacity-100 scale-100'}`}
+                                    onLoad={() => setIsImageLoading(false)}
+                                    onError={() => { setIsImageLoading(false); setLoadFailed(true); }}
+                                />
+                            )}
                         </div>
                     ) : (
                         <iframe
@@ -165,7 +192,8 @@ const Issuances = () => {
         refreshIssuances,
         refreshDocuments,
         refreshStats,
-        refreshAfterMutation,
+        emitEvent,
+        Events,
         stats
     } = useData();
 
@@ -465,9 +493,9 @@ const Issuances = () => {
                 ticket_id: selectedTicketId || undefined
             });
             if (res.data.success) {
-                showAlert({ title: 'Request Submitted', message: 'Print request submitted for SuperAdmin approval.', type: 'success' });
+                showAlert({ title: 'Request Submitted', message: 'Print request submitted for Admin approval.', type: 'success' });
                 setRequestingPrintCert(null);
-                refreshAfterMutation();
+                emitEvent(Events.ISSUANCE_REQUESTED, { id: requestingPrintCert.realId });
             }
         } catch (err) {
             console.error(err);
@@ -486,7 +514,7 @@ const Issuances = () => {
                 await runBackgroundTask(`Approving print for: ${cert.name}`, async () => {
                     const res = await axios.post(`/api/issuances/${cert.realId}/approve-print`);
                     if (res.data.success) {
-                        refreshAfterMutation();
+                        emitEvent(Events.ISSUANCE_APPROVED, { id: cert.realId });
                         return { success: true, message: 'Print request authorized.' };
                     }
                     throw new Error('Failed to approve print request.');
@@ -504,7 +532,7 @@ const Issuances = () => {
                 await runBackgroundTask(`Rejecting print for: ${cert.name}`, async () => {
                     const res = await axios.post(`/api/issuances/${cert.realId}/reject-print`);
                     if (res.data.success) {
-                        refreshAfterMutation();
+                        emitEvent(Events.ISSUANCE_REJECTED, { id: cert.realId });
                         return { success: true, message: 'Print request denied.' };
                     }
                     throw new Error('Failed to reject print request.');
@@ -588,7 +616,10 @@ const Issuances = () => {
                     console.error('Failed to clear draft cache:', cacheErr);
                 }
                 logActivity('Edited', certToClear);
-                refreshAfterMutation();
+                emitEvent(Events.ISSUANCE_UPDATED, { id: certToClear.realId });
+                if (certToClear.source !== 'issuance') {
+                    emitEvent(Events.DOCUMENT_UPDATED, { id: certToClear.realId });
+                }
                 return { success: true, message: `Successfully updated record for ${personName}` };
             }
             throw new Error('Update failed');
@@ -607,7 +638,11 @@ const Issuances = () => {
                     const res = await axios.delete(endpoint);
                     if (res.data.success) {
                         logActivity('Deleted', cert);
-                        refreshAfterMutation();
+                        if (cert.source === 'issuance') {
+                            emitEvent(Events.ISSUANCE_DELETED, { id: cert.realId });
+                        } else {
+                            emitEvent(Events.DOCUMENT_DELETED, { id: cert.realId });
+                        }
                         return { success: true, type: 'delete' };
                     }
                     throw new Error('Delete failed');
@@ -640,7 +675,7 @@ const Issuances = () => {
 
                         if (cert.status === 'Approved') {
                             await axios.post(`/api/issuances/${cert.realId}/issue`);
-                            refreshAfterMutation();
+                            emitEvent(Events.ISSUANCE_ISSUED, { id: cert.realId });
                         }
                     } finally {
                         window.setTimeout(() => {
@@ -701,7 +736,8 @@ const Issuances = () => {
                             failed++;
                         }
                     }
-                    refreshAfterMutation();
+                    emitEvent(Events.ISSUANCE_DELETED, { count: ok });
+                    emitEvent(Events.DOCUMENT_DELETED, { count: ok });
                     return {
                         success: true,
                         message: `Successfully removed ${ok} records.${failed > 0 ? ` Failed to remove ${failed} records.` : ''}`,
@@ -765,10 +801,12 @@ const Issuances = () => {
                                 ok++;
                             }
                         }
-                        refreshAfterMutation();
+                        emitEvent(Events.DOCUMENT_BULK_APPROVE, { count: ok });
+                        emitEvent(Events.ISSUANCE_ISSUED, { count: ok });
                         return { success: true, message: `Successfully issued ${ok} certificates.` };
                     } catch (err) {
-                        refreshAfterMutation();
+                        emitEvent(Events.DOCUMENT_BULK_APPROVE, { count: ok });
+                        emitEvent(Events.ISSUANCE_ISSUED, { count: ok });
                         throw err;
                     }
                 });

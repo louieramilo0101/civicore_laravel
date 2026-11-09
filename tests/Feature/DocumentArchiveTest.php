@@ -24,8 +24,8 @@ class DocumentArchiveTest extends TestCase
     {
         parent::setUp();
         
-        // Setup a mock storage disk
-        Storage::fake('public');
+        // Setup a mock storage disk - controller uses 'local' disk for file operations
+        Storage::fake('local');
 
         // Create an Admin user for sessions
         $this->adminId = DB::table('users')->insertGetId([
@@ -132,8 +132,8 @@ class DocumentArchiveTest extends TestCase
     public function test_can_purge_document_and_files()
     {
         // Create mock files in storage
-        Storage::disk('public')->put('documents/mock_doc.pdf', 'file content');
-        Storage::disk('public')->put('issuances/mock_iss.pdf', 'file content');
+        Storage::disk('local')->put('documents/mock_doc.pdf', 'file content');
+        Storage::disk('local')->put('issuances/mock_iss.pdf', 'file content');
 
         // Insert archived document
         $documentId = DB::table('documents')->insertGetId([
@@ -173,7 +173,7 @@ class DocumentArchiveTest extends TestCase
         $this->assertDatabaseMissing('issuances', ['id' => $issuanceId]);
 
         // Verify storage files are deleted
-        Storage::disk('public')->assertMissing('documents/mock_doc.pdf');
-        Storage::disk('public')->assertMissing('issuances/mock_iss.pdf');
+        Storage::disk('local')->assertMissing('documents/mock_doc.pdf');
+        Storage::disk('local')->assertMissing('issuances/mock_iss.pdf');
     }
 }

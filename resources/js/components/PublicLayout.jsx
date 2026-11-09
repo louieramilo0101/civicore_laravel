@@ -44,7 +44,15 @@ export default function PublicLayout({ children }) {
                 className="px-5 sm:px-6 md:px-12 pt-3 pb-1 sm:pt-4 sm:pb-2 flex justify-between items-center z-50 relative"
             >
                 <Link to="/" className="flex items-center gap-3 sm:gap-4 group cursor-pointer">
-                    <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry of Naic" className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_12px_rgba(212,165,116,0.25)] group-hover:scale-110 transition-transform duration-300" />
+                    <img
+                        src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                        alt="Civil Registry of Naic"
+                        width={80}
+                        height={80}
+                        fetchPriority="high"
+                        decoding="async"
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_12px_rgba(212,165,116,0.25)] group-hover:scale-110 transition-transform duration-300"
+                    />
                     <div>
                         <div className="font-extrabold text-white text-xl sm:text-2xl tracking-tight leading-none uppercase drop-shadow-sm">
                             Civi<span className="text-[#d4a574]">CORE</span>
@@ -166,7 +174,15 @@ export default function PublicLayout({ children }) {
             <footer className="py-12 px-6 border-t border-white/5 bg-[#0a0f1d] text-center relative z-20">
                 <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
                     <div className="flex items-center gap-4">
-                        <img src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png" alt="Civil Registry & Naic Seal" className="w-8 h-8 object-contain opacity-50" />
+                        <img
+                            src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                            alt="Civil Registry & Naic Seal"
+                            width={32}
+                            height={32}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-8 h-8 object-contain opacity-50"
+                        />
                         <span className="text-white font-black tracking-widest uppercase text-sm opacity-50">CiviCORE</span>
                         <span className="text-slate-600">•</span>
                         <a

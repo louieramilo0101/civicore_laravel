@@ -172,8 +172,10 @@ const TemplateDesigner = ({ template, onClose, onSave }) => {
                     >
                         <img 
                             src={`/api/templates/preview?file=${template.file_path}`} 
-                            className="w-full h-full pointer-events-none select-none opacity-90"
                             alt="Template"
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full pointer-events-none select-none opacity-90"
                         />
                         
                         <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 pointer-events-none">

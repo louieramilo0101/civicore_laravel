@@ -103,9 +103,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [statusFilter, setStatusFilter] = useState('waiting');
     /** @type {['asc'|'desc', import('react').Dispatch<import('react').SetStateAction<'asc'|'desc'>>]} */
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = FIFO (oldest first), 'desc' = newest first
-    /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
-    const [isLoading, setIsLoading] = useState(false);
-
+    const [isLoading, setIsLoading] = useState(true);
     /** Tracks the previous result count so new-request notifications are not emitted on first load. */
     const prevCountRef = React.useRef(0);
 
@@ -516,23 +514,19 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
      * the selected purpose or request-status filter changes.
      */
     useEffect(() => {
-        /** Cache key scoped to the active purpose, status, and sort order. */
+        // Clear stale cached data for the newly-selected filter so the
+        // previous tab's records never flash into view before the fresh
+        // API response arrives (eliminates dropdown flicker).
         const cacheKey = `civicore_pending_tickets_${purposeFilter}_${statusFilter}_${sortOrder}`;
-        /** Previously cached ticket list, if one exists. */
-        const cachedTickets = sessionStorage.getItem(cacheKey);
-        /** Previously cached summary statistics, if one exists. */
-        const cachedStats = sessionStorage.getItem('civicore_pending_stats');
+        try { sessionStorage.removeItem(cacheKey); } catch { /* ignore */ }
+        try { sessionStorage.removeItem('civicore_pending_stats'); } catch { /* ignore */ }
 
-        if (cachedTickets) {
-            setTickets(JSON.parse(cachedTickets));
-        } else {
-            setTickets([]); // Clear old tickets to prevent layout/tab-switch flickering
-        }
-        if (cachedStats) {
-            setStats(JSON.parse(cachedStats));
-        }
+        // Don't zero stats — let the API response overwrite them.
+        // Zeroing causes a brief flash of "0" in the Waiting badge
+        // before the fetch completes, which looks like flickering.
+        setTickets([]);
 
-        fetchPendingTickets(!cachedTickets);
+        fetchPendingTickets(true);
     }, [purposeFilter, statusFilter, sortOrder]);
 
     /** Refreshes the inbox silently when the parent reports a data change. */
@@ -555,9 +549,10 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             const [ticketsRes, statsRes] = await Promise.all([
                 axios.get('/api/v1/tickets', {
                     params: {
-                        request_status: statusFilter,
+                        request_status: statusFilter === 'expired' ? 'cancelled' : statusFilter,
                         purpose: purposeFilter,
                         sort_order: sortOrder,
+                        show_expired: statusFilter === 'expired' ? true : false,
                         _: Date.now() // Cache-busting timestamp parameter
                     }
                 }),
@@ -840,6 +835,20 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         });
     }, [tickets, searchQuery, sortOrder]);
 
+    // ── Sidebar queue pagination ─────────────────────────────────────────────
+    // Only the visible page renders in the DOM so a 100-ticket queue costs the
+    // browser ~15 ticket cards instead of 100.
+    const [queuePage, setQueuePage] = useState(1);
+    const queuePageSize = 15;
+    useEffect(() => { setQueuePage(1); }, [searchQuery, statusFilter, purposeFilter]);
+
+    const paginatedTickets = useMemo(() => {
+        const start = (queuePage - 1) * queuePageSize;
+        return filteredTickets.slice(start, start + queuePageSize);
+    }, [filteredTickets, queuePage]);
+
+    const totalQueuePages = Math.max(1, Math.ceil(filteredTickets.length / queuePageSize));
+
     return (
         <div className="flex flex-col space-y-4 h-full min-h-0 overflow-hidden">
 
@@ -923,6 +932,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 >
                                     <option value="waiting">Waiting ({stats.waiting || tickets.length})</option>
                                     <option value="completed">Completed ({stats.completed_today || 0})</option>
+                                    <option value="expired">Expired</option>
                                 </select>
                                 <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
@@ -977,7 +987,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </p>
                             </div>
                         ) : (
-                            filteredTickets.map(t => {
+                            paginatedTickets.map(t => {
                                 /** Whether this row is the currently selected request. */
                                 const isSelected = selectedTicket?.id === t.id;
                                 /** Purpose-specific visual badge classes. Consistent: Birth=Orange, Death=Red, Marriage=Blue. */
@@ -1052,6 +1062,31 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             })
                         )}
                     </div>
+
+                    {/* Queue List Pagination Footer */}
+                    {totalQueuePages > 1 && (
+                        <div className="pt-3 mt-2 border-t border-slate-150 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 shrink-0">
+                            <span>Page <strong className="text-slate-700 dark:text-slate-200">{queuePage}</strong> of {totalQueuePages}</span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setQueuePage(p => Math.max(1, p - 1))}
+                                    disabled={queuePage === 1}
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg font-bold disabled:opacity-40 cursor-pointer"
+                                >
+                                    Prev
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setQueuePage(p => Math.min(totalQueuePages, p + 1))}
+                                    disabled={queuePage === totalQueuePages}
+                                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg font-bold disabled:opacity-40 cursor-pointer"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Selected Ticket Details (Spacious and Revamped layout) */}
@@ -2215,9 +2250,11 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 ) : (
                                     <div className="relative max-h-[65vh] max-w-full flex items-center justify-center">
                                         {isIdImageLoading && (
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-8 bg-slate-200/60 dark:bg-slate-900/60 rounded-xl backdrop-blur-xs z-10">
-                                                <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Loading document image...</span>
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 rounded-xl z-10">
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+                                                    <span className="text-xs text-slate-400 font-medium">Loading document…</span>
+                                                </div>
                                             </div>
                                         )}
                                         <img
@@ -2225,7 +2262,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                             alt="Citizen ID or Authorization Document"
                                             onLoad={() => setIsIdImageLoading(false)}
                                             onError={() => setIsIdImageLoading(false)}
-                                            className={`max-h-[65vh] max-w-full rounded-xl object-contain shadow-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 ${isIdImageLoading ? 'opacity-40 filter blur-sm scale-98' : 'opacity-100 filter blur-0 scale-100'}`}
+                                            className={`max-h-[65vh] max-w-full rounded-xl object-contain shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-500 ease-out ${isIdImageLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                                         />
                                     </div>
                                 )}

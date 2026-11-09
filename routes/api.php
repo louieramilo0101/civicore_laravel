@@ -20,6 +20,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\RumMetricsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,9 @@ Route::middleware('api')->group(function () {
     // V1 Public API Routes
     Route::get('/v1/tickets/{token}',      [TicketController::class, 'showByToken']);
     Route::post('/v1/tickets/scan',        [TicketController::class, 'scanCheckIn']);
+
+    // Real User Monitoring (RUM) metric collection
+    Route::post('/rum/metrics',            [RumMetricsController::class, 'store']);
 });
 
 Route::middleware('web')->group(function () {
@@ -87,6 +91,8 @@ Route::middleware('web')->group(function () {
         Route::delete('/documents/{id}',            [DocumentController::class, 'destroy']);
         Route::post('/documents/upload',            [DocumentController::class, 'upload']);
         Route::post('/documents/{id}/quick-approve', [DocumentController::class, 'quickApprove']);
+        Route::post('/documents/bulk-approve',        [DocumentController::class, 'bulkApprove']);
+        Route::post('/documents/bulk-delete',         [DocumentController::class, 'bulkDelete']);
         Route::post('/documents/{id}/toggle-ocr',   [DocumentController::class, 'toggleOcr']);
         Route::get('/documents/download/{id}',      [DocumentController::class, 'download']);
         Route::get('/documents/view/{id}',          [DocumentController::class, 'view']);
@@ -187,6 +193,9 @@ Route::middleware('web')->group(function () {
 
                 // System Restart & Cache Purge (SuperAdmin Only)
                 Route::post('/system/restart',              [SettingController::class, 'restartSystem']);
+
+                // Real User Monitoring (RUM) Dashboard Stats (SuperAdmin Only)
+                Route::get('/rum/stats',                    [RumMetricsController::class, 'stats']);
             });
         });
     });

@@ -42,7 +42,7 @@ return new class extends Migration
         $addIndex('issuances', 'name', 'idx_issuances_name');
         $addIndex('issuances', 'barangay', 'idx_issuances_barangay');
         $addIndex('issuances', 'type', 'idx_issuances_type');
-        $addIndex('issuances', 'ticket_number', 'idx_issuances_ticket_number');
+        // ticket_number column is dropped in later migration (2026_11_06), so skip index
         $addIndex('issuances', 'or_number', 'idx_issuances_or_number');
         $addIndex('issuances', 'deleted_at', 'idx_issuances_deleted_at');
         $addIndex('issuances', 'issuanceDate', 'idx_issuances_issuance_date');
@@ -78,7 +78,7 @@ return new class extends Migration
         // ── 5. History & Activity logs indexes ──
         $addIndex('document_history_logs', 'action', 'idx_doc_hist_action');
         $addIndex('document_history_logs', 'created_at', 'idx_doc_hist_created');
-        $addIndex('activity_logs', 'user_id', 'idx_act_logs_user_id');
+        $addIndex('activity_logs', 'user_name', 'idx_act_logs_user_name');
         $addIndex('activity_logs', ['record_type', 'record_id'], 'idx_act_logs_record');
         $addIndex('activity_logs', 'created_at', 'idx_act_logs_created');
     }
@@ -102,7 +102,7 @@ return new class extends Migration
         $dropIndex('issuances', 'idx_issuances_name');
         $dropIndex('issuances', 'idx_issuances_barangay');
         $dropIndex('issuances', 'idx_issuances_type');
-        $dropIndex('issuances', 'idx_issuances_ticket_number');
+        // ticket_number index was never created (column dropped later)
         $dropIndex('issuances', 'idx_issuances_or_number');
         $dropIndex('issuances', 'idx_issuances_deleted_at');
         $dropIndex('issuances', 'idx_issuances_issuance_date');
@@ -135,7 +135,7 @@ return new class extends Migration
 
         $dropIndex('document_history_logs', 'idx_doc_hist_action');
         $dropIndex('document_history_logs', 'idx_doc_hist_created');
-        $dropIndex('activity_logs', 'idx_act_logs_user_id');
+        $dropIndex('activity_logs', 'idx_act_logs_user_name');
         $dropIndex('activity_logs', 'idx_act_logs_record');
         $dropIndex('activity_logs', 'idx_act_logs_created');
     }

@@ -44,7 +44,7 @@ export default function Ticketing({ mode = 'portal' }) {
     const { token } = useParams();
     const navigate = useNavigate();
     const { showAlert } = useModal();
-    const { refreshAfterMutation } = useData();
+    const { emitEvent, Events } = useData();
 
     // ── Portal State ──────────────────────────────────────────────────────────
     const [clientName, setClientName] = useState('');
@@ -311,7 +311,7 @@ export default function Ticketing({ mode = 'portal' }) {
             if (res.data.success) {
                 showAlert({ title: 'Status Updated', message: `Ticket marked as ${newStatus}.`, type: 'success' });
                 fetchQueue();
-                refreshAfterMutation();
+                emitEvent(Events.TICKET_UPDATED, { id });
             }
         } catch (err) {
             console.error(err);
@@ -366,7 +366,8 @@ export default function Ticketing({ mode = 'portal' }) {
                 setIsLinkModalOpen(false);
                 setSelectedDocId('');
                 fetchQueue();
-                refreshAfterMutation();
+                emitEvent(Events.TICKET_LINKED, { ticketId: selectedTicket.id, documentId: selectedDocId });
+                emitEvent(Events.DOCUMENT_UPDATED, { id: selectedDocId });
             }
         } catch (err) {
             console.error(err);

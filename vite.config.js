@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -80,5 +81,15 @@ export default defineConfig({
             refresh: true,
         }),
         react(),
-    ],
+        // Generate a bundle-analysis report (HTML) when ANALYZE=true is set.
+        // Disabled by default to keep builds fast; run `npm run build:analyze` to enable.
+        process.env.ANALYZE === 'true' ? visualizer({
+            filename: 'analyze.html',
+            title: 'CiviCORE Bundle Analysis',
+            openOnBuild: false,
+            template: 'treemap',
+            emitFiles: true,
+            rootDir: 'public/build',
+        }) : null,
+    ].filter(Boolean),
 });

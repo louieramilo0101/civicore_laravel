@@ -81,6 +81,7 @@ const DocumentViewerModal = ({ isOpen, onClose, fileUrl, fileName, onPrint, onDo
                             <img 
                                 src={fileUrl} 
                                 alt={fileName} 
+                                decoding="async"
                                 className={`max-w-full max-h-full object-contain shadow-sm rounded bg-white transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
                                 onLoad={() => setIsLoading(false)}
                                 onError={() => setIsLoading(false)}

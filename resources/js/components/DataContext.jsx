@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { on, emit, Events } from '../utils/dataEvents.js';
 
-// Simple event emitter for cross-component cache invalidation
+// Coarse "something changed" emitter kept for legacy listeners
+// (Archive Manager and Reports still subscribe via onGlobalRefresh).
 const globalRefreshEmitter = {
     listeners: new Set(),
     subscribe: (fn) => { globalRefreshEmitter.listeners.add(fn); return () => globalRefreshEmitter.listeners.delete(fn); },
@@ -103,6 +105,16 @@ export const DataProvider = ({ children }) => {
         history: 0,
         templates: 0
     });
+
+    /** Tracks the most recent mutation timestamp so the 60s polling loop
+     * can skip caches that were already invalidated by a typed event. */
+    const lastMutation = useRef(0);
+
+    /** Records that a mutation just happened — used by the polling loop
+     * to decide whether a cache is stale. */
+    const bumpMutation = useCallback(() => {
+        lastMutation.current = Date.now();
+    }, []);
 
     // ── Background Task Management ──────────────────────────────────────────
     const [backgroundTasks, setBackgroundTasks] = useState([]);
@@ -410,15 +422,18 @@ export const DataProvider = ({ children }) => {
         // DO NOT emit global event — this is for polling/visibility, not mutations
     }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
 
-    // Call this after explicit mutations (delete, restore, purge, etc.)
-    const refreshAfterMutation = useCallback(() => {
-        refreshStats(true);
-        refreshDocuments(true);
-        refreshIssuances(true);
-        refreshHistory(true);
-        refreshTemplates(true);
-        globalRefreshEmitter.emit(); // notify ArchiveManager & others
-    }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
+    // Call this after explicit mutations (delete, restore, purge, etc.).
+    // Emits a typed event so subscribers can invalidate only what they need.
+    // Also notifies legacy listeners that still rely on the global emitter.
+    const refreshAfterMutation = useCallback((eventType, payload) => {
+        bumpMutation();
+        if (eventType) {
+            emit(eventType, payload);
+        }
+        // Notify legacy listeners (e.g. ArchiveManager) that still subscribe
+        // to the coarse global refresh emitter.
+        globalRefreshEmitter.emit();
+    }, [bumpMutation]);
 
     const stopPolling = useCallback(() => {
         if (pollingRef.current) {
@@ -437,6 +452,11 @@ export const DataProvider = ({ children }) => {
                 return;
             }
 
+            // Caches are refreshed only when their TTL has expired. Mutations
+            // already force-refresh the affected sources via typed events, so
+            // this background loop is a safety net rather than the primary
+            // invalidation path. At 300K+ records this avoids unnecessary
+            // full re-fetches and the CPU cost of re-processing the dataset.
             refreshStats();
             refreshDocuments();
             refreshIssuances();
@@ -469,6 +489,70 @@ export const DataProvider = ({ children }) => {
         };
     }, [refreshAll, startPolling, stopPolling]);
 
+    // ── Typed event subscriptions ─────────────────────────────────────────────
+    // Each cache subscribes only to the events that affect it, avoiding
+    // the expensive full refresh that the old refreshAfterMutation() triggered.
+    useEffect(() => {
+        const handleDocumentEvent = () => {
+            bumpMutation();
+            refreshDocuments(true);
+            refreshHistory(true);
+            refreshStats(true);
+        };
+
+        const handleIssuanceEvent = () => {
+            bumpMutation();
+            refreshIssuances(true);
+            refreshStats(true);
+        };
+
+        const handleAccountEvent = () => {
+            bumpMutation();
+            refreshStats(true);
+        };
+
+        const handleTemplateEvent = () => {
+            bumpMutation();
+            refreshTemplates(true);
+        };
+
+        const unsubDocCreated   = on(Events.DOCUMENT_UPLOADED,    handleDocumentEvent);
+        const unsubDocUpdated   = on(Events.DOCUMENT_UPDATED,     handleDocumentEvent);
+        const unsubDocDeleted   = on(Events.DOCUMENT_DELETED,     handleDocumentEvent);
+        const unsubDocRestored  = on(Events.DOCUMENT_RESTORED,    handleDocumentEvent);
+        const unsubDocPurged    = on(Events.DOCUMENT_PURGED,      handleDocumentEvent);
+        const unsubDocBulkAppr  = on(Events.DOCUMENT_BULK_APPROVE, handleDocumentEvent);
+        const unsubDocBulkDel   = on(Events.DOCUMENT_BULK_DELETE,  handleDocumentEvent);
+        const unsubDocBulkProc  = on(Events.DOCUMENT_BULK_PROCESS, handleDocumentEvent);
+        const unsubDocOcrStatus = on(Events.DOCUMENTOCR_STATUS,    handleDocumentEvent);
+
+        const unsubIssCreated  = on(Events.ISSUANCE_CREATED,   handleIssuanceEvent);
+        const unsubIssUpdated  = on(Events.ISSUANCE_UPDATED,   handleIssuanceEvent);
+        const unsubIssDeleted  = on(Events.ISSUANCE_DELETED,   handleIssuanceEvent);
+        const unsubIssIssued   = on(Events.ISSUANCE_ISSUED,    handleIssuanceEvent);
+        const unsubIssReq      = on(Events.ISSUANCE_REQUESTED, handleIssuanceEvent);
+        const unsubIssAppr     = on(Events.ISSUANCE_APPROVED,  handleIssuanceEvent);
+        const unsubIssRej      = on(Events.ISSUANCE_REJECTED,  handleIssuanceEvent);
+
+        const unsubAcctCreated  = on(Events.ACCOUNT_CREATED,   handleAccountEvent);
+        const unsubAcctUpdated  = on(Events.ACCOUNT_UPDATED,   handleAccountEvent);
+        const unsubAcctDisabled = on(Events.ACCOUNT_DISABLED,  handleAccountEvent);
+        const unsubAcctReen     = on(Events.ACCOUNT_REENABLED, handleAccountEvent);
+
+        const unsubTmpl = on(Events.TEMPLATE_UPDATED, handleTemplateEvent);
+        const unsubSet  = on(Events.SETTINGS_UPDATED, handleTemplateEvent);
+
+        return () => {
+            unsubDocCreated(); unsubDocUpdated(); unsubDocDeleted();
+            unsubDocRestored(); unsubDocPurged(); unsubDocBulkAppr();
+            unsubDocBulkDel(); unsubDocBulkProc(); unsubDocOcrStatus();
+            unsubIssCreated(); unsubIssUpdated(); unsubIssDeleted();
+            unsubIssIssued(); unsubIssReq(); unsubIssAppr(); unsubIssRej();
+            unsubAcctCreated(); unsubAcctUpdated(); unsubAcctDisabled(); unsubAcctReen();
+            unsubTmpl(); unsubSet();
+        };
+    }, [bumpMutation, refreshDocuments, refreshHistory, refreshStats, refreshIssuances, refreshTemplates]);
+
     const value = {
         stats,
         documents,
@@ -491,6 +575,10 @@ export const DataProvider = ({ children }) => {
         refreshAfterMutation,
         // Subscribe to global refresh events (for ArchiveManager, etc.)
         onGlobalRefresh: globalRefreshEmitter.subscribe,
+        // Expose the typed event emitter so components can emit mutation events
+        emitEvent: emit,
+        // Expose event constants for components to use
+        Events,
     };
 
     return (

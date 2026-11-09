@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, useTransition, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,6 @@ import {
     EyeIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
     UserIcon, DocumentTextIcon, UsersIcon
 } from '@heroicons/react/24/outline';
-import OcrFormPanel from './OcrFormPanel.jsx';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import { useModal } from './ModalContext.jsx';
 import { useData } from './DataContext.jsx';
@@ -23,14 +22,17 @@ import { BirthConfig } from './forms/BirthCertificateConfig.js';
 import { DeathConfig } from './forms/DeathCertificateConfig.js';
 import { MarriageConfig } from './forms/MarriageCertificateConfig.js';
 
+const OcrFormPanel = lazy(() => import('./OcrFormPanel.jsx'));
+
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
 /** Previews an uploaded or registered document without leaving the list. */
 const DocumentPreviewModal = ({ file, onClose }) => {
     const [previewTab, setPreviewTab] = useState('picture'); // 'picture' | 'pdf'
+    const [isImageLoading, setIsImageLoading] = useState(true);
     const pdfViewUrl = `/api/documents/view/${file.id}#toolbar=0&navpanes=0`;
-    const imageViewUrl = `/api/documents/view-image/${file.id}`;
+    const ImageViewUrl = `/api/documents/view-image/${file.id}`;
     const downloadUrl = `/api/documents/download/${file.id}`;
 
     return createPortal(
@@ -108,14 +110,11 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         <img
                             src={imageViewUrl}
                             alt={file.name}
-                            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-700"
-                            onError={e => {
-                                e.target.style.display = 'none';
-                                const iframe = document.createElement('iframe');
-                                iframe.src = pdfViewUrl;
-                                iframe.className = "w-full h-full rounded-xl border border-slate-700 bg-white shadow-2xl";
-                                e.target.parentNode.appendChild(iframe);
-                            }}
+                            loading="lazy"
+                            decoding="async"
+                            className={`max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-700 transition-all duration-300 ${isImageLoading ? 'opacity-0 scale-98' : 'opacity-100 scale-100'}`}
+                            onLoad={() => setIsImageLoading(false)}
+                            onError={() => setIsImageLoading(false)}
                         />
                     ) : (
                         <iframe
@@ -125,6 +124,16 @@ const DocumentPreviewModal = ({ file, onClose }) => {
                         />
                     )}
                 </div>
+
+                {/* Loading skeleton overlay for the document scan */}
+                {isImageLoading && previewTab === 'picture' && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 border-4 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin" />
+                            <span className="text-xs text-slate-400 font-medium">Loading document…</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Extracted Text (Right/Side) - Only if it exists */}
                 {file.ocr_text && (
@@ -144,6 +153,14 @@ const DocumentPreviewModal = ({ file, onClose }) => {
     );
 };
 
+/** Lightweight placeholder shown while the OCR review form chunk is loading. */
+const OcrFormPanelFallback = () => (
+    <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
+        <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+        <span className="text-xs text-slate-400 font-medium">Loading form…</span>
+    </div>
+);
+
 // ── Main Documents Component ──────────────────────────────────────────────────
 /** Manages document uploads, OCR review, registration, and archival actions. */
 const Documents = () => {
@@ -157,7 +174,8 @@ const Documents = () => {
         refreshDocuments,
         refreshHistory,
         refreshStats,
-        refreshAfterMutation,
+        emitEvent,
+        Events,
     } = useData();
     const isLoadingData = dataLoading.documents;
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -166,43 +184,46 @@ const Documents = () => {
     const [files, setFiles] = useState([]);
     const [archivedIds, setArchivedIds] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [, startTransition] = useTransition();
 
     useEffect(() => {
-        setFiles(prev => {
-            // Keep files that are currently uploading
-            const uploading = prev.filter(f => f.status === 'uploading');
+        startTransition(() => {
+            setFiles(prev => {
+                // Keep files that are currently uploading
+                const uploading = prev.filter(f => f.status === 'uploading');
 
-            // Filter fetched files
-            const fetched = globalFiles.filter(f => !archivedIds.includes(f.id));
+                // Filter fetched files
+                const fetched = globalFiles.filter(f => !archivedIds.includes(f.id));
 
-            // Remove uploading files that have appeared in fetched files (by base name comparison)
-            /** Removes the extension from a stored filename for display. */
-            const getBaseName = (filename) => {
-                if (!filename) return '';
-                const base = filename.replace(/\.[^/.]+$/, '');
-                return base.replace(/-preprocessed$/, '').trim();
-            };
-            const uploadingFiltered = uploading.filter(u => {
-                const uTime = new Date(u.created_at).getTime();
-                return !fetched.some(f => {
-                    const fTime = new Date(f.created_at).getTime();
-                    return getBaseName(f.name) === getBaseName(u.name) && fTime >= (uTime - 120000);
+                // Remove uploading files that have appeared in fetched files (by base name comparison)
+                /** Removes the extension from a stored filename for display. */
+                const getBaseName = (filename) => {
+                    if (!filename) return '';
+                    const base = filename.replace(/\.[^/.]+$/, '');
+                    return base.replace(/-preprocessed$/, '').trim();
+                };
+                const uploadingFiltered = uploading.filter(u => {
+                    const uTime = new Date(u.created_at).getTime();
+                    return !fetched.some(f => {
+                        const fTime = new Date(f.created_at).getTime();
+                        return getBaseName(f.name) === getBaseName(u.name) && fTime >= (uTime - 120000);
+                    });
+                });
+
+                // Make sure the local files status updates duplicate indicators instantly
+                const nextFiles = [...uploadingFiltered, ...fetched];
+                return nextFiles.map(f => {
+                    const existing = prev.find(p => p.id === f.id);
+                    // If local state or backend state flags duplicate, treat as duplicate.
+                    const hasDuplicateVal = (existing && existing.has_duplicate) || f.has_duplicate;
+                    // Carry the pre-fetched candidate so the review panel can jump
+                    // straight into the side-by-side comparison with zero wait.
+                    const candidateVal = (existing && existing.duplicate_candidate) || f.duplicate_candidate || null;
+                    return { ...f, has_duplicate: !!hasDuplicateVal, duplicate_candidate: candidateVal };
                 });
             });
-
-            // Make sure the local files status updates duplicate indicators instantly
-            const nextFiles = [...uploadingFiltered, ...fetched];
-            return nextFiles.map(f => {
-                const existing = prev.find(p => p.id === f.id);
-                // If local state or backend state flags duplicate, treat as duplicate.
-                const hasDuplicateVal = (existing && existing.has_duplicate) || f.has_duplicate;
-                // Carry the pre-fetched candidate so the review panel can jump
-                // straight into the side-by-side comparison with zero wait.
-                const candidateVal = (existing && existing.duplicate_candidate) || f.duplicate_candidate || null;
-                return { ...f, has_duplicate: !!hasDuplicateVal, duplicate_candidate: candidateVal };
-            });
         });
-    }, [globalFiles, archivedIds]);
+    }, [globalFiles, archivedIds, startTransition]);
 
     const [selectedDocType, setSelectedDocType] = useState('birth');
     const [activePrefill, setActivePrefill] = useState(null);
@@ -276,18 +297,32 @@ const Documents = () => {
         }
     };
 
+    // ── Scoped polling for server-side OCR progress ──────────────────────────
+    // Uploads start as "Pending" and OCR is processed by a queue worker
+    // (ProcessDocumentOcr), so the UI cannot rely on client-side mutation
+    // events alone to learn when processing finishes. This loop polls *only*
+    // the documents cache while a transient status exists, pauses when the
+    // tab is hidden, and stops after ~3 minutes so a stuck job cannot cause
+    // endless background requests. It intentionally does not touch stats,
+    // issuances, history, or templates.
     useEffect(() => {
-        const hasProcessing = files.some(f => {
-            const s = String(f.status || '').toLowerCase();
-            return s === 'processing' || s === 'uploading' || s === 'checking' || s === 'pending';
-        });
+        const transient = new Set(['processing', 'uploading', 'checking', 'pending']);
+        const hasProcessing = files.some(f => transient.has(String(f.status || '').toLowerCase()));
         if (!hasProcessing) return;
 
-        const interval = setInterval(() => {
-            refreshDocuments(true);
-        }, 3000);
+        let attempts = 0;
+        const MAX_ATTEMPTS = 36; // ~3 minutes at 5s intervals
 
-        return () => clearInterval(interval);
+        const interval = window.setInterval(() => {
+            attempts += 1;
+            if (document.visibilityState !== 'visible' || attempts > MAX_ATTEMPTS) {
+                window.clearInterval(interval);
+                return;
+            }
+            refreshDocuments(true);
+        }, 5000);
+
+        return () => window.clearInterval(interval);
     }, [files, refreshDocuments]);
 
     const onDrop = useCallback(async (acceptedFiles) => {
@@ -361,7 +396,7 @@ const Documents = () => {
             }
 
             if (successCount > 0) {
-                refreshAfterMutation();
+                emitEvent(Events.DOCUMENT_UPLOADED, { count: successCount });
                 const message = isBulk
                     ? `Successfully uploaded ${successCount} of ${acceptedFiles.length} files`
                     : 'Document uploaded successfully';
@@ -527,7 +562,7 @@ const Documents = () => {
                         console.error('Failed to link ticket to document:', linkErr);
                     }
 
-                    refreshAfterMutation();
+                    emitEvent(Events.DOCUMENT_UPDATED, { id: fileId });
                     return { success: true };
                 }
 
@@ -553,7 +588,7 @@ const Documents = () => {
                                     });
                                     const forceData = await forceRes.json();
                                     if (forceData.success) {
-                                        refreshAfterMutation();
+                                        emitEvent(Events.DOCUMENT_UPDATED, { id: fileId });
                                         resolve({ success: true });
                                     } else {
                                         refreshDocuments(true);
@@ -618,11 +653,9 @@ const Documents = () => {
 
                     let ok = 0;
                     try {
-                        for (const f of approvable) {
-                            const res = await fetch(`/api/documents/${f.id}/quick-approve`, { method: 'POST', credentials: 'include' });
-                            if (res.ok) ok++;
-                        }
-                        refreshAfterMutation();
+                        const res = await axios.post('/api/documents/bulk-approve', { ids: approvable.map(f => f.id) });
+                        if (res.data.success) ok = res.data.approved;
+                        emitEvent(Events.DOCUMENT_BULK_APPROVE, { count: ok });
                         return { success: true, message: `Successfully approved ${ok} records.` };
                     } catch (err) {
                         refreshDocuments(true);
@@ -938,7 +971,7 @@ const Documents = () => {
                         console.error('Failed to link ticket to document:', linkErr);
                     }
 
-                    refreshAfterMutation();
+                    emitEvent(Events.DOCUMENT_UPDATED, { id: fileId });
                     return { success: true, message: `Data for ${personName} has been secured.` };
                 }
                 const saveErr = new Error(data.message || data.error || 'Save failed');
@@ -968,11 +1001,11 @@ const Documents = () => {
                 runBackgroundTask(`${file.name}`, async () => {
                     const res = await fetch(`/api/documents/${fileId}`, { method: 'DELETE', credentials: 'include' });
                     if (res.ok) {
-                        refreshAfterMutation();
+                        emitEvent(Events.DOCUMENT_DELETED, { id: fileId });
                         return { success: true, type: 'delete', message: 'Document deleted successfully' };
                     }
                     // Revert on failure
-                    refreshAfterMutation();
+                    emitEvent(Events.DOCUMENT_DELETED, { id: fileId });
                     throw new Error('Deletion failed');
                 }, {
                     type: 'delete',
@@ -1000,18 +1033,13 @@ const Documents = () => {
             onConfirm: () => {
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 runBackgroundTask(`Deleting ${selectedIds.length} files`, async () => {
-                    let successCount = 0;
-                    for (const id of selectedIds) {
-                        try {
-                            const res = await fetch(`/api/documents/${id}`, { method: 'DELETE', credentials: 'include' });
-                            if (res.ok) successCount++;
-                        } catch (err) {
-                            console.error(`Failed to delete ${id}`, err);
-                        }
+                    const res = await axios.post('/api/documents/bulk-delete', { ids: selectedIds });
+                    if (res.data.success) {
+                        setSelectedIds([]);
+                        emitEvent(Events.DOCUMENT_BULK_DELETE, { count: res.data.deleted });
+                        return { success: true, message: `Successfully deleted ${res.data.deleted} files.` };
                     }
-                    setSelectedIds([]); // Clear selection after delete
-                    refreshAfterMutation();
-                    return { success: true, message: `Successfully deleted ${successCount} files.` };
+                    throw new Error('Bulk deletion failed');
                 });
             },
             onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
@@ -1386,29 +1414,31 @@ const Documents = () => {
                 onCancel={confirmModal.onCancel}
             />
 
-            {/* OCR Form Panel */}
+            {/* OCR Form Panel — lazy-loaded so the document grid stays interactive while it loads */}
             <AnimatePresence>
                 {activeOcr && (
-                    <OcrFormPanel
-                        file={activeOcr.file}
-                        docType={activeOcr.file?.type || selectedDocType}
-                        ocrResult={activeOcr.ocrResult}
-                        onSave={saveRecord}
-                        onMinimize={() => setActiveOcr(null)}
-                        isSaving={isOcrSaving}
-                        onClose={async () => {
-                            if (activeOcr.file && activeOcr.file.file_path === null && activeOcr.file.name === 'Manual Entry' && activeOcr.file.id !== 'manual') {
-                                try {
-                                    await fetch(`/api/documents/${activeOcr.file.id}`, { method: 'DELETE', credentials: 'include' });
-                                    refreshDocuments(true);
-                                } catch (e) {
-                                    console.error("Failed to delete manual draft", e);
+                    <Suspense fallback={<OcrFormPanelFallback />}>
+                        <OcrFormPanel
+                            file={activeOcr.file}
+                            docType={activeOcr.file?.type || selectedDocType}
+                            ocrResult={activeOcr.ocrResult}
+                            onSave={saveRecord}
+                            onMinimize={() => setActiveOcr(null)}
+                            isSaving={isOcrSaving}
+                            onClose={async () => {
+                                if (activeOcr.file && activeOcr.file.file_path === null && activeOcr.file.name === 'Manual Entry' && activeOcr.file.id !== 'manual') {
+                                    try {
+                                        await fetch(`/api/documents/${activeOcr.file.id}`, { method: 'DELETE', credentials: 'include' });
+                                        refreshDocuments(true);
+                                    } catch (e) {
+                                        console.error("Failed to delete manual draft", e);
+                                    }
                                 }
-                            }
-                            setActiveOcr(null);
-                        }}
-                        onDuplicateStatusChange={handleDuplicateStatusChange}
-                    />
+                                setActiveOcr(null);
+                            }}
+                            onDuplicateStatusChange={handleDuplicateStatusChange}
+                        />
+                    </Suspense>
                 )}
             </AnimatePresence>
 
@@ -1926,7 +1956,7 @@ const Documents = () => {
                                                         <th className="px-3 py-2.5 font-black text-slate-500 dark:text-slate-400">Person / Document</th>
                                                         <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Barangay</th>
                                                         <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Process Date</th>
-                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Staff / Admin</th>
+                                                        <th className="px-2 py-2.5 font-black text-slate-500 dark:text-slate-400">Encoded By</th>
                                                         <th className="px-3 py-2.5 text-right font-black text-slate-500 dark:text-slate-400">Record</th>
                                                     </tr>
                                                 </thead>
