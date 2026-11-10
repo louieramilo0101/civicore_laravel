@@ -290,7 +290,28 @@ class BackupService
      */
     public function restoreBackup(string $filename): array
     {
+        // Handle both .zip and .enc filenames from user input
         $targetFile = "{$this->backupPath}/{$filename}";
+        
+        // If file doesn't exist as-is, try common variants
+        if (!File::exists($targetFile)) {
+            // User gave .zip but we have .enc (encrypted backup)
+            if (str_ends_with($filename, '.zip') && File::exists($targetFile . '.enc')) {
+                $targetFile .= '.enc';
+                $filename .= '.enc';
+            }
+            // User gave base name, check both extensions
+            elseif (!str_ends_with($filename, '.zip') && !str_ends_with($filename, '.enc')) {
+                if (File::exists($targetFile . '.enc')) {
+                    $targetFile .= '.enc';
+                    $filename .= '.enc';
+                } elseif (File::exists($targetFile . '.zip')) {
+                    $targetFile .= '.zip';
+                    $filename .= '.zip';
+                }
+            }
+        }
+        
         if (!File::exists($targetFile)) {
             throw new \InvalidArgumentException("Backup archive not found: {$filename}");
         }

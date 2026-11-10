@@ -19,7 +19,7 @@ class EncryptExistingData extends Command
 
     protected array $tables = [
         'documents' => [
-            'columns' => ['extracted_data', 'extracted_fields'],
+            'columns' => ['extracted_data'],
             'id_column' => 'id',
         ],
         'issuances' => [
