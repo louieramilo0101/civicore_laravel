@@ -486,6 +486,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const fileInputRef = useRef(null);
     const [mobileTab, setMobileTab] = useState('form'); // 'form' | 'scan'
+    const [isUploading, setIsUploading] = useState(false);
 
     const [errors, setErrors] = useState({});
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -522,22 +523,27 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
     const handleFileSelect = (selectedFile) => {
         if (!selectedFile) return;
+        setIsUploading(true);
         const isImage = selectedFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(selectedFile.name || '');
         if (isImage) {
-            // Automatically launch Post-FX editor for crop, rotate, and B&W filtering
+            // Automatically launch Edit Document modal for crop, rotate, and B&W filtering
             setPendingPostFxFile(selectedFile);
             setPostFxModalOpen(true);
             clearError('_file');
+            setIsUploading(false);
             return;
         }
         // Non-image documents (like PDFs) attach directly
         applySelectedFile(selectedFile);
+        setIsUploading(false);
     };
 
     const handlePostFxApply = (processedFile) => {
+        setIsUploading(true);
         applySelectedFile(processedFile);
         setPostFxModalOpen(false);
         setPendingPostFxFile(null);
+        setIsUploading(false);
     };
 
     const handleReopenPostFx = () => {
@@ -1529,10 +1535,10 @@ useEffect(() => {
                                                     type="button"
                                                     onClick={handleReopenPostFx}
                                                     className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
-                                                    title="Open Post-FX Editor (Crop, Rotate, B&W)"
+                                                    title="Edit Scanned Document (Crop, Rotate, B&W)"
                                                 >
-                                                    <SparklesIcon className="w-3.5 h-3.5" />
-                                                    <span>Post FX</span>
+                                                    <PencilSquareIcon className="w-3.5 h-3.5" />
+                                                    <span>Edit</span>
                                                 </button>
                                             )}
                                             <button
@@ -1559,6 +1565,12 @@ useEffect(() => {
                                 </div>
 
                                 <div className="flex-1 rounded-xl bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 overflow-hidden relative flex flex-col items-center justify-center p-3 shadow-xs min-h-[300px]">
+                                    {isUploading && (
+                                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center z-10 text-white gap-2">
+                                            <ArrowPathIcon className="w-8 h-8 animate-spin text-indigo-400" />
+                                            <span className="text-xs font-bold tracking-wide">Processing Document...</span>
+                                        </div>
+                                    )}
                                     {manualFile && manualFilePreview ? (
                                         <div className="w-full h-full flex flex-col">
                                             <div className="flex-1 rounded-lg overflow-hidden bg-slate-100 relative flex items-center justify-center">
@@ -1574,6 +1586,12 @@ useEffect(() => {
                                                         alt="Uploaded scan preview"
                                                         className="w-full h-full object-contain"
                                                     />
+                                                )}
+                                                {isUploading && (
+                                                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center text-white text-xs font-bold rounded-lg">
+                                                        <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" />
+                                                        Processing...
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -2097,10 +2115,10 @@ useEffect(() => {
                                                     type="button"
                                                     onClick={handleReopenPostFx}
                                                     className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
-                                                    title="Open Post-FX Editor (Crop, Rotate, B&W)"
+                                                    title="Open Edit Scanned Document (Crop, Rotate, B&W)"
                                                 >
-                                                    <SparklesIcon className="w-4 h-4 text-indigo-500" />
-                                                    <span>Adjust Post-FX</span>
+                                                    <PencilSquareIcon className="w-4 h-4 text-indigo-500" />
+                                                    <span>Edit Document</span>
                                                 </button>
                                             )}
                                             <button

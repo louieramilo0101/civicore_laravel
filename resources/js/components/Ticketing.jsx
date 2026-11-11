@@ -20,7 +20,9 @@ import {
     PrinterIcon,
     ArrowDownTrayIcon,
     UsersIcon,
-    PaperClipIcon
+    PaperClipIcon,
+    DocumentCheckIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useData } from './DataContext.jsx';
 import { useModal } from './ModalContext.jsx';
@@ -54,6 +56,8 @@ export default function Ticketing({ mode = 'portal' }) {
     const [consentFile, setConsentFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showEmailWarning, setShowEmailWarning] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
+    const [showPrivacyNoticeModal, setShowPrivacyNoticeModal] = useState(false);
 
     // ── Portal Window helper (after 5 PM → ticket scheduled for tomorrow) ─────────
     const getPortalState = useCallback(() => {
@@ -188,6 +192,15 @@ export default function Ticketing({ mode = 'portal' }) {
 
         if (!email.trim()) {
             setShowEmailWarning(true);
+            return;
+        }
+
+        if (!privacyAccepted) {
+            showAlert({
+                title: 'Data Privacy Consent Required',
+                message: 'Please review and accept the Data Privacy Notice before submitting your request.',
+                type: 'warning'
+            });
             return;
         }
 
@@ -722,12 +735,34 @@ export default function Ticketing({ mode = 'portal' }) {
                             )}
                         </div>
 
-                        <div className="pt-6">
+                        <div className="pt-6 space-y-4">
                             {isAfterCutoff && (
                                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
                                     <p className="text-blue-700 text-xs font-bold">📅 Submitting after 5:00 PM — your ticket will be scheduled for <strong>tomorrow</strong>.</p>
                                 </div>
                             )}
+
+                            {/* Data Privacy Consent Checkbox (RA 10173 Compliance) */}
+                            <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+                                <input
+                                    type="checkbox"
+                                    id="privacyConsent"
+                                    checked={privacyAccepted}
+                                    onChange={e => setPrivacyAccepted(e.target.checked)}
+                                    className="mt-0.5 w-4 h-4 rounded text-[#d4a574] focus:ring-[#d4a574] border-slate-300 dark:border-slate-600 cursor-pointer"
+                                />
+                                <label htmlFor="privacyConsent" className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed select-none">
+                                    I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753. 
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPrivacyNoticeModal(true)}
+                                        className="text-[#d4a574] font-bold hover:underline ml-1 inline cursor-pointer"
+                                    >
+                                        Read Data Privacy Notice
+                                    </button>
+                                </label>
+                            </div>
+
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
@@ -742,41 +777,103 @@ export default function Ticketing({ mode = 'portal' }) {
 
             {/* ── No-Email Warning Modal ─────────────────────────────── */}
             <AnimatePresence>
-                {showEmailWarning && (
+                {showPrivacyNoticeModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
                     >
                         <motion.div
-                            initial={{ scale: 0.92, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.92, opacity: 0 }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-slate-200 dark:border-slate-700 text-center"
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700"
                         >
-                            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center border border-amber-200 dark:border-amber-700">
-                                <EnvelopeIcon className="w-7 h-7 text-amber-500" />
-                            </div>
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">No Email Provided</h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                                If your ticket is <span className="font-black text-rose-500">declined</span>, the <span className="font-black">only way you'll be notified</span> is through your <span className="font-black text-[#d4a574]">Gmail</span>. Without an email address, you won't receive any update about the decision.
-                            </p>
-                            <div className="mt-6 flex flex-col gap-3">
+                            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-[#d4a574]/10 flex items-center justify-center border border-[#d4a574]/20">
+                                        <DocumentCheckIcon className="w-5 h-5 text-[#d4a574]" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">Data Privacy Notice</h3>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">RA 10173 Compliance</p>
+                                    </div>
+                                </div>
                                 <button
-                                    type="button"
-                                    onClick={() => setShowEmailWarning(false)}
-                                    className="w-full py-3 rounded-2xl bg-[#1a2f4a] dark:bg-slate-700 text-white font-black text-sm hover:bg-slate-800 dark:hover:bg-slate-600 transition-all cursor-pointer"
+                                    onClick={() => setShowPrivacyNoticeModal(false)}
+                                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
                                 >
-                                    Go Back &amp; Add Email
+                                    <XMarkIcon className="w-6 h-6 text-slate-400" />
+                                </button>
+                            </div>
+
+                            <div className="p-8 overflow-y-auto text-sm text-slate-600 dark:text-slate-300 space-y-6 leading-relaxed custom-scrollbar">
+                                <section className="space-y-3">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">1. Statutory Basis</h4>
+                                    <p>
+                                        The <strong className="text-slate-800 dark:text-slate-200">Office of the Municipal Civil Registrar (OMCR) of Naic</strong> processes your personal data pursuant to its mandate under <strong>Act No. 3753</strong> (Civil Registry Law) and in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+                                    </p>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">2. Collection and Scope</h4>
+                                    <p>
+                                        By using this online request portal, we collect the following personal and vital information:
+                                    </p>
+                                    <ul className="list-disc pl-5 space-y-2">
+                                        <li><strong className="text-slate-800 dark:text-slate-200">Requestor Information:</strong> Full name, email address, phone number, and purpose of request.</li>
+                                        <li><strong className="text-slate-800 dark:text-slate-200">Registrant Details:</strong> Full names of the child/deceased/couple, dates of event (birth/death/marriage), parents' names, and place of event.</li>
+                                        <li><strong className="text-slate-800 dark:text-slate-200">Supporting Documents:</strong> Authorization letters or IDs (if applicable).</li>
+                                    </ul>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">3. Purpose of Processing</h4>
+                                    <p>
+                                        Your data is used exclusively for:
+                                    </p>
+                                    <ul className="list-disc pl-5 space-y-2">
+                                        <li>Verification of records against the Municipal Civil Registry books.</li>
+                                        <li>Queue management and tracking of your request.</li>
+                                        <li>Communication regarding the status of your document issuance.</li>
+                                        <li>Official statistical reporting (anonymized).</li>
+                                    </ul>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">4. Retention and Security</h4>
+                                    <p>
+                                        Digital request records are stored securely and are only accessible by authorized OMCR personnel. Records are retained for the duration of the request process and for a limited period thereafter for audit purposes, after which they are permanently deleted or anonymized.
+                                    </p>
+                                </section>
+
+                                <section className="space-y-3">
+                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">5. Your Rights</h4>
+                                    <p>
+                                        Under the Data Privacy Act, you have the right to be informed, to access, to object, to erasure or blocking, to damages, to file a complaint, to rectify and to data portability.
+                                    </p>
+                                </section>
+
+                                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                                    <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                                        <strong>Consent:</strong> By clicking "I Accept" below, you confirm that you have read this notice and freely give your consent for the processing of your data.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                                <button
+                                    onClick={() => { setPrivacyAccepted(true); setShowPrivacyNoticeModal(false); }}
+                                    className="flex-1 py-3.5 bg-[#1a2f4a] dark:bg-slate-700 hover:bg-[#0f172a] dark:hover:bg-slate-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-[0.98] cursor-pointer"
+                                >
+                                    I Accept and Consent
                                 </button>
                                 <button
-                                    type="button"
-                                    onClick={() => { setShowEmailWarning(false); doSubmit(); }}
-                                    className="w-full py-3 rounded-2xl border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all cursor-pointer"
+                                    onClick={() => setShowPrivacyNoticeModal(false)}
+                                    className="px-8 py-3.5 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all cursor-pointer"
                                 >
-                                    Proceed Without Email
+                                    Close
                                 </button>
                             </div>
                         </motion.div>

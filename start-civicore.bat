@@ -64,9 +64,14 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
+:: 0. Start Redis Server
+echo [0/5] Launching Redis Server...
+start /b "" "C:\laragon\bin\redis\redis-x64-5.0.14.1\redis-server.exe" --port 6379 --dir "C:\laragon\bin\redis\redis-x64-5.0.14.1"
+timeout /t 2 /nobreak >nul
+
 :: 1. Start Ollama Server (Local AI & Offline Vision OCR)
 echo [1/5] Launching Ollama Server (Local AI / Vision OCR)...
-start "Ollama Server" cmd /k "title Ollama Server && echo Starting Ollama on port 11434... && "%OLLAMA_BIN%" serve"
+start "Ollama Server" cmd /k "scripts\serve-ollama.bat"
 
 :: 2. Start PHP Laravel Server
 echo [2/5] Launching Laravel Server on http://0.0.0.0:8000...
@@ -74,11 +79,11 @@ start "Laravel Server" cmd /k "title Laravel Server && php artisan serve --host 
 
 :: 3. Start Unified Laravel Queue Worker
 echo [3/5] Launching Unified Laravel Queue Worker (high, default, low)...
-start "CiviCORE Queue Worker" cmd /k "title CiviCORE Queue Worker && echo Running CiviCORE Queue Worker (queues: high, default, low)... && php artisan queue:work --queue=high,default,low --tries=3 --sleep=1 --timeout=1200"
+start "CiviCORE Queue Worker" cmd /k "scripts\serve-queue.bat"
 
 :: 4. Start Persistent OCR Server
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
-start "OCR Server" cmd /k "title OCR Server && C:\laragon\bin\python\python-3.13\python.exe ocr_server.py"
+start "OCR Server" cmd /k "scripts\serve-ocr.bat"
 
 :: 5. Start Vite (Frontend) - ALWAYS run dev server for HMR
 echo [5/5] Launching Vite Dev Server with Hot Module Replacement...
@@ -120,6 +125,9 @@ echo.
 echo ===================================================
 echo   Stopping all CiviCORE services and closing windows...
 echo ===================================================
+
+echo [*] Stopping Redis Server...
+taskkill /F /IM redis-server.exe >nul 2>&1
 
 echo [*] Stopping Ollama Server...
 taskkill /FI "WINDOWTITLE eq Ollama Server*" /T /F >nul 2>&1

@@ -153,7 +153,16 @@ export const detectDocumentCorners = async (imageOrCanvas) => {
             maxProcessingDimension: 1200
         });
         if (res.success && res.corners) {
-            return res.corners;
+            const c = res.corners;
+            // scanic returns corners as {topLeft, topRight, bottomRight, bottomLeft}
+            // but ImagePostFxModal expects {tl, tr, br, bl}. Normalize here so every
+            // caller gets the shape the UI reads.
+            return {
+                tl: c.topLeft || c.tl,
+                tr: c.topRight || c.tr,
+                br: c.bottomRight || c.br,
+                bl: c.bottomLeft || c.bl
+            };
         }
     } catch (e) {
         console.warn("Scanic corner detection failed:", e);

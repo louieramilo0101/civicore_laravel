@@ -725,9 +725,33 @@ class DocumentController extends Controller
             ], 422);
         }
 
+        // Soft name-match warning: same person name but different registry number
+        $softMatch = $this->findSoftNameMatch($detectedType, $fields, (int) $id);
+        $softMatchData = null;
+        if ($softMatch) {
+            $softMatchData = [
+                'id'          => $softMatch->id,
+                'personName'  => $softMatch->personName,
+                'type'        => $softMatch->type,
+                'registryNo'  => $softMatch->certNumber ?? $softMatch->registry_number ?? 'N/A',
+                'barangay'    => $softMatch->barangay ?? 'N/A',
+                'date'        => $softMatch->date ?? $softMatch->created_at ?? 'N/A',
+            ];
+        }
+
         // Build personName from split fields
         $personName = $this->buildFullName($fields, $detectedType) ?: $docData->name;
         
+        // If soft match found, return warning instead of auto-saving
+        if ($softMatchData) {
+            return response()->json([
+                'success'      => false,
+                'softMatch'    => true,
+                'softMatchData' => $softMatchData,
+                'error'        => "A record with the same name (" . $softMatchData['personName'] . ") exists in the " . ucfirst($detectedType) . " Registry with Registry No. \"" . $softMatchData['registryNo'] . "\". Verify this is not the same person before proceeding.",
+            ], 422);
+        }
+
         return $this->performSave($request, $id, $fields, $docData->ocr_text, $personName, $barangay, 'Processed', false, $detectedType);
     }
 
@@ -764,6 +788,25 @@ class DocumentController extends Controller
 
                 if (!$force && $this->hasTrueDuplicate($detectedType, $fields, (int)$id)) {
                     $results[] = ['id' => $id, 'ok' => false, 'error' => 'duplicate'];
+                    continue;
+                }
+
+                // Soft name-match check
+                $softMatch = $this->findSoftNameMatch($detectedType, $fields, (int)$id);
+                if ($softMatch) {
+                    $results[] = [
+                        'id'           => $id,
+                        'ok'           => false,
+                        'error'        => 'softMatch',
+                        'softMatchData' => [
+                            'id'          => $softMatch->id,
+                            'personName'  => $softMatch->personName,
+                            'type'        => $softMatch->type,
+                            'registryNo'  => $softMatch->certNumber ?? $softMatch->registry_number ?? 'N/A',
+                            'barangay'    => $softMatch->barangay ?? 'N/A',
+                            'date'        => $softMatch->date ?? $softMatch->created_at ?? 'N/A',
+                        ],
+                    ];
                     continue;
                 }
 
@@ -849,24 +892,129 @@ class DocumentController extends Controller
 
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
-        // Only check the pure Registry Database (issuances table).
+        // Check the pure Registry Database (issuances table).
         // ticket_issuances are citizen-request copies and must NOT trigger duplicate warnings.
-        $query = DB::table('issuances')->whereNull('deleted_at');
+        $registryQuery = DB::table('issuances')->whereNull('deleted_at');
 
         if ($normType === 'marriage') {
-            $query->whereIn('type', ['marriage', 'marriage_license']);
+            $registryQuery->whereIn('type', ['marriage', 'marriage_license']);
         } elseif (!empty($normType) && $normType !== 'all') {
-            $query->where('type', $normType);
+            $registryQuery->where('type', $normType);
         }
 
         if ($excludeDocId > 0) {
-            $query->where('document_id', '!=', $excludeDocId);
+            $registryQuery->where('document_id', '!=', $excludeDocId);
         }
 
-        return $query->where(function ($q) use ($regNo) {
+        $registryQuery->where(function ($q) use ($regNo) {
             $q->where('certNumber', $regNo)
               ->orWhere('registry_number', $regNo);
-        })->exists();
+        });
+
+        if ($registryQuery->exists()) {
+            return true;
+        }
+
+        // Also check the staging documents table. A record sitting in
+        // draft/extracted/checking status has not been promoted to the
+        // registry yet, but it still represents a duplicate registration.
+        $docsQuery = DB::table('documents')->whereNull('deleted_at');
+
+        if ($normType === 'marriage') {
+            $docsQuery->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $docsQuery->where('type', $normType);
+        }
+
+        if ($excludeDocId > 0) {
+            $docsQuery->where('id', '!=', $excludeDocId);
+        }
+
+        $docsQuery->where(function ($q) use ($regNo) {
+            $q->where('extracted_fields', 'like', '%"' . $regNo . '%')
+              ->orWhere('metadata', 'like', '%"' . $regNo . '%');
+        });
+
+        return $docsQuery->exists();
+    }
+
+    /**
+     * Soft name-match check: warns if a record with the same full name exists
+     * in the registry (issuances) or staging (documents) tables, but the
+     * registry number differs (or is missing). Returns the matched record
+     * for side-by-side comparison, or null if no match.
+     */
+    private function findSoftNameMatch(string $type, array $fields, int $excludeDocId = 0): ?object
+    {
+        $fullName = $this->buildFullName($fields, $type);
+        if (empty($fullName)) {
+            return null;
+        }
+
+        $normType = $type === 'marriage_license' ? 'marriage' : $type;
+        $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
+
+        // Check issuances (registry) for same name, different registry number
+        // Note: issuances table uses 'name' column, not 'personName'
+        $registryQuery = DB::table('issuances')->whereNull('deleted_at');
+
+        if ($normType === 'marriage') {
+            $registryQuery->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $registryQuery->where('type', $normType);
+        }
+
+        if ($excludeDocId > 0) {
+            $registryQuery->where('document_id', '!=', $excludeDocId);
+        }
+
+        // Use database-agnostic case-insensitive comparison on 'name' column
+        $registryQuery->whereRaw('UPPER(name) = ?', [$fullName]);
+
+        // If we have a registry number, exclude records that already match it (handled by hasTrueDuplicate)
+        if (!empty($regNo)) {
+            $registryQuery->where(function ($q) use ($regNo) {
+                $q->where('certNumber', '!=', $regNo)
+                  ->where('registry_number', '!=', $regNo);
+            });
+        }
+
+        $match = $registryQuery->first();
+        if ($match) {
+            // Normalize: issuances uses 'name', documents uses 'personName'
+            $match->personName = $match->name ?? $match->personName ?? '';
+            return $match;
+        }
+
+        // Check documents (staging) for same name, different registry number
+        $docsQuery = DB::table('documents')->whereNull('deleted_at');
+
+        if ($normType === 'marriage') {
+            $docsQuery->whereIn('type', ['marriage', 'marriage_license']);
+        } elseif (!empty($normType) && $normType !== 'all') {
+            $docsQuery->where('type', $normType);
+        }
+
+        if ($excludeDocId > 0) {
+            $docsQuery->where('id', '!=', $excludeDocId);
+        }
+
+        $docsQuery->whereRaw('UPPER(personName) = ?', [$fullName]);
+
+        // For SQLite compatibility, fetch candidates and filter in PHP
+        $candidates = $docsQuery->get();
+        
+        if (!empty($regNo)) {
+            $candidates = $candidates->filter(function ($c) use ($regNo) {
+                $extracted = is_string($c->extracted_fields) 
+                    ? json_decode($c->extracted_fields, true) 
+                    : ($c->extracted_fields ?? []);
+                $candidateRegNo = trim($extracted['registry_number'] ?? $extracted['registry_no'] ?? $extracted['certNumber'] ?? '');
+                return $candidateRegNo !== $regNo;
+            });
+        }
+
+        return $candidates->first() ?? null;
     }
 
     /**
@@ -982,6 +1130,35 @@ class DocumentController extends Controller
                 $personName = $computedName;
             } elseif (str_contains($personName, '{')) {
                 $personName = 'Document Record';
+            }
+        }
+
+        // --- Type mismatch enforcement ---
+        // If OCR detected a certificate type that differs from the upload
+        // category, reject the save unless the staff member explicitly chose
+        // the detected type or passed force=true to override. This backs up
+        // the frontend mismatch guard at the API trust boundary so a direct
+        // API call cannot register a birth certificate as a death record.
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+        if (!$force) {
+            $docRow = DB::table('documents')->where('id', $id)->first();
+            if ($docRow) {
+                $ocrDetected = !empty($docRow->detected_type) ? strtolower($docRow->detected_type) : '';
+                $uploadCat   = !empty($docRow->type) ? strtolower($docRow->type) : '';
+                $saveType    = !empty($detectedType) ? strtolower($detectedType) : '';
+
+                // Normalize marriage_license → marriage for comparison
+                if ($ocrDetected === 'marriage_license') $ocrDetected = 'marriage';
+                if ($uploadCat === 'marriage_license') $uploadCat = 'marriage';
+
+                if (!empty($ocrDetected) && $ocrDetected !== 'unknown'
+                    && !empty($uploadCat) && $ocrDetected !== $uploadCat
+                    && $saveType === $uploadCat) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => "Certificate type mismatch: OCR detected '{$ocrDetected}' but the document is categorized as '{$uploadCat}'. Please review and select the correct type, or use force to override.",
+                    ], 422);
+                }
             }
         }
 
@@ -1682,6 +1859,8 @@ class DocumentController extends Controller
         }
         $request->merge(['extracted_fields' => $rawExtracted]);
 
+        $isDummy = filter_var($request->input('is_dummy', false), FILTER_VALIDATE_BOOLEAN);
+
         $request->validate([
             'type' => 'required|string|in:birth,death,marriage,marriage_license',
             'extracted_fields' => 'required|array',
@@ -1740,6 +1919,21 @@ class DocumentController extends Controller
             ], 422);
         }
 
+        // Soft name-match warning: same person name but different registry number
+        // This is a warning only - it does NOT block the save, just informs the user
+        $softMatch = $this->findSoftNameMatch($normType, $extractedFields);
+        $softMatchData = null;
+        if ($softMatch) {
+            $softMatchData = [
+                'id'          => $softMatch->id,
+                'personName'  => $softMatch->personName,
+                'type'        => $softMatch->type,
+                'registryNo'  => $softMatch->certNumber ?? $softMatch->registry_number ?? 'N/A',
+                'barangay'    => $softMatch->barangay ?? 'N/A',
+                'date'        => $softMatch->date ?? $softMatch->created_at ?? 'N/A',
+            ];
+        }
+
         // Build personName
         $personName = $this->buildFullName($extractedFields, $normType);
         $barangay = $extractedFields['barangay'] ?? '';
@@ -1779,6 +1973,15 @@ class DocumentController extends Controller
 
         // This method does dynamic template compilation and handles Master registry insert
         $response = $this->performSave($request, $newId, $extractedFields, '', $personName, $barangay, 'Processed', $parentalConsent, $docType);
+
+        // Add soft match data to response if there was a soft match
+        if ($softMatchData) {
+            $responseData = $response->getData(true);
+            $responseData['softMatch'] = true;
+            $responseData['softMatchData'] = $softMatchData;
+            $responseData['warning'] = "A record with the same name (" . $softMatchData['personName'] . ") exists in the " . ucfirst($normType) . " Registry with Registry No. \"" . $softMatchData['registryNo'] . "\". Verify this is not the same person before proceeding.";
+            $response = response()->json($responseData, $response->getStatusCode());
+        }
 
         // If no document file was uploaded (e.g. Dummy Data Mode), generate synthetic certificate PDF
         if (empty($filePath)) {

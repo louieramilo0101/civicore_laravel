@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 /**
  * Represents the Dashboard Controller application component.
@@ -129,7 +130,13 @@ class DashboardController extends Controller
                 'totalDocs' => (int) $totalDocuments,
                 'pendingDocs' => (int) $uploadPending,
                 'totalIssuances' => (int) $totalIssuances,
-                'pendingTickets' => (int) DB::table('tickets')->whereIn('request_status', ['pending', 'ready_for_pickup'])->count(),
+                'pendingTickets' => (int) DB::table('tickets')
+                    ->whereIn('request_status', ['pending', 'ready_for_pickup'])
+                    ->whereBetween('created_at', [
+                        Carbon::today(config('app.timezone'))->startOfDay(),
+                        Carbon::today(config('app.timezone'))->endOfDay()
+                    ])
+                    ->count(),
                 'totalUsers' => (int) $usersCount,
                 'processedDocs' => (int) $processedDocs,
                 'tokensUsed' => (int) $tokensUsed,

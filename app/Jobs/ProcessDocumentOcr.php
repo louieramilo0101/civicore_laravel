@@ -283,6 +283,28 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // Compute clean personName from extracted fields immediately so the queue table and registry show the actual citizen/couple name
             $computedPersonName = $this->buildFullName($extractedFields, $detectedType);
 
+            // --- Type mismatch reclassification ---
+            // If OCR detected a certificate type that differs from the upload
+            // category, reclassify the document to the detected type instead of
+            // marking it failed. The record then lands in the correct section's
+            // review queue and shows a Mismatch badge so staff know to verify.
+            $uploadType = !empty($doc->type) ? strtolower($doc->type) : '';
+            $normDetected = $detectedType === 'marriage_license' ? 'marriage' : $detectedType;
+            $normUpload = $uploadType === 'marriage_license' ? 'marriage' : $uploadType;
+
+            $isMismatch = false;
+            $finalDocType = $doc->type;
+            if (!empty($normDetected) && $normDetected !== 'unknown'
+                && !empty($normUpload) && $normDetected !== $normUpload) {
+                $isMismatch = true;
+                $finalDocType = $detectedType;
+                $metadata['type_mismatch'] = [
+                    'original_type' => $doc->type,
+                    'detected_type' => $detectedType,
+                    'reclassified_at' => now()->toDateTimeString(),
+                ];
+            }
+
             // Update database record with final values and status = extracted
             // NOTE: documents.extracted_fields is stored as PLAINTEXT JSON during the
             // draft/review phase. Encryption is applied only when the record is
@@ -295,6 +317,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 'personName' => !empty($computedPersonName) ? $computedPersonName : ($doc->personName ?? ''),
                 'extracted_fields' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
                 'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
+                'type' => $finalDocType,
                 'status' => 'extracted',
                 'updated_at' => now(),
             ]);

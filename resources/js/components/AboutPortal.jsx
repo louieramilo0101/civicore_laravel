@@ -94,26 +94,22 @@ export default function AboutPortal() {
                     </motion.div>
                 </div>
 
-                {/* Civil Registry Official Logo Card */}
+                {/* Civil Registry Official Logo - Floating, no box */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
                     className="w-full sm:w-auto flex-1 flex justify-center"
                 >
-                    <div className="w-full max-w-sm aspect-square bg-gradient-to-br from-[#d4a574]/15 via-white/[0.02] to-transparent rounded-[2.5rem] border border-[#d4a574]/30 relative overflow-hidden group shadow-2xl shadow-black/40 flex items-center justify-center p-8 backdrop-blur-sm">
-                        <div className="absolute inset-0 bg-[#d4a574]/5 rounded-[2.5rem] pointer-events-none" />
-                        <img
-                            src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
-                            alt="Civil Registry of Naic & Naic Municipal Seal"
-                            width={400}
-                            height={400}
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-full object-contain rounded-2xl shadow-md group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute -top-24 -right-24 w-60 h-60 bg-[#d4a574]/15 rounded-full blur-[80px] pointer-events-none" />
-                    </div>
+                    <img
+                        src="/images/Civil%20Registry/logo%20civil%20registry%20and%20naic.png"
+                        alt="Civil Registry of Naic & Naic Municipal Seal"
+                        width={400}
+                        height={400}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full max-w-sm object-contain drop-shadow-2xl"
+                    />
                 </motion.div>
             </section>
 
@@ -128,27 +124,32 @@ export default function AboutPortal() {
                     </p>
                 </div>
 
-                <div className="rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl shadow-black/50 group">
-                    <img
-                        src="/images/Civil%20Registry/picture%20of%20civil%20registry%20employee.png"
-                        alt="Civil Registry of Naic Employees"
-                        width={1200}
-                        height={800}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-auto max-h-[560px] object-cover object-top group-hover:scale-[1.01] transition-transform duration-500"
-                    />
-                    <div className="p-4 sm:p-6 bg-slate-900/90 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div>
-                            <h3 className="text-white font-bold text-base sm:text-lg">
-                                Municipal Civil Registrar's Office
-                            </h3>
-                            <p className="text-slate-400 text-xs sm:text-sm">
-                                Municipality of Naic, Cavite
-                            </p>
+                <a
+                        href="https://www.facebook.com/gloria.bago.184"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl shadow-black/50 group cursor-pointer block"
+                    >
+                        <img
+                            src="/images/Civil%20Registry/picture%20of%20civil%20registry%20employee.png"
+                            alt="Civil Registry of Naic Employees"
+                            width={1200}
+                            height={800}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-auto max-h-[560px] object-cover object-top group-hover:scale-[1.01] transition-transform duration-500"
+                        />
+                        <div className="p-4 sm:p-6 bg-slate-900/90 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div>
+                                <h3 className="text-white font-bold text-base sm:text-lg">
+                                    Municipal Civil Registrar's Office
+                                </h3>
+                                <p className="text-slate-400 text-xs sm:text-sm">
+                                    Municipality of Naic, Cavite
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </a>
             </section>
 
             {/* 3. Technical Adviser & Technical Critic */}

@@ -187,7 +187,39 @@ export default function Landing() {
     // Announcements Carousel State
     const [activeAnnIndex, setActiveAnnIndex] = useState(0);
     const [isAnnPaused, setIsAnnPaused] = useState(false);
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
     const announcements = config?.announcements || [];
+
+    // Minimum swipe distance (px) to trigger a slide change
+    const MIN_SWIPE_DISTANCE = 60;
+
+    const handleTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.touches[0].clientX);
+        setIsAnnPaused(true);
+    };
+
+    const handleTouchMove = (e) => {
+        setTouchEnd(e.touches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        if (Math.abs(distance) > MIN_SWIPE_DISTANCE) {
+            if (distance > 0) {
+                // Swiped left → next
+                handleNextAnn();
+            } else {
+                // Swiped right → previous
+                handlePrevAnn();
+            }
+        }
+        setTouchStart(null);
+        setTouchEnd(null);
+        setIsAnnPaused(false);
+    };
 
     // Ensure active index stays within bounds when announcements update
     useEffect(() => {
@@ -369,7 +401,10 @@ export default function Landing() {
                                     transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                                     onMouseEnter={() => setIsAnnPaused(true)}
                                     onMouseLeave={() => setIsAnnPaused(false)}
-                                    className="bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/25 hover:border-rose-500/40 rounded-2xl p-4 sm:p-5 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-rose-950/20 transition-all group"
+                                    onTouchStart={handleTouchStart}
+                                    onTouchMove={handleTouchMove}
+                                    onTouchEnd={handleTouchEnd}
+                                    className="bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/25 hover:border-rose-500/40 rounded-2xl p-4 sm:p-5 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-rose-950/20 transition-all group touch-pan-y"
                                 >
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-rose-400 to-rose-600" />
 

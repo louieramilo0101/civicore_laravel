@@ -127,9 +127,11 @@ function Dashboard() {
         Chart.defaults.font.size = 11;
         Chart.defaults.font.weight = '600';
 
+        // Chart updates in place via updateChart() — no destroy/recreate reset
+        // Original approach: destroy all charts then recreate new ones
         Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-
-        /** Creates or replaces a Chart.js instance for a dashboard panel. */
+        
+        /** Creates a new Chart.js instance for a dashboard panel. */
         const createChart = (id, config) => {
             const ctx = document.getElementById(id);
             if (ctx) chartRefs.current[id] = new Chart(ctx, config);
@@ -405,7 +407,6 @@ function Dashboard() {
                                         {s.altLabel || s.label}
                                     </p>
                                 </div>
-                                <p className={`text-[9px] sm:text-[10px] font-bold mt-1.5 uppercase tracking-tight relative z-0 truncate ${s.bg.includes('bg-indigo-600') ? 'text-indigo-200/80' : 'text-slate-400 dark:text-slate-500'}`}>{s.sub} Volume</p>
                             </motion.div>
                         ))}
                     </motion.div>

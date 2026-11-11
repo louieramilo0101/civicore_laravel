@@ -9,7 +9,8 @@ import {
     ArrowUturnLeftIcon,
     PhotoIcon,
     ViewfinderCircleIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import { ensureOpenCvLoaded, detectDocumentCorners } from './captureEngine';
 
@@ -196,12 +197,19 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
     const handleApplyFx = async () => {
         if (!imageSrc || isProcessing) return;
         setIsProcessing(true);
+        setIsDetecting(false);
 
         try {
             const processedFile = await new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
                     try {
+                        // Verify image actually has content
+                        if (img.width === 0 || img.height === 0) {
+                            reject(new Error('Image has no dimensions'));
+                            return;
+                        }
+
                         const isSwapped = rotation === 90 || rotation === 270;
                         const rotW = isSwapped ? img.height : img.width;
                         const rotH = isSwapped ? img.width : img.height;
@@ -217,10 +225,23 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                         rotCtx.drawImage(img, -img.width / 2, -img.height / 2);
 
                         // 2. Crop from rotated canvas using user corner percentages
-                        const minX = Math.max(0, Math.min(rotW - 1, Math.round(Math.min(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * rotW)));
-                        const maxX = Math.max(minX + 1, Math.min(rotW, Math.round(Math.max(corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x) / 100 * rotW)));
-                        const minY = Math.max(0, Math.min(rotH - 1, Math.round(Math.min(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * rotH)));
-                        const maxY = Math.max(minY + 1, Math.min(rotH, Math.round(Math.max(corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y) / 100 * rotH)));
+                        const cornerX = [corners.tl.x, corners.bl.x, corners.tr.x, corners.br.x];
+                        const cornerY = [corners.tl.y, corners.bl.y, corners.tr.y, corners.br.y];
+                        const minXPct = Math.max(0, Math.min(100, Math.min(...cornerX)));
+                        const maxXPct = Math.min(100, Math.max(0, Math.max(...cornerX)));
+                        const minYPct = Math.max(0, Math.min(100, Math.min(...cornerY)));
+                        const maxYPct = Math.min(100, Math.max(0, Math.max(...cornerY)));
+
+                        // Ensure at least 10% crop area
+                        if (maxXPct - minXPct < 10 || maxYPct - minYPct < 10) {
+                            reject(new Error('Crop area too small. Please adjust corners.'));
+                            return;
+                        }
+
+                        const minX = Math.round(minXPct / 100 * rotW);
+                        const maxX = Math.round(maxXPct / 100 * rotW);
+                        const minY = Math.round(minYPct / 100 * rotH);
+                        const maxY = Math.round(maxYPct / 100 * rotH);
 
                         const cropW = Math.max(10, maxX - minX);
                         const cropH = Math.max(10, maxY - minY);
@@ -273,6 +294,10 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
             onApply(processedFile);
         } catch (err) {
             console.error('Post-FX processing failed:', err);
+            setValidationNotice({
+                type: 'error',
+                message: err.message || 'Failed to process image. Using original.'
+            });
             // Fallback to original file on failure
             onApply(file);
         } finally {
@@ -295,17 +320,14 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                     <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.03]">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-                                <SparklesIcon className="w-5 h-5" />
+                                <PencilSquareIcon className="w-5 h-5" />
                             </div>
                             <div>
                                 <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                    <span>Document Post-FX Editor</span>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#d4a574]/20 text-[#d4a574] border border-[#d4a574]/30 normal-case">
-                                        Scan Enhancer
-                                    </span>
+                                    <span>Edit Scanned Document</span>
                                 </h3>
                                 <p className="text-[11px] text-slate-400">
-                                    Adjust rotation, apply black & white document filter, and drag corners to crop.
+                                    Adjust rotation, filter, and drag corners to crop.
                                 </p>
                             </div>
                         </div>
@@ -492,10 +514,10 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                         <div className="flex items-center gap-2.5">
                             <button
                                 type="button"
-                                onClick={() => onApply(file)}
+                                onClick={onClose}
                                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs transition-all active:scale-95 cursor-pointer"
                             >
-                                Skip FX (Keep Original)
+                                Cancel
                             </button>
                             <button
                                 type="button"
@@ -506,12 +528,12 @@ const ImagePostFxModal = ({ isOpen, file, onClose, onApply }) => {
                                 {isProcessing ? (
                                     <>
                                         <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                        <span>Enhancing...</span>
+                                        <span>Applying...</span>
                                     </>
                                 ) : (
                                     <>
                                         <CheckIcon className="w-4 h-4 stroke-[3]" />
-                                        <span>Apply & Attach Scan</span>
+                                        <span>Apply Changes</span>
                                     </>
                                 )}
                             </button>

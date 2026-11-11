@@ -1090,9 +1090,9 @@ const Documents = () => {
 
 
     const docTypes = [
-        { type: 'birth', icon: <UserIcon className="w-5 h-5 text-[#d4a574]" />, name: 'Birth Certificate', desc: 'Live birth records' },
-        { type: 'death', icon: <DocumentTextIcon className="w-5 h-5 text-rose-500" />, name: 'Death Certificate', desc: 'Registry of deaths' },
-        { type: 'marriage', icon: <UsersIcon className="w-5 h-5 text-indigo-500" />, name: 'Marriage License', desc: 'Marriage contracts' },
+        { type: 'birth', icon: <UserIcon className="w-5 h-5 text-[#d4a574]" />, name: 'Birth Certificate' },
+        { type: 'death', icon: <DocumentTextIcon className="w-5 h-5 text-rose-500" />, name: 'Death Certificate' },
+        { type: 'marriage', icon: <UsersIcon className="w-5 h-5 text-indigo-500" />, name: 'Marriage Contract' },
     ];
 
     /** Opens the OCR review panel for a file flagged as a duplicate and
@@ -1708,25 +1708,25 @@ const Documents = () => {
                                                                             </div>
                                                                         </div>
                                                                     </td>
-<td className="px-2 py-2.5">
-                                                                         {(() => {
-                                                                             const rawType = ((file.type && file.type.toLowerCase() !== 'unknown') ? file.type : (file.detected_type && file.detected_type.toLowerCase() !== 'unknown' ? file.detected_type : 'birth')).toLowerCase();
-                                                                             const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
-                                                                             const mismatch = hasTypeMismatch(file);
-                                                                             return (
-                                                                                 <span className={`inline-flex flex-col items-center ${colorClass}`}>
-                                                                                     <span className={`text-xs font-black uppercase tracking-wider ${mismatch ? 'line-through opacity-40' : ''}`}>
-                                                                                         {rawType}
-                                                                                     </span>
-                                                                                     {mismatch && (
-                                                                                         <span className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 whitespace-nowrap">
-                                                                                             ⚠ Mismatch
-                                                                                         </span>
-                                                                                     )}
-                                                                                 </span>
-                                                                             );
-                                                                         })()}
-                                                                     </td>
+                                                                    <td className="px-2 py-2.5">
+                                                                        {(() => {
+                                                                            const rawType = ((file.type && file.type.toLowerCase() !== 'unknown') ? file.type : (file.detected_type && file.detected_type.toLowerCase() !== 'unknown' ? file.detected_type : 'birth')).toLowerCase();
+                                                                            const colorClass = rawType === 'birth' ? 'text-[#d4a574]' : rawType === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                                            const mismatch = hasTypeMismatch(file);
+                                                                            return (
+                                                                                <span className={`inline-flex flex-col items-center ${colorClass}`}>
+                                                                                    <span className={`text-xs font-black uppercase tracking-wider ${mismatch ? 'line-through opacity-40' : ''}`}>
+                                                                                        {rawType}
+                                                                                    </span>
+                                                                                    {mismatch && (
+                                                                                        <span className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 whitespace-nowrap">
+                                                                                            ⚠ Mismatch
+                                                                                        </span>
+                                                                                    )}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
+                                                                    </td>
                                                                     <td className="px-2 py-2.5 text-center">{statusBadge(file)}</td>
                                                                     <td className="px-3 py-2.5 text-right">
                                                                         <div className="flex items-center justify-end gap-1 px-1">
@@ -1760,52 +1760,52 @@ const Documents = () => {
                                                                                 </Tooltip>
                                                                             )}
 
-{file.status?.toLowerCase() === 'extracted' && (
-                                                                                 file.has_duplicate ? (
-                                                                                     <Tooltip content="Direct Approve Blocked (Potential Duplicate)" position="left">
-                                                                                         <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
-                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
-                                                                                             aria-label="Direct Approve Blocked (Potential Duplicate)">
-                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                                                                         </button>
-                                                                                     </Tooltip>
-                                                                                 ) : hasTypeMismatch(file) ? (
-                                                                                     <Tooltip content="Direct Approve Blocked (Type Mismatch)" position="left">
-                                                                                         <button onClick={() => showAlert({ title: 'Type Mismatch', message: `This document was detected as "${file.detected_type}" but uploaded as "${file.type}". Direct approval is blocked. Please click the Pencil icon to review and correct the certificate type.`, type: 'warning' })}
-                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
-                                                                                             aria-label="Direct Approve Blocked (Type Mismatch)">
-                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                                                                         </button>
-                                                                                     </Tooltip>
-                                                                                 ) : getMissingRequiredFields(file) ? (
-                                                                                     <Tooltip content="Direct Approve Blocked (Missing Required Fields)" position="left">
-                                                                                         <button onClick={() => {
-                                                                                             const missing = getMissingRequiredFields(file);
-                                                                                             const cfg = { birth: BirthConfig, death: DeathConfig, marriage: MarriageConfig }[file.detected_type || file.type] || BirthConfig;
-                                                                                             const labels = Object.keys(missing).map(k => {
-                                                                                                 for (const sec of cfg) {
-                                                                                                     const found = sec.fields.find(f => f.key === k);
-                                                                                                     if (found) return found.label;
-                                                                                                 }
-                                                                                                 return k;
-                                                                                             });
-                                                                                             showAlert({ title: 'Required Fields Missing', message: `Missing: ${labels.join(', ')}. Please click the Pencil icon to review and complete the form.`, type: 'warning' });
-                                                                                         }}
-                                                                                             className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
-                                                                                             aria-label="Direct Approve Blocked (Missing Required Fields)">
-                                                                                             <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                                                                         </button>
-                                                                                     </Tooltip>
-                                                                                 ) : (
-                                                                                     <Tooltip content="Direct Approve & Issue Record" position="left">
-                                                                                         <button onClick={() => approveRecord(file.id)}
-                                                                                             className="p-2.5 text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
-                                                                                             aria-label="Direct Approve & Issue Record">
-                                                                                             <CheckCircleIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
-                                                                                         </button>
-                                                                                     </Tooltip>
-                                                                                 )
-                                                                             )}
+                                                                            {file.status?.toLowerCase() === 'extracted' && (
+                                                                                file.has_duplicate ? (
+                                                                                    <Tooltip content="Direct Approve Blocked (Potential Duplicate)" position="left">
+                                                                                        <button onClick={() => showAlert({ title: 'Duplicate Warning', message: 'This document has a potential duplicate in the Master Registry. Direct approval is blocked. Please click the Pencil icon to review side-by-side.', type: 'warning' })}
+                                                                                            className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                            aria-label="Direct Approve Blocked (Potential Duplicate)">
+                                                                                            <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                ) : hasTypeMismatch(file) ? (
+                                                                                    <Tooltip content="Direct Approve Blocked (Type Mismatch)" position="left">
+                                                                                        <button onClick={() => showAlert({ title: 'Type Mismatch', message: `This document was detected as "${file.detected_type}" but uploaded as "${file.type}". Direct approval is blocked. Please click the Pencil icon to review and correct the certificate type.`, type: 'warning' })}
+                                                                                            className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                            aria-label="Direct Approve Blocked (Type Mismatch)">
+                                                                                            <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                ) : getMissingRequiredFields(file) ? (
+                                                                                    <Tooltip content="Direct Approve Blocked (Missing Required Fields)" position="left">
+                                                                                        <button onClick={() => {
+                                                                                            const missing = getMissingRequiredFields(file);
+                                                                                            const cfg = { birth: BirthConfig, death: DeathConfig, marriage: MarriageConfig }[file.detected_type || file.type] || BirthConfig;
+                                                                                            const labels = Object.keys(missing).map(k => {
+                                                                                                for (const sec of cfg) {
+                                                                                                    const found = sec.fields.find(f => f.key === k);
+                                                                                                    if (found) return found.label;
+                                                                                                }
+                                                                                                return k;
+                                                                                            });
+                                                                                            showAlert({ title: 'Required Fields Missing', message: `Missing: ${labels.join(', ')}. Please click the Pencil icon to review and complete the form.`, type: 'warning' });
+                                                                                        }}
+                                                                                            className="p-2.5 text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer"
+                                                                                            aria-label="Direct Approve Blocked (Missing Required Fields)">
+                                                                                            <CheckCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                ) : (
+                                                                                    <Tooltip content="Direct Approve & Issue Record" position="left">
+                                                                                        <button onClick={() => approveRecord(file.id)}
+                                                                                            className="p-2.5 text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:border-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-200 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                                                            aria-label="Direct Approve & Issue Record">
+                                                                                            <CheckCircleIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
+                                                                                        </button>
+                                                                                    </Tooltip>
+                                                                                )
+                                                                            )}
 
                                                                             <Tooltip content="Delete Document" position="left">
                                                                                 <button onClick={() => removeFile(file.id)}
