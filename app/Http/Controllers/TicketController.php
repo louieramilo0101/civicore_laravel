@@ -450,9 +450,9 @@ class TicketController extends Controller
             return response()->json(['error' => 'Ticket not found.'], 404);
         }
 
-        // Auto-expire: if past 5 PM and still pending, cancel
+        // Auto-expire: if past 5 PM and still pending, mark as expired
         if ($ticket->request_status === 'pending' && $ticket->isExpired()) {
-            $ticket->request_status = 'cancelled';
+            $ticket->request_status = 'expired';
             $ticket->queue_status = 'not_in_lobby';
             $ticket->save();
         }
@@ -481,6 +481,8 @@ class TicketController extends Controller
             $compatStatus = 'Completed';
         } elseif ($ticket->request_status === 'cancelled') {
             $compatStatus = 'Cancelled';
+        } elseif ($ticket->request_status === 'expired') {
+            $compatStatus = 'Expired';
         } elseif ($ticket->queue_status === 'serving') {
             $compatStatus = 'Serving';
         }
@@ -489,7 +491,7 @@ class TicketController extends Controller
             'ticket'         => array_merge($ticket->toArray(), ['status' => $compatStatus]),
             'queue_position' => $queuePosition,
             'qr_code_url'    => $qrCodeUrl,
-            'is_expired'     => $ticket->request_status === 'cancelled' && $ticket->isExpired(),
+            'is_expired'     => $ticket->request_status === 'expired',
         ]);
     }
 
@@ -537,6 +539,8 @@ class TicketController extends Controller
         if ($request->has('request_status') && !empty($request->request_status) && $request->request_status !== 'all') {
             if ($request->request_status === 'waiting') {
                 $query->whereIn('request_status', ['pending', 'ready_for_pickup']);
+            } elseif ($request->request_status === 'expired') {
+                $query->where('request_status', 'expired');
             } else {
                 $query->where('request_status', $request->request_status);
             }
@@ -583,8 +587,9 @@ class TicketController extends Controller
                     WHEN request_status = 'waiting_for_approval' THEN 4
                     WHEN request_status = 'ready_for_pickup' THEN 5
                     WHEN request_status = 'completed' THEN 6
-                    WHEN request_status = 'cancelled' THEN 7
-                    ELSE 8
+                    WHEN request_status = 'expired' THEN 7
+                    WHEN request_status = 'cancelled' THEN 8
+                    ELSE 9
                 END
             ")->orderBy('created_at', 'asc');
         }
@@ -601,6 +606,8 @@ class TicketController extends Controller
                     $compatStatus = 'Completed';
                 } elseif ($ticket->request_status === 'cancelled') {
                     $compatStatus = 'Cancelled';
+                } elseif ($ticket->request_status === 'expired') {
+                    $compatStatus = 'Expired';
                 } elseif ($ticket->queue_status === 'serving') {
                     $compatStatus = 'Serving';
                 }
@@ -623,6 +630,8 @@ class TicketController extends Controller
                 $compatStatus = 'Completed';
             } elseif ($ticket->request_status === 'cancelled') {
                 $compatStatus = 'Cancelled';
+            } elseif ($ticket->request_status === 'expired') {
+                $compatStatus = 'Expired';
             } elseif ($ticket->queue_status === 'serving') {
                 $compatStatus = 'Serving';
             }
@@ -703,7 +712,7 @@ class TicketController extends Controller
                 break;
             case 'cancelled':
             case 'expired':
-                $ticket->request_status = 'cancelled';
+                $ticket->request_status = 'expired';
                 $ticket->queue_status = 'not_in_lobby';
                 break;
         }
@@ -823,7 +832,7 @@ class TicketController extends Controller
             return response()->json(['error' => 'Ticket not found.'], 404);
         }
 
-        $ticket->request_status = 'cancelled';
+        $ticket->request_status = 'expired';
 
         // Also cancel issuance if it exists (check ticket_issuances since issuances no longer has ticket_number)
         $issuance = \Illuminate\Support\Facades\DB::table('ticket_issuances')
@@ -1121,12 +1130,16 @@ class TicketController extends Controller
     {
         $deleted = Ticket::onlyTrashed()->with('document')->get();
         $declined = Ticket::where('request_status', 'cancelled')->with('document')->get();
+        $expired = Ticket::where('request_status', 'expired')->with('document')->get();
 
         $all = $deleted->map(function ($t) {
             $t->archive_status = 'deleted';
             return $t;
         })->concat($declined->map(function ($t) {
             $t->archive_status = 'declined';
+            return $t;
+        }))->concat($expired->map(function ($t) {
+            $t->archive_status = 'expired';
             return $t;
         }));
 
@@ -1140,6 +1153,8 @@ class TicketController extends Controller
                 $compatStatus = 'Completed';
             } elseif ($ticket->request_status === 'cancelled') {
                 $compatStatus = 'Cancelled';
+            } elseif ($ticket->request_status === 'expired') {
+                $compatStatus = 'Expired';
             } elseif ($ticket->queue_status === 'serving') {
                 $compatStatus = 'Serving';
             }
@@ -1173,7 +1188,7 @@ class TicketController extends Controller
             $details['deletion_reason'] = $request->reason;
             $details['cancellation_reason'] = $request->reason;
             $ticket->details = $details;
-            $ticket->request_status = 'cancelled';
+            $ticket->request_status = 'expired';
             $ticket->queue_status = 'not_in_lobby';
             $ticket->save();
         }
@@ -1195,9 +1210,30 @@ class TicketController extends Controller
             $ticket->restore();
         }
 
-        if ($ticket->request_status === 'cancelled') {
+        if ($ticket->request_status === 'cancelled' || $ticket->request_status === 'expired') {
             $ticket->request_status = 'pending';
             $ticket->queue_status = 'not_in_lobby';
+            $ticket->expires_at = $this->buildExpiry();
+            $ticket->save();
+        }
+
+        return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
+    }
+
+    /**
+     * Recover a ticket from expired or cancelled state
+     */
+    public function recover($id)
+    {
+        $ticket = Ticket::find($id);
+        if (!$ticket) {
+            return response()->json(['error' => 'Ticket not found.'], 404);
+        }
+
+        if ($ticket->request_status === 'cancelled' || $ticket->request_status === 'expired') {
+            $ticket->request_status = 'pending';
+            $ticket->queue_status = 'not_in_lobby';
+            $ticket->expires_at = $this->buildExpiry();
             $ticket->save();
         }
 

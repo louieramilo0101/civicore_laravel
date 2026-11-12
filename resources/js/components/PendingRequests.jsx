@@ -15,6 +15,7 @@ import {
     CheckCircleIcon,
     PrinterIcon,
     XMarkIcon,
+    ArrowUturnUpIcon,
     ExclamationTriangleIcon,
     ClockIcon,
     DocumentTextIcon,
@@ -549,7 +550,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             const [ticketsRes, statsRes] = await Promise.all([
                 axios.get('/api/v1/tickets', {
                     params: {
-                        request_status: statusFilter === 'expired' ? 'cancelled' : statusFilter,
+                        request_status: statusFilter,
                         purpose: purposeFilter,
                         sort_order: sortOrder,
                         show_expired: statusFilter === 'expired' ? true : false,
@@ -1033,7 +1034,29 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                 <span className={`px-2 py-0.5 border rounded-full text-[8px] font-black uppercase ${badgeClass} dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200`}>
                                                     {t.purpose}
                                                 </span>
-                                                {t.request_status !== 'completed' && (
+                                                {t.request_status === 'expired' ? (
+                                                     <button
+                                                         onClick={async (e) => {
+                                                             e.stopPropagation();
+                                                             try {
+                                                                 const response = await axios.post(`/api/tickets/${t.id}/recover`);
+                                                                 if (response.data.success) {
+                                                                     fetchPendingTickets(false);
+                                                                 }
+                                                             } catch (err) {
+                                                                 showAlert({
+                                                                     title: 'Error',
+                                                                     message: 'Failed to recover ticket.',
+                                                                     type: 'danger'
+                                                                 });
+                                                             }
+                                                         }}
+                                                         className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                                                         title="Recover Ticket"
+                                                     >
+                                                         <ArrowUturnUpIcon className="w-3.5 h-3.5" />
+                                                     </button>
+                                                 ) : t.request_status !== 'completed' && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -1139,22 +1162,15 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                 Doc
                                             </div>
                                             <div>
-                                                <p className="text-xs text-indigo-900 dark:text-indigo-200 font-black leading-none">{selectedTicket.document?.name || 'Linked Record'}</p>
+                                                <p className="text-xs text-indigo-900 dark:text-indigo-200 font-black leading-none">
+                                                    {selectedTicket.document?.registry_number || selectedTicket.document?.personName || selectedTicket.document?.name || 'Linked Record'}
+                                                </p>
                                                 <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-1 font-bold">READY FOR PICKUP · Waiting for Lobby QR Scan Check-in</p>
                                             </div>
                                         </div>
                                         {selectedTicket.document_id && (
                                             <div className="flex items-center gap-1.5 shrink-0">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handlePrintTicketDocument(selectedTicket)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-[#d4a574] rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer shadow-xs active:scale-95"
-                                                    title="Print attached document"
-                                                >
-                                                    <PrinterIcon className="w-3.5 h-3.5 text-[#d4a574]" />
-                                                    <span>Print</span>
-                                                </button>
-                                                <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-indigo-150 dark:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-750 dark:text-indigo-300 rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer">
+                                                <a href={`/api/documents/view/${selectedTicket.document_id}?raw=1`} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase transition-colors shrink-0 cursor-pointer shadow-xs active:scale-95">
                                                     View PDF
                                                 </a>
                                             </div>
@@ -2317,7 +2333,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
                                 <div className="bg-slate-50 dark:bg-slate-800/60 p-4 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs space-y-2">
                                     <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Client Name:</span><span className="font-extrabold text-slate-800 dark:text-slate-100">{selectedTicket.client_name}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.name}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.registry_number || selectedTicket.document?.personName || selectedTicket.document?.name}</span></div>
                                 </div>
 
                                 <div className="border border-amber-100 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/30 p-3 rounded-xl flex gap-2 items-start text-[10px] text-amber-700 dark:text-amber-300">
@@ -2376,7 +2392,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
                                 <div className="bg-slate-50 dark:bg-slate-800/60 p-4 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs space-y-2">
                                     <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Client Name:</span><span className="font-extrabold text-slate-800 dark:text-slate-100">{selectedTicket.client_name}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.name}</span></div>
+                                    <div className="flex justify-between"><span className="text-slate-400 dark:text-slate-400">Attached Record:</span><span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[18ch]">{selectedTicket.document?.registry_number || selectedTicket.document?.personName || selectedTicket.document?.name}</span></div>
                                 </div>
                             </div>
 

@@ -142,6 +142,7 @@ Route::middleware('web')->group(function () {
         Route::post('/tickets/walk-in',            [TicketController::class, 'storeWalkIn']);
         Route::get('/tickets/archived',            [TicketController::class, 'archived']);
         Route::post('/tickets/{id}/restore',       [TicketController::class, 'restore']);
+        Route::post('/tickets/{id}/recover',     [TicketController::class, 'recover']);
         Route::delete('/tickets/{id}/purge',       [TicketController::class, 'purge']);
         Route::delete('/tickets/{id}',             [TicketController::class, 'destroy']);
 

@@ -603,6 +603,8 @@ def process_ocr_gemini(data: dict):
             # If all keys are on cooldown, pick key expiring earliest
             earliest_idx = min(key_cooldowns, key=key_cooldowns.get)
             wait_secs = max(0.5, key_cooldowns[earliest_idx] - now)
+            # Cap the wait so the server never blocks indefinitely
+            wait_secs = min(wait_secs, 30.0)
             print(f"All Gemini API keys on cooldown. Waiting {wait_secs:.1f}s for key index {earliest_idx}...")
             time.sleep(wait_secs)
             keys_to_try = [(earliest_idx, api_keys[earliest_idx])]

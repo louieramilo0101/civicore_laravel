@@ -191,7 +191,50 @@ export default function Ticketing({ mode = 'portal' }) {
         }
 
         if (!email.trim()) {
-            setShowEmailWarning(true);
+            // Email is optional — show a confirmation modal if user proceeds without Gmail
+            showAlert({
+                title: 'No Email Provided',
+                message: 'Are you sure you want to proceed without an email address? Without Gmail, you won\'t receive ticket status updates or decline notifications.',
+                type: 'warning',
+                showCancel: true,
+                confirmText: 'Continue',
+                cancelText: 'Add Email',
+                onConfirm: () => {
+                    if (!privacyAccepted) {
+                        showAlert({
+                            title: 'Data Privacy Consent Required',
+                            message: 'Please review and accept the Data Privacy Notice before submitting your request.',
+                            type: 'warning'
+                        });
+                        return;
+                    }
+                    doSubmit();
+                }
+            });
+            return;
+        }
+
+        if (!email.trim().toLowerCase().includes('@gmail.com')) {
+            // Show confirmation modal for non-Gmail addresses
+            showAlert({
+                title: 'Non-Gmail Email',
+                message: 'Are you sure you want to proceed without a Gmail address? Gmail is the recommended way to receive ticket status updates and decline notifications.',
+                type: 'warning',
+                showCancel: true,
+                confirmText: 'Continue',
+                cancelText: 'Use Gmail',
+                onConfirm: () => {
+                    if (!privacyAccepted) {
+                        showAlert({
+                            title: 'Data Privacy Consent Required',
+                            message: 'Please review and accept the Data Privacy Notice before submitting your request.',
+                            type: 'warning'
+                        });
+                        return;
+                    }
+                    doSubmit();
+                }
+            });
             return;
         }
 
@@ -978,7 +1021,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     <ClockIcon className="w-8 h-8 text-slate-400 mx-auto" />
                                     <h4 className="font-black text-lg text-slate-300">Ticket Expired</h4>
                                     <p className="text-xs text-slate-400">This ticket was valid until 5:00 PM on the day it was issued. Please request a new ticket.</p>
-                                    <a href="/ticket-request" className="inline-block mt-3 px-5 py-2 bg-[#d4a574] text-[#0f172a] rounded-xl text-xs font-black uppercase tracking-widest">New Request</a>
+                                    <a href="/ticket-request" onClick={(e) => { e.preventDefault(); window.location.href = '/ticket-request'; }} className="inline-block mt-3 px-5 py-2 bg-[#d4a574] text-[#0f172a] rounded-xl text-xs font-black uppercase tracking-widest">New Request</a>
                                 </div>
                             )}
                         </div>
@@ -994,6 +1037,7 @@ export default function Ticketing({ mode = 'portal' }) {
                             </button>
                             <Link
                                 to="/ticket-request"
+                                onClick={(e) => { e.preventDefault(); window.location.href = '/ticket-request'; }}
                                 className="flex-1 flex items-center justify-center gap-2 bg-[#1a2f4a] text-white py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[#112033] transition-all active:scale-95 text-center shadow-lg"
                             >
                                 <PlusCircleIcon className="w-4 h-4" />

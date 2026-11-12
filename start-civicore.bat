@@ -9,6 +9,29 @@ echo ===================================================
 echo.
 
 :: -----------------------------------------------------------------
+:: Laragon / Apache pre-flight check — fail fast if not installed.
+:: -----------------------------------------------------------------
+set "HTTPD_EXE=C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin\httpd.exe"
+if not exist "%HTTPD_EXE%" (
+    echo.
+    echo   [ERROR] Laragon Apache not found at:
+    echo   %HTTPD_EXE%
+    echo.
+    echo   Please start Laragon first, then re-run this script.
+    echo.
+    pause >nul
+    exit /b 1
+)
+
+:: Check if Apache is already running (avoid duplicate start)
+"%HTTPD_EXE%" -k query -n httpd >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo   [INFO] Apache is already running. Skipping start.
+) else (
+    echo   [INFO] Starting Apache...
+)
+
+:: -----------------------------------------------------------------
 :: Queue profile selection
 :: Set RAM_PROFILE to 4GB for low-memory machines.
 :: Keep 8GB_PLUS for 8GB+ RAM machines.
@@ -77,19 +100,24 @@ start "Ollama Server" cmd /k "scripts\serve-ollama.bat"
 echo [2/5] Launching Laravel Server on http://localhost:80 (Apache + mod_php)...
 start "Laravel Server" cmd /k "title Laravel Server && cd /d C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin && httpd.exe -k start -n httpd"
 
-:: 3. Start Laravel Queue Workers (dedicated per-queue)
-echo [3/5] Launching Laravel Queue Workers...
-start "Queue High" cmd /k "scripts\serve-queue.bat high"
-start "Queue Default" cmd /k "scripts\serve-queue.bat default"
-start "Queue Low" cmd /k "scripts\serve-queue.bat low"
-start "Queue OCR" cmd /k "scripts\serve-queue.bat ocr"
+:: 3. Start Laravel Queue Listener (single process, all queues)
+echo [3/5] Launching Laravel Queue Listener...
+start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan queue:listen --queue=low,ocr,default --sleep=3 --tries=3"
 
 :: 4. Start Persistent OCR Server
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
 start "OCR Server" cmd /k "scripts\serve-ocr.bat"
 
-:: 5. Start Vite (Frontend) - ALWAYS run dev server for HMR
-echo [5/5] Launching Vite Dev Server with Hot Module Replacement...
+:: 5. Start Vite (Frontend) - prompt for dev or build
+echo [5/5] Choose Vite mode:
+echo   [1] Dev Server (Hot Module Replacement, instant updates)
+echo   [2] Build (production build, no HMR)
+echo.
+choice /C 12 /T 20 /D 2 /M "Enter choice (1=Dev, 2=Build, default 2 (Build) in 20s): "
+if %ERRORLEVEL% EQU 2 set "VITE_CMD=npm run build"
+if %ERRORLEVEL% EQU 1 set "VITE_CMD=npm run dev"
+
+echo [5/5] Launching Vite with: %VITE_CMD%
 echo.
 echo   ============================================================
 echo   YOUR NETWORK ACCESS (also shown in Vite window title):
@@ -100,7 +128,7 @@ echo   (For HTTPS camera access, run start-tunnel.bat)
 echo   ============================================================
 echo.
 
-start "Vite Dev [%PC_IP%]" cmd /k "title Vite Dev Server - Mobile: http://%PC_IP%:8000 && echo. && echo Vite Dev Server with HMR && echo Network IP: %PC_IP% && echo. && npm run dev"
+start "Vite [%PC_IP%]" cmd /k "title Vite Server - Mobile: http://%PC_IP%:8000 && echo. && echo Running: %VITE_CMD% && echo Network IP: %PC_IP% && echo. && %VITE_CMD%"
 
 echo ===================================================
 echo   ALL SYSTEMS GO!
@@ -119,10 +147,13 @@ echo   (For full mobile camera WebRTC access over HTTPS, run start-tunnel.bat)
 echo ===================================================
 echo.
 echo ===================================================
-echo   [SHUTDOWN] Press ANY KEY in this window to STOP
-echo              all CiviCORE services and close all windows.
+echo   [SHUTDOWN] Type 'x' to exit all CiviCORE services and close all windows.
 echo ===================================================
-pause >nul
+
+:wait_for_x
+set "SHUTDOWN_INPUT="
+set /p "SHUTDOWN_INPUT=Type 'x' to shutdown: "
+if /I not "%SHUTDOWN_INPUT%"=="x" goto wait_for_x
 
 echo.
 echo ===================================================

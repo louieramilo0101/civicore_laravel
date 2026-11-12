@@ -31,11 +31,14 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
     /** Stores the timeout value used by this component. */
     public $timeout = 900;
     /** Stores the uniqueFor value used by this component. */
-    public $uniqueFor = 3600;
+    // shortcut: was 3600 (1hr); a hard-killed worker left the Redis lock held for an hour
+    // and silently blocked every re-dispatch of that document ID. 120s keeps the
+    // anti-duplicate guard while giving crashed jobs a fast recovery window.
+    public $uniqueFor = 120;
 
-    /** Queue name */
-    public $queue = 'ocr';
-
+    // shortcut: removed `public $queue = 'ocr'` — it conflicts with the Queueable trait's
+    // $queue property under PHP 8.3 (fatal at class composition), so the job never even
+    // reached the jobs table. onQueue('low') in the constructor sets the queue instead.
     /** Stores the documentId value used by this component. */
     protected $documentId;
     /** Stores the docType value used by this component. */
@@ -74,6 +77,11 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
         // 1. Check if the document exists and has a file path mapped
         if (!$doc || empty($doc->file_path)) {
             Log::error("Invalid document or missing file_path on disk for ID: " . $this->documentId);
+            DB::table('documents')->where('id', $this->documentId)->update([
+                'status' => 'failed',
+                'metadata' => json_encode(['failure_reason' => 'Missing file_path on disk; document may not have been uploaded.'], JSON_UNESCAPED_UNICODE),
+                'updated_at' => now(),
+            ]);
             return;
         }
 
@@ -344,7 +352,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // DocumentController::performSave(). This keeps the hot review/edit path
             // free of decryption overhead and avoids silent decrypt failures.
             
-            $finalDocType = $processingDecision['status'] === 'mismatch_detected' ? $doc->type : $finalDocType;
+            $finalDocType = $processingDecision['status'] === 'mismatch_detected' ? $doc->type : $detectedType;
             
             DB::table('documents')->where('id', $this->documentId)->update([
                 'ocr_text' => $ocrText,

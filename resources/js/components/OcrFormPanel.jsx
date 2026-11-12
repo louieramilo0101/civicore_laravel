@@ -779,7 +779,7 @@ useEffect(() => {
         // Run immediately on mount so the banner appears instantly when the
         // user opens the review/edit panel — no debounce delay.
         checkDuplicateRecord();
-    }, [file.id]);
+    }, [file.id, effectiveType]);
 
     /**
      * Returns Tailwind classes for field confidence:
@@ -2311,7 +2311,7 @@ useEffect(() => {
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
-                                                const rawExisting = duplicateData.extracted_fields[key];
+                                                const rawExisting = duplicateData?.extracted_fields?.[key] ?? 'null';
                                                 const rawCurrent = formData[key];
                                                 const existingVal = (rawExisting === null || rawExisting === undefined || rawExisting === '' || String(rawExisting).toLowerCase() === 'n/a') ? 'null' : rawExisting;
                                                 const currentVal = (rawCurrent === null || rawCurrent === undefined || rawCurrent === '' || String(rawCurrent).toLowerCase() === 'n/a') ? 'null' : rawCurrent;
@@ -2337,7 +2337,7 @@ useEffect(() => {
                                         </div>
                                         <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                             {Object.keys(formData).map(key => {
-                                                const rawExisting = duplicateData.extracted_fields[key];
+                                                const rawExisting = duplicateData?.extracted_fields?.[key] ?? 'null';
                                                 const rawCurrent = formData[key];
                                                 const existingVal = (rawExisting === null || rawExisting === undefined || rawExisting === '' || String(rawExisting).toLowerCase() === 'n/a') ? 'null' : rawExisting;
                                                 const currentVal = (rawCurrent === null || rawCurrent === undefined || rawCurrent === '' || String(rawCurrent).toLowerCase() === 'n/a') ? 'null' : rawCurrent;
