@@ -78,14 +78,37 @@ class BackupService
         }
 
         // Add physical storage files from storage/app/public
+        // Exclude cache, logs, and temp files to save space
         $publicStorage = storage_path('app/public');
         $fileCount = 0;
+        $excludePatterns = [
+            '#cache#',
+            '#logs#',
+            '#tmp#',
+            '#temp#',
+            '#log$#',
+            '#tmp$#',
+            '#cache$#',
+        ];
+        
         if (File::isDirectory($publicStorage)) {
             $files = File::allFiles($publicStorage);
             foreach ($files as $file) {
                 $relativePath = 'files/' . str_replace('\\', '/', $file->getRelativePathname());
-                $zip->addFile($file->getRealPath(), $relativePath);
-                $fileCount++;
+                
+                // Check if file should be excluded
+                $shouldExclude = false;
+                foreach ($excludePatterns as $pattern) {
+                    if (preg_match($pattern, $relativePath)) {
+                        $shouldExclude = true;
+                        break;
+                    }
+                }
+                
+                if (!$shouldExclude) {
+                    $zip->addFile($file->getRealPath(), $relativePath);
+                    $fileCount++;
+                }
             }
         }
 
@@ -123,6 +146,7 @@ class BackupService
         // Auto-prune old backups after creation (except pre_restore)
         if ($type !== 'pre_restore') {
             $this->pruneOldBackups();
+            $this->compressOldBackups();
         }
 
         $size = File::size($encryptedPath);
@@ -272,6 +296,7 @@ class BackupService
                 'created_at'  => $createdAt,
                 'is_safety'   => $type === 'pre_restore',
                 'encrypted'   => $isEncrypted,
+                'confirmation_token' => $this->generateConfirmationToken($baseName),
             ];
         }
 
@@ -290,6 +315,11 @@ class BackupService
      */
     public function restoreBackup(string $filename): array
     {
+        // Handle .tar.gz archived backups first
+        if (str_ends_with($filename, '.tar.gz')) {
+            return $this->restoreFromArchive($filename);
+        }
+
         // Handle both .zip and .enc filenames from user input
         $targetFile = "{$this->backupPath}/{$filename}";
         
@@ -399,6 +429,159 @@ class BackupService
         } finally {
             // 5. Always clean up temporary directory
             File::deleteDirectory($tempExtractDir);
+        }
+    }
+
+    /**
+     * Restore from a monthly .tar.zst or .tar.gz archive (compressed cold storage).
+     *
+     * @param string $archiveName
+     * @return array
+     */
+    protected function restoreFromArchive(string $archiveName): array
+    {
+        $archivePath = "{$this->backupPath}/{$archiveName}";
+        
+        if (!File::exists($archivePath)) {
+            throw new \InvalidArgumentException("Archive not found: {$archiveName}");
+        }
+
+        // 1. Create immediate Pre-Restore Safety Snapshot of current state
+        $safetySnapshot = $this->createBackup('pre_restore');
+
+        // 2. Extract tar.zst/.tar.gz to a temporary folder
+        $tempExtractDir = storage_path("app/backups/restore_archive_" . uniqid());
+        File::makeDirectory($tempExtractDir, 0700, true);
+
+        try {
+            // Decompress based on extension
+            $gzContent = File::get($archivePath);
+            $tarContent = false;
+            
+            if (str_ends_with($archiveName, '.tar.zst')) {
+                if (function_exists('zstd_decompress')) {
+                    $tarContent = zstd_decompress($gzContent);
+                } else {
+                    throw new \RuntimeException("ZSTD decompression not available. Install php-zstd extension.");
+                }
+            } elseif (str_ends_with($archiveName, '.tar.gz')) {
+                $tarContent = gzdecode($gzContent);
+            }
+            
+            if ($tarContent === false) {
+                throw new \RuntimeException("Failed to decompress archive: {$archiveName}");
+            }
+
+            // Write tar to temp file
+            $tempTarPath = "{$tempExtractDir}/archive.tar";
+            File::put($tempTarPath, $tarContent);
+
+            // Extract tar using PharData
+            $phar = new \PharData($tempTarPath);
+            $phar->extractTo($tempExtractDir);
+            $phar = null;
+            File::delete($tempTarPath);
+
+            // 3. Find backup files inside the archive (should be .zip or .zip.enc)
+            $extractedFiles = File::files($tempExtractDir);
+            $backupFiles = [];
+            
+            foreach ($extractedFiles as $file) {
+                $name = $file->getFilename();
+                if (str_ends_with($name, '.zip') || str_ends_with($name, '.zip.enc')) {
+                    $backupFiles[] = $file->getRealPath();
+                }
+            }
+
+            if (empty($backupFiles)) {
+                throw new \RuntimeException("No valid backup archives found in {$archiveName}");
+            }
+
+            // Sort by date in filename (newest first)
+            usort($backupFiles, function($a, $b) {
+                // Extract timestamp from filename
+                preg_match('/_(\d{8}_\d{6})/', basename($a), $ma);
+                preg_match('/_(\d{8}_\d{6})/', basename($b), $mb);
+                $da = $ma[1] ?? '';
+                $db = $mb[1] ?? '';
+                return strcmp($db, $da);
+            });
+
+            // Use the most recent backup in the archive
+            $selectedBackup = $backupFiles[0];
+            $selectedName = basename($selectedBackup);
+
+            // 4. Handle encrypted backups inside archive
+            $targetZip = $selectedBackup;
+            $decryptedTempFile = null;
+            
+            if (str_ends_with($selectedBackup, '.enc')) {
+                if (!$this->encryptionKey) {
+                    throw new \RuntimeException('Cannot restore encrypted backup from archive: BACKUP_ENCRYPTION_KEY not configured');
+                }
+                $targetZip = $this->decryptBackup($selectedBackup);
+                $decryptedTempFile = $targetZip;
+            }
+
+            // 5. Extract the selected backup zip
+            $backupExtractDir = storage_path("app/backups/restore_backup_" . uniqid());
+            File::makeDirectory($backupExtractDir, 0700, true);
+
+            $zip = new ZipArchive();
+            if ($zip->open($targetZip) !== true) {
+                File::deleteDirectory($backupExtractDir);
+                File::deleteDirectory($tempExtractDir);
+                if ($decryptedTempFile) File::delete($decryptedTempFile);
+                throw new \RuntimeException("Failed to open backup archive from archive: {$selectedName}");
+            }
+
+            $zip->extractTo($backupExtractDir);
+            $zip->close();
+
+            // Clean up decrypted temp file
+            if ($decryptedTempFile) {
+                File::delete($decryptedTempFile);
+            }
+
+            // 6. Restore Database and Files from the extracted backup
+            $connection = config('database.default');
+
+            if ($connection === 'sqlite') {
+                $sqliteDump = "{$backupExtractDir}/database.sqlite";
+                if (File::exists($sqliteDump)) {
+                    $targetDb = config('database.connections.sqlite.database');
+                    DB::purge('sqlite');
+                    File::copy($sqliteDump, $targetDb);
+                    DB::reconnect('sqlite');
+                }
+            } elseif ($connection === 'mysql') {
+                $sqlDump = "{$backupExtractDir}/database.sql";
+                if (File::exists($sqlDump)) {
+                    $sqlContent = File::get($sqlDump);
+                    DB::unprepared($sqlContent);
+                }
+            }
+
+            $extractedFilesDir = "{$backupExtractDir}/files";
+            if (File::isDirectory($extractedFilesDir)) {
+                $publicStorage = storage_path('app/public');
+                File::copyDirectory($extractedFilesDir, $publicStorage);
+            }
+
+            Log::warning("CiviCORE restored from archive {$archiveName} (using backup {$selectedName}). Safety snapshot created: {$safetySnapshot['filename']}");
+
+            return [
+                'success'         => true,
+                'restored_file'   => "{$archiveName} (backup: {$selectedName})",
+                'safety_snapshot' => $safetySnapshot['filename'],
+                'message'         => "System successfully restored from archive {$archiveName} (using backup {$selectedName}). An automatic safety copy ({$safetySnapshot['filename']}) was saved first.",
+            ];
+        } finally {
+            // Always clean up temporary directories
+            File::deleteDirectory($tempExtractDir);
+            if (isset($backupExtractDir) && File::isDirectory($backupExtractDir)) {
+                File::deleteDirectory($backupExtractDir);
+            }
         }
     }
 
@@ -548,12 +731,24 @@ class BackupService
     {
         return match ($type) {
             'daily'       => 'Daily Backup',
-            'weekly'      => 'Weekly Backup',
+            'weekly'      => 'Weekly Weekly',
             'monthly'     => 'Monthly Backup',
             '6month'      => '6-Month Backup',
             'pre_restore' => 'Automatic Safety Copy',
             default       => 'Manual Backup',
         };
+    }
+
+    /**
+     * Generate a short confirmation token from backup filename.
+     * Used for restore verification - harder than "RESTORE" but easier than full filename.
+     */
+    protected function generateConfirmationToken(string $baseName): string
+    {
+        // Use last 8 chars of md5 of the base name (without .zip/.enc)
+        // Results in something like "CONF-A3F2K9"
+        $hash = md5($baseName);
+        return 'CONF-' . strtoupper(substr($hash, -6));
     }
 
     /**
@@ -571,5 +766,89 @@ class BackupService
             return number_format($bytes / 1024, 2) . ' KB';
         }
         return $bytes . ' B';
+    }
+
+    /**
+     * Compress backups older than N days into monthly tar.gz archives for cold storage.
+     *
+     * @param int $olderThanDays
+     * @return array
+     */
+    public function compressOldBackups(int $olderThanDays = 7): array
+    {
+        $backups = $this->listBackups();
+        $now = Carbon::now('Asia/Manila');
+        $toCompress = [];
+
+        foreach ($backups as $backup) {
+            // Skip .enc files - already encrypted (incompressible)
+            if (str_ends_with($backup['filename'], '.enc')) {
+                continue;
+            }
+            $created = Carbon::parse($backup['created_at'], 'Asia/Manila');
+            if ($created->diffInDays($now) >= $olderThanDays) {
+                $toCompress[] = $backup;
+            }
+        }
+
+        if (empty($toCompress)) {
+            return [];
+        }
+
+        // Group by month (YYYYMM)
+        $byMonth = [];
+        foreach ($toCompress as $backup) {
+            $month = Carbon::parse($backup['created_at'], 'Asia/Manila')->format('Ym');
+            $byMonth[$month][] = $backup;
+        }
+
+        $archived = [];
+        foreach ($byMonth as $month => $files) {
+            $archiveName = "civicore_archived_{$month}.tar.zst";
+            $archivePath = "{$this->backupPath}/{$archiveName}";
+
+            // Create temporary tar file
+            $tempTarPath = "{$this->backupPath}/temp_{$month}.tar";
+            $phar = new \PharData($tempTarPath);
+
+            foreach ($files as $file) {
+                $filePath = "{$this->backupPath}/{$file['filename']}";
+                if (File::exists($filePath)) {
+                    $phar->addFile($filePath, $file['filename']);
+                }
+            }
+            $phar = null;
+
+            // Read tar content and compress with ZSTD (level 9) if available, else gzip
+            $tarContent = File::get($tempTarPath);
+            if (function_exists('zstd_compress')) {
+                $compressedContent = zstd_compress($tarContent, 9);
+            } else {
+                $compressedContent = gzencode($tarContent, 9);
+            }
+            File::put($archivePath, $compressedContent);
+            File::delete($tempTarPath);
+
+            // Delete original individual backup files
+            foreach ($files as $file) {
+                $filePath = "{$this->backupPath}/{$file['filename']}";
+                if (File::exists($filePath)) {
+                    File::delete($filePath);
+                }
+                if (str_ends_with($filePath, '.zip')) {
+                    $encPath = $filePath . '.enc';
+                    if (File::exists($encPath)) {
+                        File::delete($encPath);
+                    }
+                }
+            }
+
+            $archived[] = [
+                'archive' => $archiveName,
+                'files'   => $files,
+            ];
+        }
+
+        return $archived;
     }
 }

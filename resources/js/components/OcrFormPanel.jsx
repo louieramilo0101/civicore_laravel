@@ -1541,13 +1541,7 @@ useEffect(() => {
                                                     <span>Edit</span>
                                                 </button>
                                             )}
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer"
-                                            >
-                                                Change
-                                            </button>
+                                            {/* Removed Change button per request */}
                                             <button
                                                 type="button"
                                                 onClick={() => {

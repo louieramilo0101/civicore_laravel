@@ -165,7 +165,11 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             $ocrEngine = \App\Models\Setting::where('key', 'ocr_engine')->value('value') ?? 'gemini';
             $ollamaModel = \App\Models\Setting::where('key', 'ollama_model')->value('value') ?? 'qwen2.5vl:3b';
 
-            // 4. Execute OCR via selected engine (Gemini or Local Ollama)
+            // 4. Validate AI Document Assessment
+            if (isset($result['is_valid_document']) && $result['is_valid_document'] === false) {
+                $validationError = $result['document_validation_error'] ?? 'The uploaded image does not appear to be an official Civil Registry document.';
+                throw new \Exception($validationError);
+            }
             Log::info("Executing OCR for Document ID {$this->documentId} using engine: {$ocrEngine} ({$ollamaModel}) on image: {$imagePath}");
             $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 300;
             $response = Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
@@ -180,13 +184,26 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             ]);
 
             if ($response->failed() || !($response->json()['success'] ?? false)) {
-                throw new \Exception("OCR Server error: " . $response->body());
+                $body = $response->json();
+                $detail = $body['detail'] ?? $body['error'] ?? $response->body();
+                throw new \Exception($detail);
             }
 
             $result = $response->json();
+
+            // Check if AI invalidated document format
+            if (isset($result['is_valid_document']) && $result['is_valid_document'] === false) {
+                $validationError = $result['document_validation_error'] ?? 'The uploaded image does not appear to be an official Civil Registry document.';
+                throw new \Exception($validationError);
+            }
+
             $ocrText = $result['text'] ?? '';
-            $detectedType = $result['detected_type'] ?? 'unknown';
             $extractedFields = $result['extracted_fields'] ?? [];
+            $detectedType = $result['detected_type'] ?? $doc->type;
+            if (isset($extractedFields['detected_type']) && !empty($extractedFields['detected_type'])) {
+                $detectedType = strtolower(trim($extractedFields['detected_type']));
+                unset($extractedFields['detected_type']);
+            }
             $quickFillUsed = $result['quick_fill_used'] ?? false;
             $templateFamilyDetected = $result['template_family_detected'] ?? null;
 
@@ -283,25 +300,37 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // Compute clean personName from extracted fields immediately so the queue table and registry show the actual citizen/couple name
             $computedPersonName = $this->buildFullName($extractedFields, $detectedType);
 
-            // --- Type mismatch reclassification ---
+            // --- Smart category decision workflow ---
             // If OCR detected a certificate type that differs from the upload
-            // category, reclassify the document to the detected type instead of
-            // marking it failed. The record then lands in the correct section's
-            // review queue and shows a Mismatch badge so staff know to verify.
+            // category, create a choice workflow instead of auto-reclassifying.
+            // This allows users to decide which category to keep while preventing
+            // silent data misalignment.
             $uploadType = !empty($doc->type) ? strtolower($doc->type) : '';
             $normDetected = $detectedType === 'marriage_license' ? 'marriage' : $detectedType;
             $normUpload = $uploadType === 'marriage_license' ? 'marriage' : $uploadType;
 
-            $isMismatch = false;
-            $finalDocType = $doc->type;
+            $processingDecision = ['status' => 'proceed_with_upload', 'reason' => 'Types match'];
+            
             if (!empty($normDetected) && $normDetected !== 'unknown'
                 && !empty($normUpload) && $normDetected !== $normUpload) {
-                $isMismatch = true;
-                $finalDocType = $detectedType;
-                $metadata['type_mismatch'] = [
-                    'original_type' => $doc->type,
-                    'detected_type' => $detectedType,
-                    'reclassified_at' => now()->toDateTimeString(),
+                
+                // MISMATCH DETECTED - create choice workflow
+                $processingDecision = [
+                    'status' => 'mismatch_detected',
+                    'upload_category' => $doc->type,
+                    'detected_category' => $detectedType,
+                    'needs_decision' => true,
+                    'auto_selected' => false,
+                    'detected_confidence' => $result['confidence'] ?? null,
+                ];
+                
+                // Store decision data for user choice
+                $metadata['category_mismatch'] = [
+                    'upload_category' => $doc->type,
+                    'detected_category' => $detectedType,
+                    'detected_confidence' => $result['confidence'] ?? null,
+                    'needs_user_decision' => true,
+                    'timestamp' => now()->toDateTimeString(),
                 ];
             }
 
@@ -311,6 +340,9 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             // promoted to the registry database (issuances.extracted_data) in
             // DocumentController::performSave(). This keeps the hot review/edit path
             // free of decryption overhead and avoids silent decrypt failures.
+            
+            $finalDocType = $processingDecision['status'] === 'mismatch_detected' ? $doc->type : $finalDocType;
+            
             DB::table('documents')->where('id', $this->documentId)->update([
                 'ocr_text' => $ocrText,
                 'detected_type' => $detectedType,
@@ -320,6 +352,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 'type' => $finalDocType,
                 'status' => 'extracted',
                 'updated_at' => now(),
+                'processing_decision' => json_encode($processingDecision),
             ]);
 
             $elapsedLog = isset($result['processing_time_seconds']) ? " in {$result['processing_time_seconds']}s" : "";
@@ -339,6 +372,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             } elseif (str_contains($errorMessage, 'Connection refused') || str_contains($errorMessage, 'Could not connect')) {
                 $friendlyReason = 'Could not connect to OCR service on port 8080. Please ensure the local OCR server is started.';
             } else {
+                // If it's a specific validation error from the OCR server, just pass it through
                 $friendlyReason = $errorMessage;
             }
             $metadata['failure_reason'] = $friendlyReason;

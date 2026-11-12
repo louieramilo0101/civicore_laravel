@@ -97,7 +97,7 @@ class BackupController extends Controller
     /**
      * POST /api/backups/restore
      * SuperAdmin only - restores the system from a selected backup.
-     * Verifies administrative password and takes a pre-restore safety snapshot first.
+     * Verifies administrative password, confirmation token, and takes a pre-restore safety snapshot first.
      */
     public function restore(Request $request)
     {
@@ -107,8 +107,9 @@ class BackupController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'filename' => ['required', 'string', 'regex:/^civicore_[a-z0-9_]+\.zip$/'],
+            'filename' => ['required', 'string', 'regex:/^civicore_[a-z0-9_]+\.zip(?:\.enc)?$|^civicore_archived_\d{6}\.tar\.(gz|zst)$/'],
             'password' => ['required', 'string'],
+            'confirmation' => ['required', 'string', 'min:6', 'max:20'],
         ]);
 
         if ($validator->fails()) {
@@ -120,7 +121,35 @@ class BackupController extends Controller
             return response()->json(['error' => 'Invalid administrative password. Restore rejected.'], 401);
         }
 
+        // Verify confirmation token
         $filename = $request->input('filename');
+        $confirmation = $request->input('confirmation');
+        
+        $backups = $this->backupService->listBackups();
+        $matchingBackup = null;
+        
+        foreach ($backups as $backup) {
+            // Match filename with or without .enc suffix
+            $backupFilename = $backup['filename'];
+            if ($backupFilename === $filename || 
+                ($backupFilename . '.enc' === $filename) ||
+                (str_ends_with($backupFilename, '.enc') && substr($backupFilename, 0, -4) === $filename) ||
+                $backupFilename === basename($filename)) {
+                $matchingBackup = $backup;
+                break;
+            }
+        }
+
+        if (!$matchingBackup) {
+            return response()->json(['error' => 'Backup not found: ' . $filename], 404);
+        }
+
+        // Check confirmation token (case-insensitive)
+        if (strtoupper($confirmation) !== strtoupper($matchingBackup['confirmation_token'])) {
+            return response()->json([
+                'error' => 'Invalid confirmation token. Please type the exact token shown for this backup (' . $matchingBackup['confirmation_token'] . ').'
+            ], 400);
+        }
 
         try {
             $result = $this->backupService->restoreBackup($filename);

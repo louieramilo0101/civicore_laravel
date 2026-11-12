@@ -342,6 +342,7 @@ def process_ocr_gemini(data: dict):
         prompt = """
         You are an expert system for reading Philippine Civil Registry documents (specifically Certificate of Marriage / Marriage License).
         CRITICAL SAFETY REQUIREMENT: You MUST verify if the provided image is an official Philippine Civil Registry Document (Birth, Death, or Marriage Certificate). If the image is NOT a civil registry document (for example: a photo of a person, animal, vehicle, landscape, random text, meme, or blank paper), set "is_valid_document": false and set "document_validation_error" to a clear message describing why it was rejected.
+        INDEPENDENT TYPE DETECTION: Look carefully at the header/title of the document. Identify whether this document is actually a "birth", "death", or "marriage" certificate regardless of what section it was uploaded into. Set "detected_type": "birth" | "death" | "marriage" in your JSON response.
         Please extract the data from this image and return it in a clean JSON format.
         Return ONLY the JSON object. Do not include any markdown formatting or extra text outside the JSON.
         
@@ -357,6 +358,7 @@ def process_ocr_gemini(data: dict):
         JSON Structure to follow (use null for empty or unreadable fields):
         {
           "is_valid_document": true,
+          "detected_type": "marriage",
           "document_validation_error": null,
           "registry_number": null,
           "province": null,
@@ -415,6 +417,7 @@ def process_ocr_gemini(data: dict):
         prompt = """
         You are an expert system for reading Philippine Civil Registry documents (specifically Certificate of Death).
         CRITICAL SAFETY REQUIREMENT: You MUST verify if the provided image is an official Philippine Civil Registry Document (Birth, Death, or Marriage Certificate). If the image is NOT a civil registry document (for example: a photo of a person, animal, vehicle, landscape, random text, meme, or blank paper), set "is_valid_document": false and set "document_validation_error" to a clear message describing why it was rejected.
+        INDEPENDENT TYPE DETECTION: Look carefully at the header/title of the document. Identify whether this document is actually a "birth", "death", or "marriage" certificate regardless of what section it was uploaded into. Set "detected_type": "birth" | "death" | "marriage" in your JSON response.
         Please extract the data from this image and return it in a clean JSON format.
         Return ONLY the JSON object. Do not include any markdown formatting or extra text outside the JSON.
         
@@ -430,6 +433,7 @@ def process_ocr_gemini(data: dict):
         JSON Structure to follow (use null for empty or unreadable fields):
         {
           "is_valid_document": true,
+          "detected_type": "marriage",
           "document_validation_error": null,
           "registry_number": null,
           "province": null,
@@ -465,6 +469,7 @@ def process_ocr_gemini(data: dict):
         prompt = """
         You are an expert system for reading Philippine Civil Registry documents (specifically Certificate of Live Birth).
         CRITICAL SAFETY REQUIREMENT: You MUST verify if the provided image is an official Philippine Civil Registry Document (Birth, Death, or Marriage Certificate). If the image is NOT a civil registry document (for example: a photo of a person, animal, vehicle, landscape, random text, meme, or blank paper), set "is_valid_document": false and set "document_validation_error" to a clear message describing why it was rejected.
+        INDEPENDENT TYPE DETECTION: Look carefully at the header/title of the document. Identify whether this document is actually a "birth", "death", or "marriage" certificate regardless of what section it was uploaded into. Set "detected_type": "birth" | "death" | "marriage" in your JSON response.
 
         CRITICAL RULES FOR PERSON NAMES IN BIRTH CERTIFICATES:
         1. "first_name", "middle_name", "last_name" MUST strictly be the CHILD's name (the newborn/registrant in Box 1: "1. NAME (First, Middle, Last)").
@@ -487,6 +492,7 @@ def process_ocr_gemini(data: dict):
         JSON Structure to follow (use null for empty or unreadable fields):
         {
           "is_valid_document": true,
+          "detected_type": "marriage",
           "document_validation_error": null,
           "registry_number": null, "province": null, "city_municipality": null, "barangay": null,
           "first_name": null, "middle_name": null, "last_name": null, "sex": null,

@@ -129,10 +129,11 @@ const Backups = () => {
 
     const handleRestoreSubmit = async (e) => {
         e.preventDefault();
-        if (restoreConfirmText !== 'RESTORE') {
+        const expectedToken = selectedBackupForRestore?.confirmation_token || '';
+        if (!restoreConfirmText || restoreConfirmText.toUpperCase() !== expectedToken.toUpperCase()) {
             showAlert({
                 title: 'Confirmation Mismatch',
-                message: 'Please type RESTORE in all capital letters to confirm.',
+                message: `Please type the exact confirmation token shown for this backup: ${expectedToken}`,
                 type: 'warning'
             });
             return;
@@ -146,7 +147,8 @@ const Backups = () => {
                 credentials: 'include',
                 body: JSON.stringify({
                     filename: selectedBackupForRestore.filename,
-                    password: restorePassword
+                    password: restorePassword,
+                    confirmation: restoreConfirmText
                 })
             });
             const data = await res.json();
@@ -496,15 +498,21 @@ const Backups = () => {
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                                        Type <span className="text-rose-600 dark:text-rose-400 font-mono">RESTORE</span> to confirm <span className="text-rose-500">*</span>
+                                        Type Confirmation Token <span className="text-rose-500">*</span>
                                     </label>
+                                    <div className="flex items-center gap-2 text-xs mb-2">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 rounded-lg text-xs font-mono text-violet-700 dark:text-violet-300">
+                                            {selectedBackupForRestore?.confirmation_token || 'CONF-XXXXXX'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">shown for this backup</span>
+                                    </div>
                                     <input
                                         required
                                         type="text"
                                         value={restoreConfirmText}
-                                        onChange={(e) => setRestoreConfirmText(e.target.value)}
-                                        placeholder="RESTORE"
-                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors"
+                                        onChange={(e) => setRestoreConfirmText(e.target.value.toUpperCase())}
+                                        placeholder="CONF-XXXXXX"
+                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 outline-none text-sm font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 focus:bg-white dark:focus:bg-slate-900 transition-colors font-mono"
                                     />
                                 </div>
 
@@ -542,7 +550,7 @@ const Backups = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={isRestoring || restoreConfirmText !== 'RESTORE' || !restorePassword}
+                                        disabled={isRestoring || !restoreConfirmText || restoreConfirmText.length < 7 || !restorePassword}
                                         className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-700 transition-colors text-sm shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                     >
                                         {isRestoring ? (

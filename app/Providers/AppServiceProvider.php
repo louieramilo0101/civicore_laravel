@@ -26,5 +26,11 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with((string) config('app.url'), 'https://') || request()->isSecure()) {
             URL::forceScheme('https');
         }
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Console\Commands\CompressOldBackupsCommand::class,
+            ]);
+        }
     }
 }

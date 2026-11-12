@@ -1240,10 +1240,20 @@ const Documents = () => {
                     metaObj = {};
                 }
                 const rawReason = metaObj.failure_reason || metaObj.error || '';
+                // If rawReason is a JSON blob (e.g. from OCR server), parse it and extract just the detail
+                let parsedReason = rawReason;
+                try {
+                    const parsed = JSON.parse(rawReason);
+                    if (parsed && typeof parsed === 'object') {
+                        parsedReason = parsed.detail || parsed.error || parsed.message || rawReason;
+                    }
+                } catch (e) {
+                    // Not JSON, use as-is
+                }
                 // Map technical errors to plain-language messages for non-technical users
                 const reason = (() => {
-                    const r = rawReason.toLowerCase();
-                    if (!rawReason) return 'The document could not be processed. This may be due to a poor scan quality or an unsupported file format. Please try re-uploading a clearer copy.';
+                    const r = parsedReason.toLowerCase();
+                    if (!parsedReason) return 'The document could not be processed. This may be due to poor scan quality or an unsupported file format. Please try re-uploading a clearer copy.';
                     if (r.includes('timeout') || r.includes('timed out')) return 'Processing took too long and was stopped. This usually happens with very large or complex files. Try uploading a smaller or clearer version.';
                     if (r.includes('password') || r.includes('encrypted')) return 'The file appears to be password-protected or encrypted. Please remove the password and re-upload.';
                     if (r.includes('corrupt') || r.includes('invalid pdf') || r.includes('not a pdf')) return 'The file could not be opened — it may be corrupted or in an unsupported format. Try saving it again and re-uploading.';
@@ -1251,8 +1261,8 @@ const Documents = () => {
                     if (r.includes('too large') || r.includes('size') || r.includes('limit')) return 'The file is too large to process. Please compress or reduce the file size and try again.';
                     if (r.includes('duplicate') || r.includes('already exists')) return 'A similar document is already in the registry. Duplicate uploads are not allowed.';
                     if (r.includes('network') || r.includes('connection') || r.includes('socket')) return 'A connection error occurred while processing the document. Please check your internet and try again.';
-                    if (r.includes('ocr') || r.includes('extraction') || r.includes('tesseract')) return 'The text extraction engine could not read this document. Try uploading a higher-quality scan.';
-                    return 'The document could not be processed. Please try re-uploading the file. If the problem continues, contact your administrator.';
+                    if (r.includes('invalid document') || r.includes('document mismatch')) return 'The document type does not match the upload category. Please check the certificate type and try again.';
+                    return parsedReason;
                 })();
                 showAlert({
                     title: 'Processing Failure Reason',
@@ -1532,6 +1542,7 @@ const Documents = () => {
                                 <CloudArrowUpIcon className={`w-10 h-10 mb-2 ${isDragActive ? 'text-[#d4a574]' : 'text-slate-300 dark:text-slate-600'}`} />
                                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-0.5">Drop file here or click</p>
                                 <p className="text-xs text-slate-400 dark:text-slate-500">PDF, JPG, PNG, TIFF, DOCX — max 10 MB</p>
+<p className="text-xs text-slate-400 dark:text-slate-500">Please ensure you choose the right type of document to upload as to ensure it is correct, though the system has a detecting of mismatch that is not 100% accurate</p>
                             </div>
 
                             <div className="relative mt-5">

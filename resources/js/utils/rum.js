@@ -66,6 +66,48 @@ function sendMetric(metric) {
 }
 
 /**
+ * Tracks category validation timing for document upload workflow
+ */
+function trackCategoryValidation(metrics) {
+    const startTime = performance.now();
+    
+    // Track validation timing after upload completes
+    return {
+        recordValidationTiming: function(metrics) {
+            const validationTime = performance.now() - startTime;
+            const payload = {
+                name: 'category_validation',
+                value: validationTime,
+                page: window.location.pathname,
+                rating: validationTime > 500 ? 'poor' : validationTime > 200 ? 'needs-improvement' : 'good',
+                device: getDeviceType(),
+                browser: getBrowser(),
+                os: getOS(),
+                validation_result: metrics.status,
+                is_mismatch: metrics.is_mismatch || false,
+                needs_user_decision: metrics.needs_decision || false
+            };
+            sendMetric(payload);
+        },
+        
+        recordMismatchDecisionTiming: function() {
+            const totalTime = performance.now() - startTime;
+            const payload = {
+                name: 'category_mismatch_decision',
+                value: totalTime,
+                page: window.location.pathname,
+                rating: totalTime > 1000 ? 'poor' : totalTime > 500 ? 'needs-improvement' : 'good',
+                device: getDeviceType(),
+                browser: getBrowser(),
+                os: getOS(),
+                workflow: 'mismatch_resolution'
+            };
+            sendMetric(payload);
+        }
+    };
+}
+
+/**
  * Initializes RUM metrics collection. Call once at application boot.
  */
 export function initRum() {
@@ -78,6 +120,10 @@ export function initRum() {
         onCLS(sendMetric);
         onFCP(sendMetric);
         onTTFB(sendMetric);
+        
+        // Initialize category workflow tracking
+        window.trackCategoryMetrics = trackCategoryValidation();
+        
     } catch (err) {
         // Non-blocking catch to ensure performance reporting never breaks application execution
         console.warn('RUM initialization error:', err);
