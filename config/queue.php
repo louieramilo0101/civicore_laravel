@@ -73,6 +73,15 @@ return [
             'after_commit' => false,
         ],
 
+        'database-ocr' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('DB_QUEUE_OCR', 'ocr'),
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 300),
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

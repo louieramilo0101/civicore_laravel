@@ -73,13 +73,16 @@ timeout /t 2 /nobreak >nul
 echo [1/5] Launching Ollama Server (Local AI / Vision OCR)...
 start "Ollama Server" cmd /k "scripts\serve-ollama.bat"
 
-:: 2. Start PHP Laravel Server
-echo [2/5] Launching Laravel Server on http://0.0.0.0:8000...
-start "Laravel Server" cmd /k "title Laravel Server && php artisan serve --host 0.0.0.0"
+:: 2. Start PHP Laravel Server via Apache (mod_php) — faster than artisan serve
+echo [2/5] Launching Laravel Server on http://localhost:80 (Apache + mod_php)...
+start "Laravel Server" cmd /k "title Laravel Server && cd /d C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin && httpd.exe -k start -n httpd"
 
-:: 3. Start Unified Laravel Queue Worker
-echo [3/5] Launching Unified Laravel Queue Worker (high, default, low)...
-start "CiviCORE Queue Worker" cmd /k "scripts\serve-queue.bat"
+:: 3. Start Laravel Queue Workers (dedicated per-queue)
+echo [3/5] Launching Laravel Queue Workers...
+start "Queue High" cmd /k "scripts\serve-queue.bat high"
+start "Queue Default" cmd /k "scripts\serve-queue.bat default"
+start "Queue Low" cmd /k "scripts\serve-queue.bat low"
+start "Queue OCR" cmd /k "scripts\serve-queue.bat ocr"
 
 :: 4. Start Persistent OCR Server
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
@@ -143,7 +146,8 @@ taskkill /FI "WINDOWTITLE eq Queue High*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Low*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Default*" /T /F >nul 2>&1
 
-echo [*] Stopping Laravel Server...
+echo [*] Stopping Laravel Server (Apache)...
+"C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin\httpd.exe" -k stop -n httpd >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Laravel Server*" /T /F >nul 2>&1
 
 echo [*] Stopping Vite Dev Server...

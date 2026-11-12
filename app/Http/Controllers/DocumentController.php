@@ -124,29 +124,51 @@ class DocumentController extends Controller
                         $doc->batch_finished = $batch->finished();
                     }
                 }
-            } elseif (!$request->boolean('for_attach') && ($status === 'extracted' || $status === 'checking')) {
-                // Check if similar records already exist in the issuances table.
-                // Fetch the full candidate now so the review panel can jump straight
-                // into the side-by-side comparison without an extra async round-trip.
-                $fields = EncryptedJson::decode($doc->extracted_fields);
-                $type = $doc->detected_type ?: $doc->type;
-                if ($type === 'marriage_license') {
-                    $type = 'marriage';
-                }
+            }
+        }
 
-                $candidate = $this->findDuplicateCandidate($type, $fields, (int) $doc->id);
-                if ($candidate) {
-                    $doc->has_duplicate = true;
-                    $doc->duplicate_candidate = [
-                        'id' => $candidate->id,
-                        'certNumber' => $candidate->certNumber,
-                        'type' => $candidate->type,
-                        'name' => $candidate->name,
-                        'barangay' => $candidate->barangay,
-                        'issuanceDate' => $candidate->issuanceDate,
-                        'encoded_by' => $candidate->encoded_by,
-                        'extracted_fields' => EncryptedJson::decode($candidate->extracted_data)
-                    ];
+        // Batch duplicate detection for 'extracted'/'checking' docs — single query per type
+        if (!$request->boolean('for_attach')) {
+            $candidatesByType = [];
+            $docIdsToCheck = [];
+            foreach ($documents as $doc) {
+                $status = strtolower($doc->status ?? '');
+                if ($status === 'extracted' || $status === 'checking') {
+                    $fields = EncryptedJson::decode($doc->extracted_fields);
+                    $type = $doc->detected_type ?: $doc->type;
+                    $type = $type === 'marriage_license' ? 'marriage' : $type;
+                    $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
+                    if (!empty($regNo)) {
+                        $candidatesByType[$type][] = ['doc' => $doc, 'regNo' => $regNo, 'docId' => (int)$doc->id];
+                    }
+                }
+            }
+
+            foreach ($candidatesByType as $type => $items) {
+                $regNos = array_column($items, 'regNo');
+                $dupes = DB::table('issuances')
+                    ->whereNull('deleted_at')
+                    ->whereIn('certNumber', $regNos)
+                    ->orWhereIn('registry_number', $regNos)
+                    ->get(['id', 'certNumber', 'registry_number', 'type', 'name', 'barangay', 'issuanceDate', 'encoded_by', 'extracted_data', 'document_id'])
+                    ->keyBy(function ($r) { return $r->certNumber . '|' . $r->registry_number; });
+
+                foreach ($items as $item) {
+                    $key = $item['regNo'] . '|' . $item['regNo'];
+                    if (isset($dupes[$key]) && $dupes[$key]->document_id != $item['docId']) {
+                        $c = $dupes[$key];
+                        $item['doc']->has_duplicate = true;
+                        $item['doc']->duplicate_candidate = [
+                            'id' => $c->id,
+                            'certNumber' => $c->certNumber,
+                            'type' => $c->type,
+                            'name' => $c->name,
+                            'barangay' => $c->barangay,
+                            'issuanceDate' => $c->issuanceDate,
+                            'encoded_by' => $c->encoded_by,
+                            'extracted_fields' => EncryptedJson::decode($c->extracted_data)
+                        ];
+                    }
                 }
             }
         }
@@ -1261,48 +1283,46 @@ class DocumentController extends Controller
 
                         DB::table('issuances')->where('document_id', $id)->update($updateData);
                     } else {
-                        // 3. INSERT new Master Record (Generate NEW certNumber with Atomic Concurrency Lock, preferring user registry_number)
-                        Cache::lock('issuance_cert_number_lock', 10)->block(5, function () use ($docType, $normCertType, $personName, $barangay, $encodedBy, $id, $extractedFields, $issuanceFilePath, $issuanceImagePath, $ticketNumber) {
-                            $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
-                            $year = date('Y');
-                            
-                            $results = DB::select("SELECT MAX(id) as max_id FROM issuances");
-                            $nextNum = 1;
-                            if (count($results) > 0 && $results[0]->max_id !== null) {
-                                $nextNum = intval($results[0]->max_id) + 1;
-                            }
-                            
-                            $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
-                            $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
-                            $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
-                            $registryNumber = !empty($userRegNo) ? $userRegNo : null;
-                            $issuanceDate = date('m/d/Y');
+                        // 3. INSERT new Master Record — synchronous, no global lock.
+                        // The duplicate check in hasTrueDuplicate() already prevents
+                        // double registration, and document_id has a unique index,
+                        // so no lock is needed. This keeps the registry sync instant.
+                        $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
+                        $year = date('Y');
 
-                            $insertData = [
-                                'certNumber' => $certNumber,
-                                'type' => $docType,
-                                'certificate_type' => $normCertType,
-                                'name' => $personName,
-                                'barangay' => $barangay,
-                                'issuanceDate' => $issuanceDate,
-                                'status' => 'Active',
-                                'encoded_by' => $encodedBy,
-                                'document_id' => $id,
-                                'extracted_data' => EncryptedJson::encode($extractedFields),
-                                'registry_number' => $registryNumber,
-                                'file_path' => $issuanceFilePath,
-                                'image_path' => $issuanceImagePath,
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ];
+                        // Use a fast atomic increment instead of MAX(id) scan
+                        $nextNum = (int) DB::selectOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_num FROM issuances WHERE deleted_at IS NULL")->next_num;
 
-                            if ($ticketNumber) {
-                                $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                                $insertData['requested_by'] = $encodedBy;
-                            }
+                        $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                        $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
+                        $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
+                        $registryNumber = !empty($userRegNo) ? $userRegNo : null;
+                        $issuanceDate = date('m/d/Y');
 
-                            DB::table('issuances')->insert($insertData);
-                        });
+                        $insertData = [
+                            'certNumber' => $certNumber,
+                            'type' => $docType,
+                            'certificate_type' => $normCertType,
+                            'name' => $personName,
+                            'barangay' => $barangay,
+                            'issuanceDate' => $issuanceDate,
+                            'status' => 'Active',
+                            'encoded_by' => $encodedBy,
+                            'document_id' => $id,
+                            'extracted_data' => EncryptedJson::encode($extractedFields),
+                            'registry_number' => $registryNumber,
+                            'file_path' => $issuanceFilePath,
+                            'image_path' => $issuanceImagePath,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+
+                        if ($ticketNumber) {
+                            $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                            $insertData['requested_by'] = $encodedBy;
+                        }
+
+                        DB::table('issuances')->insert($insertData);
                     }
                 }
             }

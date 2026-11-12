@@ -1428,7 +1428,7 @@ const Issuances = () => {
                                                     )}
                                                 </svg>
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total - 1}</span>
+                                                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total}</span>
                                                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</span>
                                                 </div>
                                             </div>
@@ -1563,7 +1563,7 @@ const Issuances = () => {
                                             <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                                                 <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Coverage</h4>
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                                                    <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays have records
+                                                    <span className="font-black text-slate-800 dark:text-slate-100">{certificates.length}</span> records across <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays
                                                 </p>
                                             </div>
                                         </div>

@@ -33,6 +33,9 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
     /** Stores the uniqueFor value used by this component. */
     public $uniqueFor = 3600;
 
+    /** Queue name */
+    public $queue = 'ocr';
+
     /** Stores the documentId value used by this component. */
     protected $documentId;
     /** Stores the docType value used by this component. */
