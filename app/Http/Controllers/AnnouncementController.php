@@ -52,7 +52,7 @@ class AnnouncementController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'message' => 'required|string|max:1000',
+            'message' => 'required|string|max:400',
             'is_active' => 'boolean'
         ]);
 
@@ -94,7 +94,7 @@ class AnnouncementController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'message' => 'sometimes|required|string|max:1000',
+            'message' => 'sometimes|required|string|max:400',
             'is_active' => 'boolean'
         ]);
 

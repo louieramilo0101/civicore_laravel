@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MegaphoneIcon, PlusIcon, TrashIcon, CheckCircleIcon, XCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { MegaphoneIcon, PlusIcon, PencilIcon, TrashIcon, CheckCircleIcon, XCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+
+/** Maximum characters allowed per announcement message (enforced by backend). */
+const MAX_ANNOUNCEMENT_CHARS = 400;
 
 /** Displays published civic announcements for the current audience. */
 export default function Announcements() {
@@ -19,6 +22,9 @@ export default function Announcements() {
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [togglingId, setTogglingId] = useState(null);
+    const [editingId, setEditingId] = useState(null);
+    const [editText, setEditText] = useState('');
+    const [savingEdit, setSavingEdit] = useState(false);
 
     // Settings state
     const [settings, setSettings] = useState(() => {
@@ -76,7 +82,7 @@ export default function Announcements() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!message) return;
+        if (!message || message.length > MAX_ANNOUNCEMENT_CHARS) return;
         setIsSubmitting(true);
         try {
             const res = await fetch('/api/announcements', {
@@ -137,6 +143,43 @@ export default function Announcements() {
         } catch (e) {
             console.error(e);
             setAnnouncements(previous);
+        }
+    };
+
+    const startEdit = (ann) => {
+        setEditingId(ann.id);
+        setEditText(ann.message);
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditText('');
+    };
+
+    const saveEdit = async (id) => {
+        const trimmed = editText.trim();
+        if (!trimmed || trimmed.length > MAX_ANNOUNCEMENT_CHARS) return;
+        setSavingEdit(true);
+        try {
+            const res = await fetch(`/api/announcements/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ message: trimmed })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAnnouncements(prev => prev.map(a => a.id === id ? data.announcement : a));
+                setEditingId(null);
+                setEditText('');
+            } else {
+                const data = await res.json().catch(() => ({}));
+                console.error('Edit failed:', data.error || 'Unknown error');
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSavingEdit(false);
         }
     };
 
@@ -214,14 +257,20 @@ export default function Announcements() {
                                     <input
                                         type="text"
                                         value={message}
+                                        maxLength={MAX_ANNOUNCEMENT_CHARS}
                                         onChange={(e) => setMessage(e.target.value)}
                                         placeholder="e.g., The system will undergo maintenance at 10:00 PM."
                                         className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
                                     />
+                                    <div className="flex justify-end mt-1.5">
+                                        <span className={`text-[11px] font-bold ${message.length > MAX_ANNOUNCEMENT_CHARS ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                                            {message.length} / {MAX_ANNOUNCEMENT_CHARS}
+                                        </span>
+                                    </div>
                                 </div>
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting || !message}
+                                    disabled={isSubmitting || !message || message.length > MAX_ANNOUNCEMENT_CHARS}
                                     className="px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
                                 >
                                     <PlusIcon className="w-5 h-5" />
@@ -258,32 +307,77 @@ export default function Announcements() {
                                 <AnimatePresence>
                                     {announcements.map((ann) => (
                                         <motion.div key={ann.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`p-6 rounded-2xl border ${ann.is_active ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/50 shadow-sm' : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-60'} flex justify-between items-center gap-6 group`}>
-                                            <div className="flex-1">
+                                            <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 text-xs font-bold mb-2">
                                                     {ann.is_active ? <span className="text-emerald-500 flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> LIVE</span> : <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1"><XCircleIcon className="w-4 h-4" /> HIDDEN</span>}
                                                     <span className="text-slate-300 dark:text-slate-600">•</span>
                                                     <span className="text-slate-400 dark:text-slate-500">{new Date(ann.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })}</span>
                                                 </div>
-                                                <p className={`text-lg font-medium tracking-tight ${ann.is_active ? 'text-indigo-950 dark:text-indigo-200' : 'text-slate-600 dark:text-slate-300'}`}>{ann.message}</p>
+                                                {editingId === ann.id ? (
+                                                    <div className="space-y-1.5">
+                                                        <textarea
+                                                            value={editText}
+                                                            maxLength={MAX_ANNOUNCEMENT_CHARS}
+                                                            onChange={(e) => setEditText(e.target.value)}
+                                                            rows={2}
+                                                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-700 dark:text-slate-100 text-lg font-medium resize-none"
+                                                        />
+                                                        <div className="flex justify-end">
+                                                            <span className={`text-[11px] font-bold ${editText.length > MAX_ANNOUNCEMENT_CHARS ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                                {editText.length} / {MAX_ANNOUNCEMENT_CHARS}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className={`text-lg font-medium tracking-tight break-words ${ann.is_active ? 'text-indigo-950 dark:text-indigo-200' : 'text-slate-600 dark:text-slate-300'}`}>{ann.message}</p>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <button 
-                                                    disabled={togglingId === ann.id}
-                                                    onClick={() => toggleStatus(ann.id, ann.is_active)} 
-                                                    className={`px-4 py-2 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 min-w-[100px] ${ann.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60'} disabled:opacity-70 disabled:cursor-not-allowed`}
-                                                >
-                                                    {togglingId === ann.id ? (
-                                                        <>
-                                                            <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                            <span>Updating...</span>
-                                                        </>
-                                                    ) : (
-                                                        ann.is_active ? 'Hide' : 'Set Live'
-                                                    )}
-                                                </button>
-                                                <button onClick={() => deleteAnnouncement(ann.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors">
-                                                    <TrashIcon className="w-5 h-5" />
-                                                </button>
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                {editingId === ann.id ? (
+                                                    <>
+                                                        <button
+                                                            disabled={savingEdit || !editText.trim()}
+                                                            onClick={() => saveEdit(ann.id)}
+                                                            className="px-4 py-2 font-bold text-sm rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                        >
+                                                            {savingEdit ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                        <button
+                                                            disabled={savingEdit}
+                                                            onClick={cancelEdit}
+                                                            className="px-4 py-2 font-bold text-sm rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            disabled={togglingId === ann.id}
+                                                            onClick={() => toggleStatus(ann.id, ann.is_active)}
+                                                            className={`px-4 py-2 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 min-w-[100px] ${ann.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60'} disabled:opacity-70 disabled:cursor-not-allowed`}
+                                                        >
+                                                            {togglingId === ann.id ? (
+                                                                <>
+                                                                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                                    <span>Updating...</span>
+                                                                </>
+                                                            ) : (
+                                                                ann.is_active ? 'Hide' : 'Set Live'
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => startEdit(ann)}
+                                                            className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg transition-colors"
+                                                            title="Edit announcement"
+                                                        >
+                                                            <PencilIcon className="w-5 h-5" />
+                                                        </button>
+                                                        <button onClick={() => deleteAnnouncement(ann.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors">
+                                                            <TrashIcon className="w-5 h-5" />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </motion.div>
                                     ))}

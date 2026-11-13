@@ -102,7 +102,7 @@ start "Laravel Server" cmd /k "title Laravel Server && cd /d C:\laragon\bin\apac
 
 :: 3. Start Laravel Queue Listener (single process, all queues)
 echo [3/5] Launching Laravel Queue Listener...
-start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan queue:listen --queue=low,ocr,default --sleep=3 --tries=3"
+start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan queue:work --queue=low,ocr,default"
 
 :: 4. Start Persistent OCR Server
 echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
