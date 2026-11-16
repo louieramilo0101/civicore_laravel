@@ -72,9 +72,9 @@ export const DataProvider = ({ children }) => {
         return cached ? JSON.parse(cached) : [];
     });
 
-    // ── State for Issuances ──────────────────────────────────────────────────
-    const [issuances, setIssuances] = useState(() => {
-        const cached = sessionStorage.getItem('civicore_issuances');
+    // ── State for Registry ──────────────────────────────────────────────────
+    const [registry, setRegistry] = useState(() => {
+        const cached = sessionStorage.getItem('civicore_registry');
         return cached ? JSON.parse(cached) : [];
     });
 
@@ -93,7 +93,7 @@ export const DataProvider = ({ children }) => {
     const [loading, setLoading] = useState({
         stats: !sessionStorage.getItem('civicore_stats'),
         documents: true,
-        issuances: !sessionStorage.getItem('civicore_issuances'),
+        registry: !sessionStorage.getItem('civicore_registry'),
         history: !sessionStorage.getItem('civicore_history'),
         templates: !sessionStorage.getItem('civicore_templates')
     });
@@ -101,7 +101,7 @@ export const DataProvider = ({ children }) => {
     const lastFetch = useRef({
         stats: 0,
         documents: 0,
-        issuances: 0,
+        registry: 0,
         history: 0,
         templates: 0
     });
@@ -249,7 +249,9 @@ export const DataProvider = ({ children }) => {
         if (!force && now - lastFetch.current.documents < CACHE_TTL_MS) return;
 
         try {
-            const response = await fetch('/api/documents?per_page=100', { credentials: 'include' });
+            const params = new URLSearchParams({ per_page: '100' });
+            if (force) params.set('_', String(now)); // cache-bust on forced refresh
+            const response = await fetch(`/api/documents?${params.toString()}`, { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch documents');
             const data = await response.json();
 
@@ -286,6 +288,7 @@ export const DataProvider = ({ children }) => {
                         personName: doc.personName || '',
                         barangay: doc.barangay || '',
                         metadata: meta || {},
+                        deleted_at: doc.deleted_at,
                         created_at: doc.created_at,
                         file_path: doc.file_path,
                         has_duplicate: !!doc.has_duplicate,
@@ -309,51 +312,50 @@ export const DataProvider = ({ children }) => {
         }
     }, []);
 
-    const refreshIssuances = useCallback(async (force = false) => {
+    const refreshRegistry = useCallback(async (force = false) => {
         if (!isAuthenticated()) {
-            setLoading(prev => ({ ...prev, issuances: false }));
+            setLoading(prev => ({ ...prev, registry: false }));
             return;
         }
         const now = Date.now();
-        if (!force && now - lastFetch.current.issuances < CACHE_TTL_MS) return;
+        if (!force && now - lastFetch.current.registry < CACHE_TTL_MS) return;
 
         try {
-            const response = await fetch('/api/issuances', { credentials: 'include' });
-            if (!response.ok) throw new Error('Failed to fetch issuances');
+            const params = new URLSearchParams({ type: 'all', per_page: '500' });
+            if (force) params.set('_', String(now)); // cache-bust on forced refresh
+            const response = await fetch(`/api/registry?${params.toString()}`, { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch registry');
             const data = await response.json();
 
             if (data.data) {
-                const mapped = data.data.map(i => ({
-                    id: i.id,
-                    number: i.certNumber,
-                    type: (i.type && i.type.toLowerCase() !== 'unknown') ? i.type : 'birth',
-                    name: i.name,
-                    barangay: i.barangay,
-                    date: i.issuanceDate,
-                    status: i.status || 'Pending',
-                    encoded_by: i.encoded_by,
-                    document_id: i.document_id,
-                    or_number: i.or_number,
-                    print_remarks: i.print_remarks,
-                    requested_by: i.requested_by,
-                    approved_by: i.approved_by,
-                    created_at: i.created_at,
-                    _search: `${i.certNumber || ''} ${i.name || ''} ${i.barangay || ''} ${i.type || ''} ${i.encoded_by || ''} ${i.or_number || ''}`.toLowerCase(),
-                    source: 'issuance',
+                const mapped = data.data.map(r => ({
+                    id: r.id,
+                    certNumber: r.certNumber,
+                    registry_number: r.registry_number,
+                    type: r.type,
+                    name: r.name,
+                    barangay: r.barangay,
+                    date: r.issuanceDate,
+                    status: r.status || 'active',
+                    encoded_by: r.encoded_by,
+                    document_id: r.document_id,
+                    created_at: r.created_at,
+                    _search: `${r.certNumber || ''} ${r.registry_number || ''} ${r.name || ''} ${r.barangay || ''} ${r.type || ''} ${r.encoded_by || ''}`.toLowerCase(),
+                    source: 'registry',
                     raw: {
-                        ...i,
-                        type: (i.type && i.type.toLowerCase() !== 'unknown') ? i.type : 'birth',
-                        source: 'issuance'
+                        ...r,
+                        type: r.type,
+                        source: 'registry'
                     }
                 }));
-                setIssuances(mapped);
-                safeCache('civicore_issuances', JSON.stringify(mapped));
+                setRegistry(mapped);
+                safeCache('civicore_registry', JSON.stringify(mapped));
             }
-            lastFetch.current.issuances = now;
+            lastFetch.current.registry = now;
         } catch (err) {
-            console.error('Error refreshing issuances:', err);
+            console.error('Error refreshing registry:', err);
         } finally {
-            setLoading(prev => ({ ...prev, issuances: false }));
+            setLoading(prev => ({ ...prev, registry: false }));
         }
     }, []);
 
@@ -366,7 +368,9 @@ export const DataProvider = ({ children }) => {
         if (!force && now - lastFetch.current.history < CACHE_TTL_MS) return;
 
         try {
-            const response = await fetch('/api/documents/history', { credentials: 'include' });
+            const params = new URLSearchParams({});
+            if (force) params.set('_', String(now)); // cache-bust on forced refresh
+            const response = await fetch(`/api/documents/history?${params.toString()}`, { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch history');
             const data = await response.json();
 
@@ -391,7 +395,9 @@ export const DataProvider = ({ children }) => {
         if (!force && now - lastFetch.current.templates < CACHE_TTL_MS) return;
 
         try {
-            const response = await fetch('/api/templates', { credentials: 'include' });
+            const params = new URLSearchParams({});
+            if (force) params.set('_', String(now)); // cache-bust on forced refresh
+            const response = await fetch(`/api/templates?${params.toString()}`, { credentials: 'include' });
             if (!response.ok) {
                 const text = await response.text();
                 throw new Error(`Failed to fetch templates: ${response.status} ${text}`);
@@ -416,11 +422,11 @@ export const DataProvider = ({ children }) => {
     const refreshAll = useCallback(() => {
         refreshStats(true);
         refreshDocuments(true);
-        refreshIssuances(true);
+        refreshRegistry(true);
         refreshHistory(true);
         refreshTemplates(true);
         // DO NOT emit global event — this is for polling/visibility, not mutations
-    }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
+    }, [refreshStats, refreshDocuments, refreshRegistry, refreshHistory, refreshTemplates]);
 
     // Call this after explicit mutations (delete, restore, purge, etc.).
     // Emits a typed event so subscribers can invalidate only what they need.
@@ -459,11 +465,11 @@ export const DataProvider = ({ children }) => {
             // full re-fetches and the CPU cost of re-processing the dataset.
             refreshStats();
             refreshDocuments();
-            refreshIssuances();
+            refreshRegistry();
             refreshHistory();
             refreshTemplates();
         }, 60000); // 60s background polling
-    }, [refreshStats, refreshDocuments, refreshIssuances, refreshHistory, refreshTemplates]);
+    }, [refreshStats, refreshDocuments, refreshRegistry, refreshHistory, refreshTemplates]);
 
     // ── Global Polling ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -495,14 +501,25 @@ export const DataProvider = ({ children }) => {
     useEffect(() => {
         const handleDocumentEvent = () => {
             bumpMutation();
+            // Invalidate archive cache for scans (documents table)
+            try {
+                sessionStorage.removeItem('civicore_archived_files');
+                sessionStorage.removeItem('civicore_archived_files_time');
+            } catch (e) { /* ignore */ }
             refreshDocuments(true);
             refreshHistory(true);
             refreshStats(true);
         };
 
-        const handleIssuanceEvent = () => {
+        const handleRegistryEvent = () => {
             bumpMutation();
-            refreshIssuances(true);
+            // Invalidate archive cache for registry records + tickets
+            try {
+                sessionStorage.removeItem('civicore_archive_records');
+                sessionStorage.removeItem('civicore_archive_records_time');
+            } catch (e) { /* ignore */ }
+            globalRefreshEmitter.emit();
+            refreshRegistry(true);
             refreshStats(true);
         };
 
@@ -526,13 +543,11 @@ export const DataProvider = ({ children }) => {
         const unsubDocBulkProc  = on(Events.DOCUMENT_BULK_PROCESS, handleDocumentEvent);
         const unsubDocOcrStatus = on(Events.DOCUMENTOCR_STATUS,    handleDocumentEvent);
 
-        const unsubIssCreated  = on(Events.ISSUANCE_CREATED,   handleIssuanceEvent);
-        const unsubIssUpdated  = on(Events.ISSUANCE_UPDATED,   handleIssuanceEvent);
-        const unsubIssDeleted  = on(Events.ISSUANCE_DELETED,   handleIssuanceEvent);
-        const unsubIssIssued   = on(Events.ISSUANCE_ISSUED,    handleIssuanceEvent);
-        const unsubIssReq      = on(Events.ISSUANCE_REQUESTED, handleIssuanceEvent);
-        const unsubIssAppr     = on(Events.ISSUANCE_APPROVED,  handleIssuanceEvent);
-        const unsubIssRej      = on(Events.ISSUANCE_REJECTED,  handleIssuanceEvent);
+        const unsubRegCreated  = on(Events.REGISTRY_CREATED,   handleRegistryEvent);
+        const unsubRegUpdated  = on(Events.REGISTRY_UPDATED,   handleRegistryEvent);
+        const unsubRegDeleted  = on(Events.REGISTRY_DELETED,   handleRegistryEvent);
+        const unsubRegRestored = on(Events.REGISTRY_RESTORED,  handleRegistryEvent);
+        const unsubRegPurged   = on(Events.REGISTRY_PURGED,    handleRegistryEvent);
 
         const unsubAcctCreated  = on(Events.ACCOUNT_CREATED,   handleAccountEvent);
         const unsubAcctUpdated  = on(Events.ACCOUNT_UPDATED,   handleAccountEvent);
@@ -546,27 +561,32 @@ export const DataProvider = ({ children }) => {
             unsubDocCreated(); unsubDocUpdated(); unsubDocDeleted();
             unsubDocRestored(); unsubDocPurged(); unsubDocBulkAppr();
             unsubDocBulkDel(); unsubDocBulkProc(); unsubDocOcrStatus();
-            unsubIssCreated(); unsubIssUpdated(); unsubIssDeleted();
-            unsubIssIssued(); unsubIssReq(); unsubIssAppr(); unsubIssRej();
+            unsubRegCreated(); unsubRegUpdated(); unsubRegDeleted();
+            unsubRegRestored(); unsubRegPurged();
             unsubAcctCreated(); unsubAcctUpdated(); unsubAcctDisabled(); unsubAcctReen();
             unsubTmpl(); unsubSet();
         };
-    }, [bumpMutation, refreshDocuments, refreshHistory, refreshStats, refreshIssuances, refreshTemplates]);
+    }, [bumpMutation, refreshDocuments, refreshHistory, refreshStats, refreshRegistry, refreshTemplates]);
 
     const value = {
         stats,
         documents,
-        issuances,
+        registry,
+        issuances: registry, // Backward-compatibility alias for components still expecting `issuances`
         history,
         templates,
-        loading,
+        loading: {
+            ...loading,
+            issuances: loading.registry, // Backward-compatibility alias
+        },
         backgroundTasks,
         undoableTasks,
         runBackgroundTask,
         clearUndoableTask,
         refreshStats,
         refreshDocuments,
-        refreshIssuances,
+        refreshRegistry,
+        refreshIssuances: refreshRegistry, // Backward-compatibility alias
         refreshHistory,
         refreshTemplates,
         // Helper to refresh everything at once (e.g. after a mutation)

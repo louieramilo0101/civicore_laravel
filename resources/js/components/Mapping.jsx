@@ -173,11 +173,11 @@ const Mapping = () => {
     };
 
     const filteredApiData = React.useMemo(() => {
-        return apiData.filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
+        return (apiData || []).filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
     }, [apiData, quickFilter, dateFrom, dateTo]);
 
     const filteredDocsData = React.useMemo(() => {
-        return docsData.filter(d => isWithinTimeframe(d.created_at));
+        return (docsData || []).filter(d => isWithinTimeframe(d.created_at));
     }, [docsData, quickFilter, dateFrom, dateTo]);
 
     // issuances table is now pure registry records; no ticket_number filter needed
@@ -187,6 +187,8 @@ const Mapping = () => {
         const seenDocIds = new Set();
         const unique = [];
         filteredApiDataNoTickets.forEach(i => {
+            // Skip archived/soft-deleted records — they live in the Archive Manager
+            if (i.deleted_at || (i.status || '').toLowerCase() === 'archived') return;
             if (i.document_id) {
                 const docId = Number(i.document_id);
                 if (!seenDocIds.has(docId)) {
@@ -294,6 +296,8 @@ const Mapping = () => {
         };
 
         filteredApiDataNoTickets.forEach(issuance => {
+            // Skip archived/soft-deleted records — they live in the Archive Manager
+            if (issuance.deleted_at || (issuance.status || '').toLowerCase() === 'archived') return;
             const type = getNormalizedType(issuance);
             const dateStr = issuance.issuanceDate || issuance.created_at;
             const date = new Date(dateStr);
@@ -553,6 +557,25 @@ const Mapping = () => {
     };
 
 
+    // The "Registry Records" tab shows exactly what is in the registry database —
+    // the registry records themselves, not documents derived from uploads. Soft-
+    // deleted/archived records are excluded (they live in the Archive Manager).
+    const registryRecords = React.useMemo(() => {
+        return filteredApiDataNoTickets
+            .filter(i => !(i.deleted_at || (i.status || '').toLowerCase() === 'archived'))
+            .map(i => ({
+                id: i.id,
+                document_id: i.document_id || i.id,
+                number: i.registry_number || i.certNumber || `REG-#${i.id}`,
+                name: i.name || 'Registry Record',
+                type: i.type || getNormalizedType(i),
+                barangay: i.barangay || 'Ibayo Silangan',
+                date: i.issuanceDate || (i.created_at ? new Date(i.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''),
+                encoded_by: i.encoded_by || 'Staff',
+                status: i.status || 'active'
+            }));
+    }, [filteredApiDataNoTickets]);
+
     const filteredPrints = React.useMemo(() => {
         return filteredApiDataNoTickets.filter(print => {
             const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
@@ -591,7 +614,7 @@ const Mapping = () => {
         });
     }, [filteredDocsData, activeFilter]);
 
-    const activeTableData = tableTab === 'prints' ? filteredPrints : filteredUploads;
+    const activeTableData = tableTab === 'prints' ? filteredPrints : registryRecords;
 
 
 
@@ -1203,7 +1226,7 @@ const Mapping = () => {
                                 <span>Registry Records</span>
                                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${tableTab === 'uploads' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                     }`}>
-                                    {filteredUploads.length}
+                                    {registryRecords.length}
                                 </span>
                             </button>
                             <button
@@ -1378,25 +1401,25 @@ const Mapping = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
-                                            <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => locateBarangay(item.barangay)}
-                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-[#d4a574] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-                                                    title="Locate on Map"
-                                                >
-                                                    <MagnifyingGlassIcon className="w-4 h-4" />
-                                                </button>
-                                                <a
-                                                    href={`/api/documents/view/${item.document_id || item.id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-indigo-500 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-                                                    title="View Full Document"
-                                                >
-                                                    <EyeIcon className="w-4 h-4" />
-                                                </a>
-                                            </div>
-                                        </td>
+    <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity">
+        <button
+            onClick={() => locateBarangay(item.barangay)}
+            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-[#d4a574] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
+            title="Locate on Map"
+        >
+            <MagnifyingGlassIcon className="w-4 h-4" />
+        </button>
+        <a
+            href={`/api/documents/view/${item.document_id || item.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-indigo-500 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
+            title="View Full Document"
+        >
+            <EyeIcon className="w-4 h-4" />
+        </a>
+    </div>
+</td>
                                     </tr>
                                 ))
                             )}

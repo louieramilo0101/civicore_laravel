@@ -1447,6 +1447,7 @@ const Documents = () => {
                                 setActiveOcr(null);
                             }}
                             onDuplicateStatusChange={handleDuplicateStatusChange}
+                            forceCompare={activeOcr.forceCompare}
                         />
                     </Suspense>
                 )}

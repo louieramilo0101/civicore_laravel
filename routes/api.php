@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\IssuanceController;
+use App\Http\Controllers\RegistryController;
+use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\TicketIssuanceController;
 use App\Http\Controllers\BarangayController;
 use App\Http\Controllers\TemplateController;
@@ -91,6 +92,7 @@ Route::middleware('web')->group(function () {
         Route::delete('/documents/{id}',            [DocumentController::class, 'destroy']);
         Route::post('/documents/upload',            [DocumentController::class, 'upload']);
         Route::post('/documents/{id}/quick-approve', [DocumentController::class, 'quickApprove']);
+        Route::post('/documents/bulk-process',        [DocumentController::class, 'bulkProcess']);
         Route::post('/documents/bulk-approve',        [DocumentController::class, 'bulkApprove']);
         Route::post('/documents/bulk-delete',         [DocumentController::class, 'bulkDelete']);
         Route::post('/documents/{id}/toggle-ocr',   [DocumentController::class, 'toggleOcr']);
@@ -99,6 +101,7 @@ Route::middleware('web')->group(function () {
         Route::get('/documents/view-image/{id}',    [DocumentController::class, 'viewImage']);
         Route::get('/documents/download-txt/{id}',  [DocumentController::class, 'downloadTxt']);
         Route::post('/documents/{id}/check-duplicate', [DocumentController::class, 'checkDuplicate']);
+        Route::get('/documents/archived', [DocumentController::class, 'archived']);
 
         // OCR
         Route::post('/ocr/process', [OcrController::class, 'process']);
@@ -107,22 +110,21 @@ Route::middleware('web')->group(function () {
             return response()->json(['status' => $doc ? $doc->status : 'not_found']);
         });
 
-        // Issuances
-        Route::get('/issuances',                          [IssuanceController::class, 'index']);
-        Route::get('/issuances/{id}',                     [IssuanceController::class, 'show']);
-        Route::get('/issuances/download/{id}',            [IssuanceController::class, 'download']);
-        Route::get('/issuances/view/{id}',                [IssuanceController::class, 'view']);
-        Route::post('/issuances',                         [IssuanceController::class, 'store']);
-        Route::post('/issuances/{id}/request-print',      [IssuanceController::class, 'requestPrint']);
-        Route::post('/issuances/{id}/approve-print',      [IssuanceController::class, 'approvePrint']);
-        Route::post('/issuances/{id}/reject-print',       [IssuanceController::class, 'rejectPrint']);
-        Route::put('/issuances/{id}',                     [IssuanceController::class, 'update']);
-        Route::delete('/issuances/{id}',                  [IssuanceController::class, 'destroy']);
-        Route::post('/issuances/{id}/undo',               [IssuanceController::class, 'undo']);
-        Route::post('/issuances/{id}/issue',              [IssuanceController::class, 'markAsIssued']);
-        Route::get('/issuances/next-cert-number/{type}',  [IssuanceController::class, 'nextCertNumber']);
+        // Registry Database (Birth, Death, Marriage)
+        Route::get('/registry',                           [RegistryController::class, 'index']);
+        Route::get('/registry/{type}/{id}',               [RegistryController::class, 'show']);
+        Route::post('/registry',                          [RegistryController::class, 'store']);
+        Route::put('/registry/{type}/{id}',               [RegistryController::class, 'update']);
+        Route::delete('/registry/{type}/{id}',            [RegistryController::class, 'destroy']);
+        Route::post('/registry/{type}/{id}/restore',      [RegistryController::class, 'restore']);
+        Route::get('/registry/next-cert-number/{type}',   [RegistryController::class, 'nextCertNumber']);
 
-        Route::post('/issuances/ocr-search',              [IssuanceController::class, 'ocrSearch']);
+        // Archive Manager
+        Route::get('/archive',                            [ArchiveController::class, 'index']);
+        Route::post('/archive/{type}/{id}/restore',       [ArchiveController::class, 'restoreRegistry']);
+        Route::delete('/archive/{type}/{id}',             [ArchiveController::class, 'purgeRegistry']);
+        Route::post('/archive/tickets/{id}/restore',      [ArchiveController::class, 'restoreTicket']);
+        Route::delete('/archive/tickets/{id}',            [ArchiveController::class, 'purgeTicket']);
 
         // Ticket Issuances (citizen-request copies — separate from Registry Database)
         Route::get('/ticket-issuances',           [TicketIssuanceController::class, 'index']);
@@ -156,14 +158,12 @@ Route::middleware('web')->group(function () {
         Route::get('/v1/tickets/{id}/consent-form', [TicketController::class, 'getConsentForm']);
         Route::get('/tickets/{id}/consent-form',    [TicketController::class, 'getConsentForm']);
 
-        // Document Archive/Undo (Restore) accessible to all authenticated users
-        Route::get('/documents/archived',           [DocumentController::class, 'archived']);
+        // Document Undo (Restore) accessible to all authenticated users
         Route::post('/documents/{id}/undo',         [DocumentController::class, 'undo']);
+        Route::delete('/documents/{id}/purge',      [DocumentController::class, 'purge']);
 
         // ── Admin-Only Routes (Require Admin/SuperAdmin Role) ────────────────
         Route::middleware('admin')->group(function () {
-            // Document Archive/Purge
-            Route::delete('/documents/{id}/purge',      [DocumentController::class, 'purge']);
 
             // Template Configuration
             Route::post('/templates/upload',            [TemplateController::class, 'upload']);

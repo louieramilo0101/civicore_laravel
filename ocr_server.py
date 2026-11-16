@@ -595,35 +595,51 @@ def process_ocr_gemini(data: dict):
     else:
         # Gemini Cloud Vision Pipeline
         print(f" [*] Stage 2/3 - Inference: Sending request to Google Gemini Cloud...")
-        now = time.time()
-        # Filter active keys (cooldown expired) vs cooling keys
-        active_keys = [(idx, k) for idx, k in enumerate(api_keys) if key_cooldowns.get(idx, 0) <= now]
-        
-        if not active_keys:
-            # If all keys are on cooldown, pick key expiring earliest
-            earliest_idx = min(key_cooldowns, key=key_cooldowns.get)
-            wait_secs = max(0.5, key_cooldowns[earliest_idx] - now)
-            # Cap the wait so the server never blocks indefinitely
-            wait_secs = min(wait_secs, 30.0)
-            print(f"All Gemini API keys on cooldown. Waiting {wait_secs:.1f}s for key index {earliest_idx}...")
-            time.sleep(wait_secs)
-            keys_to_try = [(earliest_idx, api_keys[earliest_idx])]
-        else:
-            # Prioritize primary key (0) if active, else cycle through remaining active keys
-            keys_to_try = active_keys
 
-        response = None
+        now = time.time()
+        # Clean expired cooldowns
+        expired = [idx for idx, exp in key_cooldowns.items() if exp <= now]
+        for idx in expired:
+            key_cooldowns.pop(idx, None)
+
+        # Filter active keys (cooldown expired) vs cooling keys
+        active_keys = [(idx, k) for idx, k in enumerate(api_keys) if idx not in key_cooldowns]
+
+        if not active_keys:
+            # If all keys are on cooldown, DO NOT time.sleep() inside serialize_processing!
+            earliest_idx = min(key_cooldowns, key=key_cooldowns.get)
+            wait_secs = max(1, int(math.ceil(key_cooldowns[earliest_idx] - now)))
+            print(f"All {len(api_keys)} Gemini API keys are on 60s cooldown! Earliest key {earliest_idx} ready in {wait_secs}s.")
+            raise HTTPException(
+                status_code=429,
+                detail=f"All Gemini API keys are currently rate-limited on 60-second cooldown. Key {earliest_idx} will be ready in {wait_secs}s."
+            )
+
+        # Rotate among available active keys
+        # If primary key 0 is available, put it first, then others
+        keys_to_try = []
+        if any(idx == 0 for idx, _ in active_keys):
+            keys_to_try.append((0, api_keys[0]))
+            backup_active = [(idx, k) for idx, k in active_keys if idx != 0]
+            if backup_active:
+                start_back_idx = current_key_index % len(backup_active)
+                rotated_backups = backup_active[start_back_idx:] + backup_active[:start_back_idx]
+                keys_to_try.extend(rotated_backups)
+        else:
+            start_idx = current_key_index % len(active_keys)
+            keys_to_try = active_keys[start_idx:] + active_keys[:start_idx]
+
+        primary_model = configured_model or "gemini-2.5-flash"
+        candidates = [primary_model, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        models_to_try = list(dict.fromkeys(candidates))
+        engine_used = primary_model
+
         for attempt, (key_idx, key) in enumerate(keys_to_try):
             print(f"Using API Key index {key_idx} (Attempt {attempt+1}/{len(keys_to_try)})")
-            success = False
-            primary_model = configured_model or "gemini-2.5-flash"
-            candidates = [primary_model, "gemini-2.5-flash", "gemini-flash-latest"]
-            models_to_try = list(dict.fromkeys(candidates))
-            
             try:
+                client = genai.Client(api_key=key)
                 for model_name in models_to_try:
                     try:
-                        client = genai.Client(api_key=key)
                         response = client.models.generate_content(
                             model=model_name,
                             contents=[img, prompt],
@@ -631,11 +647,7 @@ def process_ocr_gemini(data: dict):
                                 "response_mime_type": "application/json"
                             }
                         )
-                        key_cooldowns.pop(key_idx, None)
-                        if key_idx > 0:
-                            current_key_index = key_idx
                         engine_used = model_name
-                        success = True
                         break
                     except Exception as model_err:
                         err_str = str(model_err)
@@ -644,20 +656,26 @@ def process_ocr_gemini(data: dict):
                             continue
                         raise model_err
 
-                if success:
-                    break
+                # Mark key as working & clear its cooldown if any
+                key_cooldowns.pop(key_idx, None)
+                if key_idx > 0:
+                    current_key_index = (key_idx + 1) % len(api_keys)
+                break  # success!
             except Exception as e:
                 print(f"DEBUG GEMINI ERROR: {e}")
                 err_str = str(e)
-                if '429' in err_str or '503' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
+                if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
                     key_cooldowns[key_idx] = time.time() + 60
-                    print(f"Key index {key_idx} hit rate limit. Marked on 60s cooldown.")
+                    print(f"Key index {key_idx} hit rate limit (429/ResourceExhausted). Put on 60s cooldown.")
                     if attempt < len(keys_to_try) - 1:
-                        print("Immediately switching to next available API key...")
+                        print("Immediately trying next active API key...")
                         continue
-                t_fail = time.perf_counter() - t_start
-                print(f" [OCR FAILED] Gemini API error after {t_fail:.2f}s: {err_str}")
-                print("=" * 70 + "\n")
+                elif '503' in err_str or 'UNAVAILABLE' in err_str:
+                    key_cooldowns[key_idx] = time.time() + 30
+                    print(f"Key index {key_idx} encountered 503/Unavailable. Put on 30s cooldown.")
+                    if attempt < len(keys_to_try) - 1:
+                        print("Immediately trying next active API key...")
+                        continue
                 raise HTTPException(status_code=500, detail=f"Gemini API error after {attempt+1} attempts: {err_str}")
                 
         if not response:

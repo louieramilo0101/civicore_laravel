@@ -81,12 +81,10 @@ class DocumentController extends Controller
         $total = $totalResult[0]->total;
         
         // Get paginated results without duplicate row inflation from 1-to-many joins
-        // NOTE: ticket_number comes only from the tickets table. The issuances table
-        // is the pure Registry Database and no longer carries ticket_number
-        // (migrated to ticket_issuances, then column dropped).
+        // NOTE: ticket_number comes from tickets; certNumber comes from registry tables
         $query = "SELECT d.id, d.name, d.type, d.date, d.size, d.status, d.personName, d.barangay, d.metadata, d.ocr_text, d.extracted_fields, d.detected_type, d.created_at, d.updated_at, d.encoded_by, d.file_path, d.image_path,
                           t.ticket_number as ticket_number,
-                          i.certNumber as certNumber
+                          r.certNumber as certNumber
                   FROM documents d
                   LEFT JOIN (
                       SELECT document_id, MIN(ticket_number) as ticket_number
@@ -96,10 +94,15 @@ class DocumentController extends Controller
                   ) t ON t.document_id = d.id
                   LEFT JOIN (
                       SELECT document_id, MIN(certNumber) as certNumber
-                      FROM issuances
-                      WHERE deleted_at IS NULL
+                      FROM (
+                          SELECT document_id, certNumber FROM registry_births WHERE deleted_at IS NULL AND document_id IS NOT NULL
+                          UNION ALL
+                          SELECT document_id, certNumber FROM registry_deaths WHERE deleted_at IS NULL AND document_id IS NOT NULL
+                          UNION ALL
+                          SELECT document_id, certNumber FROM registry_marriages WHERE deleted_at IS NULL AND document_id IS NOT NULL
+                      ) union_regs
                       GROUP BY document_id
-                  ) i ON i.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
+                  ) r ON r.document_id = d.id" . $whereClause . " ORDER BY d.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = ($page - 1) * $perPage;
         
@@ -146,11 +149,16 @@ class DocumentController extends Controller
 
             foreach ($candidatesByType as $type => $items) {
                 $regNos = array_column($items, 'regNo');
-                $dupes = DB::table('issuances')
+                $normType = $type === 'marriage_license' ? 'marriage' : $type;
+                $targetTable = 'registry_' . ($normType === 'death' ? 'deaths' : ($normType === 'marriage' ? 'marriages' : 'births'));
+
+                $dupes = DB::table($targetTable)
                     ->whereNull('deleted_at')
-                    ->whereIn('certNumber', $regNos)
-                    ->orWhereIn('registry_number', $regNos)
-                    ->get(['id', 'certNumber', 'registry_number', 'type', 'name', 'barangay', 'issuanceDate', 'encoded_by', 'extracted_data', 'document_id'])
+                    ->where(function ($q) use ($regNos) {
+                        $q->whereIn('certNumber', $regNos)
+                          ->orWhereIn('registry_number', $regNos);
+                    })
+                    ->get(['id', 'certNumber', 'registry_number', DB::raw("'$normType' as type"), 'name', 'barangay', 'issuanceDate', 'encoded_by', 'extracted_data', 'document_id'])
                     ->keyBy(function ($r) { return $r->certNumber . '|' . $r->registry_number; });
 
                 foreach ($items as $item) {
@@ -876,7 +884,15 @@ class DocumentController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                DB::table('issuances')->where('document_id', $id)->update([
+                DB::table('registry_births')->where('document_id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                DB::table('registry_deaths')->where('document_id', $id)->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                DB::table('registry_marriages')->where('document_id', $id)->update([
                     'deleted_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -914,27 +930,29 @@ class DocumentController extends Controller
 
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
-        // Check the pure Registry Database (issuances table).
-        // ticket_issuances are citizen-request copies and must NOT trigger duplicate warnings.
-        $registryQuery = DB::table('issuances')->whereNull('deleted_at');
+        // Check the new registry tables
+        $table = match ($normType) {
+            'birth' => 'registry_births',
+            'death' => 'registry_deaths',
+            'marriage' => 'registry_marriages',
+            default => null
+        };
 
-        if ($normType === 'marriage') {
-            $registryQuery->whereIn('type', ['marriage', 'marriage_license']);
-        } elseif (!empty($normType) && $normType !== 'all') {
-            $registryQuery->where('type', $normType);
-        }
+        if ($table) {
+            $query = DB::table($table)->whereNull('deleted_at')
+                ->where('status', 'active')
+                ->where(function ($q) use ($regNo) {
+                    $q->where('certNumber', $regNo)
+                      ->orWhere('registry_number', $regNo);
+                });
 
-        if ($excludeDocId > 0) {
-            $registryQuery->where('document_id', '!=', $excludeDocId);
-        }
+            if ($excludeDocId > 0) {
+                $query->where('document_id', '!=', $excludeDocId);
+            }
 
-        $registryQuery->where(function ($q) use ($regNo) {
-            $q->where('certNumber', $regNo)
-              ->orWhere('registry_number', $regNo);
-        });
-
-        if ($registryQuery->exists()) {
-            return true;
+            if ($query->exists()) {
+                return true;
+            }
         }
 
         // Also check the staging documents table. A record sitting in
@@ -962,7 +980,7 @@ class DocumentController extends Controller
 
     /**
      * Soft name-match check: warns if a record with the same full name exists
-     * in the registry (issuances) or staging (documents) tables, but the
+     * in the registry (registry_* tables) or staging (documents) tables, but the
      * registry number differs (or is missing). Returns the matched record
      * for side-by-side comparison, or null if no match.
      */
@@ -976,36 +994,38 @@ class DocumentController extends Controller
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
         $regNo = trim($fields['registry_number'] ?? $fields['registry_no'] ?? $fields['certNumber'] ?? '');
 
-        // Check issuances (registry) for same name, different registry number
-        // Note: issuances table uses 'name' column, not 'personName'
-        $registryQuery = DB::table('issuances')->whereNull('deleted_at');
+        // Check new registry tables for same name, different registry number
+        $table = match ($normType) {
+            'birth' => 'registry_births',
+            'death' => 'registry_deaths',
+            'marriage' => 'registry_marriages',
+            default => null
+        };
 
-        if ($normType === 'marriage') {
-            $registryQuery->whereIn('type', ['marriage', 'marriage_license']);
-        } elseif (!empty($normType) && $normType !== 'all') {
-            $registryQuery->where('type', $normType);
-        }
+        if ($table) {
+            $registryQuery = DB::table($table)->whereNull('deleted_at')
+                ->where('status', 'active');
 
-        if ($excludeDocId > 0) {
-            $registryQuery->where('document_id', '!=', $excludeDocId);
-        }
+            if ($excludeDocId > 0) {
+                $registryQuery->where('document_id', '!=', $excludeDocId);
+            }
 
-        // Use database-agnostic case-insensitive comparison on 'name' column
-        $registryQuery->whereRaw('UPPER(name) = ?', [$fullName]);
+            // Use database-agnostic case-insensitive comparison on 'name' column
+            $registryQuery->whereRaw('UPPER(name) = ?', [$fullName]);
 
-        // If we have a registry number, exclude records that already match it (handled by hasTrueDuplicate)
-        if (!empty($regNo)) {
-            $registryQuery->where(function ($q) use ($regNo) {
-                $q->where('certNumber', '!=', $regNo)
-                  ->where('registry_number', '!=', $regNo);
-            });
-        }
+            // If we have a registry number, exclude records that already match it (handled by hasTrueDuplicate)
+            if (!empty($regNo)) {
+                $registryQuery->where(function ($q) use ($regNo) {
+                    $q->where('certNumber', '!=', $regNo)
+                      ->where('registry_number', '!=', $regNo);
+                });
+            }
 
-        $match = $registryQuery->first();
-        if ($match) {
-            // Normalize: issuances uses 'name', documents uses 'personName'
-            $match->personName = $match->name ?? $match->personName ?? '';
-            return $match;
+            $match = $registryQuery->first();
+            if ($match) {
+                $match->personName = $match->name ?? '';
+                return $match;
+            }
         }
 
         // Check documents (staging) for same name, different registry number
@@ -1056,13 +1076,8 @@ class DocumentController extends Controller
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
         // Only check the pure Registry Database — ticket_issuances are not registry entries.
-        $query = DB::table('issuances')->whereNull('deleted_at');
-
-        if ($normType === 'marriage') {
-            $query->whereIn('type', ['marriage', 'marriage_license']);
-        } elseif (!empty($normType) && $normType !== 'all') {
-            $query->where('type', $normType);
-        }
+        $targetTable = 'registry_' . ($normType === 'death' ? 'deaths' : ($normType === 'marriage' ? 'marriages' : 'births'));
+        $query = DB::table($targetTable)->whereNull('deleted_at');
 
         if ($excludeDocId > 0) {
             $query->where('document_id', '!=', $excludeDocId);
@@ -1209,14 +1224,12 @@ class DocumentController extends Controller
                 ]
             );
 
-            // --- Automatically inject or UPDATE in Issuances (Master Registry) if Processed or Issued ---
+            // --- Automatically inject or UPDATE in Registry (Master Registry) if Processed or Issued ---
             if ($status === 'Processed' || $status === 'Issued') {
-                // 1. Check if a Master Record already exists for this document
-                $existing = DB::select("SELECT id, certNumber FROM issuances WHERE document_id = ?", [$id]);
-                
                 $doc = DB::select("SELECT * FROM documents WHERE id = ?", [$id]);
                 if (count($doc) > 0) {
                     $docType = $doc[0]->detected_type ?: $doc[0]->type;
+                    $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
 
                     // --- Logic Fix: Infer type from certNumber prefix if unknown ---
                     if (empty($docType) || strtolower($docType) === 'unknown') {
@@ -1225,16 +1238,16 @@ class DocumentController extends Controller
                         elseif (str_starts_with($p, 'DC')) $docType = 'death';
                         elseif (str_starts_with($p, 'ML') || str_starts_with($p, 'MC')) $docType = 'marriage';
                     }
-                    
-                    // Keep the original upload as the issuance source of truth, or auto-generate official PDF
-                    $issuanceFilePath  = $doc[0]->file_path;
-                    $issuanceImagePath = $doc[0]->image_path ?? null;
 
-                    if (empty($issuanceFilePath) || !\Storage::disk('local')->exists($issuanceFilePath)) {
+                    // Keep the original upload as the registry source of truth, or auto-generate official PDF
+                    $registryFilePath  = $doc[0]->file_path;
+                    $registryImagePath = $doc[0]->image_path ?? null;
+
+                    if (empty($registryFilePath) || !\Storage::disk('local')->exists($registryFilePath)) {
                         try {
                             $pdfService = app(\App\Services\CertificatePdfGeneratorService::class);
                             $pdfService->generateForDocument($id);
-                            $issuanceFilePath = DB::table('documents')->where('id', $id)->value('file_path');
+                            $registryFilePath = DB::table('documents')->where('id', $id)->value('file_path');
                         } catch (\Throwable $e) {
                             \Log::warning("Auto PDF generation in performSave for document {$id}: " . $e->getMessage());
                         }
@@ -1250,79 +1263,82 @@ class DocumentController extends Controller
                     $ticketRecord = DB::table('tickets')->where('document_id', $id)->first();
                     $ticketNumber = $ticketRecord ? $ticketRecord->ticket_number : null;
 
-                    if (count($existing) > 0) {
-                        // 2. UPDATE existing Master Record (Sync certNumber if registry_number provided)
-                        // Extract registry_number for the new searchable column
+                    // Determine target registry table
+                    $registryTable = match ($normType) {
+                        'birth' => 'registry_births',
+                        'death' => 'registry_deaths',
+                        'marriage' => 'registry_marriages',
+                        default => null
+                    };
+
+                    if ($registryTable) {
+                        // 1. Check if a Master Record already exists for this document
+                        $existing = DB::table($registryTable)->where('document_id', $id)->first();
+
                         $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
                         $registryNumber = !empty($userRegNo) ? $userRegNo : null;
 
-                        $updateData = [
-                            'type' => $docType,
-                            'certificate_type' => $normCertType,
-                            'name' => $personName,
-                            'barangay' => $barangay,
-                            'status' => 'Active',
-                            'encoded_by' => $encodedBy,
-                            'extracted_data' => EncryptedJson::encode($extractedFields),
-                            'registry_number' => $registryNumber,
-                            'file_path' => $issuanceFilePath,
-                            'image_path' => $issuanceImagePath,
-                            'updated_at' => now()
-                        ];
+                        if ($existing) {
+                            // 2. UPDATE existing Master Record
+                            $updateData = [
+                                'certNumber' => $existing->certNumber, // Keep existing certNumber
+                                'name' => $personName,
+                                'barangay' => $barangay,
+                                'status' => 'active',
+                                'encoded_by' => $encodedBy,
+                                'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                                'registry_number' => $registryNumber,
+                                'file_path' => $registryFilePath,
+                                'image_path' => $registryImagePath,
+                                'updated_at' => now()
+                            ];
 
-                        // If a ticket is linked, set or_number and requested_by if they aren't already set
-                        $existingRecord = DB::table('issuances')->where('document_id', $id)->first();
-                        if ($existingRecord && $ticketNumber) {
-                            if (empty($existingRecord->or_number)) {
-                                $updateData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                            // If a ticket is linked, set or_number and requested_by if they aren't already set
+                            if ($ticketNumber) {
+                                if (empty($existing->or_number)) {
+                                    $updateData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                                }
+                                if (empty($existing->requested_by)) {
+                                    $updateData['requested_by'] = $encodedBy;
+                                }
                             }
-                            if (empty($existingRecord->requested_by)) {
-                                $updateData['requested_by'] = $encodedBy;
+
+                            DB::table($registryTable)->where('document_id', $id)->update($updateData);
+                        } else {
+                            // 3. INSERT new Master Record
+                            $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
+                            $year = date('Y');
+
+                            // Use a fast atomic increment instead of MAX(id) scan
+                            $nextNum = (int) DB::selectOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_num FROM {$registryTable} WHERE deleted_at IS NULL")->next_num;
+
+                            $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                            $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
+                            $issuanceDate = date('m/d/Y');
+
+                            $insertData = [
+                                'certNumber' => $certNumber,
+                                'name' => $personName,
+                                'barangay' => $barangay,
+                                'issuanceDate' => $issuanceDate,
+                                'status' => 'active',
+                                'encoded_by' => $encodedBy,
+                                'document_id' => $id,
+                                'extracted_data' => json_encode($extractedFields, JSON_UNESCAPED_UNICODE),
+                                'registry_number' => $registryNumber,
+                                'file_path' => $registryFilePath,
+                                'image_path' => $registryImagePath,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ];
+
+                            if ($ticketNumber) {
+                                $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                                $insertData['requested_by'] = $encodedBy;
                             }
+
+                            DB::table($registryTable)->insert($insertData);
                         }
-
-                        DB::table('issuances')->where('document_id', $id)->update($updateData);
-                    } else {
-                        // 3. INSERT new Master Record — synchronous, no global lock.
-                        // The duplicate check in hasTrueDuplicate() already prevents
-                        // double registration, and document_id has a unique index,
-                        // so no lock is needed. This keeps the registry sync instant.
-                        $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
-                        $year = date('Y');
-
-                        // Use a fast atomic increment instead of MAX(id) scan
-                        $nextNum = (int) DB::selectOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_num FROM issuances WHERE deleted_at IS NULL")->next_num;
-
-                        $genCertNumber = $prefix . '-' . $year . '-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
-                        $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
-                        $certNumber = !empty($userRegNo) ? $userRegNo : $genCertNumber;
-                        $registryNumber = !empty($userRegNo) ? $userRegNo : null;
-                        $issuanceDate = date('m/d/Y');
-
-                        $insertData = [
-                            'certNumber' => $certNumber,
-                            'type' => $docType,
-                            'certificate_type' => $normCertType,
-                            'name' => $personName,
-                            'barangay' => $barangay,
-                            'issuanceDate' => $issuanceDate,
-                            'status' => 'Active',
-                            'encoded_by' => $encodedBy,
-                            'document_id' => $id,
-                            'extracted_data' => EncryptedJson::encode($extractedFields),
-                            'registry_number' => $registryNumber,
-                            'file_path' => $issuanceFilePath,
-                            'image_path' => $issuanceImagePath,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ];
-
-                        if ($ticketNumber) {
-                            $insertData['or_number'] = 'OR-' . date('Ymd') . '-' . str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-                            $insertData['requested_by'] = $encodedBy;
-                        }
-
-                        DB::table('issuances')->insert($insertData);
                     }
                 }
             }
@@ -1368,7 +1384,10 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'error' => 'Document not found'], 404);
         }
 
-        DB::transaction(function () use ($id, $document) {
+        $docType = $document->detected_type ?: $document->type;
+        $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
+
+        DB::transaction(function () use ($id, $document, $normType) {
             $this->logHistory($id, 'Deleted');
 
             DB::table('documents')->where('id', $id)->update([
@@ -1376,11 +1395,22 @@ class DocumentController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Soft-delete linked registry issuance rows
-            DB::table('issuances')->where('document_id', $id)->update([
-                'deleted_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // Archive linked registry records (set status to archived)
+            $registryTable = match ($normType) {
+                'birth' => 'registry_births',
+                'death' => 'registry_deaths',
+                'marriage' => 'registry_marriages',
+                default => null
+            };
+
+            if ($registryTable) {
+                DB::table($registryTable)->where('document_id', $id)->update([
+                    'status' => 'archived',
+                    'archived_at' => now(),
+                    'archive_reason' => 'document_deleted',
+                    'updated_at' => now(),
+                ]);
+            }
 
             // Soft-delete linked ticket issuances (citizen-request copies)
             DB::table('ticket_issuances')->where('document_id', $id)->update([
@@ -1426,16 +1456,31 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'error' => 'Document not found'], 404);
         }
 
-        DB::transaction(function () use ($id) {
+        $docType = $document->detected_type ?: $document->type;
+        $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
+
+        DB::transaction(function () use ($id, $normType) {
             DB::table('documents')->where('id', $id)->update([
                 'deleted_at' => null,
                 'updated_at' => now(),
             ]);
 
-            DB::table('issuances')->where('document_id', $id)->update([
-                'deleted_at' => null,
-                'updated_at' => now(),
-            ]);
+            // Restore linked registry records (set status back to active)
+            $registryTable = match ($normType) {
+                'birth' => 'registry_births',
+                'death' => 'registry_deaths',
+                'marriage' => 'registry_marriages',
+                default => null
+            };
+
+            if ($registryTable) {
+                DB::table($registryTable)->where('document_id', $id)->update([
+                    'status' => 'active',
+                    'archived_at' => null,
+                    'archive_reason' => null,
+                    'updated_at' => now(),
+                ]);
+            }
 
             \Illuminate\Support\Facades\Cache::forget('dashboard_stats_cache');
         });
@@ -1751,8 +1796,10 @@ class DocumentController extends Controller
             }
 
             // 2. Delete linked issuance files if applicable
-            $issuances = DB::table('issuances')->where('document_id', $id)->get();
-            foreach ($issuances as $iss) {
+            $regFiles = DB::table('registry_births')->where('document_id', $id)->get(['file_path'])
+                ->concat(DB::table('registry_deaths')->where('document_id', $id)->get(['file_path']))
+                ->concat(DB::table('registry_marriages')->where('document_id', $id)->get(['file_path']));
+            foreach ($regFiles as $iss) {
                 if (!empty($iss->file_path) && Storage::disk('local')->exists($iss->file_path)) {
                     Storage::disk('local')->delete($iss->file_path);
                 }
@@ -1772,8 +1819,10 @@ class DocumentController extends Controller
                 'barangay' => $document->barangay
             ]);
 
-            // 4. Delete DB records - delete issuances FIRST due to FK ON DELETE SET NULL
-            DB::table('issuances')->where('document_id', $id)->delete();
+            // 4. Delete DB records
+            DB::table('registry_births')->where('document_id', $id)->delete();
+            DB::table('registry_deaths')->where('document_id', $id)->delete();
+            DB::table('registry_marriages')->where('document_id', $id)->delete();
             DB::table('ticket_issuances')->where('document_id', $id)->delete();
             DB::table('documents')->where('id', $id)->delete();
             DB::table('document_ocr_pages')->where('document_id', $id)->delete();
@@ -1815,20 +1864,15 @@ class DocumentController extends Controller
             ]);
         }
 
-        // Normalize matching type to match standard issuances types
+        // Normalize matching type to match standard registry types
         $normType = $type;
         if ($type === 'marriage_license') {
             $normType = 'marriage';
         }
 
-        $query = DB::table('issuances')
+        $targetTable = 'registry_' . ($normType === 'death' ? 'deaths' : ($normType === 'marriage' ? 'marriages' : 'births'));
+        $query = DB::table($targetTable)
             ->whereNull('deleted_at');
-
-        if ($normType === 'marriage') {
-            $query->whereIn('type', ['marriage', 'marriage_license']);
-        } elseif (!empty($normType) && $normType !== 'all') {
-            $query->where('type', $normType);
-        }
 
         if (is_numeric($id) && (int)$id > 0) {
             $query->where('document_id', '!=', (int)$id);
@@ -1846,7 +1890,7 @@ class DocumentController extends Controller
                 'candidate' => [
                     'id' => $candidate->id,
                     'certNumber' => $candidate->certNumber,
-                    'type' => $candidate->type,
+                    'type' => $candidate->type ?? $normType,
                     'name' => $candidate->name,
                     'barangay' => $candidate->barangay,
                     'issuanceDate' => $candidate->issuanceDate,
@@ -2032,25 +2076,30 @@ class DocumentController extends Controller
                 ->get();
         } elseif ($source === 'all') {
             $docRows = DB::table('documents')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $issRows = DB::table('issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $bRows = DB::table('registry_births')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $dRows = DB::table('registry_deaths')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
+            $mRows = DB::table('registry_marriages')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
             $procRows = DB::table('ticket_issuances')->whereNull('deleted_at')->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")->groupBy('ym')->pluck('c', 'ym')->toArray();
-            $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($issRows), array_keys($procRows)));
+            $allKeys = array_unique(array_merge(array_keys($docRows), array_keys($bRows), array_keys($dRows), array_keys($mRows), array_keys($procRows)));
             rsort($allKeys);
             $monthCounts = [];
             foreach ($allKeys as $k) {
                 if (!empty($k)) {
-                    $monthCounts[$k] = (int) (($docRows[$k] ?? 0) + ($issRows[$k] ?? 0) + ($procRows[$k] ?? 0));
+                    $monthCounts[$k] = (int) (($docRows[$k] ?? 0) + ($bRows[$k] ?? 0) + ($dRows[$k] ?? 0) + ($mRows[$k] ?? 0) + ($procRows[$k] ?? 0));
                 }
             }
             return response()->json(['success' => true, 'months' => $monthCounts]);
         } else {
-            // Internal Master Registry (pure issuances table — no ticket_number column)
-            $rows = DB::table('issuances')
-                ->whereNull('deleted_at')
-                ->selectRaw("SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c")
-                ->groupBy('ym')
-                ->orderBy('ym', 'desc')
-                ->get();
+            // Internal Master Registry (union of registry_births, registry_deaths, registry_marriages)
+            $rows = DB::select("
+                SELECT ym, SUM(c) as c FROM (
+                    SELECT SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c FROM registry_births WHERE deleted_at IS NULL GROUP BY ym
+                    UNION ALL
+                    SELECT SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c FROM registry_deaths WHERE deleted_at IS NULL GROUP BY ym
+                    UNION ALL
+                    SELECT SUBSTRING(created_at, 1, 7) as ym, COUNT(*) as c FROM registry_marriages WHERE deleted_at IS NULL GROUP BY ym
+                ) reg_ym GROUP BY ym ORDER BY ym DESC
+            ");
         }
 
         $monthCounts = [];
@@ -2135,7 +2184,7 @@ class DocumentController extends Controller
             }
         }
 
-// 2. Fetch from Issuances (Internal Master Registry) if needed
+// 2. Fetch from Registry Tables (Internal Master Registry) if needed
         if ($source === 'internal' || $source === 'all') {
             $conditions = [
                 "i.deleted_at IS NULL",
@@ -2175,7 +2224,13 @@ class DocumentController extends Controller
             $query = "SELECT i.id, i.certNumber, i.type, i.name, i.barangay, i.status, i.issuanceDate,
                              i.encoded_by, i.or_number, i.print_remarks, i.requested_by, i.approved_by,
                              i.extracted_data, i.created_at, d.personName, d.date, d.extracted_fields, d.ocr_text, d.status as doc_status
-                       FROM issuances i
+                       FROM (
+                           SELECT id, certNumber, registry_number, 'birth' as type, name, barangay, status, issuanceDate, encoded_by, NULL as or_number, NULL as print_remarks, NULL as requested_by, NULL as approved_by, extracted_data, document_id, created_at, deleted_at FROM registry_births
+                           UNION ALL
+                           SELECT id, certNumber, registry_number, 'death' as type, name, barangay, status, issuanceDate, encoded_by, NULL as or_number, NULL as print_remarks, NULL as requested_by, NULL as approved_by, extracted_data, document_id, created_at, deleted_at FROM registry_deaths
+                           UNION ALL
+                           SELECT id, certNumber, registry_number, 'marriage' as type, name, barangay, status, issuanceDate, encoded_by, NULL as or_number, NULL as print_remarks, NULL as requested_by, NULL as approved_by, extracted_data, document_id, created_at, deleted_at FROM registry_marriages
+                       ) i
                        LEFT JOIN documents d ON d.id = i.document_id" . $whereClause . " ORDER BY i.id DESC LIMIT 5000";
 
             $docRecords = DB::select($query, $params);

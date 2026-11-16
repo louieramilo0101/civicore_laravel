@@ -16,44 +16,51 @@ use App\Support\EncryptedJson;
 class CertificatePdfGeneratorService
 {
     /**
-     * Generates a PDF certificate for an issuance record and saves it to disk.
+     * Generates a PDF certificate for a registry record and saves it to disk.
      */
-    public function generateForIssuance(int $issuanceId): ?string
+    public function generateForRegistry(string $type, int $id): ?string
     {
-        $issuance = DB::table('issuances')->where('id', $issuanceId)->first();
-        if (!$issuance) {
+        $registryTable = match (strtolower($type)) {
+            'birth' => 'registry_births',
+            'death' => 'registry_deaths',
+            'marriage' => 'registry_marriages',
+            default => 'registry_births'
+        };
+
+        $record = DB::table($registryTable)->where('id', $id)->first();
+        if (!$record) {
             return null;
         }
 
-        $type = strtolower($issuance->certificate_type ?: $issuance->type ?: 'birth');
+        $type = strtolower($type);
         if ($type === 'marriage_license') {
             $type = 'marriage';
         }
 
         $extractedFields = [];
-        if (!empty($issuance->extracted_data)) {
-            $extractedFields = EncryptedJson::decode($issuance->extracted_data);
+        if (!empty($record->extracted_data)) {
+            $extractedFields = json_decode($record->extracted_data, true) ?: [];
         }
 
-        // If issuance extracted data is empty or minimal, merge from linked document if available
-        if (empty($extractedFields) && !empty($issuance->document_id)) {
-            $doc = DB::table('documents')->where('id', $issuance->document_id)->first();
+        // If registry extracted data is empty or minimal, merge from linked document if available
+        if (empty($extractedFields) && !empty($record->document_id)) {
+            $doc = DB::table('documents')->where('id', $record->document_id)->first();
             if ($doc && !empty($doc->extracted_fields)) {
-                $extractedFields = EncryptedJson::decode($doc->extracted_fields);
+                $extractedFields = json_decode($doc->extracted_fields, true) ?: [];
             }
         }
 
-        // Fill basic issuance info if not present in fields
-        if (empty($extractedFields['registry_number']) && !empty($issuance->certNumber)) {
-            $extractedFields['registry_number'] = $issuance->certNumber;
+        // Fill basic registry info if not present in fields
+        if (empty($extractedFields['registry_number']) && !empty($record->certNumber)) {
+            $extractedFields['registry_number'] = $record->certNumber;
         }
-        if (empty($extractedFields['barangay']) && !empty($issuance->barangay)) {
-            $extractedFields['barangay'] = $issuance->barangay;
+        if (empty($extractedFields['barangay']) && !empty($record->barangay)) {
+            $extractedFields['barangay'] = $record->barangay;
         }
 
         $extractedFields = $this->normalizeFieldAliases($type, $extractedFields);
 
-        $relativePdfPath = "documents/issuance_{$type}_{$issuanceId}.pdf";
+        $relativePdfPath = "documents/registry_{$type}_{$id}.pdf";
         $absolutePdfPath = Storage::disk('local')->path($relativePdfPath);
 
         $success = $this->renderCertificatePdf($type, $extractedFields, $absolutePdfPath);
@@ -64,20 +71,20 @@ class CertificatePdfGeneratorService
         // Build raw searchable text from extracted fields for full-text indexing
         $searchableText = implode(' ', array_filter($extractedFields, fn($v) => is_string($v) && $v !== 'n/a' && $v !== ''));
 
-        // Update issuance record with the newly generated PDF path
-        DB::table('issuances')->where('id', $issuanceId)->update([
+        // Update registry record with the newly generated PDF path
+        DB::table($registryTable)->where('id', $id)->update([
             'file_path'  => $relativePdfPath,
             'updated_at' => now(),
         ]);
 
-        if (!empty($issuance->document_id)) {
-            $doc = DB::table('documents')->where('id', $issuance->document_id)->first();
+        if (!empty($record->document_id)) {
+            $doc = DB::table('documents')->where('id', $record->document_id)->first();
             $metadata = json_decode($doc->metadata ?? '[]', true) ?: [];
             $metadata['generated_pdf'] = true;
             $metadata['filesize'] = file_exists($absolutePdfPath) ? filesize($absolutePdfPath) : 0;
             $metadata['mimetype'] = 'application/pdf';
 
-            DB::table('documents')->where('id', $issuance->document_id)->update([
+            DB::table('documents')->where('id', $record->document_id)->update([
                 'file_path'  => $relativePdfPath,
                 'raw_text'   => $searchableText,
                 'ocr_text'   => $searchableText,
@@ -87,6 +94,24 @@ class CertificatePdfGeneratorService
         }
 
         return $absolutePdfPath;
+    }
+
+    /**
+     * Legacy method for backward compatibility - redirects to generateForRegistry
+     */
+    public function generateForIssuance(int $issuanceId): ?string
+    {
+        // Try to find the record in new registry tables
+        $birth = DB::table('registry_births')->where('id', $issuanceId)->first();
+        if ($birth) return $this->generateForRegistry('birth', $issuanceId);
+        
+        $death = DB::table('registry_deaths')->where('id', $issuanceId)->first();
+        if ($death) return $this->generateForRegistry('death', $issuanceId);
+        
+        $marriage = DB::table('registry_marriages')->where('id', $issuanceId)->first();
+        if ($marriage) return $this->generateForRegistry('marriage', $issuanceId);
+        
+        return null;
     }
 
     /**

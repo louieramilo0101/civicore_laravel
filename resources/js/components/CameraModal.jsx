@@ -139,12 +139,23 @@ const CameraModal = ({ isOpen, onClose, onCapture }) => {
             const w = capturedMedia.canvas.width;
             const h = capturedMedia.canvas.height;
 
-            const initialCorners = detected || {
-                topLeft: { x: w * 0.1, y: h * 0.1 },
-                topRight: { x: w * 0.9, y: h * 0.1 },
-                bottomRight: { x: w * 0.9, y: h * 0.9 },
-                bottomLeft: { x: w * 0.1, y: h * 0.9 }
-            };
+            // detectDocumentCorners returns {tl, tr, br, bl}; Scanic's
+            // createCornerEditor wants {topLeft, topRight, bottomRight, bottomLeft}.
+            // Passing the tl/tr shape through throws "Cannot read properties of
+            // undefined (reading 'x')" and the editor never mounts → black preview.
+            const initialCorners = detected
+                ? {
+                    topLeft: detected.tl,
+                    topRight: detected.tr,
+                    bottomRight: detected.br,
+                    bottomLeft: detected.bl,
+                }
+                : {
+                    topLeft: { x: w * 0.1, y: h * 0.1 },
+                    topRight: { x: w * 0.9, y: h * 0.1 },
+                    bottomRight: { x: w * 0.9, y: h * 0.9 },
+                    bottomLeft: { x: w * 0.1, y: h * 0.9 }
+                };
 
             setCurrentCorners(initialCorners);
 

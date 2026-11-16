@@ -1,0 +1,2144 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    PrinterIcon, DocumentMinusIcon,
+    MagnifyingGlassIcon, PlusCircleIcon,
+    AdjustmentsHorizontalIcon, EyeIcon,
+    TrashIcon, CheckCircleIcon, ClockIcon, ArrowDownTrayIcon,
+    PencilSquareIcon, ShieldCheckIcon, XMarkIcon, ArrowPathIcon,
+    ChevronDownIcon, ChevronUpIcon, CameraIcon, ExclamationTriangleIcon,
+    UserIcon, DocumentTextIcon, UsersIcon,
+    ChartBarIcon, PresentationChartLineIcon, TrophyIcon
+} from '@heroicons/react/24/outline';
+import { useModal } from './ModalContext.jsx';
+import SkeletonLoader from './SkeletonLoader.jsx';
+import { useData } from './DataContext.jsx';
+import OcrFormPanel from './OcrFormPanel.jsx';
+import PasswordConfirmModal from './PasswordConfirmModal.jsx';
+import ActionConfirmModal from './ActionConfirmModal.jsx';
+import CameraModal from './CameraModal.jsx';
+import Pagination from './Pagination.jsx';
+import { preprocessUploadFile } from '../utils/uploadPreprocess.js';
+import axios from 'axios';
+
+const NAIC_BARANGAYS = [
+    'Gomez-Zamora (Pob.)', 'Capt. C. Nazareno (Pob.)', 'Ibayo Silangan', 'Ibayo Estacion', 'Kanluran',
+    'Makina', 'Sapa', 'Bucana Malaki', 'Bucana Sasahan', 'Bagong Karsada',
+    'Balsahan', 'Bancaan', 'Muzon', 'Latoria', 'Labac',
+    'Mabolo', 'San Roque', 'Santulan', 'Molino', 'Calubcob',
+    'Halang', 'Malainen Bago', 'Malainen Luma', 'Palangue 1', 'Palangue 2 & 3',
+    'Humbac', 'Munting Mapino', 'Sabang', 'Timalan Balsahan', 'Timalan Concepcion'
+].sort();
+
+// ── Issuance Preview Modal ──────────────────────────────────────────────────
+export const IssuancePreviewModal = ({ cert, onClose, onPrint, onDownload, openRequestModal }) => {
+    const docId = cert.document_id || cert.raw?.document_id || (cert.source !== 'issuance' ? cert.realId : null);
+    const hasImage = Boolean(cert.image_path || cert.raw?.image_path || cert.source_image_path || docId);
+    const [previewMode, setPreviewMode] = useState(hasImage ? 'image' : 'pdf');
+    const [isImageLoading, setIsImageLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
+
+    const viewUrl = cert.source === 'issuance'
+        ? `/api/issuances/view/${cert.realId}`
+        : `/api/documents/view/${cert.realId}`;
+
+    const imageUrl = docId ? `/api/documents/view-image/${docId}` : null;
+
+    const downloadUrl = cert.download_url || (cert.source === 'issuance'
+        ? `/api/issuances/download/${cert.realId}`
+        : `/api/documents/download/${cert.realId}`);
+
+    const handleDownloadJson = () => {
+        let fields = {};
+        if (cert.raw?.extracted_fields) {
+            fields = typeof cert.raw.extracted_fields === 'string'
+                ? JSON.parse(cert.raw.extracted_fields)
+                : cert.raw.extracted_fields;
+        } else if (cert.raw?.extracted_data) {
+            fields = typeof cert.raw.extracted_data === 'string'
+                ? JSON.parse(cert.raw.extracted_data)
+                : cert.raw.extracted_data;
+        }
+        const exportData = {
+            id: cert.realId,
+            reference_number: cert.number,
+            type: cert.type,
+            name: cert.name,
+            barangay: cert.barangay,
+            issuance_date: cert.date,
+            extracted_fields: fields,
+            raw: cert.raw
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeName = (cert.name || 'dummy_data').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `${safeName}_${cert.type || 'record'}_dummy.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Keyboard listeners to prevent print/save shortcuts and allow ESC to close
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (e.key === 'Escape') {
+                onClose?.();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300 select-none"
+            onContextMenu={(e) => e.preventDefault()}
+        >
+            {/* Premium Header */}
+            <div className="flex items-center justify-between px-8 py-5 bg-slate-900/50 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+                        <ShieldCheckIcon className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-black text-white tracking-tight leading-none uppercase">{cert.name}</h2>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">
+                            Official {cert.type} Record • <span className="text-indigo-400/80">REF: {cert.number}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {/* Action Buttons */}
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
+                    <button
+                        onClick={onClose}
+                        className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+                        title="Close Viewer"
+                    >
+                        <XMarkIcon className="w-7 h-7 group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Immersive Preview Content */}
+            <div className="flex-1 overflow-hidden p-8 flex justify-center bg-slate-950">
+                <div className="w-full max-w-5xl h-full bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500 relative group flex items-center justify-center">
+                    {imageUrl ? (
+                        <div className="w-full h-full flex items-center justify-center p-6 overflow-auto relative">
+                            {isImageLoading && !loadFailed && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-12 h-12 border-4 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin" />
+                                        <span className="text-xs text-slate-400 font-medium">Loading document…</span>
+                                    </div>
+                                </div>
+                            )}
+                            {loadFailed ? (
+                                <div className="flex flex-col items-center justify-center gap-4 text-slate-500">
+                                    <ExclamationTriangleIcon className="w-16 h-16 opacity-20" />
+                                    <span className="text-sm font-medium">Unable to load document preview</span>
+                                    <button
+                                        onClick={() => { setLoadFailed(false); setIsImageLoading(true); }}
+                                        className="px-4 py-2 bg-[#d4a574]/10 text-[#d4a574] border border-[#d4a574]/30 rounded-xl text-xs font-bold hover:bg-[#d4a574] hover:text-[#0f172a] transition-all"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : (
+                                <img
+                                    src={imageUrl}
+                                    alt={cert.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className={`max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300 ${isImageLoading ? 'opacity-0 scale-98' : 'opacity-100 scale-100'}`}
+                                    onLoad={() => setIsImageLoading(false)}
+                                    onError={() => { setIsImageLoading(false); setLoadFailed(true); }}
+                                />
+                            )}
+                        </div>
+                    ) : (
+                        <iframe
+                            src={`${viewUrl}#toolbar=0&navpanes=0`}
+                            title={cert.name}
+                            className="w-full h-full border-none relative z-10 bg-white"
+                        />
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+/** Manages issuance review, approval, printing, and bulk actions. */
+const Issuances = () => {
+    const { showAlert } = useModal();
+    const {
+        issuances: rawIssuances,
+        documents: rawDocuments,
+        loading: dataLoading,
+        backgroundTasks,
+        runBackgroundTask,
+        refreshIssuances,
+        refreshDocuments,
+        refreshStats,
+        emitEvent,
+        Events,
+        stats
+    } = useData();
+
+    const isLoading = dataLoading.issuances || dataLoading.documents;
+    const [selectedType, setSelectedType] = useState('all');
+    const [selectedBarangay, setSelectedBarangay] = useState('all');
+    const [selectedEncoder, setSelectedEncoder] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('database');
+    const [dashboardTab, setDashboardTab] = useState('overview');
+    const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = useState(() => {
+        return typeof window !== 'undefined' && window.innerWidth < 768;
+    });
+
+    // Unified state
+    const [certificates, setCertificates] = useState([]);
+    const [activityLogs, setActivityLogs] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isBarMinimized, setIsBarMinimized] = useState(false);
+
+    // Activity History Search/Filter
+    const [historySearch, setHistorySearch] = useState('');
+    const [historyActionFilter, setHistoryActionFilter] = useState('all');
+    const [historyUserFilter, setHistoryUserFilter] = useState('all');
+    const [historyStartDate, setHistoryStartDate] = useState('');
+    const [historyEndDate, setHistoryEndDate] = useState('');
+    const [showAdvancedLogsFilter, setShowAdvancedLogsFilter] = useState(false);
+
+    // Confirmation State
+    const [confirmAction, setConfirmAction] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        type: 'info'
+    });
+
+    /** Toggles one issuance in the bulk-selection set. */
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    /** Selects or clears all issuance identifiers in the current view. */
+    const toggleSelectAll = (idsToToggle) => {
+        const allSelected = idsToToggle.every(id => selectedIds.includes(id));
+        if (allSelected) {
+            setSelectedIds(prev => prev.filter(id => !idsToToggle.includes(id)));
+        } else {
+            setSelectedIds(prev => [...new Set([...prev, ...idsToToggle])]);
+        }
+    };
+
+    // Helper to wrap actions with confirmation
+    /** Routes an issuance action through the confirmation modal. */
+    const withConfirmation = (actionData) => {
+        setConfirmAction({
+            isOpen: true,
+            title: actionData.title,
+            message: actionData.message,
+            type: actionData.type || 'info',
+            onConfirm: () => {
+                actionData.action();
+                setConfirmAction(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    // Security Modal State
+    const [passwordModal, setPasswordModal] = useState({ isOpen: false, onConfirm: null, title: '', message: '' });
+
+    // Editing/Viewing State
+    const [editingCert, setEditingCert] = useState(null);
+    const [viewingCert, setViewingCert] = useState(null);
+
+    // Print Approval workflow state
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const [requestingPrintCert, setRequestingPrintCert] = useState(null);
+    const [orNumber, setOrNumber] = useState('');
+    const [printRemarks, setPrintRemarks] = useState('');
+    const [isSubmittingPrintRequest, setIsSubmittingPrintRequest] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState('');
+
+    // Tickets and approvals
+    const [tickets, setTickets] = useState([]);
+    const [ticketsLoading, setTicketsLoading] = useState(false);
+    const [approvalsSearch, setApprovalsSearch] = useState('');
+
+    // Scan Search workflow state
+    const [isScanSearchOpen, setIsScanSearchOpen] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanSource, setScanSource] = useState('webcam');
+    const [cameraStream, setCameraStream] = useState(null);
+    const [ocrError, setOcrError] = useState('');
+    const [isSearchCameraOpen, setIsSearchCameraOpen] = useState(false);
+
+    const startCamera = async () => { };
+    const stopCamera = () => { };
+    const capturePhoto = () => { };
+
+    const handleOcrSearchUpload = async (file) => {
+        setIsScanning(true);
+        setOcrError('');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            stopCamera();
+            const res = await axios.post('/api/issuances/ocr-search', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data.success && res.data.extracted) {
+                const { name, certNumber, barangay, type } = res.data.extracted;
+
+                const searchVal = certNumber || name || '';
+                setSearchTerm(searchVal);
+
+                if (type && ['birth', 'death', 'marriage'].includes(type.toLowerCase())) {
+                    setSelectedType(type.toLowerCase());
+                }
+
+                if (barangay && NAIC_BARANGAYS.includes(barangay)) {
+                    setSelectedBarangay(barangay);
+                }
+
+                showAlert({
+                    title: 'Scan Successful',
+                    message: `OCR Extracted:\nName: ${name || '—'}\nCert No: ${certNumber || '—'}\nType: ${type || '—'}\nBarangay: ${barangay || '—'}`,
+                    type: 'success'
+                });
+
+                setIsScanSearchOpen(false);
+            } else {
+                setOcrError(res.data.error || 'Failed to extract text from scan.');
+            }
+        } catch (err) {
+            console.error("Scan upload failed:", err);
+            setOcrError(err.response?.data?.error || 'An error occurred during OCR search.');
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isScanSearchOpen && scanSource === 'webcam') {
+            startCamera();
+        } else {
+            stopCamera();
+        }
+        return () => stopCamera();
+    }, [isScanSearchOpen, scanSource]);
+
+    const fetchTickets = async () => {
+        setTicketsLoading(true);
+        try {
+            const res = await axios.get('/api/tickets', {
+                params: {
+                    _: Date.now()
+                }
+            });
+            setTickets(res.data || []);
+        } catch (e) {
+            console.error("Error fetching tickets:", e);
+            setTickets([]);
+        } finally {
+            setTicketsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // All issuances are now pure registry records (ticket copies live in ticket_issuances table)
+        const combined = rawIssuances.map(i => {
+            const linkedDoc = rawDocuments.find(d => Number(d.id) === Number(i.document_id));
+            const rawType = (i.type || 'birth').toLowerCase();
+            const type = rawType === 'unknown' ? 'birth' : rawType;
+
+            return {
+                id: `iss-${i.id}`,
+                realId: i.id,
+                number: i.certNumber || i.number || ('ISS-' + i.id),
+                type,
+                name: i.name || 'Unnamed Record',
+                barangay: i.barangay || '—',
+                date: i.issuanceDate || i.date,
+                status: i.status || 'Active',
+                encoded_by: i.encoded_by,
+                source: 'issuance',
+                document_id: i.document_id || linkedDoc?.id || null,
+                image_path: linkedDoc?.image_path || i.source_image_path || null,
+                raw: {
+                    ...i,
+                    type,
+                    ocr_text: i.ocr_text || linkedDoc?.ocr_text || '',
+                    file_path: i.file_path || linkedDoc?.file_path || '',
+                    image_path: linkedDoc?.image_path || i.source_image_path || '',
+                    extracted_fields: i.extracted_data || i.extracted_fields || linkedDoc?.extracted_fields
+                }
+            };
+        });
+        // Sort by date descending, fallback to realId
+        combined.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            if (dateA.getTime() !== dateB.getTime()) {
+                return dateB - dateA;
+            }
+            return b.realId - a.realId;
+        });
+        setCertificates(combined);
+    }, [rawIssuances, rawDocuments]);
+
+    // Initial Data Fetching
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await axios.get('/api/users', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                // The API returns paginated data: { data: [...], meta: {...} }
+                setAllUsers(res.data.data || []);
+            } catch (e) {
+                console.error("Error fetching users:", e);
+                setAllUsers([]);
+            }
+        };
+        fetchUsers();
+        fetchTickets();
+    }, []);
+
+    // Fetch Activity Logs when History tab is active, fetch tickets when approvals is active
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchActivityLogs();
+        } else if (activeTab === 'approvals') {
+            fetchTickets();
+        }
+    }, [activeTab]);
+
+    const fetchActivityLogs = async () => {
+        setLogsLoading(true);
+        try {
+            const res = await axios.get('/api/activity-logs?scope=document');
+            setActivityLogs(res.data);
+        } catch (e) {
+            console.error("Error fetching logs:", e);
+        } finally {
+            setLogsLoading(false);
+        }
+    };
+
+    const logActivity = async (action, cert, details = '') => {
+        try {
+            const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+            await axios.post('/api/activity-logs', {
+                user_name: user.name || 'System',
+                action,
+                record_type: cert.source === 'issuance' ? 'Issuance' : 'Document',
+                record_id: cert.realId,
+                details: details || `${action} ${cert.type} certificate for ${cert.name}`
+            });
+            if (activeTab === 'history') fetchActivityLogs();
+        } catch (e) {
+            console.error("Failed to log activity:", e);
+        }
+    };
+
+
+    /** Opens the source request associated with an issuance. */
+    const openRequestModal = (cert) => {
+        // Pre-generate an automatic OR number: OR-YYYYMMDD-XXXX
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        const autoOr = `OR-${dateStr}-${randomNum}`;
+
+        setOrNumber(autoOr);
+        setPrintRemarks('');
+        setSelectedTicketId('');
+        setRequestingPrintCert(cert);
+        fetchTickets();
+    };
+
+    const submitPrintRequest = async () => {
+        if (!requestingPrintCert || !orNumber) return;
+        setIsSubmittingPrintRequest(true);
+        try {
+            const res = await axios.post(`/api/issuances/${requestingPrintCert.realId}/request-print`, {
+                or_number: orNumber,
+                print_remarks: printRemarks,
+                ticket_id: selectedTicketId || undefined
+            });
+            if (res.data.success) {
+                showAlert({ title: 'Request Submitted', message: 'Print request submitted for Admin approval.', type: 'success' });
+                setRequestingPrintCert(null);
+                emitEvent(Events.ISSUANCE_REQUESTED, { id: requestingPrintCert.realId });
+            }
+        } catch (err) {
+            console.error(err);
+            showAlert({ title: 'Error', message: err.response?.data?.error || 'Failed to submit print request.', type: 'danger' });
+        } finally {
+            setIsSubmittingPrintRequest(false);
+        }
+    };
+
+    const handleApprovePrint = (cert) => {
+        withConfirmation({
+            title: 'Approve Print Request?',
+            message: `Authorize printing of ${cert.type} certificate for ${cert.name}?`,
+            type: 'success',
+            action: async () => {
+                await runBackgroundTask(`Approving print for: ${cert.name}`, async () => {
+                    const res = await axios.post(`/api/issuances/${cert.realId}/approve-print`);
+                    if (res.data.success) {
+                        emitEvent(Events.ISSUANCE_APPROVED, { id: cert.realId });
+                        return { success: true, message: 'Print request authorized.' };
+                    }
+                    throw new Error('Failed to approve print request.');
+                });
+            }
+        });
+    };
+
+    const handleRejectPrint = (cert) => {
+        withConfirmation({
+            title: 'Reject Print Request?',
+            message: `Deny print request for ${cert.name}? The record will return to Active status.`,
+            type: 'danger',
+            action: async () => {
+                await runBackgroundTask(`Rejecting print for: ${cert.name}`, async () => {
+                    const res = await axios.post(`/api/issuances/${cert.realId}/reject-print`);
+                    if (res.data.success) {
+                        emitEvent(Events.ISSUANCE_REJECTED, { id: cert.realId });
+                        return { success: true, message: 'Print request denied.' };
+                    }
+                    throw new Error('Failed to reject print request.');
+                });
+            }
+        });
+    };
+
+    const handleEdit = (cert) => {
+        setEditingCert(cert);
+    };
+
+    const buildPersonName = (fields, type) => {
+        if (!fields || typeof fields !== 'object') return '';
+
+        const cleanPart = (val) => {
+            if (!val || typeof val !== 'string') return '';
+            const t = val.trim();
+            if (t.includes('{') || t.includes('}') || t.includes('":') || t.includes('is_valid_document')) {
+                return '';
+            }
+            return t.toUpperCase();
+        };
+
+        const docType = (type || '').toLowerCase();
+        if (docType === 'marriage' || docType === 'marriage_license') {
+            const hLast = cleanPart(fields.husband_last_name);
+            const hFirst = cleanPart(fields.husband_first_name);
+            const hMiddle = cleanPart(fields.husband_middle_name);
+            const hSuffix = cleanPart(fields.husband_suffix);
+            const hName = [hLast ? `${hLast},` : '', hFirst, hMiddle, hSuffix].filter(Boolean).join(' ');
+
+            const wLast = cleanPart(fields.wife_last_name);
+            const wFirst = cleanPart(fields.wife_first_name);
+            const wMiddle = cleanPart(fields.wife_middle_name);
+            const wSuffix = cleanPart(fields.wife_suffix);
+            const wName = [wLast ? `${wLast},` : '', wFirst, wMiddle, wSuffix].filter(Boolean).join(' ');
+
+            const joined = [hName, wName].filter(Boolean).join(' & ');
+            const fallback = cleanPart(fields.personName);
+            return (joined || fallback || '').toUpperCase();
+        }
+
+        const last = cleanPart(fields.last_name || fields.child_last_name || fields.deceased_last_name);
+        const first = cleanPart(fields.first_name || fields.child_first_name || fields.deceased_first_name);
+        const middle = cleanPart(fields.middle_name || fields.child_middle_name || fields.deceased_middle_name);
+        const suffix = cleanPart(fields.suffix);
+
+        const nameParts = [last ? `${last},` : '', first, middle, suffix].filter(Boolean).join(' ');
+        const fallback = cleanPart(fields.personName || fields.full_name || fields.deceased_name);
+        return (nameParts || fallback || '').toUpperCase();
+    };
+
+    const saveEdit = async ({ fields, ocr_text, parentalConsent, detectedType }) => {
+        if (!editingCert) return;
+        const fileId = editingCert.realId;
+        const docType = detectedType || editingCert.type || '';
+        const personName = buildPersonName(fields, docType) || editingCert.name || '';
+        const barangay = fields.barangay || '';
+
+        const certToClear = editingCert;
+        setEditingCert(null);
+
+        runBackgroundTask(`Updating: ${personName}`, async () => {
+            const endpoint = certToClear.source === 'issuance' ? `/api/issuances/${fileId}` : `/api/documents/${fileId}`;
+            const res = await axios.put(endpoint, {
+                extracted_fields: fields,
+                ocr_text: ocr_text,
+                personName,
+                barangay,
+                parental_consent: parentalConsent,
+                detectedType
+            });
+
+            if (res.data.success) {
+                try {
+                    sessionStorage.removeItem(`civicore_ocr_draft_${fileId}`);
+                    sessionStorage.removeItem(`civicore_ocr_draft_type_${fileId}`);
+                    sessionStorage.removeItem(`civicore_ocr_draft_text_${fileId}`);
+                } catch (cacheErr) {
+                    console.error('Failed to clear draft cache:', cacheErr);
+                }
+                logActivity('Edited', certToClear);
+                emitEvent(Events.ISSUANCE_UPDATED, { id: certToClear.realId });
+                if (certToClear.source !== 'issuance') {
+                    emitEvent(Events.DOCUMENT_UPDATED, { id: certToClear.realId });
+                }
+                return { success: true, message: `Successfully updated record for ${personName}` };
+            }
+            throw new Error('Update failed');
+        });
+    };
+
+    const handleDelete = (cert) => {
+        setPasswordModal({
+            isOpen: true,
+            title: 'Authorize Deletion',
+            message: `Remove record for ${cert.name}? This can be undone later.`,
+            onConfirm: () => {
+                setPasswordModal(prev => ({ ...prev, isOpen: false }));
+                runBackgroundTask(`${cert.name}`, async () => {
+                    const endpoint = cert.source === 'issuance' ? `/api/issuances/${cert.realId}` : `/api/documents/${cert.realId}`;
+                    const res = await axios.delete(endpoint);
+                    if (res.data.success) {
+                        logActivity('Deleted', cert);
+                        if (cert.source === 'issuance') {
+                            emitEvent(Events.ISSUANCE_DELETED, { id: cert.realId });
+                        } else {
+                            emitEvent(Events.DOCUMENT_DELETED, { id: cert.realId });
+                        }
+                        return { success: true, type: 'delete' };
+                    }
+                    throw new Error('Delete failed');
+                }, {
+                    type: 'delete',
+                    undoFn: () => axios.post(`/api/documents/${cert.realId}/undo`)
+                });
+            }
+        });
+    };
+
+    const handleAction = async (action, cert) => {
+        const baseUrl = cert.source === 'issuance' ? '/api/issuances' : '/api/documents';
+        const endpoint = action === 'Download' ? 'download' : 'view';
+        const url = `${baseUrl}/${endpoint}/${cert.realId}`;
+
+        const perform = async () => {
+            if (action === 'Print') {
+                const iframeId = 'print-frame-' + cert.id;
+                const iframe = document.createElement('iframe');
+                iframe.id = iframeId;
+                iframe.src = url;
+                iframe.style.display = 'none';
+
+                const handlePrintLoad = async () => {
+                    try {
+                        iframe.contentWindow?.focus();
+                        iframe.contentWindow?.print();
+                        logActivity(cert.status === 'Issued' ? 'Reprinted' : 'Printed', cert);
+
+                        if (cert.status === 'Approved') {
+                            await axios.post(`/api/issuances/${cert.realId}/issue`);
+                            emitEvent(Events.ISSUANCE_ISSUED, { id: cert.realId });
+                        }
+                    } finally {
+                        window.setTimeout(() => {
+                            iframe.removeEventListener('load', handlePrintLoad);
+                            iframe.remove();
+                        }, 2000);
+                    }
+                };
+
+                iframe.addEventListener('load', handlePrintLoad, { once: true });
+                document.body.appendChild(iframe);
+            } else {
+                window.open(url, '_blank');
+                logActivity(action === 'View' ? 'Viewed' : 'Downloaded', cert);
+            }
+        };
+
+        if (action === 'View') {
+            setViewingCert(cert);
+            logActivity('Viewed', cert);
+        } else {
+            withConfirmation({
+                title: `${action} Document?`,
+                message: `Are you sure you want to ${action.toLowerCase()} the ${cert.type} certificate for ${cert.name}?`,
+                action: perform
+            });
+        }
+    };
+
+    // --- Bulk Action Handlers ---
+    const handleBulkDelete = () => {
+        setPasswordModal({
+            isOpen: true,
+            title: `Delete ${selectedIds.length} Records?`,
+            message: `Remove all ${selectedIds.length} selected records? They can be restored from the Activity Center.`,
+            onConfirm: () => {
+                setPasswordModal(prev => ({ ...prev, isOpen: false }));
+                const idsToDelete = [...selectedIds];
+                setSelectedIds([]);
+
+                runBackgroundTask(`Bulk Delete: ${idsToDelete.length} Records`, async () => {
+                    let ok = 0;
+                    let failed = 0;
+                    for (const fullId of idsToDelete) {
+                        const cert = certificates.find(c => c.id === fullId);
+                        if (!cert) continue;
+                        const endpoint = cert.source === 'issuance' ? `/api/issuances/${cert.realId}` : `/api/documents/${cert.realId}`;
+                        try {
+                            const res = await axios.delete(endpoint);
+                            if (res.data.success) {
+                                logActivity('Deleted (Bulk)', cert);
+                                ok++;
+                            } else {
+                                failed++;
+                            }
+                        } catch (err) {
+                            console.error(`Failed to delete ${fullId}:`, err);
+                            failed++;
+                        }
+                    }
+                    emitEvent(Events.ISSUANCE_DELETED, { count: ok });
+                    emitEvent(Events.DOCUMENT_DELETED, { count: ok });
+                    return {
+                        success: true,
+                        message: `Successfully removed ${ok} records.${failed > 0 ? ` Failed to remove ${failed} records.` : ''}`,
+                        type: 'bulk-delete'
+                    };
+                }, {
+                    type: 'bulk-delete',
+                    undoFn: async () => {
+                        for (const fullId of idsToDelete) {
+                            const realId = fullId.split('-')[1];
+                            await axios.post(`/api/documents/${realId}/undo`);
+                        }
+                    }
+                });
+            }
+        });
+    };
+
+    const handleBulkDownload = () => {
+        withConfirmation({
+            title: `Download ${selectedIds.length} Files?`,
+            message: `Initiate sequential download for all ${selectedIds.length} selected documents?`,
+            type: 'info',
+            action: async () => {
+                for (const fullId of selectedIds) {
+                    const cert = certificates.find(c => c.id === fullId);
+                    if (!cert) continue;
+                    const url = cert.source === 'issuance' ? `/api/issuances/download/${cert.realId}` : `/api/documents/download/${cert.realId}`;
+                    window.open(url, '_blank');
+                    logActivity('Downloaded (Bulk)', cert);
+                    await new Promise(r => setTimeout(r, 800)); // Stagger to prevent browser block
+                }
+                setSelectedIds([]);
+            }
+        });
+    };
+
+    const handleBulkIssue = () => {
+        const documentsOnly = selectedIds.filter(id => id.startsWith('doc-'));
+        if (documentsOnly.length === 0) return;
+
+        withConfirmation({
+            title: `Issue ${documentsOnly.length} Certificates?`,
+            message: `Finalize and issue for all ${documentsOnly.length} selected ready documents?`,
+            type: 'success',
+            action: () => {
+                const idsToIssue = [...documentsOnly];
+                setSelectedIds([]);
+                runBackgroundTask(`Mass Issuance: ${idsToIssue.length} Records`, async () => {
+                    // Immediate visual feedback locally
+                    setCertificates(prev => prev.map(c => idsToIssue.includes(c.id) ? { ...c, status: 'uploading' } : c));
+
+                    let ok = 0;
+                    try {
+                        for (const fullId of idsToIssue) {
+                            const cert = certificates.find(c => c.id === fullId);
+                            if (!cert) continue;
+                            const res = await axios.post(`/api/documents/${cert.realId}/quick-approve`);
+                            if (res.data.success) {
+                                logActivity('Issued (Bulk)', cert);
+                                ok++;
+                            }
+                        }
+                        emitEvent(Events.DOCUMENT_BULK_APPROVE, { count: ok });
+                        emitEvent(Events.ISSUANCE_ISSUED, { count: ok });
+                        return { success: true, message: `Successfully issued ${ok} certificates.` };
+                    } catch (err) {
+                        emitEvent(Events.DOCUMENT_BULK_APPROVE, { count: ok });
+                        emitEvent(Events.ISSUANCE_ISSUED, { count: ok });
+                        throw err;
+                    }
+                });
+            }
+        });
+    };
+
+    const uniqueBarangays = NAIC_BARANGAYS;
+    const uniqueEncoders = Array.isArray(allUsers) ? [...new Set(allUsers.map(u => u.name))].sort() : [];
+
+    const filteredCertificates = useMemo(() => {
+        const cleanTerm = (searchTerm || '').trim().toLowerCase();
+        const cleanType = (selectedType || 'all').toLowerCase();
+        const cleanBrgy = selectedBarangay;
+        const cleanEncoder = selectedEncoder;
+
+        return certificates.filter(cert => {
+            if (cleanType !== 'all' && (cert.type || '').toLowerCase() !== cleanType) return false;
+            if (cleanBrgy !== 'all' && cert.barangay !== cleanBrgy) return false;
+            if (cleanEncoder !== 'all' && cert.encoded_by !== cleanEncoder) return false;
+
+            if (!cleanTerm) return true;
+
+            const searchIndex = cert._search || `${cert.number || ''} ${cert.name || ''} ${cert.barangay || ''} ${cert.ticket_number || ''} ${cert.or_number || ''}`.toLowerCase();
+            return searchIndex.includes(cleanTerm);
+        });
+    }, [certificates, selectedType, selectedBarangay, selectedEncoder, searchTerm]);
+
+    const isDocumentAction = (action = '') => {
+        const a = (action || '').toLowerCase();
+        return a.includes('attach') || a.includes('view') || a.includes('delet');
+    };
+
+    const getActionBadge = (action = '') => {
+        const a = (action || '').toLowerCase();
+        if (a.includes('delet')) {
+            return {
+                classes: 'bg-rose-50 text-rose-600 border-rose-100',
+                dot: 'bg-rose-500',
+                label: action.includes('Bulk') ? 'Deleted (Bulk)' : 'Deleted'
+            };
+        }
+        if (a.includes('attach')) {
+            return {
+                classes: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                dot: 'bg-emerald-500',
+                label: 'Attached to Ticket'
+            };
+        }
+        if (a.includes('view')) {
+            return {
+                classes: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                dot: 'bg-indigo-500',
+                label: 'Viewed'
+            };
+        }
+        return {
+            classes: 'bg-slate-100 text-slate-600 border-slate-200',
+            dot: 'bg-slate-400',
+            label: action
+        };
+    };
+
+    const filteredLogs = useMemo(() => {
+        const cleanTerm = (historySearch || '').trim().toLowerCase();
+        const filterLower = (historyActionFilter || 'all').toLowerCase();
+        const userFilter = historyUserFilter;
+        const start = historyStartDate ? new Date(historyStartDate).setHours(0, 0, 0, 0) : null;
+        const end = historyEndDate ? new Date(historyEndDate).setHours(0, 0, 0, 0) : null;
+
+        return activityLogs.filter(log => {
+            if (!isDocumentAction(log.action)) return false;
+
+            if (userFilter !== 'all' && log.user_name !== userFilter) return false;
+
+            if (filterLower !== 'all') {
+                const actionLower = (log.action || '').toLowerCase();
+                if (filterLower.includes('attach')) {
+                    if (!actionLower.includes('attach')) return false;
+                } else if (filterLower.includes('view')) {
+                    if (!actionLower.includes('view')) return false;
+                } else if (filterLower.includes('delet')) {
+                    if (!actionLower.includes('delet')) return false;
+                } else if (log.action !== historyActionFilter) {
+                    return false;
+                }
+            }
+
+            if (start || end) {
+                const logDate = new Date(log.created_at).setHours(0, 0, 0, 0);
+                if (start && logDate < start) return false;
+                if (end && logDate > end) return false;
+            }
+
+            if (!cleanTerm) return true;
+
+            const searchIndex = log._search || `${log.details || ''} ${log.user_name || ''} ${log.action || ''} ${log.record_type || ''}`.toLowerCase();
+            return searchIndex.includes(cleanTerm);
+        });
+    }, [activityLogs, historySearch, historyActionFilter, historyUserFilter, historyStartDate, historyEndDate]);
+
+    // Pagination States
+    const [databasePage, setDatabasePage] = useState(1);
+    const [databasePageSize, setDatabasePageSize] = useState(10);
+    const [logsPage, setLogsPage] = useState(1);
+    const [logsPageSize, setLogsPageSize] = useState(10);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setDatabasePage(1);
+    }, [selectedType, selectedBarangay, selectedEncoder, searchTerm]);
+
+    useEffect(() => {
+        setLogsPage(1);
+    }, [historySearch, historyActionFilter, historyUserFilter, historyStartDate, historyEndDate]);
+
+    const totalDatabasePages = Math.max(1, Math.ceil(filteredCertificates.length / databasePageSize));
+    const safeDatabasePage = Math.min(databasePage, totalDatabasePages);
+    const paginatedCertificates = filteredCertificates.slice(
+        (safeDatabasePage - 1) * databasePageSize,
+        safeDatabasePage * databasePageSize
+    );
+
+    const totalLogsPages = Math.max(1, Math.ceil(filteredLogs.length / logsPageSize));
+    const safeLogsPage = Math.min(logsPage, totalLogsPages);
+    const paginatedLogs = filteredLogs.slice(
+        (safeLogsPage - 1) * logsPageSize,
+        safeLogsPage * logsPageSize
+    );
+
+    const resetFilters = () => {
+        setSelectedType('all');
+        setSelectedBarangay('all');
+        setSelectedEncoder('all');
+        setSearchTerm('');
+        setDatabasePage(1);
+    };
+
+    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+    const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+
+    return (
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3.5 sm:space-y-6 max-w-7xl mx-auto">
+            {/* Confirmation Modals */}
+            <PasswordConfirmModal
+                isOpen={passwordModal.isOpen}
+                onConfirm={passwordModal.onConfirm}
+                onCancel={() => setPasswordModal(p => ({ ...p, isOpen: false }))}
+                title={passwordModal.title}
+                message={passwordModal.message}
+            />
+
+            <ActionConfirmModal
+                isOpen={confirmAction.isOpen}
+                onConfirm={confirmAction.onConfirm}
+                onCancel={() => setConfirmAction(p => ({ ...p, isOpen: false }))}
+                title={confirmAction.title}
+                message={confirmAction.message}
+                type={confirmAction.type}
+            />
+
+            {/* Editor Overlay */}
+            <AnimatePresence>
+                {editingCert && (
+                    <OcrFormPanel
+                        file={editingCert.raw}
+                        docType={editingCert.type}
+                        ocrResult={{
+                            extracted_fields: typeof editingCert.raw.extracted_fields === 'string'
+                                ? JSON.parse(editingCert.raw.extracted_fields)
+                                : (editingCert.raw.extracted_fields || {}),
+                            text: editingCert.raw.ocr_text || '',
+                            detected_type: editingCert.type
+                        }}
+                        onSave={saveEdit}
+                        onClose={() => setEditingCert(null)}
+                    />
+                )}
+                {viewingCert && (
+                    <IssuancePreviewModal
+                        cert={viewingCert}
+                        onClose={() => setViewingCert(null)}
+                        onPrint={() => handleAction('Print', viewingCert)}
+                        onDownload={() => logActivity('Downloaded', viewingCert)}
+                        openRequestModal={openRequestModal}
+                    />
+                )}
+                {requestingPrintCert && (() => {
+                    const activeLinkedTicket = tickets.find(t =>
+                        t.document_id &&
+                        Number(t.document_id) === Number(requestingPrintCert.raw?.document_id) &&
+                        t.request_status !== 'completed' &&
+                        t.request_status !== 'cancelled'
+                    );
+                    return (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden"
+                            >
+                                <div className="p-8 bg-white dark:bg-slate-900">
+                                    {/* Header */}
+                                    <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/40 rounded-2xl flex items-center justify-center text-amber-500 dark:text-amber-400 mb-6 mx-auto border border-amber-100 dark:border-amber-900/50">
+                                        <PrinterIcon className="w-8 h-8" />
+                                    </div>
+
+                                    <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 text-center tracking-tight mb-2">
+                                        {requestingPrintCert.status === 'Issued' ? 'Request Reprint Approval' : 'Request Print Approval'}
+                                    </h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium leading-relaxed mb-6">
+                                        An Official Receipt (OR) Number is required to request print authorization for <strong className="text-slate-800 dark:text-slate-200">{requestingPrintCert.name}</strong>.
+                                    </p>
+
+                                    {/* Linked Queue Ticket Notification */}
+                                    {activeLinkedTicket && (
+                                        <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-indigo-500 text-white rounded-xl flex items-center justify-center text-xs font-black shrink-0 shadow-md shadow-indigo-200">
+                                                Ticket
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-indigo-900 dark:text-indigo-200 font-black leading-none">{activeLinkedTicket.ticket_number}</p>
+                                                <p className="text-[10px] text-indigo-500 mt-1 font-bold uppercase tracking-wider">Live Citizen Waiting: {activeLinkedTicket.client_name}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Input Fields */}
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Official Receipt (OR) Number</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Enter receipt number (e.g. OR-8888)..."
+                                                value={orNumber}
+                                                onChange={(e) => setOrNumber(e.target.value)}
+                                                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 dark:text-slate-200"
+                                            />
+                                        </div>
+
+                                        {!activeLinkedTicket && (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Link Queue Ticket (Optional)</label>
+                                                <select
+                                                    value={selectedTicketId}
+                                                    onChange={(e) => setSelectedTicketId(e.target.value)}
+                                                    className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                                                >
+                                                    <option value="">-- Select Active Ticket to Link --</option>
+                                                    {tickets.filter(t =>
+                                                        !t.document_id &&
+                                                        t.request_status !== 'completed' &&
+                                                        t.request_status !== 'cancelled'
+                                                    ).map(t => (
+                                                        <option key={t.id} value={t.id}>
+                                                            {t.ticket_number} - {t.client_name} ({t.purpose})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 pl-1">Remarks / Purpose (Optional)</label>
+                                            <textarea
+                                                placeholder="Enter any notes or remarks..."
+                                                value={printRemarks}
+                                                onChange={(e) => setPrintRemarks(e.target.value)}
+                                                rows="3"
+                                                className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm bg-white dark:bg-slate-950 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all shadow-sm font-medium text-slate-600 dark:text-slate-300 resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 flex gap-3">
+                                    <button
+                                        onClick={() => setRequestingPrintCert(null)}
+                                        disabled={isSubmittingPrintRequest}
+                                        className="flex-1 px-6 py-3.5 text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={submitPrintRequest}
+                                        disabled={!orNumber || isSubmittingPrintRequest}
+                                        className="flex-1 px-6 py-3.5 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-2xl shadow-lg shadow-amber-200 transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        {isSubmittingPrintRequest ? 'Submitting...' : 'Submit Request'}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    );
+                })()}
+                {isScanSearchOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden"
+                        >
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-[#d4a574]/15 text-[#d4a574] rounded-xl flex items-center justify-center">
+                                        <CameraIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight leading-none">Scan to Search</h3>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-bold uppercase tracking-wider">OCR Document Search using EasyOCR / Tesseract</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setIsScanSearchOpen(false)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                >
+                                    <XMarkIcon className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-4 bg-white dark:bg-slate-900">
+                                {/* Source Toggle */}
+                                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+                                    <button
+                                        onClick={() => setScanSource('webcam')}
+                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'webcam' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        Use Camera
+                                    </button>
+                                    <button
+                                        onClick={() => setScanSource('upload')}
+                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${scanSource === 'upload' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        Upload Image
+                                    </button>
+                                </div>
+
+                                {ocrError && (
+                                    <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl leading-relaxed">
+                                        {ocrError}
+                                    </div>
+                                )}
+
+                                {/* Webcam viewport */}
+                                {scanSource === 'webcam' && (
+                                    <div className="relative aspect-video w-full bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center border border-slate-200 dark:border-slate-700 shadow-inner">
+                                        {isScanning ? (
+                                            <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center text-white gap-3 rounded-2xl">
+                                                <ArrowPathIcon className="w-8 h-8 animate-spin text-[#d4a574]" />
+                                                <span className="text-xs font-bold tracking-widest uppercase">Processing OCR...</span>
+                                            </div>
+                                        ) : null}
+                                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl flex items-center justify-center text-indigo-500 dark:text-indigo-400 mb-3 border border-indigo-100 dark:border-indigo-900/50 shadow-sm">
+                                            <CameraIcon className="w-6 h-6 animate-pulse" />
+                                        </div>
+                                        <p className="text-sm font-black text-slate-700 dark:text-slate-300">Scan using unified document camera</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-1">Locks edges and crops automatically</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsSearchCameraOpen(true)}
+                                            className="mt-5 px-6 py-3 bg-[#0f172a] hover:bg-slate-800 text-[#d4a574] font-black text-xs uppercase tracking-widest rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                                        >
+                                            Launch Scanner Camera
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Upload Area */}
+                                {scanSource === 'upload' && (
+                                    <div className="relative aspect-video w-full bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574]/40 flex flex-col items-center justify-center p-6 text-center transition-all group overflow-hidden">
+                                        {isScanning ? (
+                                            <div className="absolute inset-0 bg-slate-900/80 z-20 flex flex-col items-center justify-center text-white gap-3">
+                                                <ArrowPathIcon className="w-8 h-8 animate-spin text-[#d4a574]" />
+                                                <span className="text-xs font-bold tracking-widest uppercase">Processing OCR...</span>
+                                            </div>
+                                        ) : null}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    handleOcrSearchUpload(e.target.files[0]);
+                                                }
+                                            }}
+                                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-[#d4a574] group-hover:bg-[#d4a574]/10 transition-all border border-slate-200 dark:border-slate-700 mb-3 shadow-sm">
+                                            <ArrowDownTrayIcon className="w-6 h-6 rotate-180" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Drag and drop or click to upload</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1">Supports PNG, JPG or WEBP up to 10MB</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex justify-end items-center gap-3">
+                                <button
+                                    onClick={() => setIsScanSearchOpen(false)}
+                                    className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-all cursor-pointer"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ── Issuance Dashboard Panel (Overview / Per Category / Top Issued) ────────────────── */}
+            <motion.div variants={itemVariants} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                {/* Dashboard Tab Header */}
+                <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50/90 to-white dark:from-slate-900 dark:to-slate-900/90 gap-2">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 pr-3 border-r border-slate-200/80 dark:border-slate-700 hidden md:flex shrink-0">
+
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Analytics & Stats</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 w-full sm:flex sm:w-auto">
+                            {[
+                                { key: 'overview', label: 'Overview' },
+                                { key: 'categories', label: 'Categories' },
+                                { key: 'top', label: 'Top Records' },
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => {
+                                        setDashboardTab(tab.key);
+                                        if (isAnalyticsCollapsed) setIsAnalyticsCollapsed(false);
+                                    }}
+                                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${dashboardTab === tab.key && !isAnalyticsCollapsed
+                                        ? 'bg-slate-900 text-[#d4a574] dark:bg-slate-800 dark:text-[#d4a574] dark:border dark:border-[#d4a574]/40 shadow-xs'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                                        }`}
+                                >
+                                    <span className="truncate">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setIsAnalyticsCollapsed(prev => !prev)}
+                            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                            title={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
+                            aria-label={isAnalyticsCollapsed ? "Expand Analytics & Stats" : "Collapse Analytics & Stats"}
+                        >
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">
+                                {isAnalyticsCollapsed ? 'Show Stats' : 'Hide Stats'}
+                            </span>
+                            {isAnalyticsCollapsed ? (
+                                <ChevronDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-400" />
+                            ) : (
+                                <ChevronUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 dark:text-slate-400" />
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                <AnimatePresence initial={false}>
+                    {!isAnalyticsCollapsed && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+
+                            {/* Tab 1: Overview */}
+                            {dashboardTab === 'overview' && (
+                                <div className="p-4 sm:p-6">
+                                    {isLoading ? (
+                                        <SkeletonLoader type="issuances" rows={1} />
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                                            {/* Master Database */}
+                                            <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-2xl shadow-sm border border-slate-700/60 overflow-hidden group hover:scale-[1.01] transition-transform duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-white/5 rounded-full" />
+                                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Master Database</p>
+                                                <h3 className="text-3xl font-black text-white tracking-tighter">{certificates.length}</h3>
+                                                <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-wider">Total Registered Records</p>
+                                                <div className="absolute bottom-4 right-4 w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center">
+                                                    <DocumentMinusIcon className="w-5 h-5 text-slate-400" />
+                                                </div>
+                                            </div>
+                                            {/* Birth Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-[#d4a574]/30 dark:border-[#d4a574]/20 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-[#d4a574]/5 rounded-full" />
+                                                <p className="text-[#d4a574] text-[10px] font-black uppercase tracking-widest mb-1">Birth Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Live Birth Certs</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <UserIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
+                                            {/* Death Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-rose-200/80 dark:border-rose-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-rose-50/50 dark:bg-rose-950/20 rounded-full" />
+                                                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">Death Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase() === 'death').length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Death Certificates</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <DocumentTextIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
+                                            {/* Marriage Records */}
+                                            <div className="relative bg-white dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-900/40 p-5 rounded-2xl shadow-xs overflow-hidden group hover:scale-[1.01] transition-all duration-200">
+                                                <div className="absolute right-[-10%] top-[-10%] w-20 h-20 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-full" />
+                                                <p className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-1">Marriage Records</p>
+                                                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tighter">{certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length}</h3>
+                                                <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold mt-2 uppercase tracking-wider">Marriage Certificates</p>
+                                                <div className="absolute bottom-4 right-4 text-slate-300 dark:text-slate-700">
+                                                    <UsersIcon className="w-9 h-9" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tab 2: Per Category */}
+                            {dashboardTab === 'categories' && (() => {
+                                const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
+                                const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
+                                const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
+                                const total = certificates.length || 1;
+                                const issuedCount = certificates.filter(c => c.status === 'Issued').length;
+                                const approvedCount = certificates.filter(c => c.status === 'Approved').length;
+                                const pendingCount = certificates.filter(c => c.status === 'Active').length;
+                                const pendingApprovalCount = certificates.filter(c => c.status === 'Pending Approval').length;
+
+                                const categories = [
+                                    { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/5', bar: 'bg-[#d4a574]', emoji: 'BR' },
+                                    { label: 'Death Certificates', count: deathCount, color: '#f43f5e', bg: 'bg-rose-50 dark:bg-rose-950/30', bar: 'bg-rose-500', emoji: 'DC' },
+                                    { label: 'Marriage Certificates', count: marriageCount, color: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/30', bar: 'bg-indigo-500', emoji: 'MC' },
+                                ];
+
+                                // SVG Donut Chart calculations
+                                const radius = 50;
+                                const circumference = 2 * Math.PI * radius;
+                                let offset = 0;
+                                const donutSegments = categories.map(cat => {
+                                    const pct = cat.count / total;
+                                    const dash = pct * circumference;
+                                    const seg = { ...cat, dash, gap: circumference - dash, offset };
+                                    offset += dash;
+                                    return seg;
+                                });
+
+                                return (
+                                    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Left: Progress bars */}
+                                        <div className="space-y-5">
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Certificate Type Breakdown</h4>
+                                            {categories.map(cat => (
+                                                <div key={cat.label}>
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg">{cat.emoji}</span>
+                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{cat.label}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{cat.count}</span>
+                                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{total > 0 ? Math.round((cat.count / total) * 100) : 0}%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full ${cat.bar} rounded-full transition-all duration-700`}
+                                                            style={{ width: `${total > 0 ? (cat.count / total) * 100 : 0}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {[
+                                                        { label: 'Issued', count: issuedCount, color: 'text-indigo-600 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' },
+                                                        { label: 'Approved', count: approvedCount, color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
+                                                        { label: 'Active', count: pendingCount, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700' },
+                                                        { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
+                                                    ].map(s => (
+                                                        <div key={s.label} className={`p-3 rounded-xl border ${s.bg} flex items-center justify-between`}>
+                                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</span>
+                                                            <span className={`text-lg font-black ${s.color}`}>{s.count}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right: SVG Donut Chart */}
+                                        <div className="flex flex-col items-center justify-center">
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Distribution</h4>
+                                            <div className="relative w-48 h-48">
+                                                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                                                    {total === 0 ? (
+                                                        <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="16" />
+                                                    ) : (
+                                                        donutSegments.map((seg, i) => (
+                                                            <circle
+                                                                key={i}
+                                                                cx="60" cy="60" r={radius}
+                                                                fill="none"
+                                                                stroke={seg.color}
+                                                                strokeWidth="16"
+                                                                strokeDasharray={`${seg.dash} ${seg.gap}`}
+                                                                strokeDashoffset={-seg.offset}
+                                                                className="transition-all duration-700"
+                                                            />
+                                                        ))
+                                                    )}
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100">{total}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap justify-center gap-3 mt-4">
+                                                {categories.map(cat => (
+                                                    <div key={cat.label} className="flex items-center gap-1.5">
+                                                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: cat.color }} />
+                                                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{cat.label.replace(' Certificates', '')}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Tab 3: Top Issued */}
+                            {dashboardTab === 'top' && (() => {
+                                // Compute barangay rankings
+                                const brgyCounts = {};
+                                certificates.forEach(cert => {
+                                    const brgy = cert.barangay && cert.barangay !== '—' ? cert.barangay : null;
+                                    if (!brgy) return;
+                                    if (!brgyCounts[brgy]) brgyCounts[brgy] = { births: 0, deaths: 0, marriages: 0, total: 0 };
+                                    const t = (cert.type || '').toLowerCase();
+                                    if (t === 'birth') brgyCounts[brgy].births++;
+                                    else if (t === 'death') brgyCounts[brgy].deaths++;
+                                    else if (t.includes('marriage')) brgyCounts[brgy].marriages++;
+                                    brgyCounts[brgy].total++;
+                                });
+                                const rankList = Object.entries(brgyCounts)
+                                    .map(([name, d]) => ({ name, ...d }))
+                                    .sort((a, b) => b.total - a.total);
+                                const top5 = rankList.slice(0, 5);
+                                const maxBrgyTotal = top5[0]?.total || 1;
+
+                                // Most active type
+                                const birthCount = certificates.filter(c => (c.type || '').toLowerCase() === 'birth').length;
+                                const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
+                                const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
+                                const mostActiveType = birthCount >= deathCount && birthCount >= marriageCount ? 'Birth'
+                                    : deathCount >= marriageCount ? 'Death' : 'Marriage';
+                                const mostActiveTypeColor = mostActiveType === 'Birth' ? 'text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/5 border-[#d4a574]/20'
+                                    : mostActiveType === 'Death' ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50'
+                                        : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50';
+                                const mostActiveTypeEmoji = mostActiveType === 'Birth' ? 'BR' : mostActiveType === 'Death' ? 'DC' : 'MC';
+
+                                // Most recently issued
+                                const recentIssued = [...certificates]
+                                    .filter(c => c.status === 'Issued')
+                                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                    .slice(0, 3);
+
+                                return (
+                                    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Left: Top 5 Barangays */}
+                                        <div>
+                                            <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Top 5 Barangays by Registered Records</h4>
+                                            {top5.length === 0 ? (
+                                                <div className="text-center text-slate-400 py-8">
+                                                    <p className="text-sm font-semibold">No barangay data available</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {top5.map((brgy, idx) => (
+                                                        <div key={brgy.name} className="flex items-center gap-3 group">
+                                                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${idx === 0 ? 'bg-amber-400 text-white shadow-md shadow-amber-200'
+                                                                : idx === 1 ? 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
+                                                                    : idx === 2 ? 'bg-orange-300 text-white'
+                                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                                                }`}>
+                                                                {idx + 1}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate pr-2">{brgy.name}</span>
+                                                                    <span className="text-sm font-black text-slate-800 dark:text-slate-100 shrink-0">{brgy.total}</span>
+                                                                </div>
+                                                                <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-gradient-to-r from-[#d4a574] to-[#c49060] rounded-full transition-all duration-700"
+                                                                        style={{ width: `${(brgy.total / maxBrgyTotal) * 100}%` }}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-[9px] text-[#d4a574] font-bold">{brgy.births}B</span>
+                                                                    <span className="text-[9px] text-rose-400 font-bold">{brgy.deaths}D</span>
+                                                                    <span className="text-[9px] text-indigo-400 font-bold">{brgy.marriages}M</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Right: Most Active Type + Recent Issued */}
+                                        <div className="space-y-5">
+                                            <div>
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Most Active Document Type</h4>
+                                                <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border font-black text-sm ${mostActiveTypeColor}`}>
+                                                    <span className="text-2xl">{mostActiveTypeEmoji}</span>
+                                                    {mostActiveType} Certificates
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Recently Issued</h4>
+                                                {recentIssued.length === 0 ? (
+                                                    <p className="text-sm text-slate-400 font-medium">No issued records yet.</p>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {recentIssued.map(cert => (
+                                                            <div key={cert.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${(cert.type || '').toLowerCase() === 'birth' ? 'bg-[#d4a574]/10 text-[#d4a574]'
+                                                                    : (cert.type || '').toLowerCase() === 'death' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
+                                                                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500'
+                                                                    }`}>
+                                                                    {(cert.type || '').toLowerCase() === 'birth' ? 'BR' : (cert.type || '').toLowerCase() === 'death' ? 'DC' : 'MC'}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{cert.name}</p>
+                                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{cert.number} · {cert.barangay}</p>
+                                                                </div>
+                                                                <span className="ml-auto text-[9px] font-black text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Issued</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Coverage</h4>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                    <span className="font-black text-slate-800 dark:text-slate-100">{certificates.length}</span> records across <span className="font-black text-slate-800 dark:text-slate-100">{rankList.length}</span> of <span className="font-black text-slate-800 dark:text-slate-100">30</span> barangays
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+
+            {/* ── Main Section Tab Bar ──────────────────────────────────────────────── */}
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900/80 p-1.5 rounded-xl w-full sm:w-fit sm:flex sm:space-x-1 border border-slate-200/60 dark:border-slate-800">
+                <button onClick={() => setActiveTab('database')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'database' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-[#d4a574] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Master Database</button>
+                <button onClick={() => setActiveTab('history')} className={`px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all text-center cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-[#d4a574] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>Activity Log History</button>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                {activeTab === 'database' ? (
+                    <>
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3 sm:space-y-4">
+                            <div className="flex flex-col lg:flex-row justify-between gap-3 sm:gap-4">
+                                <div className="relative max-w-md w-full flex items-center gap-2">
+                                    <div className="relative flex-1">
+                                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <input type="text" placeholder="Search by Cert No, Name or Barangay..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#d4a574]/30 focus:border-[#d4a574] text-xs sm:text-sm transition-all shadow-xs" />
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setOcrError('');
+                                            setIsScanSearchOpen(true);
+                                        }}
+                                        title="Scan Document to Search (Camera/OCR)"
+                                        className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-[#d4a574]/20 text-slate-600 dark:text-slate-300 hover:text-[#d4a574] border border-slate-200 dark:border-slate-700 rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs flex items-center justify-center shrink-0"
+                                    >
+                                        <CameraIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {(selectedType !== 'all' || selectedBarangay !== 'all' || selectedEncoder !== 'all' || searchTerm !== '') && (
+                                        <button
+                                            onClick={resetFilters}
+                                            className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-rose-500 hover:text-white bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-500 border border-rose-100 dark:border-rose-900/40 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 group shrink-0"
+                                        >
+                                            <XMarkIcon className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300" />
+                                            Reset Filters
+                                        </button>
+                                    )}
+                                    <div className="grid grid-cols-4 sm:flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto border border-slate-200/50 dark:border-slate-700">
+                                        {['all', 'birth', 'death', 'marriage'].map(type => (
+                                            <button key={type} onClick={() => setSelectedType(type)} className={`px-2 sm:px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all text-center cursor-pointer ${selectedType === type ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{type}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-slate-100/60 dark:border-slate-800">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline">Barangay</label>
+                                        <select
+                                            value={selectedBarangay}
+                                            onChange={(e) => setSelectedBarangay(e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                        >
+                                            <option value="all">All Barangays</option>
+                                            {uniqueBarangays.map(b => <option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline">Encoder</label>
+                                        <select
+                                            value={selectedEncoder}
+                                            onChange={(e) => setSelectedEncoder(e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none truncate"
+                                        >
+                                            <option value="all">All Encoders</option>
+                                            {uniqueEncoders.map(enc => <option key={enc} value={enc}>{enc}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Showing {filteredCertificates.length} of {certificates.length} Records
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Desktop View: Full Table (Hidden on small mobile screens) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-950/70 text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-200 dark:border-slate-800">
+                                        <th className="p-4 pl-6 w-10">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                                checked={filteredCertificates.length > 0 && filteredCertificates.every(c => selectedIds.includes(c.id))}
+                                                onChange={() => toggleSelectAll(filteredCertificates.map(c => c.id))}
+                                            />
+                                        </th>
+                                        <th className="p-4">Ref/Cert No.</th>
+                                        <th className="p-4">Type</th>
+                                        <th className="p-4">Recipient Name</th>
+                                        <th className="p-4">Barangay</th>
+                                        <th className="p-4 pr-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                    {isLoading ? (
+                                        <tr><td colSpan="6"><SkeletonLoader type="issuances" rows={8} /></td></tr>
+                                    ) : filteredCertificates.length === 0 ? (
+                                        <tr><td colSpan="6" className="p-12 text-center text-slate-400"><DocumentMinusIcon className="w-12 h-12 mx-auto mb-2 opacity-20" /><p className="font-semibold">No records found in database</p></td></tr>
+                                    ) : (
+                                        paginatedCertificates.map((cert) => (
+                                            <tr key={cert.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group ${selectedIds.includes(cert.id) ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : ''}`}>
+                                                <td className="p-4 pl-6">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                                        checked={selectedIds.includes(cert.id)}
+                                                        onChange={() => toggleSelect(cert.id)}
+                                                    />
+                                                </td>
+                                                <td className="p-4"><span className="font-bold text-slate-800 dark:text-slate-100 text-sm tracking-tight">{cert.number}</span></td>
+                                                <td className="p-4">
+                                                    {(() => {
+                                                        const t = (cert.type || '').toLowerCase();
+                                                        const colorClass = t === 'birth' ? 'text-[#d4a574]' : t === 'death' ? 'text-rose-500' : 'text-indigo-500';
+                                                        return (
+                                                            <span className={`text-xs font-black uppercase tracking-wider ${colorClass}`}>
+                                                                {cert.type}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="p-4 font-semibold text-slate-700 dark:text-slate-200 text-sm">{cert.name}</td>
+                                                <td className="p-4 text-slate-500 dark:text-slate-400 text-xs font-medium">{cert.barangay}</td>
+                                                <td className="p-4 pr-6 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handleAction('View', cert)}
+                                                            title="View Document"
+                                                            className="p-2 text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:text-white rounded-xl transition-all border border-emerald-100 dark:border-emerald-900/50 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                        >
+                                                            <EyeIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-300 group-hover/btn:text-white transition-colors" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(cert)}
+                                                            title="Delete Record"
+                                                            className="p-2 text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 dark:hover:bg-rose-800 hover:text-white rounded-xl transition-all border border-rose-100 dark:border-rose-900/50 cursor-pointer shadow-sm active:scale-95 group/btn"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-300 group-hover/btn:text-white transition-colors" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: Clean Card List (Zero side-scrolling, 100% width) */}
+                        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                            {isLoading ? (
+                                <SkeletonLoader type="issuances" rows={4} />
+                            ) : filteredCertificates.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400">
+                                    <DocumentMinusIcon className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                                    <p className="font-semibold text-xs">No records found in database</p>
+                                </div>
+                            ) : (
+                                paginatedCertificates.map((cert) => {
+                                    const t = (cert.type || '').toLowerCase();
+                                    const colorClass = t === 'birth'
+                                        ? 'bg-[#d4a574]/10 dark:bg-[#d4a574]/20 text-[#d4a574] border-[#d4a574]/30'
+                                        : t === 'death'
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900/50'
+                                            : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50';
+
+                                    return (
+                                        <div
+                                            key={cert.id}
+                                            className={`p-3 sm:p-4 transition-colors space-y-1.5 sm:space-y-2 ${selectedIds.includes(cert.id) ? 'bg-indigo-50/40 dark:bg-indigo-950/40' : 'bg-white dark:bg-slate-900/90 hover:bg-slate-50/60 dark:hover:bg-slate-800/50'}`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                                        checked={selectedIds.includes(cert.id)}
+                                                        onChange={() => toggleSelect(cert.id)}
+                                                    />
+                                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${colorClass}`}>
+                                                        {cert.type}
+                                                    </span>
+                                                    <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                                        {cert.number}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        onClick={() => handleAction('View', cert)}
+                                                        title="View Document"
+                                                        className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-600 dark:hover:bg-emerald-800 hover:text-white rounded-lg transition-all border border-emerald-100 dark:border-emerald-900/50 cursor-pointer shadow-xs active:scale-95"
+                                                    >
+                                                        <EyeIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(cert)}
+                                                        title="Delete Record"
+                                                        className="p-1.5 text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 dark:hover:bg-rose-800 hover:text-white rounded-lg transition-all border border-rose-100 dark:border-rose-900/50 cursor-pointer shadow-xs active:scale-95"
+                                                    >
+                                                        <TrashIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="pl-5.5 flex flex-col gap-0.5">
+                                                <p className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-tight">{cert.name}</p>
+                                                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
+                                                    <span>{cert.barangay}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Database Pagination */}
+                        <Pagination
+                            currentPage={safeDatabasePage}
+                            totalItems={filteredCertificates.length}
+                            pageSize={databasePageSize}
+                            onPageChange={(p) => setDatabasePage(p)}
+                            onPageSizeChange={(s) => {
+                                setDatabasePageSize(s);
+                                setDatabasePage(1);
+                            }}
+                            itemLabel="certificates"
+                        />
+                    </>
+                ) : (
+                    <div className="p-0">
+                        <div className="p-3.5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/10 dark:bg-slate-900/40">
+                            {/* Top Row: Title & Action */}
+                            <div className="flex justify-between items-center gap-3 mb-3 sm:mb-6">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-500 shadow-xs shrink-0">
+                                        <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="text-sm sm:text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight leading-tight truncate">Document Activity History</h3>
+                                        <p className="hidden sm:block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold uppercase tracking-wider">Tracking document attachments, views, and deletions</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className="bg-slate-100/60 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
+                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest tabular-nums">
+                                            {filteredLogs.length} Entries
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={fetchActivityLogs}
+                                        disabled={logsLoading}
+                                        className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5"
+                                        title="Refresh Log"
+                                    >
+                                        <ArrowPathIcon className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
+                                        <span className="hidden sm:inline">Refresh</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Filter Row: Search & Dropdowns */}
+                            <div className="space-y-2.5 sm:space-y-3 pt-3 sm:pt-4 border-t border-slate-200/50 dark:border-slate-800">
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3 items-center">
+                                    {/* Search Field (Always visible) */}
+                                    <div className="sm:col-span-6 lg:col-span-5 relative">
+                                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Recipient name, action, or details..."
+                                            value={historySearch}
+                                            onChange={(e) => setHistorySearch(e.target.value)}
+                                            className="block w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                    </div>
+
+                                    {/* Action Type & Advanced Filter Toggle */}
+                                    <div className="sm:col-span-6 lg:col-span-7 flex items-center gap-2">
+                                        <select
+                                            value={historyActionFilter}
+                                            onChange={(e) => setHistoryActionFilter(e.target.value)}
+                                            className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-2 px-2.5 cursor-pointer transition-all outline-none"
+                                        >
+                                            <option value="all">All Document Actions</option>
+                                            <option value="Document Attached">Attached to Ticket</option>
+                                            <option value="Viewed">Viewed</option>
+                                            <option value="Deleted">Deleted</option>
+                                        </select>
+
+                                        {/* Advanced Filters Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdvancedLogsFilter(prev => !prev)}
+                                            className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${showAdvancedLogsFilter || historyUserFilter !== 'all' || historyStartDate || historyEndDate
+                                                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-extrabold'
+                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                                }`}
+                                            title="Toggle advanced filters (Staff, Date Range)"
+                                        >
+                                            <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
+                                            <span className="text-[11px]">Advanced</span>
+                                            <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedLogsFilter ? 'rotate-180' : ''}`} />
+                                            {(historyUserFilter !== 'all' || historyStartDate || historyEndDate) && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0"></span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Collapsible Advanced Filters Section: Staff & Date Range */}
+                                <AnimatePresence initial={false}>
+                                    {showAdvancedLogsFilter && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden pt-1"
+                                        >
+                                            <div className="p-3 bg-slate-50/80 dark:bg-slate-950/60 rounded-xl border border-slate-200/60 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                                                {/* Staff Selection */}
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">Encoder / Staff</label>
+                                                    <select
+                                                        value={historyUserFilter}
+                                                        onChange={(e) => setHistoryUserFilter(e.target.value)}
+                                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block py-1.5 px-2.5 cursor-pointer transition-all outline-none"
+                                                    >
+                                                        <option value="all">Any Staff member</option>
+                                                        {uniqueEncoders.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                {/* Date Range Fields */}
+                                                <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">From Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={historyStartDate}
+                                                            onChange={(e) => setHistoryStartDate(e.target.value)}
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">To Date</label>
+                                                        <input
+                                                            type="date"
+                                                            value={historyEndDate}
+                                                            onChange={(e) => setHistoryEndDate(e.target.value)}
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                {/* Active Filters & Clear */}
+                                {(historySearch || historyActionFilter !== 'all' || historyUserFilter !== 'all' || historyStartDate || historyEndDate) && (
+                                    <div className="flex items-center justify-between bg-indigo-50/50 dark:bg-indigo-950/40 p-2 rounded-xl border border-indigo-100/50 dark:border-indigo-900/50 animate-in fade-in">
+                                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 pl-2">Filtering results...</p>
+                                        <button
+                                            onClick={() => {
+                                                setHistorySearch('');
+                                                setHistoryActionFilter('all');
+                                                setHistoryUserFilter('all');
+                                                setHistoryStartDate('');
+                                                setHistoryEndDate('');
+                                            }}
+                                            className="text-[10px] font-black text-rose-500 hover:text-white hover:bg-rose-500 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:border-rose-500 uppercase tracking-widest transition-all cursor-pointer"
+                                        >
+                                            Clear All Filters
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {logsLoading ? (
+                            <SkeletonLoader type="issuances" rows={10} />
+                        ) : filteredLogs.length === 0 ? (
+                            <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-100 dark:border-slate-800 m-6 rounded-3xl">
+                                <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 opacity-10 text-slate-500" />
+                                <p className="font-bold text-slate-600 dark:text-slate-300">No document activity logged yet</p>
+                                <p className="text-xs mt-1">Actions like attaching to a ticket, viewing, and deleting documents will appear here.</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Desktop Table View */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-100 dark:border-slate-800">
+                                                <th className="p-4 pl-8">Timestamp</th>
+                                                <th className="p-4">Encoder</th>
+                                                <th className="p-4">Action</th>
+                                                <th className="p-4">Record Info</th>
+                                                <th className="p-4 pr-8">Log Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
+                                            {paginatedLogs.map((log) => {
+                                                const badge = getActionBadge(log.action);
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                                        <td className="p-4 pl-8 font-bold text-slate-400 dark:text-slate-500 text-[10px] tabular-nums tracking-tighter">
+                                                            {new Date(log.created_at).toLocaleString()}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                                                {log.user_name}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${badge.classes}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                                                                {badge.label}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono">
+                                                                {log.record_type} #{log.record_id}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 pr-8 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                                            {log.details}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Card View */}
+                                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                                    {paginatedLogs.map((log) => {
+                                        const badge = getActionBadge(log.action);
+                                        return (
+                                            <div key={log.id} className="p-4 space-y-2 bg-white dark:bg-slate-900/90">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${badge.classes}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                                                        {badge.label}
+                                                    </span>
+                                                    <span className="font-bold text-slate-400 dark:text-slate-500 text-[10px] tabular-nums">
+                                                        {new Date(log.created_at).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                                                        {log.user_name}
+                                                    </span>
+                                                    <span className="font-mono text-slate-500 dark:text-slate-400 text-[11px]">
+                                                        {log.record_type} #{log.record_id}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                                                    {log.details}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Audit Logs Pagination */}
+                                <Pagination
+                                    currentPage={safeLogsPage}
+                                    totalItems={filteredLogs.length}
+                                    pageSize={logsPageSize}
+                                    onPageChange={(p) => setLogsPage(p)}
+                                    onPageSizeChange={(s) => {
+                                        setLogsPageSize(s);
+                                        setLogsPage(1);
+                                    }}
+                                    itemLabel="audit logs"
+                                />
+                            </>
+                        )}
+                    </div>
+                )}
+            </motion.div>
+
+            {/* Floating Bulk Action Bar */}
+            <AnimatePresence>
+                {selectedIds.length > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{
+                            y: isBarMinimized ? 80 : 0,
+                            opacity: 1,
+                            scale: isBarMinimized ? 0.95 : 1
+                        }}
+                        exit={{ y: 100, opacity: 0 }}
+                        transition={{ type: 'tween', duration: 0.1, ease: 'circOut' }}
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4"
+                    >
+                        <div className={`bg-slate-900 border border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-4 flex items-center justify-between relative transition-all ${isBarMinimized ? 'opacity-50 hover:opacity-100' : ''}`}>
+                            {/* Toggle Button */}
+                            <button
+                                onClick={() => setIsBarMinimized(!isBarMinimized)}
+                                className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-slate-400 hover:text-white p-1.5 rounded-full shadow-lg transition-all cursor-pointer z-10"
+                                title={isBarMinimized ? "Expand Toolbar" : "Minimize Toolbar"}
+                            >
+                                {isBarMinimized ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
+                            </button>
+
+                            <div className="flex items-center gap-4 pl-4">
+                                <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-white text-xs font-black transition-all ${isBarMinimized ? 'scale-75' : ''}`}>
+                                    {selectedIds.length}
+                                </span>
+                                {!isBarMinimized && (
+                                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                                        <p className="text-white text-sm font-bold leading-none tracking-tight">Records Selected</p>
+                                        <button onClick={() => setSelectedIds([])} className="text-[10px] text-slate-400 hover:text-white font-bold uppercase tracking-widest mt-1 transition-colors">Clear Selection</button>
+                                    </motion.div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pr-2">
+                                {isBarMinimized ? (
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-4">Selection active</span>
+                                ) : (
+                                    <button onClick={handleBulkDelete} className="flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-widest bg-rose-500 hover:bg-rose-600 text-white rounded-2xl transition-all shadow-lg shadow-rose-900/20 active:scale-95 cursor-pointer" title="Delete Selected Records">
+                                        <TrashIcon className="w-4 h-4" />
+                                        <span>Delete ({selectedIds.length})</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* CameraModal for Scan to Search */}
+            <CameraModal
+                isOpen={isSearchCameraOpen}
+                onClose={() => setIsSearchCameraOpen(false)}
+                onCapture={async (capturePayload) => {
+                    let file = capturePayload.file;
+                    try {
+                        const preprocessed = await preprocessUploadFile(capturePayload, {
+                            corners: capturePayload.corners,
+                            edgeStability: capturePayload.edgeStability,
+                            deviceType: capturePayload.deviceType
+                        });
+                        file = preprocessed.file;
+                    } catch (err) {
+                        console.warn("Preprocessing failed for Scan to Search:", err);
+                    }
+                    handleOcrSearchUpload(file);
+                }}
+            />
+        </motion.div>
+    );
+};
+
+export default Issuances;

@@ -73,7 +73,7 @@ const MobileDeviceLayout = ({ children }) => {
         { path: '/tickets', icon: TicketIcon, label: 'Tickets Queue', roles: ['SuperAdmin', 'Admin'] },
         { path: '/documents', icon: ArrowUpTrayIcon, label: 'Upload Document', roles: ['SuperAdmin', 'Admin'] },
         { path: '/reports', icon: TableCellsIcon, label: 'Export Reports', roles: ['SuperAdmin', 'Admin'] },
-        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
+        { path: '/registry', icon: ClipboardDocumentCheckIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
         { path: '/archive', icon: TrashIcon, label: 'Archive Manager', roles: ['SuperAdmin', 'Admin'] },
         { path: '/mapping', icon: MapPinIcon, label: 'Mapping', roles: ['SuperAdmin'] },
         { path: '/announcements', icon: MegaphoneIcon, label: 'Announcements', roles: ['SuperAdmin', 'Admin'] },
@@ -89,7 +89,7 @@ const MobileDeviceLayout = ({ children }) => {
         { path: '/dashboard', icon: ChartBarIcon, label: 'Dashboard' },
         { path: '/tickets', icon: TicketIcon, label: 'Queue' },
         { path: '/documents', icon: ArrowUpTrayIcon, label: 'Upload' },
-        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Database' },
+        { path: '/registry', icon: ClipboardDocumentCheckIcon, label: 'Database' },
     ];
 
     const handleLogout = async () => {

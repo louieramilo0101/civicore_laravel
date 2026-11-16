@@ -664,7 +664,18 @@ class BackupService
         $username = config('database.connections.mysql.username');
         $password = config('database.connections.mysql.password');
 
-        // Check if mysqldump command is available
+        // The native mysqldump binary is unreliable on some local stacks (Laragon,
+        // WAMP): it exits 0 yet silently emits an incomplete dump, dropping INSERT
+        // statements for some tables. The PDO dumper reads every row through the
+        // same connection Laravel uses, so it is the trustworthy path. Prefer it,
+        // and only fall back to mysqldump if the PDO dumper itself throws.
+        try {
+            $this->dumpMysqlViaPdo($outputPath);
+            return;
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         $mysqldump = 'mysqldump';
         if (File::exists('C:/laragon/bin/mysql/mysql-8.0.30-winx64/bin/mysqldump.exe')) {
             $mysqldump = 'C:/laragon/bin/mysql/mysql-8.0.30-winx64/bin/mysqldump.exe';
@@ -676,7 +687,7 @@ class BackupService
         @exec($cmd, $output, $returnVar);
 
         if ($returnVar !== 0 || !File::exists($outputPath) || File::size($outputPath) === 0) {
-            // Fallback: Generate SQL dump via PDO
+            // Last resort: Generate SQL dump via PDO
             $this->dumpMysqlViaPdo($outputPath);
         }
     }

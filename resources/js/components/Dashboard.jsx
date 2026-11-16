@@ -66,7 +66,18 @@ const BorderBeam = ({ color = "#4f46e5", duration = 8, delay = 0 }) => (
 function Dashboard() {
     const { stats: rawStats, refreshStats, loading: dataLoading } = useData();
     const [chartData, setChartData] = useState(null);
+    // States for dashboard rotation and toggles
     const [rotateIssued, setRotateIssued] = useState(false);
+    const [chartMode, setChartMode] = useState('uploads'); // 'uploads' | 'tickets'
+
+    // Auto-rotate the "TOTAL ISSUED FILES" card every 3 seconds
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setRotateIssued(prev => !prev);
+        }, 3000);
+        return () => clearInterval(timer);
+    }, []);
+
     const loading = dataLoading.stats;
     const chartRefs = useRef({});
 
@@ -78,14 +89,13 @@ function Dashboard() {
         deathsCount: 0, marriagesCount: 0
     };
 
-    // Auto-rotate the "TOTAL ISSUED FILES" card every 3 seconds
-    // between total issued and pending queue count
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setRotateIssued(prev => !prev);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, []);
+    const handleRotate = () => {
+        setRotateIssued(prev => !prev);
+    };
+
+    const handleChartToggle = () => {
+        setChartMode(prevMode => prevMode === 'uploads' ? 'tickets' : 'uploads');
+    };
 
     const mottos = [
         "Empowering citizens through digital excellence.",
@@ -187,12 +197,14 @@ function Dashboard() {
             }
         });
 
+        const statusSource = chartData?.processStatus?.[chartMode] || { labels: [], data: [] };
+
         createChart('statusChart', {
             type: 'bar',
             data: {
-                labels: ['Complete', 'In Queue', 'Action Needed'],
+                labels: statusSource.labels?.length ? statusSource.labels : ['—'],
                 datasets: [{
-                    data: chartData?.processStatus?.data || [0, 0, 0],
+                    data: statusSource.data || [0],
                     backgroundColor: ['#10b981', '#6366f1', '#ef4444'],
                     hoverBackgroundColor: ['#34d399', '#818cf8', '#f87171'],
                     borderRadius: 6,
@@ -212,6 +224,14 @@ function Dashboard() {
                         backgroundColor: '#0f172a',
                         padding: 10,
                         cornerRadius: 8
+                    },
+                    title: {
+                        display: true,
+                        text: chartMode === 'tickets' 
+                            ? 'Processing Status: Ticket Queue' 
+                            : 'Processing Status: Document Uploads',
+                        font: { size: 16, weight: 'bold' },
+                        color: isDarkMode ? '#ffffff' : '#0f172a'
                     }
                 }
             }
@@ -315,7 +335,7 @@ function Dashboard() {
         });
 
         return () => Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-    }, [loading, chartData]);
+    }, [loading, chartData, chartMode]);
 
     const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
     const hour = new Date().getHours();
@@ -371,7 +391,7 @@ function Dashboard() {
                         {[
                             { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master', to: '/issuances' },
                             { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Action Needed', to: '/documents' },
-                            { label: 'TOTAL ISSUED FILES', val: rotateIssued ? (stats.pendingTickets || 0) : stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: rotateIssued ? 'Pending Queue' : 'Finalized', to: '/tickets', altLabel: rotateIssued ? 'PENDING QUEUE' : 'TOTAL ISSUED FILES' },
+                            { label: 'TOTAL ISSUED FILES', val: rotateIssued ? (stats.pendingTickets || 0) : stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: rotateIssued ? 'Pending Queue' : 'Finalized', onClick: handleRotate, altLabel: rotateIssued ? 'PENDING QUEUE' : 'TOTAL ISSUED FILES' },
                             { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Current', to: '/accounts', show: showUsersCard }
                         ].filter(s => s.show !== false).map((s, i) => (
                             <motion.div
@@ -381,7 +401,11 @@ function Dashboard() {
                                 whileTap={{ scale: 0.98 }}
                                 className={`${s.bg} rounded-xl sm:rounded-2xl p-3 sm:p-5 border ${s.border} shadow-xs relative group hover:shadow-md transition-all duration-200 ease-out overflow-hidden`}
                             >
-                                <Link to={s.to} className="absolute inset-0 z-10" />
+                                 {s.onClick ? (
+                                    <div onClick={s.onClick} className="absolute inset-0 z-10 cursor-pointer" />
+                                ) : (
+                                    <Link to={s.to} className="absolute inset-0 z-10" />
+                                )}
                                 <div className="flex justify-between items-start mb-2 sm:mb-3 relative z-0">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg.includes('bg-indigo-600') ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
                                         <s.icon className={`w-4 h-4 ${s.bg.includes('bg-indigo-600') ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
@@ -458,9 +482,18 @@ function Dashboard() {
                         <motion.div variants={itemVariants} className="lg:col-span-2 bg-white dark:bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[280px] sm:h-[320px] overflow-hidden relative group hover:shadow-md transition-shadow duration-200">
                             <div className="flex justify-between items-center mb-3 relative z-10">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">Processing Status</h3>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Workflow progress</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base tracking-tight leading-none mb-1">
+                                        Processing Status: {chartMode === 'tickets' ? 'Ticket Queue' : 'Uploads'}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Click to toggle view</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={handleChartToggle}
+                                    className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                                >
+                                    {chartMode === 'tickets' ? 'Tickets' : 'Uploads'}
+                                </button>
                             </div>
                             <div className="flex-1 relative z-10 min-h-0 w-full">
                                 <canvas id="statusChart"></canvas>

@@ -471,7 +471,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         isDirtyRef.current = true;
         setManualType(t);
         setAcknowledgedType(t);
-        setFormData(getInitialFormData(t, {}, file));
+        const rawFields = ocrResult?.extracted_fields || file.extracted_fields || {};
+        setFormData(getInitialFormData(t, rawFields, file));
         clearError('_type');
     };
 
@@ -710,6 +711,13 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     const [duplicateData, setDuplicateData] = useState(file?.duplicate_candidate || null);
     const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
+    // Keep duplicateData in sync with incoming file prop
+    useEffect(() => {
+        if (file?.duplicate_candidate) {
+            setDuplicateData(file.duplicate_candidate);
+        }
+    }, [file?.duplicate_candidate]);
+
     // When the queue's Duplicate badge is clicked, open the review panel and
     // immediately drop into the side-by-side comparison view.
     useEffect(() => {
@@ -718,14 +726,12 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         }
     }, [forceCompare, duplicateData]);
 
-useEffect(() => {
+    useEffect(() => {
         const docId = file.id || file.file_id || file.document_id || file.realId;
         if (!docId) return;
 
-        // If the document list already pre-fetched the duplicate candidate
-        // (server-side detection during the list query), skip the async
-        // round-trip entirely — the comparison data is already on hand.
-        if (duplicateData) {
+        // If the document already has a duplicate candidate matching this effectiveType, reuse it
+        if (duplicateData && (duplicateData.type === effectiveType || !duplicateData.type)) {
             if (onDuplicateStatusChange) {
                 onDuplicateStatusChange(docId, true);
             }
@@ -737,7 +743,8 @@ useEffect(() => {
                 return; // Do not check duplicates for existing registry records
             }
 
-            const regNo = (formData.registry_number || formData.registry_no || '').trim();
+            const rawFields = ocrResult?.extracted_fields || file.extracted_fields || {};
+            const regNo = (formData.registry_number || formData.registry_no || rawFields.registry_number || rawFields.registry_no || '').trim();
             if (!regNo) {
                 setDuplicateData(null);
                 if (onDuplicateStatusChange) {
@@ -776,8 +783,7 @@ useEffect(() => {
             }
         };
 
-        // Run immediately on mount so the banner appears instantly when the
-        // user opens the review/edit panel — no debounce delay.
+        // Run immediately on mount or type change so the comparison updates
         checkDuplicateRecord();
     }, [file.id, effectiveType]);
 

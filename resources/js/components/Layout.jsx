@@ -14,7 +14,8 @@ import {
     TrashIcon,
     CircleStackIcon,
     UserCircleIcon,
-    AdjustmentsHorizontalIcon
+    AdjustmentsHorizontalIcon,
+    BookOpenIcon
 } from '@heroicons/react/24/outline';
 import { useAccessibility } from './AccessibilityContext.jsx';
 import { useData } from './DataContext.jsx';
@@ -86,7 +87,7 @@ const Layout = ({ children }) => {
         { path: '/tickets', icon: TicketIcon, label: 'Tickets Queue', roles: ['SuperAdmin', 'Admin'] },
         { path: '/documents', icon: ArrowUpTrayIcon, label: 'Upload Document', roles: ['SuperAdmin', 'Admin'] },
         { path: '/reports', icon: TableCellsIcon, label: 'Export Reports', roles: ['SuperAdmin', 'Admin'] },
-        { path: '/issuances', icon: ClipboardDocumentCheckIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
+        { path: '/registry', icon: BookOpenIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
         { path: '/archive', icon: TrashIcon, label: 'Archive Manager', roles: ['SuperAdmin', 'Admin'] },
         { path: '/mapping', icon: MapPinIcon, label: 'Mapping', roles: ['SuperAdmin'] },
         { path: '/announcements', icon: MegaphoneIcon, label: 'Announcements', roles: ['SuperAdmin', 'Admin'] },

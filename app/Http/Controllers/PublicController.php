@@ -47,11 +47,10 @@ class PublicController extends Controller
     {
         try {
             $data = Cache::remember('public_stats', 15, function () {
-                // Count only officially issued issuances (matching the Dashboard's TOTAL ISSUED FILES count)
-                $totalIssued = DB::table('issuances')
-                    ->whereNull('deleted_at')
-                    ->where(DB::raw('LOWER(status)'), 'issued')
-                    ->count();
+                // Count only officially issued registry records (active status)
+                $totalIssued = DB::table('registry_births')->whereNull('deleted_at')->where('status', 'active')->count()
+                    + DB::table('registry_deaths')->whereNull('deleted_at')->where('status', 'active')->count()
+                    + DB::table('registry_marriages')->whereNull('deleted_at')->where('status', 'active')->count();
 
                 // Average response simulation based on total issued records
                 $baseLatencyMs = 800;

@@ -38,14 +38,12 @@ export const Events = {
     DOCUMENT_BULK_PROCESS: 'document:bulk-process',
     DOCUMENTOCR_STATUS:    'document:ocr-status',
 
-    // Issuances
-    ISSUANCE_CREATED:   'issuance:created',
-    ISSUANCE_UPDATED:   'issuance:updated',
-    ISSUANCE_DELETED:   'issuance:deleted',
-    ISSUANCE_ISSUED:    'issuance:issued',
-    ISSUANCE_REQUESTED: 'issuance:request-print',
-    ISSUANCE_APPROVED:  'issuance:approve-print',
-    ISSUANCE_REJECTED:  'issuance:reject-print',
+    // Registry (replaces Issuances)
+    REGISTRY_CREATED:   'registry:created',
+    REGISTRY_UPDATED:   'registry:updated',
+    REGISTRY_DELETED:   'registry:deleted',  // archived
+    REGISTRY_RESTORED:  'registry:restored',
+    REGISTRY_PURGED:    'registry:purged',
 
     // Tickets
     TICKET_CREATED:    'ticket:created',

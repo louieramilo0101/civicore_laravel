@@ -295,11 +295,12 @@ export default function Reports() {
                         _sourceLabel: 'Client Procured'
                     }));
             } else if (dataSource === 'all') {
-                // Fetch both internal master records (from Registry Database issuances) and ticket issuances
+                // Fetch both internal master records (from Registry Database) and ticket issuances
                 const issParams = new URLSearchParams(params);
                 issParams.set('per_page', '500');
+                if (!issParams.get('type')) issParams.set('type', 'all');
                 const [regRes, procRes] = await Promise.all([
-                    fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' }),
+                    fetch(`/api/registry?${issParams.toString()}`, { credentials: 'include' }),
                     fetch(`/api/ticket-issuances?${issParams.toString()}`, { credentials: 'include' })
                 ]);
                 const regData = await regRes.json();
@@ -316,10 +317,11 @@ export default function Reports() {
                     .map(r => ({ ...r, _source: 'procured', _sourceLabel: 'Client Procured' }));
                 records = [...registryDocs, ...procuredDocs];
             } else {
-                // Fetch internal master registry database records (issuances)
+                // Fetch internal master registry database records
                 const issParams = new URLSearchParams(params);
                 issParams.set('per_page', '500');
-                const res = await fetch(`/api/issuances?${issParams.toString()}`, { credentials: 'include' });
+                if (!issParams.get('type')) issParams.set('type', 'all');
+                const res = await fetch(`/api/registry?${issParams.toString()}`, { credentials: 'include' });
                 const data = await res.json();
                 records = (data.data || [])
                     .map(r => ({

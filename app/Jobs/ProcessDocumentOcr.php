@@ -253,7 +253,7 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 }
             }
 
-            // Run duplicate check on the newly extracted record against Master Registry (issuances table)
+            // Run duplicate check on the newly extracted record against Master Registry tables
             $hasDuplicate = false;
             $dupType = $detectedType;
             if ($dupType === 'marriage_license') {
@@ -261,14 +261,9 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             }
             $regNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? $extractedFields['certNumber'] ?? '');
             if (!empty($regNo)) {
-                $dupQuery = DB::table('issuances')
+                $targetTable = 'registry_' . ($dupType === 'death' ? 'deaths' : ($dupType === 'marriage' ? 'marriages' : 'births'));
+                $dupQuery = DB::table($targetTable)
                     ->whereNull('deleted_at');
-
-                if ($dupType === 'marriage') {
-                    $dupQuery->whereIn('type', ['marriage', 'marriage_license']);
-                } elseif (!empty($dupType)) {
-                    $dupQuery->where('type', $dupType);
-                }
 
                 $dupQuery->where(function ($q) use ($regNo) {
                     $q->where('certNumber', $regNo)

@@ -26,7 +26,7 @@ const Dashboard             = React.lazy(() => import('./components/Dashboard.js
 const Documents             = React.lazy(() => import('./components/Documents.jsx'));
 const Reports               = React.lazy(() => import('./components/Reports.jsx'));
 const ArchiveManager        = React.lazy(() => import('./components/ArchiveManager.jsx'));
-const Issuances             = React.lazy(() => import('./components/Issuances.jsx'));
+const Registry              = React.lazy(() => import('./components/Registry.jsx'));
 const Mapping               = React.lazy(() => import('./components/Mapping.jsx'));
 const Accounts              = React.lazy(() => import('./components/Accounts.jsx'));
 const Backups               = React.lazy(() => import('./components/Backups.jsx'));
@@ -47,7 +47,7 @@ const LAZY_CHUNKS = [
     () => import('./components/Documents.jsx'),
     () => import('./components/Reports.jsx'),
     () => import('./components/ArchiveManager.jsx'),
-    () => import('./components/Issuances.jsx'),
+    () => import('./components/Registry.jsx'),
     () => import('./components/Mapping.jsx'),
     () => import('./components/Accounts.jsx'),
     () => import('./components/Backups.jsx'),
@@ -278,10 +278,10 @@ function App() {
                             </ProtectedRoute>
                         } />
 
-                        {/* Issuances — Admin + SuperAdmin */}
-                        <Route path="/issuances" element={
+                        {/* Registry Database — Admin + SuperAdmin */}
+                        <Route path="/registry" element={
                             <ProtectedRoute allowedRoles={['SuperAdmin', 'Admin']}>
-                                <Layout><Suspense fallback={<ContentFallback />}><Issuances /></Suspense></Layout>
+                                <Layout><Suspense fallback={<ContentFallback />}><Registry /></Suspense></Layout>
                             </ProtectedRoute>
                         } />
 

@@ -847,14 +847,30 @@ class TicketController extends Controller
 
         // Also cancel the master registry issuance if linked to the same document
         if ($ticket->document_id) {
-            $masterIssuance = \Illuminate\Support\Facades\DB::table('issuances')
-                ->where('document_id', $ticket->document_id)
-                ->whereNull('deleted_at')
-                ->first();
-            if ($masterIssuance && $masterIssuance->status !== 'completed') {
-                \Illuminate\Support\Facades\DB::table('issuances')
-                    ->where('id', $masterIssuance->id)
-                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            $doc = DB::table('documents')->where('id', $ticket->document_id)->first();
+            if ($doc) {
+                $docType = $doc->detected_type ?: $doc->type;
+                $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
+                
+                $registryTable = match ($normType) {
+                    'birth' => 'registry_births',
+                    'death' => 'registry_deaths',
+                    'marriage' => 'registry_marriages',
+                    default => null
+                };
+                
+                if ($registryTable) {
+                    $masterIssuance = DB::table($registryTable)
+                        ->where('document_id', $ticket->document_id)
+                        ->whereNull('deleted_at')
+                        ->where('status', 'active')
+                        ->first();
+                    if ($masterIssuance) {
+                        DB::table($registryTable)
+                            ->where('id', $masterIssuance->id)
+                            ->update(['status' => 'cancelled', 'updated_at' => now()]);
+                    }
+                }
             }
         }
 
@@ -1114,10 +1130,26 @@ class TicketController extends Controller
 
         // Also mark the linked registry issuance as Issued (if document was uploaded to registry)
         if ($ticket->document_id) {
-            DB::table('issuances')
-                ->where('document_id', $ticket->document_id)
-                ->whereNull('deleted_at')
-                ->update(['status' => 'Issued', 'updated_at' => Carbon::now()]);
+            $doc = DB::table('documents')->where('id', $ticket->document_id)->first();
+            if ($doc) {
+                $docType = $doc->detected_type ?: $doc->type;
+                $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
+                
+                $registryTable = match ($normType) {
+                    'birth' => 'registry_births',
+                    'death' => 'registry_deaths',
+                    'marriage' => 'registry_marriages',
+                    default => null
+                };
+                
+                if ($registryTable) {
+                    DB::table($registryTable)
+                        ->where('document_id', $ticket->document_id)
+                        ->whereNull('deleted_at')
+                        ->where('status', 'active')
+                        ->update(['status' => 'Issued', 'updated_at' => Carbon::now()]);
+                }
+            }
         }
 
         return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);
