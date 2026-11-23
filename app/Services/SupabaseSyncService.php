@@ -5,7 +5,10 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Ticket;
+use App\Mail\TicketConfirmation;
 use Carbon\Carbon;
 
 class SupabaseSyncService
@@ -105,6 +108,11 @@ class SupabaseSyncService
 
                     if ($patchRes->successful()) {
                         $syncedCount++;
+                    }
+
+                    // Dispatch confirmation email if citizen provided email address
+                    if (!empty($ticket->email)) {
+                        $this->sendTicketEmail($ticket);
                     }
                 } else {
                     // Already in local MySQL, just acknowledge sync on Supabase
@@ -227,5 +235,68 @@ class SupabaseSyncService
             Log::error('SupabaseSync: Error pushing public config', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    /**
+     * Sends the ticket confirmation email with generated QR code.
+     */
+    protected function sendTicketEmail(Ticket $ticket): void
+    {
+        try {
+            $portalUrl = env('PUBLIC_PORTAL_URL') ?: config('app.url', 'https://civicore-laravel.vercel.app');
+            $ticketUrl = rtrim($portalUrl, '/') . "/ticket-status/{$ticket->token}";
+
+            [$qrPath, $qrBase64] = $this->generateQr($ticket->token, $ticketUrl);
+
+            // Save generated QR path to local ticket record
+            $ticket->update(['qr_code_path' => $qrPath]);
+
+            Mail::to($ticket->email)->send(new TicketConfirmation($ticket, $qrBase64, $ticketUrl));
+            Log::info("SupabaseSync: Sent ticket confirmation email to {$ticket->email} for ticket {$ticket->ticket_number}");
+        } catch (\Throwable $mailErr) {
+            Log::warning('SupabaseSync: Ticket confirmation email failed: ' . $mailErr->getMessage());
+        }
+    }
+
+    /**
+     * Generates a QR code PNG, saves it to public disk, and returns base64 string.
+     */
+    protected function generateQr(string $token, string $ticketUrl): array
+    {
+        $filename = 'qrcodes/ticket_' . $token . '.png';
+
+        $qr = \BaconQrCode\Encoder\Encoder::encode($ticketUrl, \BaconQrCode\Common\ErrorCorrectionLevel::M());
+        $matrix = $qr->getMatrix();
+        $width = $matrix->getWidth();
+        $height = $matrix->getHeight();
+
+        $scale = 8;
+        $margin = 2;
+        $imgSize = ($width + ($margin * 2)) * $scale;
+
+        $image = imagecreatetruecolor($imgSize, $imgSize);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        $black = imagecolorallocate($image, 0, 0, 0);
+
+        imagefill($image, 0, 0, $white);
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                if ($matrix->get($x, $y) === 1) {
+                    $px = ($x + $margin) * $scale;
+                    $py = ($y + $margin) * $scale;
+                    imagefilledrectangle($image, $px, $py, $px + $scale - 1, $py + $scale - 1, $black);
+                }
+            }
+        }
+
+        ob_start();
+        imagepng($image);
+        $pngData = ob_get_clean();
+        imagedestroy($image);
+
+        Storage::disk('public')->put($filename, $pngData);
+
+        return [$filename, base64_encode($pngData)];
     }
 }
