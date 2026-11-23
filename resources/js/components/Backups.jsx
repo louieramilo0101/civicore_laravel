@@ -59,7 +59,7 @@ const Backups = () => {
         try {
             const res = await fetch('/api/backups', { credentials: 'include' });
             const data = await res.json();
-            if (data.success) {
+            if (res.ok && data.success) {
                 const fetchedBackups = data.backups || [];
                 const fetchedStats = data.stats || { total_count: 0, total_size: '0 B', latest_at: null };
                 setBackups(fetchedBackups);
@@ -72,8 +72,8 @@ const Backups = () => {
                 }
             } else {
                 showAlert({
-                    title: 'Access Restricted',
-                    message: data.error || 'Only Admins may access system backups.',
+                    title: res.status === 403 ? 'SuperAdmin Access Required' : 'Access Restricted',
+                    message: data.error || 'Only SuperAdmin accounts can view and manage system backups.',
                     type: 'error'
                 });
             }
@@ -86,7 +86,8 @@ const Backups = () => {
     };
 
     useEffect(() => {
-        fetchBackups(!sessionStorage.getItem('civicore_backups'));
+        // Fetch fresh backups on mount to avoid stale empty cache
+        fetchBackups(true);
     }, []);
 
     const handleCreateBackup = async () => {

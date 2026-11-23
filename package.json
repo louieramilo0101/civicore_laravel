@@ -31,6 +31,7 @@
     "dependencies": {
         "@google/genai": "^1.46.0",
         "@heroicons/react": "^2.2.0",
+        "@supabase/supabase-js": "^2.119.2",
         "boring-avatars": "^2.0.4",
         "cam2qr": "^1.4.0",
         "framer-motion": "^12.35.2",

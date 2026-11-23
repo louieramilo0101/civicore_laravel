@@ -27,6 +27,7 @@ import {
 import { useData } from './DataContext.jsx';
 import { useModal } from './ModalContext.jsx';
 import axios from 'axios';
+import { supabase, isSupabaseConfigured } from '../supabase.js';
 
 // Subcomponents for Operations Hub
 import PendingRequests from './PendingRequests.jsx';
@@ -131,35 +132,65 @@ export default function Ticketing({ mode = 'portal' }) {
         setDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
+    const isPublicPortal = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
+
     const doSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const formData = new FormData();
-            formData.append('client_name', clientName.trim());
-            if (email.trim()) formData.append('email', email.trim());
-            if (phone.trim()) formData.append('phone', phone.trim());
-            formData.append('purpose', purpose);
+            // On Vercel (public portal): insert directly into Supabase
+            if (isPublicPortal && isSupabaseConfigured()) {
+                const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+                const cleanDetails = {};
+                Object.entries(details).forEach(([key, val]) => {
+                    if (val !== undefined && val !== null && val !== '') {
+                        cleanDetails[key] = val;
+                    }
+                });
 
-            Object.entries(details).forEach(([key, val]) => {
-                if (val !== undefined && val !== null) {
-                    formData.append(`details[${key}]`, val);
-                }
-            });
+                const { data, error } = await supabase.from('public_tickets').insert({
+                    token,
+                    client_name: clientName.trim(),
+                    email: email.trim() || null,
+                    phone: phone.trim() || null,
+                    purpose,
+                    details: cleanDetails,
+                    request_status: 'pending',
+                    queue_status: 'not_in_lobby'
+                }).select().single();
 
-            if (consentFile) {
-                formData.append('consent_form', consentFile);
-            }
+                if (error) throw error;
 
-            const res = await axios.post('/api/public/tickets', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            if (res.data.success) {
                 showAlert({ title: 'Ticket Generated', message: 'Your request has been queued.', type: 'success' });
-                navigate(`/ticket-status/${res.data.ticket.token}`);
+                navigate(`/ticket-status/${token}`);
+            } else {
+                // On localhost: use Laravel API as before
+                const formData = new FormData();
+                formData.append('client_name', clientName.trim());
+                if (email.trim()) formData.append('email', email.trim());
+                if (phone.trim()) formData.append('phone', phone.trim());
+                formData.append('purpose', purpose);
+
+                Object.entries(details).forEach(([key, val]) => {
+                    if (val !== undefined && val !== null) {
+                        formData.append(`details[${key}]`, val);
+                    }
+                });
+
+                if (consentFile) {
+                    formData.append('consent_form', consentFile);
+                }
+
+                const res = await axios.post('/api/public/tickets', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (res.data.success) {
+                    showAlert({ title: 'Ticket Generated', message: 'Your request has been queued.', type: 'success' });
+                    navigate(`/ticket-status/${res.data.ticket.token}`);
+                }
             }
         } catch (err) {
             console.error(err);
-            const serverMsg = err.response?.data?.error || err.response?.data?.message || 'Could not create ticket. Please try again.';
+            const serverMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Could not create ticket. Please try again.';
             const isLimit = err.response?.status === 429;
             showAlert({
                 title: isLimit ? 'Request Limit Reached' : 'Queue Error',
@@ -267,10 +298,40 @@ export default function Ticketing({ mode = 'portal' }) {
     const fetchTicketStatus = async () => {
         setIsLoadingTicket(true);
         try {
-            const res = await axios.get(`/api/public/tickets/${token}`);
-            setTicket(res.data.ticket);
-            setQueuePosition(res.data.queue_position);
-            if (res.data.qr_code_url) setTicketQrUrl(res.data.qr_code_url);
+            if (isPublicPortal && isSupabaseConfigured()) {
+                // On Vercel: query Supabase directly by token
+                const { data, error } = await supabase
+                    .from('public_tickets')
+                    .select('*')
+                    .eq('token', token)
+                    .single();
+
+                if (error) throw error;
+                if (data) {
+                    setTicket({
+                        ...data,
+                        status: data.queue_status === 'serving' ? 'Serving'
+                            : data.queue_status === 'completed' ? 'Completed'
+                            : data.request_status === 'rejected' ? 'Declined'
+                            : 'Pending',
+                        ticket_number: data.ticket_number || 'Pending',
+                    });
+                    // Queue position: count tickets created before this one that are still pending
+                    const { count } = await supabase
+                        .from('public_tickets')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('queue_status', 'not_in_lobby')
+                        .eq('request_status', 'pending')
+                        .lt('created_at', data.created_at);
+                    setQueuePosition((count || 0) + 1);
+                }
+            } else {
+                // On localhost: use Laravel API as before
+                const res = await axios.get(`/api/public/tickets/${token}`);
+                setTicket(res.data.ticket);
+                setQueuePosition(res.data.queue_position);
+                if (res.data.qr_code_url) setTicketQrUrl(res.data.qr_code_url);
+            }
         } catch (err) {
             console.error(err);
         } finally {

@@ -411,6 +411,150 @@ const getFieldMaxLength = (field) => {
     return 100;
 };
 
+/**
+ * Validates current formData against field configuration and rules.
+ * @returns {{ errors: Object, firstErrorField: string|null, firstErrorKey: string|null }}
+ */
+const validateFormFields = (effectiveType, currentFormData = {}, { isManualEntry = false, isDummyMode = false, manualFile = null, checkFile = false } = {}) => {
+    const configSections = FIELD_CONFIG[effectiveType] || FIELD_CONFIG.birth;
+    const errors = {};
+    let firstErrorField = null;
+    let firstErrorKey = null;
+
+    configSections.forEach(section => {
+        section.fields.forEach(f => {
+            const rawVal = currentFormData[f.key];
+            const strVal = rawVal === undefined || rawVal === null ? '' : String(rawVal).trim();
+            if (f.required && (strVal === '' || strVal === 'Select...' || strVal.toLowerCase() === 'n/a')) {
+                errors[f.key] = `${f.label} is required`;
+                if (!firstErrorField) {
+                    firstErrorField = f.label;
+                    firstErrorKey = f.key;
+                }
+            } else if (strVal !== '' && strVal.toLowerCase() !== 'n/a') {
+                if (f.key.endsWith('_day')) {
+                    const monthKey = f.key.replace('_day', '_month');
+                    const yearKey = f.key.replace('_day', '_year');
+                    const dayErr = validateDayOfMonth(strVal, currentFormData[monthKey], currentFormData[yearKey]);
+                    if (dayErr) {
+                        errors[f.key] = dayErr;
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    }
+                } else if (f.key.endsWith('_year')) {
+                    const yrErr = validateCalendarYear(strVal);
+                    if (yrErr) {
+                        errors[f.key] = yrErr;
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    }
+                } else if (f.type === 'date') {
+                    const parsedDate = new Date(strVal);
+                    const today = new Date();
+                    today.setHours(23, 59, 59, 999);
+                    if (isNaN(parsedDate.getTime())) {
+                        errors[f.key] = 'Please enter a valid calendar date';
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    } else if (parsedDate > today) {
+                        errors[f.key] = 'Date cannot be in the future';
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    }
+                } else if (f.type === 'number' || /(^|_)age($|_)/i.test(f.key)) {
+                    const n = Number(strVal);
+                    if (isNaN(n) || n < 0) {
+                        errors[f.key] = 'Must be a valid positive number';
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    } else if (f.min !== undefined && n < f.min) {
+                        errors[f.key] = `Minimum value is ${f.min}`;
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    } else if (f.max !== undefined && n > f.max) {
+                        errors[f.key] = `Maximum value is ${f.max}`;
+                        if (!firstErrorField) {
+                            firstErrorField = f.label;
+                            firstErrorKey = f.key;
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    // Logical cross-field date sanity checks
+    if (effectiveType === 'death' && currentFormData.date_of_birth && currentFormData.date_of_death) {
+        const b = new Date(currentFormData.date_of_birth);
+        const d = new Date(currentFormData.date_of_death);
+        if (!isNaN(b.getTime()) && !isNaN(d.getTime()) && d < b) {
+            errors.date_of_death = 'Date of death cannot be earlier than date of birth';
+            if (!firstErrorField) {
+                firstErrorField = '3. Date of Death';
+                firstErrorKey = 'date_of_death';
+            }
+        }
+    }
+    if (effectiveType === 'marriage' && currentFormData.date_of_marriage) {
+        const m = new Date(currentFormData.date_of_marriage);
+        if (!isNaN(m.getTime())) {
+            if (currentFormData.husband_dob) {
+                const h = new Date(currentFormData.husband_dob);
+                if (!isNaN(h.getTime()) && m < h) {
+                    errors.date_of_marriage = 'Marriage date cannot be earlier than husband birth date';
+                    if (!firstErrorField) {
+                        firstErrorField = '16. Date of Marriage';
+                        firstErrorKey = 'date_of_marriage';
+                    }
+                }
+            }
+            if (currentFormData.wife_dob) {
+                const w = new Date(currentFormData.wife_dob);
+                if (!isNaN(w.getTime()) && m < w) {
+                    errors.date_of_marriage = 'Marriage date cannot be earlier than wife birth date';
+                    if (!firstErrorField) {
+                        firstErrorField = '16. Date of Marriage';
+                        firstErrorKey = 'date_of_marriage';
+                    }
+                }
+            }
+        }
+    }
+
+    // Mandatory Barangay Check for Geospatial Analytics Mapping
+    const brgyVal = currentFormData.barangay ? String(currentFormData.barangay).trim() : '';
+    if (!brgyVal || brgyVal === 'Select...' || brgyVal.toLowerCase() === 'n/a') {
+        errors.barangay = true;
+        if (!firstErrorField) {
+            firstErrorField = 'Barangay (For analytics)';
+            firstErrorKey = 'barangay';
+        }
+    }
+
+    // Mandatory file check for manual registration if Dummy Data Mode is OFF
+    if (checkFile && isManualEntry && !isDummyMode && !manualFile) {
+        errors._file = 'A scanned certificate picture or PDF is required. Please attach a file or enable Dummy Data Mode.';
+        if (!firstErrorField) {
+            firstErrorField = 'Scanned Document File';
+            firstErrorKey = '_file';
+        }
+    }
+
+    return { errors, firstErrorField, firstErrorKey };
+};
+
 /** Presents OCR results for correction, validation, and document registration. */
 const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, onDuplicateStatusChange, isSaving = false, isViewOnly = false, hideBoxes = false, forceCompare = false }) => {
     const { stats } = useData();
@@ -472,8 +616,17 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         setManualType(t);
         setAcknowledgedType(t);
         const rawFields = ocrResult?.extracted_fields || file.extracted_fields || {};
-        setFormData(getInitialFormData(t, rawFields, file));
+        const newForm = getInitialFormData(t, rawFields, file);
+        setFormData(newForm);
         clearError('_type');
+        if (!isManualEntry && ['birth', 'death', 'marriage'].includes(t)) {
+            const { errors: initialErrors } = validateFormFields(
+                t,
+                newForm,
+                { isManualEntry: false, isDummyMode: false, manualFile: null, checkFile: false }
+            );
+            setErrors(initialErrors);
+        }
     };
 
     // Left visual preview tab state: 'picture' (A4 Picture Scan) | 'pdf' (Live Certificate PDF)
@@ -698,6 +851,14 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             setFormData(resetData);
             setOcrText(file.ocr_text || ocrResult?.text || '');
             clearAllErrors();
+            if (!isManualEntry && ['birth', 'death', 'marriage'].includes(targetType)) {
+                const { errors: initialErrors } = validateFormFields(
+                    targetType,
+                    resetData,
+                    { isManualEntry: false, isDummyMode: false, manualFile: null, checkFile: false }
+                );
+                setErrors(initialErrors);
+            }
         }
     };
 
@@ -795,7 +956,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
      */
     /** Maps OCR confidence and validation state to a visual class. */
     const getConfidenceClass = (fieldKey, hasError) => {
-        if (hasAttemptedSubmit && hasError) {
+        if (hasError) {
             const isActive = activeErrorFieldKey === fieldKey;
             return `border-rose-500 bg-rose-50/40 dark:bg-rose-950/30 focus:ring-rose-200 focus:border-rose-600 ring-2 ring-rose-300 shadow-sm ${isActive ? 'ring-4 ring-rose-500 animate-pulse' : ''}`;
         }
@@ -841,6 +1002,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
     useEffect(() => {
         isDirtyRef.current = false;
         const rawFields = ocrResult?.extracted_fields || file?.extracted_fields;
+        let initialData = {};
         if (rawFields) {
             let parsed = rawFields;
             if (typeof rawFields === 'string') {
@@ -848,15 +1010,30 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             }
 
             if (parsed && typeof parsed === 'object') {
-                setFormData(getInitialFormData(effectiveType, parsed, file));
+                initialData = getInitialFormData(effectiveType, parsed, file);
+                setFormData(initialData);
+            } else {
+                initialData = getInitialFormData(effectiveType, {}, file);
+                setFormData(initialData);
             }
         } else {
-            setFormData(getInitialFormData(effectiveType, {}, file));
+            initialData = getInitialFormData(effectiveType, {}, file);
+            setFormData(initialData);
         }
 
         const newText = ocrResult?.text || file?.ocr_text || '';
         setOcrText(newText);
-    }, [activeDocId, file?.id, file?.updated_at, ocrResult, effectiveType]);
+
+        // Immediate validation so missing fields are highlighted red right away
+        if (!isManualEntry && effectiveType && ['birth', 'death', 'marriage'].includes(effectiveType)) {
+            const { errors: initialErrors } = validateFormFields(
+                effectiveType,
+                initialData,
+                { isManualEntry: false, isDummyMode: false, manualFile: null, checkFile: false }
+            );
+            setErrors(initialErrors);
+        }
+    }, [activeDocId, file?.id, file?.updated_at, ocrResult, effectiveType, isManualEntry]);
 
     const sourceDocumentId = file?.document_id || file?.source_document_id;
     const originalDocumentUrl = sourceDocumentId
@@ -959,141 +1136,11 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
         }
 
         // --- Strict Validation ---
-        const configSections = FIELD_CONFIG[effectiveType] || FIELD_CONFIG.birth;
-        const newErrors = {};
-        let firstErrorField = null;
-        let firstErrorKey = null;
-
-        configSections.forEach(section => {
-            section.fields.forEach(f => {
-                const rawVal = formData[f.key];
-                const strVal = rawVal === undefined || rawVal === null ? '' : String(rawVal).trim();
-                if (f.required && (strVal === '' || strVal === 'Select...' || strVal.toLowerCase() === 'n/a')) {
-                    newErrors[f.key] = `${f.label} is required`;
-                    if (!firstErrorField) {
-                        firstErrorField = f.label;
-                        firstErrorKey = f.key;
-                    }
-                } else if (strVal !== '' && strVal.toLowerCase() !== 'n/a') {
-                    if (f.key.endsWith('_day')) {
-                        const monthKey = f.key.replace('_day', '_month');
-                        const yearKey = f.key.replace('_day', '_year');
-                        const dayErr = validateDayOfMonth(strVal, formData[monthKey], formData[yearKey]);
-                        if (dayErr) {
-                            newErrors[f.key] = dayErr;
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        }
-                    } else if (f.key.endsWith('_year')) {
-                        const yrErr = validateCalendarYear(strVal);
-                        if (yrErr) {
-                            newErrors[f.key] = yrErr;
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        }
-                    } else if (f.type === 'date') {
-                        const parsedDate = new Date(strVal);
-                        const today = new Date();
-                        today.setHours(23, 59, 59, 999);
-                        if (isNaN(parsedDate.getTime())) {
-                            newErrors[f.key] = 'Please enter a valid calendar date';
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        } else if (parsedDate > today) {
-                            newErrors[f.key] = 'Date cannot be in the future';
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        }
-                    } else if (f.type === 'number' || /(^|_)age($|_)/i.test(f.key)) {
-                        const n = Number(strVal);
-                        if (isNaN(n) || n < 0) {
-                            newErrors[f.key] = 'Must be a valid positive number';
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        } else if (f.min !== undefined && n < f.min) {
-                            newErrors[f.key] = `Minimum value is ${f.min}`;
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        } else if (f.max !== undefined && n > f.max) {
-                            newErrors[f.key] = `Maximum value is ${f.max}`;
-                            if (!firstErrorField) {
-                                firstErrorField = f.label;
-                                firstErrorKey = f.key;
-                            }
-                        }
-                    }
-                }
-            });
-        });
-
-        // Logical cross-field date sanity checks
-        if (effectiveType === 'death' && formData.date_of_birth && formData.date_of_death) {
-            const b = new Date(formData.date_of_birth);
-            const d = new Date(formData.date_of_death);
-            if (!isNaN(b.getTime()) && !isNaN(d.getTime()) && d < b) {
-                newErrors.date_of_death = 'Date of death cannot be earlier than date of birth';
-                if (!firstErrorField) {
-                    firstErrorField = '3. Date of Death';
-                    firstErrorKey = 'date_of_death';
-                }
-            }
-        }
-        if (effectiveType === 'marriage' && formData.date_of_marriage) {
-            const m = new Date(formData.date_of_marriage);
-            if (!isNaN(m.getTime())) {
-                if (formData.husband_dob) {
-                    const h = new Date(formData.husband_dob);
-                    if (!isNaN(h.getTime()) && m < h) {
-                        newErrors.date_of_marriage = 'Marriage date cannot be earlier than husband birth date';
-                        if (!firstErrorField) {
-                            firstErrorField = '16. Date of Marriage';
-                            firstErrorKey = 'date_of_marriage';
-                        }
-                    }
-                }
-                if (formData.wife_dob) {
-                    const w = new Date(formData.wife_dob);
-                    if (!isNaN(w.getTime()) && m < w) {
-                        newErrors.date_of_marriage = 'Marriage date cannot be earlier than wife birth date';
-                        if (!firstErrorField) {
-                            firstErrorField = '16. Date of Marriage';
-                            firstErrorKey = 'date_of_marriage';
-                        }
-                    }
-                }
-            }
-        }
-
-        // Mandatory Barangay Check for Geospatial Analytics Mapping
-        const brgyVal = formData.barangay ? String(formData.barangay).trim() : '';
-        if (!brgyVal || brgyVal === 'Select...' || brgyVal.toLowerCase() === 'n/a') {
-            newErrors.barangay = true;
-            if (!firstErrorField) {
-                firstErrorField = 'Barangay (For analytics)';
-                firstErrorKey = 'barangay';
-            }
-        }
-
-        // Mandatory file check for manual registration if Dummy Data Mode is OFF
-        if (isManualEntry && !isDummyMode && !manualFile) {
-            newErrors._file = 'A scanned certificate picture or PDF is required. Please attach a file or enable Dummy Data Mode.';
-            if (!firstErrorField) {
-                firstErrorField = 'Scanned Document File';
-                firstErrorKey = '_file';
-            }
-        }
+        const { errors: newErrors, firstErrorField, firstErrorKey } = validateFormFields(
+            effectiveType,
+            formData,
+            { isManualEntry, isDummyMode, manualFile, checkFile: true }
+        );
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -1771,17 +1818,19 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                 </div>
                             )}
 
-                            {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
+                            {Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
                                 <div className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-2xl text-rose-800 dark:text-rose-300 text-sm font-bold shadow-sm">
                                     <ExclamationTriangleIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                                     <div className="flex-1">
-                                        <p className="font-black text-rose-900 dark:text-rose-200">Cannot Save: Required Fields Missing</p>
+                                        <p className="font-black text-rose-900 dark:text-rose-200">
+                                            {hasAttemptedSubmit ? 'Cannot Save: Required Fields Missing' : 'Required Fields Missing / Action Needed'}
+                                        </p>
                                         <p className="text-xs font-semibold text-rose-700 dark:text-rose-300 mt-0.5">
                                             {errors._file
                                                 ? errors._file
                                                 : errors.barangay
                                                     ? "Barangay (For Analytics) is mandatory to ensure geospatial mapping accuracy. Please select or enter the Barangay before saving."
-                                                    : "Please complete all mandatory fields highlighted in red below."}
+                                                    : "Please review and complete all mandatory fields highlighted in red below."}
                                         </p>
                                         <div className="flex flex-wrap gap-1.5 mt-2.5">
                                             {Object.keys(errors).filter(k => Boolean(errors[k]) && k !== '_type').map(k => (
@@ -1836,7 +1885,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                     data-field-key={field.key}
                                                     className={`${field.width || 'sm:col-span-1'} transition-all duration-300 rounded-2xl ${activeErrorFieldKey === field.key ? 'ring-4 ring-rose-400/80 dark:ring-rose-500/80 p-1.5 -m-1.5 bg-rose-50/40 dark:bg-rose-950/40 shadow-md' : ''}`}
                                                 >
-                                                    <label className={`block text-[11px] font-black uppercase tracking-widest mb-2.5 transition-colors ${hasAttemptedSubmit && errors[field.key] ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                    <label className={`block text-[11px] font-black uppercase tracking-widest mb-2.5 transition-colors ${errors[field.key] ? 'text-rose-500 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
                                                         {field.label} {field.required && <span className="text-rose-400">*</span>}
                                                     </label>
                                                     {field.type === 'select' ? (
@@ -1889,8 +1938,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                     </>
                                                                 );
                                                             })()}
-                                                            {hasAttemptedSubmit && errors[field.key] && (
-                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                                                            {errors[field.key] && (
+                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1 animate-fadeIn">
                                                                     <span>⚠</span> {typeof errors[field.key] === 'string' ? errors[field.key] : `${field.label} is required`}
                                                                 </p>
                                                             )}
@@ -1907,8 +1956,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                 }}
                                                                 disabled={isViewOnly}
                                                             />
-                                                            {hasAttemptedSubmit && errors[field.key] && (
-                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                                                            {errors[field.key] && (
+                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1 animate-fadeIn">
                                                                     <span>⚠</span> {typeof errors[field.key] === 'string' ? errors[field.key] : `${field.label} is required`}
                                                                 </p>
                                                             )}
@@ -1929,8 +1978,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                 placeholder={field.placeholder || `…`}
                                                                 className={`w-full px-4 py-3.5 text-[15px] font-medium border rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-4 transition-all placeholder-slate-300 dark:placeholder-slate-500 ${getConfidenceClass(field.key, errors[field.key])}`}
                                                             />
-                                                            {hasAttemptedSubmit && errors[field.key] && (
-                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                                                            {errors[field.key] && (
+                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1 animate-fadeIn">
                                                                     <span>⚠</span> {typeof errors[field.key] === 'string' ? errors[field.key] : `${field.label} is required`}
                                                                 </p>
                                                             )}
@@ -2081,8 +2130,8 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            {hasAttemptedSubmit && errors[field.key] && (
-                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                                                            {errors[field.key] && (
+                                                                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1 animate-fadeIn">
                                                                     <span>⚠</span> {typeof errors[field.key] === 'string' ? errors[field.key] : `${field.label} is required`}
                                                                 </p>
                                                             )}
@@ -2365,7 +2414,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
                         )}
 
                         <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
-                            {hasAttemptedSubmit && Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
+                            {Object.keys(errors).some(k => Boolean(errors[k]) && k !== '_type') && (
                                 <button
                                     type="button"
                                     onClick={() => {

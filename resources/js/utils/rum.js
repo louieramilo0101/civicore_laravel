@@ -114,6 +114,9 @@ export function initRum() {
     // Only run in browser environments
     if (typeof window === 'undefined') return;
 
+    // Skip RUM on the public portal (Vercel) — no backend to receive metrics
+    if (import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true') return;
+
     try {
         onLCP(sendMetric);
         onINP(sendMetric);

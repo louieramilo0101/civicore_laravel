@@ -8,7 +8,7 @@ const MAX_ANNOUNCEMENT_CHARS = 400;
 /** Displays published civic announcements for the current audience. */
 export default function Announcements() {
     const [activeTab, setActiveTab] = useState('broadcasts'); // 'broadcasts' or 'settings'
-    
+
     // Announcements state with sessionStorage caching
     const [announcements, setAnnouncements] = useState(() => {
         try {
@@ -251,7 +251,7 @@ export default function Announcements() {
                 {activeTab === 'broadcasts' && (
                     <motion.div key="broadcasts" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-8">
                         <div className="bg-white dark:bg-slate-900/90 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800">
-                            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-start">
                                 <div className="flex-1 w-full">
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Publish New Announcement</label>
                                     <input
@@ -268,14 +268,16 @@ export default function Announcements() {
                                         </span>
                                     </div>
                                 </div>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || !message || message.length > MAX_ANNOUNCEMENT_CHARS}
-                                    className="px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
-                                >
-                                    <PlusIcon className="w-5 h-5" />
-                                    Broadcast
-                                </button>
+                                <div className="w-full md:w-auto md:pt-[22px]">
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting || !message.trim() || message.length > MAX_ANNOUNCEMENT_CHARS}
+                                        className="w-full md:w-auto px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <PlusIcon className="w-5 h-5" />
+                                        {isSubmitting ? 'Broadcasting...' : 'Broadcast'}
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
@@ -424,10 +426,10 @@ export default function Announcements() {
                                         ))}
                                     </div>
 
-                                    <input 
-                                        type="text" 
-                                        value={settings.opening_hours} 
-                                        onChange={e => setSettings({...settings, opening_hours: e.target.value})}
+                                    <input
+                                        type="text"
+                                        value={settings.opening_hours}
+                                        onChange={e => setSettings({ ...settings, opening_hours: e.target.value })}
                                         placeholder="e.g. Monday — Friday: 8:00 AM - 5:00 PM"
                                         className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-colors text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm"
                                     />
@@ -435,8 +437,8 @@ export default function Announcements() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         disabled={savingSettings}
                                         className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 disabled:opacity-50"
                                     >
@@ -445,7 +447,7 @@ export default function Announcements() {
 
                                     <AnimatePresence>
                                         {saveStatus === 'success' && (
-                                            <motion.span 
+                                            <motion.span
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0 }}
@@ -456,7 +458,7 @@ export default function Announcements() {
                                             </motion.span>
                                         )}
                                         {saveStatus === 'error' && (
-                                            <motion.span 
+                                            <motion.span
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0 }}

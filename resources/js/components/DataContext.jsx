@@ -471,8 +471,15 @@ export const DataProvider = ({ children }) => {
         }, 60000); // 60s background polling
     }, [refreshStats, refreshDocuments, refreshRegistry, refreshHistory, refreshTemplates]);
 
+    // ── Public Portal Mode Detection ─────────────────────────────────────────
+    const isPublicPortal = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
+
     // ── Global Polling ────────────────────────────────────────────────────────
     useEffect(() => {
+        // In public-portal-only mode (Vercel), skip all backend polling —
+        // there is no Laravel backend to fetch from.
+        if (isPublicPortal) return;
+
         const handleVisibilityChange = () => {
             isVisibleRef.current = document.visibilityState === 'visible';
             if (isVisibleRef.current) {
@@ -493,7 +500,7 @@ export const DataProvider = ({ children }) => {
             stopPolling();
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [refreshAll, startPolling, stopPolling]);
+    }, [refreshAll, startPolling, stopPolling, isPublicPortal]);
 
     // ── Typed event subscriptions ─────────────────────────────────────────────
     // Each cache subscribes only to the events that affect it, avoiding

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase, isSupabaseConfigured } from '../supabase.js';
 import axios from 'axios';
 import {
     ClockIcon,
@@ -174,14 +175,42 @@ export default function Landing() {
     }, [t.dynamicWords.length]);
 
     useEffect(() => {
-        // Use a short cache (5 min) instead of cache-busting every request.
-        // The server also sends Cache-Control headers; we let the browser
-        // cache this so repeat visitors don't pay for a DB round-trip.
-        axios.get('/api/public/config', {
-            headers: { 'Cache-Control': 'max-age=300' }
-        })
-            .then(res => setConfig(res.data))
-            .catch(err => console.error(err));
+        const isPublicPortal = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
+
+        if (isPublicPortal && isSupabaseConfigured()) {
+            // On Vercel: load config from Supabase instead of local Laravel API
+            const loadConfig = async () => {
+                try {
+                    const { data: rows, error } = await supabase
+                        .from('public_config')
+                        .select('key, value');
+
+                    if (error) throw error;
+
+                    const cfg = {};
+                    (rows || []).forEach(row => {
+                        if (row.key === 'announcements') {
+                            cfg.announcements = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                        } else if (row.key === 'opening_hours') {
+                            cfg.opening_hours = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                        }
+                    });
+                    setConfig(cfg);
+                } catch (err) {
+                    console.error('Supabase config load error:', err);
+                    // Provide safe defaults so the page renders without crashing
+                    setConfig({ announcements: [], opening_hours: 'Monday - Friday: 8:00 AM - 5:00 PM' });
+                }
+            };
+            loadConfig();
+        } else {
+            // On localhost: use the Laravel API as before
+            axios.get('/api/public/config', {
+                headers: { 'Cache-Control': 'max-age=300' }
+            })
+                .then(res => setConfig(res.data))
+                .catch(err => console.error(err));
+        }
     }, []);
 
     // Announcements Carousel State

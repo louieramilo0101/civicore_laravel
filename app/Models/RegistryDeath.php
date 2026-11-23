@@ -31,7 +31,7 @@ class RegistryDeath extends Model
     ];
 
     protected $casts = [
-        'extracted_data' => 'array',
+        'extracted_data' => 'encrypted:array',
         'issuanceDate' => 'date',
         'archived_at' => 'datetime',
         'created_at' => 'datetime',

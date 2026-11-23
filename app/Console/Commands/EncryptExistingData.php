@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 class EncryptExistingData extends Command
 {
     protected $signature = 'encrypt:existing-data 
-        {--table= : Specific table to encrypt (documents, issuances, tickets)}
+        {--table= : Specific table to encrypt (documents, issuances, tickets, registry_births, registry_deaths, registry_marriages)}
         {--chunk=500 : Number of records per chunk}
         {--dry-run : Show what would be encrypted without making changes}
         {--force : Skip confirmation}';
@@ -22,7 +22,15 @@ class EncryptExistingData extends Command
             'columns' => ['extracted_data'],
             'id_column' => 'id',
         ],
-        'issuances' => [
+        'registry_births' => [
+            'columns' => ['extracted_data'],
+            'id_column' => 'id',
+        ],
+        'registry_deaths' => [
+            'columns' => ['extracted_data'],
+            'id_column' => 'id',
+        ],
+        'registry_marriages' => [
             'columns' => ['extracted_data'],
             'id_column' => 'id',
         ],
