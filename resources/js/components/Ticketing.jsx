@@ -862,44 +862,28 @@ export default function Ticketing({ mode = 'portal' }) {
                             )}
 
                             {/* Data Privacy Consent Checkbox (RA 10173 Compliance) */}
-                            <label htmlFor="privacyConsent" className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-300 dark:border-slate-600 cursor-pointer select-none">
-                                <div 
-                                    onClick={() => setPrivacyAccepted(prev => !prev)}
-                                    className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
-                                        privacyAccepted 
-                                            ? 'bg-[#d4a574] border-[#d4a574] text-[#0f172a] shadow-sm' 
-                                            : 'bg-white dark:bg-slate-700 border-slate-400 dark:border-slate-500 hover:border-[#d4a574]'
-                                    }`}
-                                >
-                                    {privacyAccepted && (
-                                        <svg className="w-4 h-4 text-white dark:text-slate-900 stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                        </svg>
-                                    )}
-                                </div>
+                            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600">
                                 <input
                                     type="checkbox"
                                     id="privacyConsent"
                                     name="privacyConsent"
                                     checked={privacyAccepted}
                                     onChange={e => setPrivacyAccepted(e.target.checked)}
-                                    className="sr-only"
+                                    className="mt-1 w-5 h-5 rounded cursor-pointer accent-[#d4a574] shrink-0"
                                 />
                                 <div className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                    I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753. 
+                                    <label htmlFor="privacyConsent" className="cursor-pointer">
+                                        I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753.
+                                    </label>
                                     <button
                                         type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setShowPrivacyNoticeModal(true);
-                                        }}
+                                        onClick={() => setShowPrivacyNoticeModal(true)}
                                         className="text-[#d4a574] font-bold underline hover:text-[#c49a67] ml-1 inline cursor-pointer"
                                     >
                                         Read Data Privacy Notice
                                     </button>
                                 </div>
-                            </label>
+                            </div>
 
                             <button
                                 type="submit"
