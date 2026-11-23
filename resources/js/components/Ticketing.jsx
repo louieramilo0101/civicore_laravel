@@ -862,20 +862,37 @@ export default function Ticketing({ mode = 'portal' }) {
                             )}
 
                             {/* Data Privacy Consent Checkbox (RA 10173 Compliance) */}
-                            <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
-                                <input
-                                    type="checkbox"
-                                    id="privacyConsent"
-                                    checked={privacyAccepted}
-                                    onChange={e => setPrivacyAccepted(e.target.checked)}
-                                    className="mt-0.5 w-4 h-4 rounded text-[#d4a574] focus:ring-[#d4a574] border-slate-300 dark:border-slate-600 cursor-pointer"
-                                />
-                                <label htmlFor="privacyConsent" className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed select-none">
+                            <div 
+                                onClick={(e) => {
+                                    // If click wasn't directly on the button or checkbox, toggle the checkbox
+                                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                                        setPrivacyAccepted(prev => !prev);
+                                    }
+                                }}
+                                className={`flex items-start gap-3 p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+                                    privacyAccepted 
+                                        ? 'bg-[#d4a574]/10 border-[#d4a574]/40 shadow-sm' 
+                                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-300 dark:border-slate-600 hover:border-slate-400'
+                                }`}
+                            >
+                                <div className="pt-0.5 shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        id="privacyConsent"
+                                        checked={privacyAccepted}
+                                        onChange={e => setPrivacyAccepted(e.target.checked)}
+                                        className="w-5 h-5 rounded-md text-[#d4a574] focus:ring-2 focus:ring-[#d4a574]/30 border-2 border-slate-400 dark:border-slate-500 checked:border-[#d4a574] accent-[#d4a574] cursor-pointer transition-all"
+                                    />
+                                </div>
+                                <label htmlFor="privacyConsent" className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed cursor-pointer">
                                     I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753. 
                                     <button
                                         type="button"
-                                        onClick={() => setShowPrivacyNoticeModal(true)}
-                                        className="text-[#d4a574] font-bold hover:underline ml-1 inline cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowPrivacyNoticeModal(true);
+                                        }}
+                                        className="text-[#d4a574] font-bold underline hover:text-[#c49a67] ml-1 inline cursor-pointer"
                                     >
                                         Read Data Privacy Notice
                                     </button>
