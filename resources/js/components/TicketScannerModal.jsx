@@ -13,6 +13,31 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { Html5Qrcode } from 'html5-qrcode';
+import { decode as cam2qrDecode } from 'cam2qr';
+
+/**
+ * Loads a file into an HTMLImageElement and returns its pixel data.
+ * cam2qr consumes raw RGBA ImageData-like buffers, so we draw the image
+ * onto a canvas to get at the pixels.
+ *
+ * @param {File} file
+ * @returns {Promise<ImageData>}
+ */
+async function fileToImageData(file) {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
 
 /** Scans a ticket QR code and returns the selected request to the caller. */
 export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) {
@@ -63,35 +88,45 @@ export default function TicketScannerModal({ isOpen, onClose, onTicketSelect }) 
         setErrorMsg('');
 
         try {
-            const img = new Image();
-            img.src = URL.createObjectURL(file);
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-            });
-
+            // 1. Try cam2qr detection first (fast, corner-aware, offline)
             let decodedResult = null;
+            const imageData = await fileToImageData(file);
 
-            if ('BarcodeDetector' in window) {
-                try {
-                    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-                    const barcodes = await detector.detect(img);
-                    if (barcodes.length > 0 && barcodes[0].rawValue) {
-                        decodedResult = barcodes[0].rawValue;
-                    }
-                } catch (e) {
-                    console.warn('BarcodeDetector error:', e);
+            // Try decodeAll with modest scaling to let cam2qr locate the QR within a bounding region.
+            // This works well for both close-up (overflow) and far-away (oversampled) QRs.
+            try {
+                const camResults = await cam2qrDecode(imageData, { tryInverted: true, tryHarder: true, maxDownscale: 2 });
+                if (camResults) {
+                    decodedResult = camResults.text;
                 }
+            } catch (camErr) {
+                // cam2qr failure is silent — fall back to BarcodeDetector/Html5Qrcode as before.
+                console.warn('cam2qr decode failed:', camErr);
             }
 
-            // High-reliability offline QR decode using Html5Qrcode
+            // 2. If cam2qr didn't give us a result, fall back to the existing path
             if (!decodedResult) {
-                try {
-                    const html5QrCode = new Html5Qrcode('ticket-scanner-qr-hidden-host');
-                    decodedResult = await html5QrCode.scanFile(file, false);
-                    await html5QrCode.clear();
-                } catch (qrErr) {
-                    console.warn('Html5Qrcode scanFile error:', qrErr);
+                if ('BarcodeDetector' in window) {
+                    try {
+                        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+                        const barcodes = await detector.detect(imageData);
+                        if (barcodes.length > 0 && barcodes[0].rawValue) {
+                            decodedResult = barcodes[0].rawValue;
+                        }
+                    } catch (e) {
+                        console.warn('BarcodeDetector error:', e);
+                    }
+                }
+
+                // High-reliability offline QR decode using Html5Qrcode
+                if (!decodedResult) {
+                    try {
+                        const html5QrCode = new Html5Qrcode('ticket-scanner-qr-hidden-host');
+                        decodedResult = await html5QrCode.scanFile(file, false);
+                        await html5QrCode.clear();
+                    } catch (qrErr) {
+                        console.warn('Html5Qrcode scanFile error:', qrErr);
+                    }
                 }
             }
 

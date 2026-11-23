@@ -75,7 +75,7 @@ const MobileDeviceLayout = ({ children }) => {
         { path: '/reports', icon: TableCellsIcon, label: 'Export Reports', roles: ['SuperAdmin', 'Admin'] },
         { path: '/registry', icon: ClipboardDocumentCheckIcon, label: 'Registry Database', roles: ['SuperAdmin', 'Admin'] },
         { path: '/archive', icon: TrashIcon, label: 'Archive Manager', roles: ['SuperAdmin', 'Admin'] },
-        { path: '/mapping', icon: MapPinIcon, label: 'Mapping', roles: ['SuperAdmin'] },
+        { path: '/mapping', icon: MapPinIcon, label: 'Mapping', roles: ['SuperAdmin', 'Admin', 'Staff'] },
         { path: '/announcements', icon: MegaphoneIcon, label: 'Announcements', roles: ['SuperAdmin', 'Admin'] },
         { path: '/accounts', icon: UsersIcon, label: 'Account Management', roles: ['SuperAdmin', 'Admin'] },
         { path: '/backups', icon: CircleStackIcon, label: 'Backup & Recovery', roles: ['SuperAdmin'] },

@@ -32,7 +32,32 @@ import {
     ArrowDownIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { decode as cam2qrDecode } from 'cam2qr';
 import AttachDocumentModal from './AttachDocumentModal';
+
+/**
+ * Extracts raw RGBA image data from a File so cam2qr can decode it.
+ * cam2qr consumes an ImageData-like buffer (width/height/data), so we
+ * draw the chosen file onto a canvas and read back the pixels.
+ *
+ * @param {File} file
+ * @returns {Promise<ImageData>}
+ */
+async function fileToImageData(file) {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
 
 /**
  * @typedef {Object} TicketDetails
@@ -136,6 +161,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     /** @type {[boolean, import('react').Dispatch<import('react').SetStateAction<boolean>>]} */
     const [isDeclineOpen, setIsDeclineOpen] = useState(false);
+    /** First-step "are you sure?" confirmation shown before the reason modal. */
+    const [isDeclineConfirmOpen, setIsDeclineConfirmOpen] = useState(false);
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
     const [declineReason, setDeclineReason] = useState('');
     /** @type {[string, import('react').Dispatch<import('react').SetStateAction<string>>]} */
@@ -227,7 +254,14 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             const config = {
                 fps: 15,
-                qrbox: { width: 220, height: 220 },
+                // A fixed 220px box only catches the QR when the phone happens to be
+                // at the "right" distance — too close and it overflows the box, too far
+                // and the modules are too small to resolve. Size the box relative to the
+                // actual video frame so it tracks the QR regardless of distance.
+                qrbox: (videoWidth, videoHeight) => {
+                    const side = Math.round(Math.min(videoWidth, videoHeight) * 0.7);
+                    return { width: side, height: side };
+                },
                 aspectRatio: 1.0,
             };
 
@@ -321,32 +355,45 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         setScannerError('');
 
         try {
+            // 1. Try cam2qr detection first (fast, corner-aware, offline)
             let decodedText = null;
-
-            // 1. Try BarcodeDetector if natively supported by browser
-            if ('BarcodeDetector' in window) {
-                try {
-                    const img = new Image();
-                    img.src = URL.createObjectURL(file);
-                    await new Promise((res, rej) => {
-                        img.onload = res;
-                        img.onerror = rej;
-                    });
-                    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-                    const barcodes = await detector.detect(img);
-                    if (barcodes.length > 0 && barcodes[0].rawValue) {
-                        decodedText = barcodes[0].rawValue;
-                    }
-                } catch (_) { }
+            const imageData = await fileToImageData(file);
+            try {
+                const camResult = await cam2qrDecode(imageData, { tryInverted: true, tryHarder: true, maxDownscale: 2 });
+                if (camResult) {
+                    decodedText = camResult.text;
+                }
+            } catch (camErr) {
+                console.warn('cam2qr decode failed:', camErr);
             }
 
-            // 2. Decode using Html5Qrcode client-side scanner engine (offline)
+            // 2. If cam2qr didn't give us a result, fall back to the existing path
             if (!decodedText) {
-                const html5QrCode = new Html5Qrcode('qr-hidden-decoder-host');
-                try {
-                    decodedText = await html5QrCode.scanFile(file, false);
-                } finally {
-                    html5QrCode.clear();
+                // 2a. Try BarcodeDetector if natively supported by browser
+                if ('BarcodeDetector' in window) {
+                    try {
+                        const img = new Image();
+                        img.src = URL.createObjectURL(file);
+                        await new Promise((res, rej) => {
+                            img.onload = res;
+                            img.onerror = rej;
+                        });
+                        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+                        const barcodes = await detector.detect(img);
+                        if (barcodes.length > 0 && barcodes[0].rawValue) {
+                            decodedText = barcodes[0].rawValue;
+                        }
+                    } catch (_) { }
+                }
+
+                // 2b. Decode using Html5Qrcode client-side scanner engine (offline)
+                if (!decodedText) {
+                    const html5QrCode = new Html5Qrcode('qr-hidden-decoder-host');
+                    try {
+                        decodedText = await html5QrCode.scanFile(file, false);
+                    } finally {
+                        html5QrCode.clear();
+                    }
                 }
             }
 
@@ -646,7 +693,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
     /** Opens the decline dialog for the currently selected request. */
     const handleDeclineRequest = async () => {
         if (!selectedTicket) return;
-        setIsDeclineOpen(true);
+        setIsDeclineConfirmOpen(true);
     };
 
     /**
@@ -662,10 +709,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
         setDeletingId(selectedTicket.id);
         try {
             /** Server response for the decline request. */
-            const res = await axios.patch(`/api/v1/tickets/${selectedTicket.id}/cancel`, {
-                reason: declineReason.trim(),
-                send_email: true
-            });
+            const needsForce = selectedTicket.document_id !== null || ['ready_for_pickup', 'completed', 'approved'].includes(selectedTicket.request_status);
+            const payload = { reason: declineReason.trim(), send_email: true };
+            const res = await axios.patch(`/api/v1/tickets/${selectedTicket.id}/cancel`, needsForce ? { ...payload, force: true } : payload);
             if (res.data.success) {
                 setTickets(prev => prev.filter(t => t.id !== selectedTicket.id));
                 setSelectedTicket(null);
@@ -1813,6 +1859,55 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
             </AnimatePresence>
 
             <AnimatePresence>
+                {isDeclineConfirmOpen && selectedTicket && (
+                    <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 dark:border-slate-800"
+                        >
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center mb-4">
+                                    <ExclamationTriangleIcon className="w-7 h-7 text-rose-600 dark:text-rose-400" />
+                                </div>
+                                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-lg mb-1">Are you sure?</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Declining <span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.ticket_number}</span> will return it to the queue and notify the citizen. This action cannot be undone.
+                                </p>
+                                {selectedTicket.document_id && (
+                                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-2 font-semibold">
+                                        ⚠️ This ticket already has a document attached.
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 pt-6 border-t border-slate-100 dark:border-slate-800 mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDeclineConfirmOpen(false)}
+                                    className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsDeclineConfirmOpen(false);
+                                        setDeclineReason('');
+                                        setDeclinePreset('');
+                                        setIsDeclineOpen(true);
+                                    }}
+                                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md shadow-rose-200 dark:shadow-none transition-all cursor-pointer"
+                                >
+                                    Yes, Decline
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
                 {isDeclineOpen && selectedTicket && (
                     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100 leading-normal">
                         <motion.div
@@ -1955,9 +2050,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-square max-w-[280px] mx-auto border-2 border-dashed border-[#d4a574]/40 flex flex-col items-center justify-center shadow-inner">
                                     <div id="qr-live-camera-viewport" className="w-full h-full [&>video]:w-full [&>video]:h-full [&>video]:object-cover" />
 
-                                    {/* Real-time Aiming Overlay Reticle */}
+                                    {/* Real-time Aiming Overlay Reticle — sized to match the dynamic scan box (70% of frame) */}
                                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                                        <div className="w-48 h-48 border-2 border-[#d4a574] rounded-2xl relative shadow-[0_0_0_9999px_rgba(15,23,42,0.45)]">
+                                        <div className="w-[70%] h-[70%] border-2 border-[#d4a574] rounded-2xl relative shadow-[0_0_0_9999px_rgba(15,23,42,0.45)]">
                                             <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white -mt-0.5 -ml-0.5" />
                                             <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white -mt-0.5 -mr-0.5" />
                                             <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white -mb-0.5 -ml-0.5" />

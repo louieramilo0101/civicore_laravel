@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\RegistryController;
 use App\Http\Controllers\ArchiveController;
+use App\Http\Controllers\IssuanceController;
 use App\Http\Controllers\TicketIssuanceController;
 use App\Http\Controllers\BarangayController;
 use App\Http\Controllers\TemplateController;
@@ -118,6 +119,10 @@ Route::middleware('web')->group(function () {
         Route::delete('/registry/{type}/{id}',            [RegistryController::class, 'destroy']);
         Route::post('/registry/{type}/{id}/restore',      [RegistryController::class, 'restore']);
         Route::get('/registry/next-cert-number/{type}',   [RegistryController::class, 'nextCertNumber']);
+        Route::get('/registry/for-attach',            [RegistryController::class, 'forAttach']);
+
+        // OCR Search (used by scan-to-search modal)
+        Route::post('/issuances/ocr-search', [IssuanceController::class, 'ocrSearch']);
 
         // Archive Manager
         Route::get('/archive',                            [ArchiveController::class, 'index']);
@@ -179,8 +184,8 @@ Route::middleware('web')->group(function () {
             Route::put('/announcements/{id}',           [AnnouncementController::class, 'update']);
             Route::delete('/announcements/{id}',        [AnnouncementController::class, 'destroy']);
 
-            // User Account Management (Requires SuperAdmin role)
-            Route::middleware('superadmin')->group(function () {
+            // User Account Management (Requires Admin role)
+            Route::middleware('admin')->group(function () {
                 Route::post('/users',                       [UserController::class, 'store']);
                 Route::post('/create-account',              [UserController::class, 'createAccount']);
                 Route::put('/users/{id}',                   [UserController::class, 'update']);

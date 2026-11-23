@@ -299,9 +299,9 @@ function App() {
                             </ProtectedRoute>
                         } />
 
-                        {/* Mapping — SuperAdmin only */}
+                        {/* Mapping — SuperAdmin, Admin, Staff */}
                         <Route path="/mapping" element={
-                            <ProtectedRoute allowedRoles={['SuperAdmin']}>
+                            <ProtectedRoute allowedRoles={['SuperAdmin', 'Admin', 'Staff']}>
                                 <Layout><Suspense fallback={<ContentFallback />}><Mapping /></Suspense></Layout>
                             </ProtectedRoute>
                         } />

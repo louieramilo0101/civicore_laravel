@@ -60,6 +60,25 @@
             border-right: 1px solid #e2e8f0;
         }
 
+        /* QR Section */
+        .qr-section {
+            text-align: center;
+            padding: 24px 0 20px;
+        }
+        .qr-section img {
+            width: 200px;
+            height: 200px;
+            border-radius: 12px;
+            border: 4px solid #2563eb;
+            padding: 8px;
+            background: #fff;
+        }
+        .qr-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 10px;
+        }
+
         /* Details Table */
         .details-table {
             width: 100%;
@@ -158,6 +177,16 @@
 
         <p style="font-size:15px; color:#475569; margin-bottom:6px;">Hello, <strong style="color:#0f172a;">{{ $ticket->client_name }}</strong>!</p>
         <p style="font-size:14px; color:#64748b; margin-bottom:16px;">Your appointment request has been received. Please present your ticket number at the Civil Registry counter.</p>
+
+        <!-- QR Code -->
+        <div class="qr-section">
+            @if(!empty($ticket->qr_code_path) && file_exists(storage_path('app/public/' . $ticket->qr_code_path)))
+                <img src="{{ $message->embed(storage_path('app/public/' . $ticket->qr_code_path)) }}" alt="QR Code – {{ $ticket->ticket_number }}">
+            @else
+                <img src="data:image/png;base64,{{ $qrCodeBase64 }}" alt="QR Code – {{ $ticket->ticket_number }}">
+            @endif
+            <div class="qr-label">Scan this QR at the counter to check in</div>
+        </div>
 
         <!-- Details Table -->
         <table class="details-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; margin:16px 0 20px; background-color:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">

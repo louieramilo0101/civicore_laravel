@@ -361,17 +361,32 @@ export default function Ticketing({ mode = 'portal' }) {
         }
     };
 
-    const updateTicketStatus = async (id, newStatus) => {
+    const updateTicketStatus = async (id, newStatus, force = false) => {
         try {
-            const res = await axios.put(`/api/tickets/${id}/status`, { status: newStatus });
+            const res = await axios.put(`/api/tickets/${id}/status`, { status: newStatus, force });
+            
             if (res.data.success) {
                 showAlert({ title: 'Status Updated', message: `Ticket marked as ${newStatus}.`, type: 'success' });
                 fetchQueue();
                 emitEvent(Events.TICKET_UPDATED, { id });
+            } else if (res.data.warning) {
+                // Show confirmation modal for declining ready/attached tickets
+                const confirmed = window.confirm(res.data.message);
+                if (confirmed) {
+                    // Retry with force = true
+                    updateTicketStatus(id, newStatus, true);
+                }
             }
         } catch (err) {
             console.error(err);
-            showAlert({ title: 'Error', message: 'Could not update ticket status.', type: 'danger' });
+            if (err.response?.data?.warning) {
+                const confirmed = window.confirm(err.response.data.message);
+                if (confirmed) {
+                    updateTicketStatus(id, newStatus, true);
+                }
+            } else {
+                showAlert({ title: 'Error', message: 'Could not update ticket status.', type: 'danger' });
+            }
         }
     };
 

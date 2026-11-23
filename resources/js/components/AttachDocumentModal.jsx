@@ -53,26 +53,26 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
         lastSearchedQueryRef.current = cacheKey;
         setIsSearchingOcr(true);
         try {
+            // Search the registry tables (single source of truth) instead of the
+            // documents staging table, which holds orphan re-uploads that
+            // duplicate certificates. Each registry row points at one backing
+            // document, so the result is guaranteed unique per certificate.
             const params = {
                 per_page: 50,
-                for_attach: 1,
-                status: 'processed', // only show OCR-processed/extracted docs ready to attach
             };
             if (type) {
                 params.type = type === 'marriage' ? 'marriage' : type;
             }
-            params.search = term;
+            if (term) {
+                params.search = term;
+            }
 
-            const res = await axios.get('/api/documents', {
+            const res = await axios.get('/api/registry/for-attach', {
                 params,
                 signal: controller.signal
             });
-            const raw = res.data.data || res.data.documents || (Array.isArray(res.data) ? res.data : []);
-            // Client-side safety filter: only include docs that have meaningful person data
-            const ready = raw.filter(doc => {
-                const s = (doc.status || '').toLowerCase();
-                return s === 'processed' || s === 'extracted' || s === 'issued' || s === 'active';
-            });
+            const raw = res.data.data || (Array.isArray(res.data) ? res.data : []);
+            const ready = raw.filter(doc => doc.document_id);
             setSearchResults(ready);
         } catch (err) {
             if (!axios.isCancel(err) && err.name !== 'CanceledError') {
@@ -139,7 +139,9 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
         if (!ticket || !selectedDoc) return;
         setIsLinking(true);
         try {
-            await onAttach(selectedDoc.id, printRemarks.trim());
+            // onAttach expects a documents.id (validated by attachDocument),
+            // not the registry row id — pass the linked backing document.
+            await onAttach(selectedDoc.document_id || selectedDoc.id, printRemarks.trim());
             onClose();
         } catch (err) {
             console.error('Failed to attach document:', err);
@@ -359,7 +361,7 @@ export default function AttachDocumentModal({ isOpen, onClose, ticket, onAttach 
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <a
-                                                            href={`/api/documents/view/${doc.id}?raw=1`}
+                                                            href={`/api/documents/view/${doc.document_id || doc.id}?raw=1`}
                                                             target="_blank"
                                                             rel="noreferrer"
                                                             className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"

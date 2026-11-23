@@ -179,7 +179,155 @@ export const RegistryPreviewModal = ({ cert, onClose, onPrint, onDownload, openR
         document.body
     );
 };
+// Scan Results Modal
+export const ScanResultsModal = ({ extracted, duplicates, onClose, onView, onSelect, onCreateNew }) => {
+    const { exact = [], soft = [] } = duplicates || {};
+    const hasResults = exact.length > 0 || soft.length > 0;
 
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '—';
+        try {
+            return new Date(dateStr).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch {
+            return dateStr;
+        }
+    };
+
+    const getImageUrl = (docId) => {
+        return docId ? `/api/documents/view-image/${docId}` : null;
+    };
+
+    const renderMatchRow = (match, index, group) => {
+        const imageUrl = getImageUrl(match.document_id);
+        return (
+            <div key={`${group}-${match.id}-${index}`} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                {imageUrl && (
+                    <img
+                        src={imageUrl}
+                        alt={match.name}
+                        className="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                        loading="lazy"
+                    />
+                )}
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{match.name}</p>
+                    <div className="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="font-medium">{match.certNumber}</span>
+                        <span>•</span>
+                        <span className="capitalize">{match.type}</span>
+                        <span>•</span>
+                        <span>{match.barangay}</span>
+                        <span>•</span>
+                        <span>{formatDate(match.issuanceDate)}</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => onView?.(match)}
+                        className="px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                    >
+                        View
+                    </button>
+                    <input
+                        type="radio"
+                        name="scan-match-select"
+                        value={`${group}-${match.id}`}
+                        onChange={() => onSelect?.(match)}
+                        className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                    />
+                </div>
+            </div>
+        );
+    };
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between bg-white dark:bg-slate-900">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-[#d4a574]/15 text-[#d4a574] rounded-xl flex items-center justify-center">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight leading-none">Scan Results</h3>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-bold uppercase tracking-wider">Review matches found in the database</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5">Extracted Name</p>
+                            <p className="font-bold text-slate-800 dark:text-slate-100">{extracted?.name || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5">Certificate Number</p>
+                            <p className="font-bold text-slate-800 dark:text-slate-100">{extracted?.certNumber || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5">Type</p>
+                            <p className="font-bold text-slate-800 dark:text-slate-100 capitalize">{extracted?.type || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5">Barangay</p>
+                            <p className="font-bold text-slate-800 dark:text-slate-100">{extracted?.barangay || '—'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {hasResults ? (
+                        <>
+                            {exact.length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                        Exact Registry Number Matches ({exact.length})
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {exact.map((match, idx) => renderMatchRow(match, idx, 'exact'))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {soft.length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                        Same Name, Different Registry Number ({soft.length})
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {soft.map((match, idx) => renderMatchRow(match, idx, 'soft'))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center text-slate-500 py-12">
+                            <svg className="w-12 h-12 mx-auto opacity-30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="font-medium">No matching records found</p>
+                            <p className="text-sm mt-1">The scanned document does not match any existing registry entry.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex justify-end items-center gap-3">
+                    <button onClick={onCreateNew} className="px-5 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-all">
+                        Not a Match — Create New
+                    </button>
+                    <button onClick={() => onClose?.()} className="px-5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl transition-all">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 /** Manages civil registry records, reviews, printing, and bulk actions. */
 const Registry = () => {
     const { showAlert } = useModal();
@@ -293,6 +441,10 @@ const Registry = () => {
     const [ocrError, setOcrError] = useState('');
     const [isSearchCameraOpen, setIsSearchCameraOpen] = useState(false);
 
+    // Scan Results Modal state
+    const [isScanResultsOpen, setIsScanResultsOpen] = useState(false);
+    const [scanResults, setScanResults] = useState(null);
+
     const startCamera = async () => { };
     const stopCamera = () => { };
     const capturePhoto = () => { };
@@ -312,25 +464,34 @@ const Registry = () => {
 
             if (res.data.success && res.data.extracted) {
                 const { name, certNumber, barangay, type } = res.data.extracted;
+                const duplicates = res.data.duplicates || { exact: [], soft: [] };
 
-                const searchVal = certNumber || name || '';
-                setSearchTerm(searchVal);
+                if (duplicates.exact.length > 0 || duplicates.soft.length > 0) {
+                    setScanResults({
+                        extracted: res.data.extracted,
+                        duplicates: duplicates
+                    });
+                    setIsScanResultsOpen(true);
+                } else {
+                    const searchVal = certNumber || name || '';
+                    setSearchTerm(searchVal);
 
-                if (type && ['birth', 'death', 'marriage'].includes(type.toLowerCase())) {
-                    setSelectedType(type.toLowerCase());
+                    if (type && ['birth', 'death', 'marriage'].includes(type.toLowerCase())) {
+                        setSelectedType(type.toLowerCase());
+                    }
+
+                    if (barangay && NAIC_BARANGAYS.includes(barangay)) {
+                        setSelectedBarangay(barangay);
+                    }
+
+                    showAlert({
+                        title: 'Scan Successful',
+                        message: `OCR Extracted:\nName: ${name || '—'}\nCert No: ${certNumber || '—'}\nType: ${type || '—'}\nBarangay: ${barangay || '—'}`,
+                        type: 'success'
+                    });
+
+                    setIsScanSearchOpen(false);
                 }
-
-                if (barangay && NAIC_BARANGAYS.includes(barangay)) {
-                    setSelectedBarangay(barangay);
-                }
-
-                showAlert({
-                    title: 'Scan Successful',
-                    message: `OCR Extracted:\nName: ${name || '—'}\nCert No: ${certNumber || '—'}\nType: ${type || '—'}\nBarangay: ${barangay || '—'}`,
-                    type: 'success'
-                });
-
-                setIsScanSearchOpen(false);
             } else {
                 setOcrError(res.data.error || 'Failed to extract text from scan.');
             }
@@ -1252,6 +1413,39 @@ const Registry = () => {
                             </div>
                         </motion.div>
                     </div>
+                )}
+                {isScanResultsOpen && scanResults && (
+                    <ScanResultsModal
+                        extracted={scanResults.extracted}
+                        duplicates={scanResults.duplicates}
+                        onClose={() => setIsScanResultsOpen(false)}
+                        onView={(match) => {
+                            const cert = {
+                                id: `reg-${match.id}`,
+                                realId: match.id,
+                                number: match.certNumber,
+                                type: match.type,
+                                name: match.name,
+                                barangay: match.barangay,
+                                date: match.issuanceDate,
+                                status: 'active',
+                                encoded_by: match.encoded_by,
+                                source: 'registry',
+                                document_id: match.document_id,
+                                image_path: null,
+                                raw: {}
+                            };
+                            setViewingCert(cert);
+                            setIsScanResultsOpen(false);
+                        }}
+                        onSelect={(match) => {
+                            console.log('Selected match:', match);
+                        }}
+                        onCreateNew={() => {
+                            setIsScanResultsOpen(false);
+                            setIsScanSearchOpen(false);
+                        }}
+                    />
                 )}
             </AnimatePresence>
 
