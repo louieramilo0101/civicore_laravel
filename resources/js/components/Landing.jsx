@@ -189,10 +189,19 @@ export default function Landing() {
 
                     const cfg = {};
                     (rows || []).forEach(row => {
+                        let parsedVal = row.value;
+                        if (typeof parsedVal === 'string') {
+                            try {
+                                parsedVal = JSON.parse(parsedVal);
+                            } catch {
+                                // Value is already a plain string (e.g. "Mon — Fri: 8:00 AM - 5:00 PM")
+                            }
+                        }
+
                         if (row.key === 'announcements') {
-                            cfg.announcements = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                            cfg.announcements = Array.isArray(parsedVal) ? parsedVal : [];
                         } else if (row.key === 'opening_hours') {
-                            cfg.opening_hours = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                            cfg.opening_hours = typeof parsedVal === 'string' ? parsedVal : (parsedVal?.hours || String(parsedVal || ''));
                         }
                     });
                     setConfig(cfg);
