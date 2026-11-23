@@ -15,7 +15,6 @@ import useDebounce from '../hooks/useDebounce.js';
 const ArchiveManager = () => {
     const { backgroundTasks, runBackgroundTask, refreshAll, onGlobalRefresh } = useData();
 
-    // Scans/Uploads from documents table (soft-deleted)
     const [archivedFiles, setArchivedFiles] = useState(() => {
         try {
             const cached = sessionStorage.getItem('civicore_archived_files');
@@ -24,17 +23,16 @@ const ArchiveManager = () => {
             return [];
         }
     });
-    // Registry records + tickets from /api/archive (unified endpoint)
-    const [archiveRecords, setArchiveRecords] = useState(() => {
+    const [archivedTickets, setArchivedTickets] = useState(() => {
         try {
-            const cached = sessionStorage.getItem('civicore_archive_records');
+            const cached = sessionStorage.getItem('civicore_archived_tickets');
             return cached ? JSON.parse(cached) : [];
         } catch {
             return [];
         }
     });
-    const [isLoadingFiles, setIsLoadingFiles] = useState(() => !sessionStorage.getItem('civicore_archived_files'));
-    const [isLoadingRecords, setIsLoadingRecords] = useState(() => !sessionStorage.getItem('civicore_archive_records'));
+    const [isLoadingArchived, setIsLoadingArchived] = useState(() => !sessionStorage.getItem('civicore_archived_files'));
+    const [isLoadingTickets, setIsLoadingTickets] = useState(() => !sessionStorage.getItem('civicore_archived_tickets'));
     const [archiveSearch, setArchiveSearch] = useState('');
     const debouncedArchiveSearch = useDebounce(archiveSearch, 50);
     const [archiveTypeFilter, setArchiveTypeFilter] = useState('all');
@@ -62,7 +60,7 @@ const ArchiveManager = () => {
         const lastFetch = Number(sessionStorage.getItem('civicore_archived_files_time') || 0);
         if (!force && Date.now() - lastFetch < CACHE_TTL_MS) return;
 
-        setIsLoadingFiles(true);
+        setIsLoadingArchived(true);
         try {
             const params = new URLSearchParams({
                 search: debouncedArchiveSearch,
@@ -88,89 +86,78 @@ const ArchiveManager = () => {
         } catch (e) {
             console.error('Failed to fetch archived files:', e);
         } finally {
-            setIsLoadingFiles(false);
+            setIsLoadingArchived(false);
         }
     }, [debouncedArchiveSearch, archiveTypeFilter]);
 
-    const fetchArchiveRecords = useCallback(async (force = false) => {
-        const lastFetch = Number(sessionStorage.getItem('civicore_archive_records_time') || 0);
+    const fetchArchivedTickets = useCallback(async (force = false) => {
+        const lastFetch = Number(sessionStorage.getItem('civicore_archived_tickets_time') || 0);
         if (!force && Date.now() - lastFetch < CACHE_TTL_MS) return;
 
-        setIsLoadingRecords(true);
+        setIsLoadingTickets(true);
         try {
-            const params = new URLSearchParams({
-                search: debouncedArchiveSearch,
-                per_page: '100'
-            });
-            if (archiveTypeFilter && archiveTypeFilter !== 'all') {
-                params.append('type', archiveTypeFilter);
-            }
-            const res = await fetch(`/api/archive?${params.toString()}`, { credentials: 'include' });
+            const res = await fetch('/api/tickets/archived', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                const records = data.data || [];
-                setArchiveRecords(records);
-                if (!debouncedArchiveSearch && archiveTypeFilter === 'all') {
-                    try {
-                        sessionStorage.setItem('civicore_archive_records', JSON.stringify(records));
-                        sessionStorage.setItem('civicore_archive_records_time', String(Date.now()));
-                    } catch (e) {
-                        console.warn('Failed to cache archive records:', e);
-                    }
+                const tickets = data || [];
+                setArchivedTickets(tickets);
+                try {
+                    sessionStorage.setItem('civicore_archived_tickets', JSON.stringify(tickets));
+                    sessionStorage.setItem('civicore_archived_tickets_time', String(Date.now()));
+                } catch (e) {
+                    console.warn('Failed to cache archived tickets:', e);
                 }
             }
         } catch (e) {
-            console.error('Failed to fetch archive records:', e);
+            console.error('Failed to fetch archived tickets:', e);
         } finally {
-            setIsLoadingRecords(false);
+            setIsLoadingTickets(false);
         }
-    }, [debouncedArchiveSearch, archiveTypeFilter]);
+    }, []);
 
     useEffect(() => {
         fetchArchivedFiles();
-        fetchArchiveRecords();
-    }, [fetchArchivedFiles, fetchArchiveRecords]);
+        fetchArchivedTickets();
+    }, [fetchArchivedFiles, fetchArchivedTickets]);
 
-    // Subscribe to global refresh events (e.g. from Documents.jsx delete, Registry.jsx delete)
+    // Subscribe to global refresh events (e.g. from Documents.jsx delete)
     useEffect(() => {
         return onGlobalRefresh(() => {
             fetchArchivedFiles(true);
-            fetchArchiveRecords(true);
+            fetchArchivedTickets(true);
         });
-    }, [onGlobalRefresh, fetchArchivedFiles, fetchArchiveRecords]);
+    }, [onGlobalRefresh, fetchArchivedFiles, fetchArchivedTickets]);
 
-    // Separate archives with memoization
-    // Scans = documents table records that are NOT processed/issued/approved
+    // Separate archives based on status with memoization
     const scansArchive = useMemo(() => {
         return archivedFiles.filter(f => !['processed', 'issued', 'approved'].includes((f.status || '').toLowerCase()));
     }, [archivedFiles]);
 
-    // Registry = records from /api/archive with archive_type === 'registry'
     const registryArchive = useMemo(() => {
-        return archiveRecords.filter(r => r.archive_type === 'registry');
-    }, [archiveRecords]);
+        // Registry entries are considered archived when their status is explicitly set to 'archived'
+        // (or when the linked document has been soft‑deleted). Filter accordingly.
+        return archivedFiles.filter(f => (f.status || '').toLowerCase() === 'archived');
+    }, [archivedFiles]);
 
-    // Tickets = records from /api/archive with archive_type === 'ticket'
-    const ticketsArchive = useMemo(() => {
+    // Filter tickets based on search/type filters locally
+    const filteredArchivedTickets = useMemo(() => {
         const query = (debouncedArchiveSearch || '').toLowerCase().trim();
-        return archiveRecords
-            .filter(r => r.archive_type === 'ticket')
-            .filter(ticket => {
-                const matchesSearch = !query ||
-                    (ticket.client_name || '').toLowerCase().includes(query) ||
-                    (ticket.ticket_number || '').toLowerCase().includes(query);
-                const matchesType = archiveTypeFilter === 'all' || ticket.purpose === archiveTypeFilter;
-                return matchesSearch && matchesType;
-            });
-    }, [archiveRecords, debouncedArchiveSearch, archiveTypeFilter]);
+        return archivedTickets.filter(ticket => {
+            const matchesSearch = !query ||
+                (ticket.client_name || '').toLowerCase().includes(query) ||
+                (ticket.ticket_number || '').toLowerCase().includes(query);
+            const matchesType = archiveTypeFilter === 'all' || ticket.purpose === archiveTypeFilter;
+            return matchesSearch && matchesType;
+        });
+    }, [archivedTickets, debouncedArchiveSearch, archiveTypeFilter]);
 
     const activeArchiveList = useMemo(() => {
         return archiveSubTab === 'scans'
             ? scansArchive
             : archiveSubTab === 'registry'
                 ? registryArchive
-                : ticketsArchive;
-    }, [archiveSubTab, scansArchive, registryArchive, ticketsArchive]);
+                : filteredArchivedTickets;
+    }, [archiveSubTab, scansArchive, registryArchive, filteredArchivedTickets]);
 
     // Pagination States
     const [archivePage, setArchivePage] = useState(1);
@@ -240,7 +227,7 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/tickets/${ticketId}/restore`, { method: 'POST', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchiveRecords(true);
+                        fetchArchivedTickets(true);
                         return { success: true, message: 'Ticket restored successfully' };
                     }
                     throw new Error('Restore failed');
@@ -274,7 +261,7 @@ const ArchiveManager = () => {
     };
 
     const purgeTicket = async (ticketId) => {
-        const ticket = archiveRecords.find(t => t.id === ticketId && t.archive_type === 'ticket');
+        const ticket = archivedTickets.find(t => t.id === ticketId);
         setConfirmModal({
             isOpen: true,
             title: 'PERMANENTLY Delete Ticket',
@@ -286,54 +273,8 @@ const ArchiveManager = () => {
                     const res = await fetch(`/api/tickets/${ticketId}/purge`, { method: 'DELETE', credentials: 'include' });
                     if (res.ok) {
                         refreshAll();
-                        fetchArchiveRecords(true);
+                        fetchArchivedTickets(true);
                         return { success: true, message: 'Ticket permanently deleted' };
-                    }
-                    throw new Error('Purge failed');
-                });
-            },
-            onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
-        });
-    };
-
-    const restoreRegistryRecord = async (recordId) => {
-        const record = archiveRecords.find(r => r.id === recordId && r.archive_type === 'registry');
-        setConfirmModal({
-            isOpen: true,
-            title: 'Restore Registry Record',
-            message: `Are you sure you want to restore "${record?.name || 'record'}" to the active registry?`,
-            type: 'success',
-            onConfirm: async () => {
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                runBackgroundTask(`Restoring: ${record?.name}`, async () => {
-                    const res = await fetch(`/api/archive/${record.type}/${recordId}/restore`, { method: 'POST', credentials: 'include' });
-                    if (res.ok) {
-                        refreshAll();
-                        fetchArchiveRecords(true);
-                        return { success: true, message: 'Registry record restored successfully' };
-                    }
-                    throw new Error('Restore failed');
-                });
-            },
-            onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
-        });
-    };
-
-    const purgeRegistryRecord = async (recordId) => {
-        const record = archiveRecords.find(r => r.id === recordId && r.archive_type === 'registry');
-        setConfirmModal({
-            isOpen: true,
-            title: 'PERMANENTLY Delete Registry Record',
-            message: `Are you sure you want to permanently delete "${record?.name || 'record'}"? This action is IRREVERSIBLE and will delete the record and its file from storage.`,
-            type: 'danger',
-            onConfirm: async () => {
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                runBackgroundTask(`Purging: ${record?.name}`, async () => {
-                    const res = await fetch(`/api/archive/${record.type}/${recordId}`, { method: 'DELETE', credentials: 'include' });
-                    if (res.ok) {
-                        refreshAll();
-                        fetchArchiveRecords(true);
-                        return { success: true, message: 'Registry record permanently deleted' };
                     }
                     throw new Error('Purge failed');
                 });
@@ -354,34 +295,18 @@ const ArchiveManager = () => {
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 runBackgroundTask(`Restoring ${selectedArchiveIds.length} records`, async () => {
                     let successCount = 0;
-                    let failedCount = 0;
                     for (const id of selectedArchiveIds) {
-                        const record = activeArchiveList.find(r => r.id === id);
-                        if (!record) { failedCount++; continue; }
                         try {
-                            let res;
-                            if (record.archive_type === 'registry') {
-                                // Registry record: /api/archive/{type}/{id}/restore
-                                res = await fetch(`/api/archive/${record.type}/${id}/restore`, { method: 'POST', credentials: 'include' });
-                            } else if (record.archive_type === 'ticket') {
-                                // Ticket: /api/archive/tickets/{id}/restore
-                                res = await fetch(`/api/archive/tickets/${id}/restore`, { method: 'POST', credentials: 'include' });
-                            } else {
-                                // Scans (documents): /api/documents/{id}/undo
-                                res = await fetch(`/api/documents/${id}/undo`, { method: 'POST', credentials: 'include' });
-                            }
+                            const res = await fetch(`/api/documents/${id}/undo`, { method: 'POST', credentials: 'include' });
                             if (res.ok) successCount++;
-                            else failedCount++;
                         } catch (err) {
                             console.error(`Failed to restore ${id}`, err);
-                            failedCount++;
                         }
                     }
                     setSelectedArchiveIds([]);
                     refreshAll();
                     fetchArchivedFiles(true);
-                    fetchArchiveRecords(true);
-                    return { success: successCount > 0, message: `Restored ${successCount} records.${failedCount ? ` Failed: ${failedCount}.` : ''}` };
+                    return { success: true, message: `Successfully restored ${successCount} records.` };
                 });
             },
             onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
@@ -400,41 +325,25 @@ const ArchiveManager = () => {
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 runBackgroundTask(`Purging ${selectedArchiveIds.length} files`, async () => {
                     let successCount = 0;
-                    let failedCount = 0;
                     for (const id of selectedArchiveIds) {
-                        const record = activeArchiveList.find(r => r.id === id);
-                        if (!record) { failedCount++; continue; }
                         try {
-                            let res;
-                            if (record.archive_type === 'registry') {
-                                // Registry record: /api/archive/{type}/{id}
-                                res = await fetch(`/api/archive/${record.type}/${id}`, { method: 'DELETE', credentials: 'include' });
-                            } else if (record.archive_type === 'ticket') {
-                                // Ticket: /api/archive/tickets/{id}
-                                res = await fetch(`/api/archive/tickets/${id}`, { method: 'DELETE', credentials: 'include' });
-                            } else {
-                                // Scans (documents): /api/documents/{id}/purge
-                                res = await fetch(`/api/documents/${id}/purge`, { method: 'DELETE', credentials: 'include' });
-                            }
+                            const res = await fetch(`/api/documents/${id}/purge`, { method: 'DELETE', credentials: 'include' });
                             if (res.ok) successCount++;
-                            else failedCount++;
                         } catch (err) {
                             console.error(`Failed to purge ${id}`, err);
-                            failedCount++;
                         }
                     }
                     setSelectedArchiveIds([]);
                     refreshAll();
                     fetchArchivedFiles(true);
-                    fetchArchiveRecords(true);
-                    return { success: successCount > 0, message: `Permanently deleted ${successCount} records.${failedCount ? ` Failed: ${failedCount}.` : ''}` };
+                    return { success: true, message: `Successfully permanently deleted ${successCount} records.` };
                 });
             },
             onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
         });
     };
 
-    const showLoading = archiveSubTab === 'tickets' ? isLoadingRecords : archiveSubTab === 'registry' ? isLoadingRecords : isLoadingFiles;
+    const showLoading = archiveSubTab === 'tickets' ? isLoadingTickets : isLoadingArchived;
 
     return (
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-8 relative z-10 custom-scrollbar">
@@ -542,7 +451,7 @@ const ArchiveManager = () => {
                                     }`}
                             >
                                 <span className="hidden sm:inline">Ticket Requests</span>
-                                <span className="sm:hidden">Tickets</span> ({ticketsArchive.length})
+                                <span className="sm:hidden">Tickets</span> ({filteredArchivedTickets.length})
                             </button>
                         </div>
 
@@ -570,7 +479,7 @@ const ArchiveManager = () => {
                             <button
                                 onClick={() => {
                                     fetchArchivedFiles(true);
-                                    fetchArchiveRecords(true);
+                                    fetchArchivedTickets(true);
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-xs"
                                 title="Force refresh archive (bypass cache)"
@@ -662,11 +571,9 @@ const ArchiveManager = () => {
                                                         <td className="px-4 py-4">
                                                             <span className={`text-[10px] font-black px-2 py-0.5 border rounded-md uppercase tracking-wide ${ticket.archive_status === 'deleted'
                                                                 ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
-                                                                : ticket.archive_status === 'declined'
-                                                                    ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
-                                                                    : 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-950/40 dark:text-slate-300 dark:border-slate-900/50'
+                                                                : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
                                                                 }`}>
-                                                                {ticket.archive_status === 'deleted' ? 'Deleted' : ticket.archive_status === 'declined' ? 'Declined' : 'Expired'}
+                                                                {ticket.archive_status === 'deleted' ? 'Deleted' : 'Declined'}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 dark:text-slate-400 tabular-nums">
@@ -700,69 +607,6 @@ const ArchiveManager = () => {
                                                     </tr>
                                                 );
                                             })
-                                        ) : archiveSubTab === 'registry' ? (
-                                            paginatedArchiveList.map(record => (
-                                                <tr key={record.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group">
-                                                    <td className="px-6 py-4">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="rounded border-slate-300 dark:border-slate-700 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer dark:bg-slate-950"
-                                                            checked={selectedArchiveIds.includes(record.id)}
-                                                            onChange={() => toggleSelectArchive(record.id)}
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-4">
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs">
-                                                                {record.name}
-                                                            </span>
-                                                            {record.certNumber && (
-                                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                                                                    Cert: {record.certNumber}
-                                                                </span>
-                                                            )}
-                                                            {record.archive_reason && (
-                                                                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1 max-w-sm truncate" title={record.archive_reason}>
-                                                                    Reason: {record.archive_reason}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4">
-                                                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 border border-slate-100 dark:border-slate-700 rounded-md uppercase tracking-wide">
-                                                            {record.type}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                                        {record.encoded_by || 'System'}
-                                                    </td>
-                                                    <td className="px-4 py-4 text-xs font-bold font-mono text-slate-500 dark:text-slate-400 tabular-nums">
-                                                        {new Date(record.archived_at || record.deleted_at).toLocaleString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <button
-                                                                onClick={() => restoreRegistryRecord(record.id)}
-                                                                className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-xl transition-all cursor-pointer active:scale-90"
-                                                                title="Restore to Active Registry"
-                                                            >
-                                                                <ArrowPathIcon className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={canPurge ? () => purgeRegistryRecord(record.id) : undefined}
-                                                                disabled={!canPurge}
-                                                                title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge records"}
-                                                                className={`p-2 border rounded-xl transition-all ${canPurge
-                                                                    ? "text-rose-600 bg-rose-50 border-rose-100 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-90"
-                                                                    : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
-                                                                    }`}
-                                                            >
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
                                         ) : (
                                             paginatedArchiveList.map(file => (
                                                 <tr key={file.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors group">
@@ -849,11 +693,9 @@ const ArchiveManager = () => {
                                                         </span>
                                                         <span className={`text-[10px] font-black px-2 py-0.5 border rounded-md uppercase tracking-wide shrink-0 ${ticket.archive_status === 'deleted'
                                                             ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50'
-                                                            : ticket.archive_status === 'declined'
-                                                                ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
-                                                                : 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-950/40 dark:text-slate-300 dark:border-slate-900/50'
+                                                            : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
                                                             }`}>
-                                                            {ticket.archive_status === 'deleted' ? 'Deleted' : ticket.archive_status === 'declined' ? 'Declined' : 'Expired'}
+                                                            {ticket.archive_status === 'deleted' ? 'Deleted' : 'Declined'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1 shrink-0">
@@ -895,64 +737,6 @@ const ArchiveManager = () => {
                                             </div>
                                         );
                                     })
-                                ) : archiveSubTab === 'registry' ? (
-                                    paginatedArchiveList.map(record => (
-                                        <div key={record.id} className={`p-3.5 space-y-2 transition-colors ${selectedArchiveIds.includes(record.id) ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : 'bg-white dark:bg-slate-900'}`}>
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="rounded border-slate-300 dark:border-slate-700 text-[#d4a574] focus:ring-[#d4a574]/30 cursor-pointer w-3.5 h-3.5 shrink-0 dark:bg-slate-950"
-                                                        checked={selectedArchiveIds.includes(record.id)}
-                                                        onChange={() => toggleSelectArchive(record.id)}
-                                                    />
-                                                    <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md uppercase tracking-wide shrink-0">
-                                                        {record.type}
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider truncate">
-                                                        {record.encoded_by || 'System'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <button
-                                                        onClick={() => restoreRegistryRecord(record.id)}
-                                                        className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 rounded-lg transition-all cursor-pointer active:scale-95 shadow-xs"
-                                                        title="Restore Registry Record"
-                                                    >
-                                                        <ArrowPathIcon className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={canPurge ? () => purgeRegistryRecord(record.id) : undefined}
-                                                        disabled={!canPurge}
-                                                        title={canPurge ? "Permanently Delete" : "Only Admins can permanently purge"}
-                                                        className={`p-1.5 border rounded-lg transition-all shadow-xs ${canPurge
-                                                            ? "text-rose-600 bg-rose-50 border-rose-200 hover:bg-rose-600 hover:text-white dark:bg-rose-950/50 dark:border-rose-900/50 dark:text-rose-300 cursor-pointer active:scale-95"
-                                                            : "text-slate-300 bg-slate-50 border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed opacity-50"
-                                                            }`}
-                                                    >
-                                                        <TrashIcon className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="pl-5.5 space-y-0.5">
-                                                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{record.name}</p>
-                                                {record.certNumber && (
-                                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                                                        Cert: {record.certNumber}
-                                                    </p>
-                                                )}
-                                                {record.archive_reason && (
-                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic">
-                                                        Reason: {record.archive_reason}
-                                                    </p>
-                                                )}
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                                                    {new Date(record.archived_at || record.deleted_at).toLocaleString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
                                 ) : (
                                     paginatedArchiveList.map(file => (
                                         <div key={file.id} className={`p-3.5 space-y-2 transition-colors ${selectedArchiveIds.includes(file.id) ? 'bg-indigo-50/30 dark:bg-indigo-950/30' : 'bg-white dark:bg-slate-900'}`}>
