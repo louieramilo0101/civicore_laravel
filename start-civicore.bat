@@ -101,15 +101,19 @@ echo [2/5] Launching Laravel Server on http://localhost:80 (Apache + mod_php)...
 start "Laravel Server" cmd /k "title Laravel Server && cd /d C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin && httpd.exe -k start -n httpd"
 
 :: 3. Start Laravel Queue Listener (single process, all queues)
-echo [3/5] Launching Laravel Queue Listener...
+echo [3/6] Launching Laravel Queue Listener...
 start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan queue:work --queue=low,ocr,default"
 
-:: 4. Start Persistent OCR Server
-echo [4/5] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
+:: 4. Start Supabase Sync Daemon
+echo [4/6] Launching Supabase Sync Daemon...
+start "Supabase Sync" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan civicore:sync-supabase --daemon"
+
+:: 5. Start Persistent OCR Server
+echo [5/6] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
 start "OCR Server" cmd /k "scripts\serve-ocr.bat"
 
-:: 5. Start Vite (Frontend) - prompt for dev or build
-echo [5/5] Choose Vite mode:
+:: 6. Start Vite (Frontend) - prompt for dev or build
+echo [6/6] Choose Vite mode:
 echo   [1] Dev Server (Hot Module Replacement, instant updates)
 echo   [2] Build (production build, no HMR)
 echo.
@@ -117,7 +121,7 @@ choice /C 12 /T 20 /D 2 /M "Enter choice (1=Dev, 2=Build, default 2 (Build) in 2
 if %ERRORLEVEL% EQU 2 set "VITE_CMD=npm run build"
 if %ERRORLEVEL% EQU 1 set "VITE_CMD=npm run dev"
 
-echo [5/5] Launching Vite with: %VITE_CMD%
+echo [6/6] Launching Vite with: %VITE_CMD%
 echo.
 echo   ============================================================
 echo   YOUR NETWORK ACCESS (also shown in Vite window title):
@@ -176,6 +180,10 @@ taskkill /FI "WINDOWTITLE eq CiviCORE Queue Worker*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue High*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Low*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Default*" /T /F >nul 2>&1
+taskkill /FI "WINDOWTITLE eq Queue Listener*" /T /F >nul 2>&1
+
+echo [*] Stopping Supabase Sync Daemon...
+taskkill /FI "WINDOWTITLE eq Supabase Sync*" /T /F >nul 2>&1
 
 echo [*] Stopping Laravel Server (Apache)...
 "C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin\httpd.exe" -k stop -n httpd >nul 2>&1

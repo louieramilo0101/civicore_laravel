@@ -20,6 +20,10 @@ taskkill /FI "WINDOWTITLE eq CiviCORE Queue Worker*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue High*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Low*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Queue Default*" /T /F >nul 2>&1
+taskkill /FI "WINDOWTITLE eq Queue Listener*" /T /F >nul 2>&1
+
+echo [*] Stopping Supabase Sync Daemon...
+taskkill /FI "WINDOWTITLE eq Supabase Sync*" /T /F >nul 2>&1
 
 echo [*] Stopping Laravel Server...
 taskkill /FI "WINDOWTITLE eq Laravel Server*" /T /F >nul 2>&1

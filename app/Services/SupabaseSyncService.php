@@ -92,8 +92,14 @@ class SupabaseSyncService
                     if (empty($consentFormPath) && !empty($ticketDetails['consent_form_base64'])) {
                         try {
                             $base64 = $ticketDetails['consent_form_base64'];
-                            if (preg_match('/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.*)$/', $base64, $matches)) {
-                                $fileData = base64_decode($matches[2]);
+                            $fileData = null;
+                            if (preg_match('/^data:([^;]+);base64,(.+)$/s', $base64, $matches)) {
+                                $fileData = base64_decode(trim($matches[2]));
+                            } else {
+                                $fileData = base64_decode(trim($base64));
+                            }
+
+                            if ($fileData !== false && strlen($fileData) > 0) {
                                 $origName = $ticketDetails['consent_form_name'] ?? 'consent.pdf';
                                 $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
                                 $storagePath = "consent_forms/{$token}_" . time() . ".{$ext}";
@@ -106,7 +112,7 @@ class SupabaseSyncService
                     } elseif (!empty($consentFormPath) && filter_var($consentFormPath, FILTER_VALIDATE_URL)) {
                         try {
                             $fileContents = @file_get_contents($consentFormPath);
-                            if ($fileContents !== false) {
+                            if ($fileContents !== false && strlen($fileContents) > 0) {
                                 $origName = $ticketDetails['consent_form_name'] ?? basename(parse_url($consentFormPath, PHP_URL_PATH));
                                 $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
                                 $storagePath = "consent_forms/{$token}_" . time() . ".{$ext}";
@@ -149,7 +155,33 @@ class SupabaseSyncService
                         $this->sendTicketEmail($ticket);
                     }
                 } else {
-                    // Already in local MySQL, just acknowledge sync on Supabase
+                    // Already in local MySQL - check if consent_form_path was missing and needs backfilling
+                    if (empty($existing->consent_form_path)) {
+                        $ticketDetails = is_array($existing->details ?? null) ? $existing->details : (json_decode($existing->details ?? '[]', true) ?? []);
+                        if (!empty($ticketDetails['consent_form_base64'])) {
+                            try {
+                                $base64 = $ticketDetails['consent_form_base64'];
+                                $fileData = null;
+                                if (preg_match('/^data:([^;]+);base64,(.+)$/s', $base64, $matches)) {
+                                    $fileData = base64_decode(trim($matches[2]));
+                                } else {
+                                    $fileData = base64_decode(trim($base64));
+                                }
+                                if ($fileData !== false && strlen($fileData) > 0) {
+                                    $origName = $ticketDetails['consent_form_name'] ?? 'consent.pdf';
+                                    $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
+                                    $storagePath = "consent_forms/{$token}_" . time() . ".{$ext}";
+                                    Storage::disk('public')->put($storagePath, $fileData);
+                                    $existing->consent_form_path = $storagePath;
+                                    $existing->save();
+                                }
+                            } catch (\Throwable $fixEx) {
+                                Log::warning("SupabaseSync: Backfill consent form failed for {$token}: " . $fixEx->getMessage());
+                            }
+                        }
+                    }
+
+                    // Acknowledge sync on Supabase
                     $this->client()->patch("{$this->url}/rest/v1/public_tickets?token=eq.{$token}", [
                         'synced_to_local' => true,
                     ]);

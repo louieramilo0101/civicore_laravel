@@ -363,8 +363,8 @@ export default function Ticketing({ mode = 'portal' }) {
                         ...data,
                         status: data.queue_status === 'serving' ? 'Serving'
                             : data.queue_status === 'completed' ? 'Completed'
-                            : data.request_status === 'rejected' ? 'Declined'
-                            : 'Pending',
+                                : data.request_status === 'rejected' ? 'Declined'
+                                    : 'Pending',
                         ticket_number: data.ticket_number || 'Pending',
                     });
                     // Queue position: count tickets created before this one that are still pending
@@ -476,7 +476,7 @@ export default function Ticketing({ mode = 'portal' }) {
     const updateTicketStatus = async (id, newStatus, force = false) => {
         try {
             const res = await axios.put(`/api/tickets/${id}/status`, { status: newStatus, force });
-            
+
             if (res.data.success) {
                 showAlert({ title: 'Status Updated', message: `Ticket marked as ${newStatus}.`, type: 'success' });
                 fetchQueue();
@@ -578,481 +578,481 @@ export default function Ticketing({ mode = 'portal' }) {
     if (mode === 'portal') {
         return (
             <>
-            <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                {/* Back to Home Button */}
-                <div className="mb-6">
-                    <Link
-                        to="/"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-[#d4a574] dark:hover:text-[#d4a574] transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"
-                    >
-                        <span>←</span> Back to Home
-                    </Link>
-                </div>
-
-                {/* ── After-5PM Info Banner ─────────────────────────────── */}
-                {isAfterCutoff && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm"
-                    >
-                        <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <ClockIcon className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="font-black text-blue-900 text-sm">Late Submission — Ticket Will Be Scheduled for Tomorrow</p>
-                            <p className="text-blue-700 text-xs mt-1 font-medium">
-                                It’s past 5:00 PM. You can still submit your request, but it will be
-                                processed <strong>tomorrow</strong>. You cannot submit another request for tomorrow after this.
-                            </p>
-                        </div>
-                    </motion.div>
-                )}
-
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.06)]"
-                >
-                    <div className="text-center space-y-3 mb-10">
-                        <div className="w-16 h-16 bg-[#d4a574]/15 rounded-2xl flex items-center justify-center mx-auto border border-[#d4a574]/30 shadow-sm text-3xl">
-                            <TicketIcon className="w-8 h-8 text-[#d4a574]" />
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Online Document Request</h2>
-                        <p className="text-slate-700 dark:text-slate-300 text-sm max-w-md mx-auto font-medium">Skip the lines. Queue your document copy request online and get a real-time tracking QR code.</p>
+                <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                    {/* Back to Home Button */}
+                    <div className="mb-6">
+                        <Link
+                            to="/"
+                            className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-[#d4a574] dark:hover:text-[#d4a574] transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"
+                        >
+                            <span>←</span> Back to Home
+                        </Link>
                     </div>
 
-                    <form onSubmit={handlePortalSubmit} className="space-y-8">
-                        {/* Phase 1: Contact Details */}
-                        <div className="space-y-6">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">1</span>
-                                Contact Information
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Your Full Name</label>
-                                    <div className="relative">
-                                        <UserIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                        <input
-                                            type="text"
-                                            required
-                                            value={clientName}
-                                            onChange={e => setClientName(sanitizeName(e.target.value).slice(0, 50))}
-                                            maxLength={50}
-                                            placeholder="Juan Santos"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Email Address</label>
-
-                                    </div>
-                                    <div className="relative">
-                                        <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={e => setEmail(e.target.value.slice(0, 100))}
-                                            maxLength={100}
-                                            placeholder="juan@email.com (optional)"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Phone Number</label>
-                                    <div className="relative">
-                                        <PhoneIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                        <input
-                                            type="tel"
-                                            inputMode="numeric"
-                                            value={phone}
-                                            onChange={e => {
-                                                const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
-                                                setPhone(cleaned);
-                                            }}
-                                            maxLength={11}
-                                            placeholder="09123456789"
-                                            className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Consent / Authorization Document Upload */}
-                                <div className="md:col-span-3 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                            <PaperClipIcon className="w-4 h-4 text-[#c49a67]" />
-                                            Authorization Letter & Valid ID
-                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Required if NOT parent or child)</span>
-                                        </label>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">PDF, JPG, PNG up to 10MB</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                        Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
-                                    </p>
-                                    <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/90 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
-                                                <PaperClipIcon className="w-5 h-5 text-[#c49a67]" />
-                                            </div>
-                                            <div className="min-w-0 text-center sm:text-left">
-                                                {consentFile ? (
-                                                    <div>
-                                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-xs">{consentFile.name}</div>
-                                                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{(consentFile.size / 1024 / 1024).toFixed(2)} MB • Ready to upload</div>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-100">Choose file or drag & drop</div>
-                                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Scanned letter or photo of authorization & ID</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {consentFile && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConsentFile(null)}
-                                                    className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold cursor-pointer transition-all"
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                            <label className="px-4 py-2 rounded-xl bg-[#1a2f4a] dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 border border-transparent dark:border-slate-600 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
-                                                <span>{consentFile ? 'Change File' : 'Browse File'}</span>
-                                                <input
-                                                    type="file"
-                                                    accept=".pdf,.doc,.docx,image/png,image/jpeg,image/jpg"
-                                                    className="hidden"
-                                                    onChange={e => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            if (file.size > 10 * 1024 * 1024) {
-                                                                showAlert({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'danger' });
-                                                                return;
-                                                            }
-                                                            setConsentFile(file);
-                                                        }
-                                                    }}
-                                                />
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Phase 2: Purpose */}
-                        <div className="space-y-6">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">2</span>
-                                Document Type & Purpose
-                            </h3>
-
-                            {/* Mobile View: Compact Dropdown */}
-                            <div className="md:hidden space-y-2">
-                                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                    Select Document Type
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={purpose}
-                                        onChange={e => setPurpose(e.target.value)}
-                                        className="w-full px-4 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#d4a574] focus:ring-4 focus:ring-[#d4a574]/10 transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="" disabled>-- Choose Document Type --</option>
-                                        <option value="birth">Birth Certificate (Live Birth)</option>
-                                        <option value="death">Death Certificate</option>
-                                        <option value="marriage">Marriage Contract</option>
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                        ▼
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Desktop / Tablet View: Visual Cards */}
-                            <div className="hidden md:grid md:grid-cols-3 gap-4">
-                                {[
-                                    { id: 'birth', label: 'Birth Certificate', icon: <UserIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Live Birth' },
-                                    { id: 'death', label: 'Death Certificate', icon: <DocumentTextIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Death' },
-                                    { id: 'marriage', label: 'Marriage Contract', icon: <UsersIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Marriage' }
-                                ].map(item => (
-                                    <div
-                                        key={item.id}
-                                        onClick={() => setPurpose(item.id)}
-                                        className={`p-5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between h-36 ${purpose === item.id
-                                            ? 'border-[#d4a574] bg-[#d4a574]/10 shadow-sm'
-                                            : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100/50 dark:hover:bg-slate-600/50'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            {item.icon}
-                                            {purpose === item.id && <span className="w-5 h-5 rounded-full bg-[#d4a574] flex items-center justify-center text-[#0f172a] text-xs font-black">✓</span>}
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-slate-900 dark:text-white text-sm">{item.label}</p>
-                                            <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium mt-1">{item.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Phase 3: Details */}
-                        <div className="space-y-6 bg-slate-100/40 dark:bg-slate-700/30 p-6 rounded-3xl border border-slate-200 dark:border-slate-600">
-                            <h3 className="text-md font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                <DocumentTextIcon className="w-5 h-5 text-[#d4a574]" />
-                                Provide Registry Information (To Speed Up Processing)
-                            </h3>
-
-                            {!purpose && (
-                                <div className="py-8 text-center text-slate-400">
-                                    <DocumentTextIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                                    <p className="text-sm font-semibold">Select a document type above to continue</p>
-                                    <p className="text-xs mt-1 opacity-70">Fields will appear after you choose Birth, Death, or Marriage</p>
-                                </div>
-                            )}
-
-                            {purpose === 'birth' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">First Name (on Certificate)</label>
-                                        <input type="text" required value={details.first_name} onChange={e => handleDetailChange('first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Middle Name (on Certificate)</label>
-                                        <input type="text" required value={details.middle_name} onChange={e => handleDetailChange('middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Last Name (on Certificate)</label>
-                                        <input type="text" required value={details.last_name} onChange={e => handleDetailChange('last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Birth</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
-                                    </div>
-                                    <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Birth (City/Hospital)</label>
-                                        <input type="text" required value={details.place_of_birth} onChange={e => handleDetailChange('place_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Father's Full Name</label>
-                                        <input type="text" required value={details.father_name} onChange={e => handleDetailChange('father_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Father's Full Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Mother's Full Maiden Name</label>
-                                        <input type="text" required value={details.mother_name} onChange={e => handleDetailChange('mother_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Mother's Maiden Name" />
-                                    </div>
-                                </div>
-                            )}
-
-                            {purpose === 'death' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased First Name</label>
-                                        <input type="text" required value={details.deceased_first_name} onChange={e => handleDetailChange('deceased_first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased First Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Middle Name</label>
-                                        <input type="text" required value={details.deceased_middle_name} onChange={e => handleDetailChange('deceased_middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Middle Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Last Name</label>
-                                        <input type="text" required value={details.deceased_last_name} onChange={e => handleDetailChange('deceased_last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Last Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Death</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
-                                    </div>
-                                    <div className="space-y-1.5 md:col-span-2">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Death</label>
-                                        <input type="text" required value={details.place_of_death} onChange={e => handleDetailChange('place_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
-                                    </div>
-                                </div>
-                            )}
-
-                            {purpose === 'marriage' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    {/* Husband */}
-                                    <div className="space-y-3 border-r border-slate-200 pr-4">
-                                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Husband Details</h4>
-                                        <input type="text" required value={details.husband_first_name} onChange={e => handleDetailChange('husband_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
-                                        <input type="text" required value={details.husband_middle_name} onChange={e => handleDetailChange('husband_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
-                                    </div>
-                                    {/* Wife */}
-                                    <div className="space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Wife Details</h4>
-                                        <input type="text" required value={details.wife_first_name} onChange={e => handleDetailChange('wife_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
-                                        <input type="text" required value={details.wife_middle_name} onChange={e => handleDetailChange('wife_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
-                                        <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Marriage</label>
-                                        <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Marriage</label>
-                                        <input type="text" required value={details.place_of_marriage} onChange={e => handleDetailChange('place_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="pt-6 space-y-4">
-                            {isAfterCutoff && (
-                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
-                                    <p className="text-blue-700 text-xs font-bold">📅 Submitting after 5:00 PM — your ticket will be scheduled for <strong>tomorrow</strong>.</p>
-                                </div>
-                            )}
-
-                            {/* Data Privacy Consent Checkbox (RA 10173 Compliance) */}
-                            <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600">
-                                <input
-                                    type="checkbox"
-                                    id="privacyConsent"
-                                    name="privacyConsent"
-                                    checked={privacyAccepted}
-                                    onChange={e => setPrivacyAccepted(e.target.checked)}
-                                    className="mt-1 w-5 h-5 rounded cursor-pointer accent-[#d4a574] shrink-0"
-                                />
-                                <div className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                    <label htmlFor="privacyConsent" className="cursor-pointer">
-                                        I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753.
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPrivacyNoticeModal(true)}
-                                        className="text-[#d4a574] font-bold underline hover:text-[#c49a67] ml-1 inline cursor-pointer"
-                                    >
-                                        Read Data Privacy Notice
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="w-full py-4 bg-gradient-to-r from-[#d4a574] to-[#c49a67] text-[#0f172a] rounded-2xl font-black shadow-xl shadow-[#d4a574]/15 hover:shadow-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                            >
-                                {isSubmitting ? 'Queueing request...' : isAfterCutoff ? 'Get Queue Ticket (Tomorrow)' : 'Get Queue Ticket'}
-                            </button>
-                        </div>
-                    </form>
-                </motion.div>
-            </div>
-
-            {/* ── No-Email Warning Modal ─────────────────────────────── */}
-            <AnimatePresence>
-                {showPrivacyNoticeModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
-                    >
+                    {/* ── After-5PM Info Banner ─────────────────────────────── */}
+                    {isAfterCutoff && (
                         <motion.div
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm"
                         >
-                            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-[#d4a574]/10 flex items-center justify-center border border-[#d4a574]/20">
-                                        <DocumentCheckIcon className="w-5 h-5 text-[#d4a574]" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">Data Privacy Notice</h3>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">RA 10173 Compliance</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowPrivacyNoticeModal(false)}
-                                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
-                                >
-                                    <XMarkIcon className="w-6 h-6 text-slate-400" />
-                                </button>
+                            <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <ClockIcon className="w-5 h-5 text-blue-600" />
                             </div>
-
-                            <div className="p-8 overflow-y-auto text-sm text-slate-600 dark:text-slate-300 space-y-6 leading-relaxed custom-scrollbar">
-                                <section className="space-y-3">
-                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">1. Statutory Basis</h4>
-                                    <p>
-                                        The <strong className="text-slate-800 dark:text-slate-200">Office of the Municipal Civil Registrar (OMCR) of Naic</strong> processes your personal data pursuant to its mandate under <strong>Act No. 3753</strong> (Civil Registry Law) and in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
-                                    </p>
-                                </section>
-
-                                <section className="space-y-3">
-                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">2. Collection and Scope</h4>
-                                    <p>
-                                        By using this online request portal, we collect the following personal and vital information:
-                                    </p>
-                                    <ul className="list-disc pl-5 space-y-2">
-                                        <li><strong className="text-slate-800 dark:text-slate-200">Requestor Information:</strong> Full name, email address, phone number, and purpose of request.</li>
-                                        <li><strong className="text-slate-800 dark:text-slate-200">Registrant Details:</strong> Full names of the child/deceased/couple, dates of event (birth/death/marriage), parents' names, and place of event.</li>
-                                        <li><strong className="text-slate-800 dark:text-slate-200">Supporting Documents:</strong> Authorization letters or IDs (if applicable).</li>
-                                    </ul>
-                                </section>
-
-                                <section className="space-y-3">
-                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">3. Purpose of Processing</h4>
-                                    <p>
-                                        Your data is used exclusively for:
-                                    </p>
-                                    <ul className="list-disc pl-5 space-y-2">
-                                        <li>Verification of records against the Municipal Civil Registry books.</li>
-                                        <li>Queue management and tracking of your request.</li>
-                                        <li>Communication regarding the status of your document issuance.</li>
-                                        <li>Official statistical reporting (anonymized).</li>
-                                    </ul>
-                                </section>
-
-                                <section className="space-y-3">
-                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">4. Retention and Security</h4>
-                                    <p>
-                                        Digital request records are stored securely and are only accessible by authorized OMCR personnel. Records are retained for the duration of the request process and for a limited period thereafter for audit purposes, after which they are permanently deleted or anonymized.
-                                    </p>
-                                </section>
-
-                                <section className="space-y-3">
-                                    <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">5. Your Rights</h4>
-                                    <p>
-                                        Under the Data Privacy Act, you have the right to be informed, to access, to object, to erasure or blocking, to damages, to file a complaint, to rectify and to data portability.
-                                    </p>
-                                </section>
-
-                                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
-                                    <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                                        <strong>Consent:</strong> By clicking "I Accept" below, you confirm that you have read this notice and freely give your consent for the processing of your data.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
-                                <button
-                                    onClick={() => { setPrivacyAccepted(true); setShowPrivacyNoticeModal(false); }}
-                                    className="flex-1 py-3.5 bg-[#1a2f4a] dark:bg-slate-700 hover:bg-[#0f172a] dark:hover:bg-slate-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-[0.98] cursor-pointer"
-                                >
-                                    I Accept and Consent
-                                </button>
-                                <button
-                                    onClick={() => setShowPrivacyNoticeModal(false)}
-                                    className="px-8 py-3.5 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all cursor-pointer"
-                                >
-                                    Close
-                                </button>
+                            <div>
+                                <p className="font-black text-blue-900 text-sm">Late Submission — Ticket Will Be Scheduled for Tomorrow</p>
+                                <p className="text-blue-700 text-xs mt-1 font-medium">
+                                    It’s past 5:00 PM. You can still submit your request, but it will be
+                                    processed <strong>tomorrow</strong>. You cannot submit another request for tomorrow after this.
+                                </p>
                             </div>
                         </motion.div>
+                    )}
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.06)]"
+                    >
+                        <div className="text-center space-y-3 mb-10">
+                            <div className="w-16 h-16 bg-[#d4a574]/15 rounded-2xl flex items-center justify-center mx-auto border border-[#d4a574]/30 shadow-sm text-3xl">
+                                <TicketIcon className="w-8 h-8 text-[#d4a574]" />
+                            </div>
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Online Document Request</h2>
+                            <p className="text-slate-700 dark:text-slate-300 text-sm max-w-md mx-auto font-medium">Skip the lines. Queue your document copy request online and get a real-time tracking QR code.</p>
+                        </div>
+
+                        <form onSubmit={handlePortalSubmit} className="space-y-8">
+                            {/* Phase 1: Contact Details */}
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">1</span>
+                                    Contact Information
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Your Full Name</label>
+                                        <div className="relative">
+                                            <UserIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                            <input
+                                                type="text"
+                                                required
+                                                value={clientName}
+                                                onChange={e => setClientName(sanitizeName(e.target.value).slice(0, 50))}
+                                                maxLength={50}
+                                                placeholder="Juan Santos"
+                                                className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Email Address</label>
+
+                                        </div>
+                                        <div className="relative">
+                                            <EnvelopeIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                            <input
+                                                type="email"
+                                                value={email}
+                                                onChange={e => setEmail(e.target.value.slice(0, 100))}
+                                                maxLength={100}
+                                                placeholder="juan@email.com (optional)"
+                                                className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Phone Number</label>
+                                        <div className="relative">
+                                            <PhoneIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                            <input
+                                                type="tel"
+                                                inputMode="numeric"
+                                                value={phone}
+                                                onChange={e => {
+                                                    const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                                                    setPhone(cleaned);
+                                                }}
+                                                maxLength={11}
+                                                placeholder="09123456789"
+                                                className="w-full pl-10 pr-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-[#d4a574]/10 focus:border-[#d4a574] transition-all text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Consent / Authorization Document Upload */}
+                                    <div className="md:col-span-3 space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                                <PaperClipIcon className="w-4 h-4 text-[#c49a67]" />
+                                                Authorization Letter & Valid ID
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Required if NOT parent or child)</span>
+                                            </label>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">PDF, JPG, PNG up to 10MB</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                            Per Civil Registry guidelines: Only parents, children, or the document owner may request directly. If requesting on behalf of someone else, please attach an authorization letter and valid ID.
+                                        </p>
+                                        <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#d4a574] rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/90 transition-all flex flex-col sm:flex-row items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 shadow-xs shrink-0">
+                                                    <PaperClipIcon className="w-5 h-5 text-[#c49a67]" />
+                                                </div>
+                                                <div className="min-w-0 text-center sm:text-left">
+                                                    {consentFile ? (
+                                                        <div>
+                                                            <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-xs">{consentFile.name}</div>
+                                                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{(consentFile.size / 1024 / 1024).toFixed(2)} MB • Ready to upload</div>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <div className="text-xs font-bold text-slate-700 dark:text-slate-100">Choose file or drag & drop</div>
+                                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Scanned letter or photo of authorization & ID</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {consentFile && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConsentFile(null)}
+                                                        className="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold cursor-pointer transition-all"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                                <label className="px-4 py-2 rounded-xl bg-[#1a2f4a] dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 border border-transparent dark:border-slate-600 text-white text-xs font-bold cursor-pointer transition-all shadow-xs">
+                                                    <span>{consentFile ? 'Change File' : 'Browse File'}</span>
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf,.doc,.docx,image/png,image/jpeg,image/jpg"
+                                                        className="hidden"
+                                                        onChange={e => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                if (file.size > 10 * 1024 * 1024) {
+                                                                    showAlert({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'danger' });
+                                                                    return;
+                                                                }
+                                                                setConsentFile(file);
+                                                            }
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Phase 2: Purpose */}
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-600 pb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-full bg-[#d4a574]/20 text-[#c49a67] text-xs font-black flex items-center justify-center">2</span>
+                                    Document Type & Purpose
+                                </h3>
+
+                                {/* Mobile View: Compact Dropdown */}
+                                <div className="md:hidden space-y-2">
+                                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        Select Document Type
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            value={purpose}
+                                            onChange={e => setPurpose(e.target.value)}
+                                            className="w-full px-4 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-2xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#d4a574] focus:ring-4 focus:ring-[#d4a574]/10 transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="" disabled>-- Choose Document Type --</option>
+                                            <option value="birth">Birth Certificate (Live Birth)</option>
+                                            <option value="death">Death Certificate</option>
+                                            <option value="marriage">Marriage Contract</option>
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            ▼
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Desktop / Tablet View: Visual Cards */}
+                                <div className="hidden md:grid md:grid-cols-3 gap-4">
+                                    {[
+                                        { id: 'birth', label: 'Birth Certificate', icon: <UserIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Live Birth' },
+                                        { id: 'death', label: 'Death Certificate', icon: <DocumentTextIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Death' },
+                                        { id: 'marriage', label: 'Marriage Contract', icon: <UsersIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Marriage' }
+                                    ].map(item => (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => setPurpose(item.id)}
+                                            className={`p-5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col justify-between h-36 ${purpose === item.id
+                                                ? 'border-[#d4a574] bg-[#d4a574]/10 shadow-sm'
+                                                : 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100/50 dark:hover:bg-slate-600/50'
+                                                }`}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                {item.icon}
+                                                {purpose === item.id && <span className="w-5 h-5 rounded-full bg-[#d4a574] flex items-center justify-center text-[#0f172a] text-xs font-black">✓</span>}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-900 dark:text-white text-sm">{item.label}</p>
+                                                <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium mt-1">{item.desc}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Phase 3: Details */}
+                            <div className="space-y-6 bg-slate-100/40 dark:bg-slate-700/30 p-6 rounded-3xl border border-slate-200 dark:border-slate-600">
+                                <h3 className="text-md font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <DocumentTextIcon className="w-5 h-5 text-[#d4a574]" />
+                                    Provide Registry Information (To Speed Up Processing)
+                                </h3>
+
+                                {!purpose && (
+                                    <div className="py-8 text-center text-slate-400">
+                                        <DocumentTextIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                                        <p className="text-sm font-semibold">Select a document type above to continue</p>
+                                        <p className="text-xs mt-1 opacity-70">Fields will appear after you choose Birth, Death, or Marriage</p>
+                                    </div>
+                                )}
+
+                                {purpose === 'birth' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">First Name (on Certificate)</label>
+                                            <input type="text" required value={details.first_name} onChange={e => handleDetailChange('first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Middle Name (on Certificate)</label>
+                                            <input type="text" required value={details.middle_name} onChange={e => handleDetailChange('middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Last Name (on Certificate)</label>
+                                            <input type="text" required value={details.last_name} onChange={e => handleDetailChange('last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Birth</label>
+                                            <input type="date" required max={todayDateStr} value={details.date_of_birth} onChange={e => handleDetailChange('date_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
+                                        </div>
+                                        <div className="space-y-1.5 md:col-span-2">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Birth (City/Hospital)</label>
+                                            <input type="text" required value={details.place_of_birth} onChange={e => handleDetailChange('place_of_birth', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Father's Full Name</label>
+                                            <input type="text" required value={details.father_name} onChange={e => handleDetailChange('father_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Father's Full Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Mother's Full Maiden Name</label>
+                                            <input type="text" required value={details.mother_name} onChange={e => handleDetailChange('mother_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Mother's Maiden Name" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {purpose === 'death' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased First Name</label>
+                                            <input type="text" required value={details.deceased_first_name} onChange={e => handleDetailChange('deceased_first_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased First Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Middle Name</label>
+                                            <input type="text" required value={details.deceased_middle_name} onChange={e => handleDetailChange('deceased_middle_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Middle Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Deceased Last Name</label>
+                                            <input type="text" required value={details.deceased_last_name} onChange={e => handleDetailChange('deceased_last_name', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Deceased Last Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Death</label>
+                                            <input type="date" required max={todayDateStr} value={details.date_of_death} onChange={e => handleDetailChange('date_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
+                                        </div>
+                                        <div className="space-y-1.5 md:col-span-2">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Death</label>
+                                            <input type="text" required value={details.place_of_death} onChange={e => handleDetailChange('place_of_death', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {purpose === 'marriage' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {/* Husband */}
+                                        <div className="space-y-3 border-r border-slate-200 pr-4">
+                                            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Husband Details</h4>
+                                            <input type="text" required value={details.husband_first_name} onChange={e => handleDetailChange('husband_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                            <input type="text" required value={details.husband_middle_name} onChange={e => handleDetailChange('husband_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                            <input type="text" required value={details.husband_last_name} onChange={e => handleDetailChange('husband_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        </div>
+                                        {/* Wife */}
+                                        <div className="space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Wife Details</h4>
+                                            <input type="text" required value={details.wife_first_name} onChange={e => handleDetailChange('wife_first_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="First Name" />
+                                            <input type="text" required value={details.wife_middle_name} onChange={e => handleDetailChange('wife_middle_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Middle Name" />
+                                            <input type="text" required value={details.wife_last_name} onChange={e => handleDetailChange('wife_last_name', e.target.value)} className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm mb-2 text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="Last Name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Date of Marriage</label>
+                                            <input type="date" required max={todayDateStr} value={details.date_of_marriage} onChange={e => handleDetailChange('date_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 focus:border-[#d4a574] focus:outline-none" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Place of Marriage</label>
+                                            <input type="text" required value={details.place_of_marriage} onChange={e => handleDetailChange('place_of_marriage', e.target.value)} className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#d4a574] focus:outline-none" placeholder="e.g. Naic, Cavite" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-6 space-y-4">
+                                {isAfterCutoff && (
+                                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+                                        <p className="text-blue-700 text-xs font-bold">📅 Submitting after 5:00 PM — your ticket will be scheduled for <strong>tomorrow</strong>.</p>
+                                    </div>
+                                )}
+
+                                {/* Data Privacy Consent Checkbox (RA 10173 Compliance) */}
+                                <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600">
+                                    <input
+                                        type="checkbox"
+                                        id="privacyConsent"
+                                        name="privacyConsent"
+                                        checked={privacyAccepted}
+                                        onChange={e => setPrivacyAccepted(e.target.checked)}
+                                        className="mt-1 w-5 h-5 rounded cursor-pointer accent-[#d4a574] shrink-0"
+                                    />
+                                    <div className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                                        <label htmlFor="privacyConsent" className="cursor-pointer">
+                                            I hereby authorize the Municipal Civil Registrar of Naic to collect, process, and store my personal and vital document data pursuant to the <strong className="text-slate-900 dark:text-white">Data Privacy Act of 2012 (RA 10173)</strong> and Act No. 3753.
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPrivacyNoticeModal(true)}
+                                            className="text-[#d4a574] font-bold underline hover:text-[#c49a67] ml-1 inline cursor-pointer"
+                                        >
+                                            Read Data Privacy Notice
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-gradient-to-r from-[#d4a574] to-[#c49a67] text-[#0f172a] rounded-2xl font-black shadow-xl shadow-[#d4a574]/15 hover:shadow-2xl transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                    {isSubmitting ? 'Queueing request...' : isAfterCutoff ? 'Get Queue Ticket (Tomorrow)' : 'Get Queue Ticket'}
+                                </button>
+                            </div>
+                        </form>
                     </motion.div>
-                )}
-            </AnimatePresence>
+                </div>
+
+                {/* ── No-Email Warning Modal ─────────────────────────────── */}
+                <AnimatePresence>
+                    {showPrivacyNoticeModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700"
+                            >
+                                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-[#d4a574]/10 flex items-center justify-center border border-[#d4a574]/20">
+                                            <DocumentCheckIcon className="w-5 h-5 text-[#d4a574]" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">Data Privacy Notice</h3>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">RA 10173 Compliance</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowPrivacyNoticeModal(false)}
+                                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+                                    >
+                                        <XMarkIcon className="w-6 h-6 text-slate-400" />
+                                    </button>
+                                </div>
+
+                                <div className="p-8 overflow-y-auto text-sm text-slate-600 dark:text-slate-300 space-y-6 leading-relaxed custom-scrollbar">
+                                    <section className="space-y-3">
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">1. Statutory Basis</h4>
+                                        <p>
+                                            The <strong className="text-slate-800 dark:text-slate-200">Office of the Municipal Civil Registrar (OMCR) of Naic</strong> processes your personal data pursuant to its mandate under <strong>Act No. 3753</strong> (Civil Registry Law) and in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+                                        </p>
+                                    </section>
+
+                                    <section className="space-y-3">
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">2. Collection and Scope</h4>
+                                        <p>
+                                            By using this online request portal, we collect the following personal and vital information:
+                                        </p>
+                                        <ul className="list-disc pl-5 space-y-2">
+                                            <li><strong className="text-slate-800 dark:text-slate-200">Requestor Information:</strong> Full name, email address, phone number, and purpose of request.</li>
+                                            <li><strong className="text-slate-800 dark:text-slate-200">Registrant Details:</strong> Full names of the child/deceased/couple, dates of event (birth/death/marriage), parents' names, and place of event.</li>
+                                            <li><strong className="text-slate-800 dark:text-slate-200">Supporting Documents:</strong> Authorization letters or IDs (if applicable).</li>
+                                        </ul>
+                                    </section>
+
+                                    <section className="space-y-3">
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">3. Purpose of Processing</h4>
+                                        <p>
+                                            Your data is used exclusively for:
+                                        </p>
+                                        <ul className="list-disc pl-5 space-y-2">
+                                            <li>Verification of records against the Municipal Civil Registry books.</li>
+                                            <li>Queue management and tracking of your request.</li>
+                                            <li>Communication regarding the status of your document issuance.</li>
+                                            <li>Official statistical reporting (anonymized).</li>
+                                        </ul>
+                                    </section>
+
+                                    <section className="space-y-3">
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">4. Retention and Security</h4>
+                                        <p>
+                                            Digital request records are stored securely and are only accessible by authorized OMCR personnel. Records are retained for the duration of the request process and for a limited period thereafter for audit purposes, after which they are permanently deleted or anonymized.
+                                        </p>
+                                    </section>
+
+                                    <section className="space-y-3">
+                                        <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-xs">5. Your Rights</h4>
+                                        <p>
+                                            Under the Data Privacy Act, you have the right to be informed, to access, to object, to erasure or blocking, to damages, to file a complaint, to rectify and to data portability.
+                                        </p>
+                                    </section>
+
+                                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                                        <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                                            <strong>Consent:</strong> By clicking "I Accept" below, you confirm that you have read this notice and freely give your consent for the processing of your data.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                                    <button
+                                        onClick={() => { setPrivacyAccepted(true); setShowPrivacyNoticeModal(false); }}
+                                        className="flex-1 py-3.5 bg-[#1a2f4a] dark:bg-slate-700 hover:bg-[#0f172a] dark:hover:bg-slate-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-[0.98] cursor-pointer"
+                                    >
+                                        I Accept and Consent
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPrivacyNoticeModal(false)}
+                                        className="px-8 py-3.5 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all cursor-pointer"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </>
         );
     }

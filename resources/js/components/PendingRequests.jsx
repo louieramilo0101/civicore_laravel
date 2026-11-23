@@ -1081,28 +1081,28 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                                     {t.purpose}
                                                 </span>
                                                 {t.request_status === 'expired' ? (
-                                                     <button
-                                                         onClick={async (e) => {
-                                                             e.stopPropagation();
-                                                             try {
-                                                                 const response = await axios.post(`/api/tickets/${t.id}/recover`);
-                                                                 if (response.data.success) {
-                                                                     fetchPendingTickets(false);
-                                                                 }
-                                                             } catch (err) {
-                                                                 showAlert({
-                                                                     title: 'Error',
-                                                                     message: 'Failed to recover ticket.',
-                                                                     type: 'danger'
-                                                                 });
-                                                             }
-                                                         }}
-                                                         className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
-                                                         title="Recover Ticket"
-                                                     >
-                                                         <ArrowUturnUpIcon className="w-3.5 h-3.5" />
-                                                     </button>
-                                                 ) : t.request_status !== 'completed' && (
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                const response = await axios.post(`/api/tickets/${t.id}/recover`);
+                                                                if (response.data.success) {
+                                                                    fetchPendingTickets(false);
+                                                                }
+                                                            } catch (err) {
+                                                                showAlert({
+                                                                    title: 'Error',
+                                                                    message: 'Failed to recover ticket.',
+                                                                    type: 'danger'
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-emerald-600 bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/50 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-800 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                                                        title="Recover Ticket"
+                                                    >
+                                                        <ArrowUturnUpIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                ) : t.request_status !== 'completed' && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
