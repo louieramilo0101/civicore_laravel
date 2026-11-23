@@ -196,40 +196,25 @@ class SupabaseSyncService
             $openingHours = DB::table('settings')->where('key', 'opening_hours')->value('value')
                 ?? 'Monday - Friday: 8:00 AM - 5:00 PM';
 
-            // Upsert announcements
-            $this->client()->post("{$this->url}/rest/v1/public_config", [
-                'key'        => 'announcements',
-                'value'      => $announcements,
-                'updated_at' => Carbon::now()->toIso8601String(),
-            ])->throw();
-
-            // Upsert opening_hours
+            // Upsert opening_hours using PostgREST on_conflict upsert
             $this->client()
                 ->withHeaders([
-                    'apikey'        => $this->serviceKey,
-                    'Authorization' => 'Bearer ' . $this->serviceKey,
-                    'Content-Type'  => 'application/json',
-                    'Prefer'        => 'resolution=merge-duplicates,return=representation',
+                    'Prefer' => 'resolution=merge-duplicates,return=representation',
                 ])
-                ->timeout(10)
-                ->post("{$this->url}/rest/v1/public_config", [
+                ->post("{$this->url}/rest/v1/public_config?on_conflict=key", [
                     'key'        => 'opening_hours',
-                    'value'      => json_encode($openingHours),
+                    'value'      => $openingHours,
                     'updated_at' => Carbon::now()->toIso8601String(),
                 ]);
 
-            // Also upsert announcements with merge-duplicates
+            // Upsert announcements using PostgREST on_conflict upsert
             $this->client()
                 ->withHeaders([
-                    'apikey'        => $this->serviceKey,
-                    'Authorization' => 'Bearer ' . $this->serviceKey,
-                    'Content-Type'  => 'application/json',
-                    'Prefer'        => 'resolution=merge-duplicates,return=representation',
+                    'Prefer' => 'resolution=merge-duplicates,return=representation',
                 ])
-                ->timeout(10)
-                ->post("{$this->url}/rest/v1/public_config", [
+                ->post("{$this->url}/rest/v1/public_config?on_conflict=key", [
                     'key'        => 'announcements',
-                    'value'      => json_encode($announcements),
+                    'value'      => $announcements,
                     'updated_at' => Carbon::now()->toIso8601String(),
                 ]);
 
