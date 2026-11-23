@@ -85,17 +85,51 @@ class SupabaseSyncService
                     $prefix = strtoupper(substr($sTicket['purpose'] ?? 'GEN', 0, 1));
                     $localTicketNumber = sprintf('%s-%03d', $prefix, $countToday);
 
+                    $ticketDetails = is_array($sTicket['details'] ?? null) ? $sTicket['details'] : (json_decode($sTicket['details'] ?? '[]', true) ?? []);
+                    $consentFormPath = $sTicket['consent_form_path'] ?? null;
+
+                    // Handle Base64-encoded or remote consent form file
+                    if (empty($consentFormPath) && !empty($ticketDetails['consent_form_base64'])) {
+                        try {
+                            $base64 = $ticketDetails['consent_form_base64'];
+                            if (preg_match('/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.*)$/', $base64, $matches)) {
+                                $fileData = base64_decode($matches[2]);
+                                $origName = $ticketDetails['consent_form_name'] ?? 'consent.pdf';
+                                $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
+                                $storagePath = "consent_forms/{$token}_" . time() . ".{$ext}";
+                                Storage::disk('public')->put($storagePath, $fileData);
+                                $consentFormPath = $storagePath;
+                            }
+                        } catch (\Throwable $b64Ex) {
+                            Log::warning("SupabaseSync: Failed to save base64 consent form for {$token}: " . $b64Ex->getMessage());
+                        }
+                    } elseif (!empty($consentFormPath) && filter_var($consentFormPath, FILTER_VALIDATE_URL)) {
+                        try {
+                            $fileContents = @file_get_contents($consentFormPath);
+                            if ($fileContents !== false) {
+                                $origName = $ticketDetails['consent_form_name'] ?? basename(parse_url($consentFormPath, PHP_URL_PATH));
+                                $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
+                                $storagePath = "consent_forms/{$token}_" . time() . ".{$ext}";
+                                Storage::disk('public')->put($storagePath, $fileContents);
+                                $consentFormPath = $storagePath;
+                            }
+                        } catch (\Throwable $dlEx) {
+                            Log::warning("SupabaseSync: Failed to download remote consent form for {$token}: " . $dlEx->getMessage());
+                        }
+                    }
+
                     $ticket = Ticket::create([
-                        'token'          => $token,
-                        'ticket_number'  => $localTicketNumber,
-                        'client_name'    => $sTicket['client_name'] ?? 'Online Citizen',
-                        'email'          => $sTicket['email'] ?? null,
-                        'phone'          => $sTicket['phone'] ?? null,
-                        'purpose'        => $sTicket['purpose'] ?? 'general',
-                        'request_status' => $sTicket['request_status'] ?? 'pending',
-                        'queue_status'   => $sTicket['queue_status'] ?? 'not_in_lobby',
-                        'queue_number'   => $countToday,
-                        'details'        => is_array($sTicket['details'] ?? null) ? json_encode($sTicket['details']) : ($sTicket['details'] ?? null),
+                        'token'             => $token,
+                        'ticket_number'     => $localTicketNumber,
+                        'client_name'       => $sTicket['client_name'] ?? 'Online Citizen',
+                        'email'             => $sTicket['email'] ?? null,
+                        'phone'             => $sTicket['phone'] ?? null,
+                        'purpose'           => $sTicket['purpose'] ?? 'general',
+                        'request_status'    => $sTicket['request_status'] ?? 'pending',
+                        'queue_status'      => $sTicket['queue_status'] ?? 'not_in_lobby',
+                        'queue_number'      => $countToday,
+                        'consent_form_path' => $consentFormPath,
+                        'details'           => is_array($ticketDetails) ? json_encode($ticketDetails) : ($sTicket['details'] ?? null),
                     ]);
 
                     // Update Supabase with the assigned ticket_number and mark as synced

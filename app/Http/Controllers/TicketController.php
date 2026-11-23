@@ -143,12 +143,12 @@ class TicketController extends Controller
             'phone'       => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
             'purpose'     => 'required|in:birth,death,marriage',
             'details'     => 'required|array',
-            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
         ], [
             'client_name.regex' => 'Name cannot contain numbers or invalid special characters (only letters, spaces, and . , - \' are allowed).',
             'phone.regex' => 'Phone number may only contain numbers and valid phone symbols (+, -, space, parens).',
             'phone.max'   => 'Phone number cannot exceed 15 characters.',
-            'consent_form.mimes' => 'Consent form must be a PDF, JPG, JPEG, or PNG file.',
+            'consent_form.mimes' => 'Consent form must be a PDF, DOC, DOCX, JPG, JPEG, or PNG file.',
             'consent_form.max'   => 'Consent form file size cannot exceed 10MB.',
         ]);
 
@@ -333,12 +333,12 @@ class TicketController extends Controller
             'purpose'     => 'required|in:birth,death,marriage',
             'phone'       => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
             'details'     => 'nullable|array',
-            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'consent_form' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
         ], [
             'client_name.regex' => 'Name cannot contain numbers or invalid special characters (only letters, spaces, and . , - \' are allowed).',
             'phone.regex' => 'Phone number may only contain numbers and valid phone symbols (+, -, space, parens).',
             'phone.max'   => 'Phone number cannot exceed 15 characters.',
-            'consent_form.mimes' => 'Consent form must be a PDF, JPG, JPEG, or PNG file.',
+            'consent_form.mimes' => 'Consent form must be a PDF, DOC, DOCX, JPG, JPEG, or PNG file.',
             'consent_form.max'   => 'Consent form file size cannot exceed 10MB.',
         ]);
 

@@ -132,6 +132,13 @@ export default function Ticketing({ mode = 'portal' }) {
         setDetails(prev => ({ ...prev, [field]: cleanVal }));
     };
 
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
     const isPublicPortal = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
 
     const doSubmit = async () => {
@@ -147,7 +154,46 @@ export default function Ticketing({ mode = 'portal' }) {
                     }
                 });
 
-                const { data, error } = await supabase.from('public_tickets').insert({
+                // Handle consent form / authorization letter upload
+                let consentUrl = null;
+                if (consentFile) {
+                    try {
+                        const fileExt = consentFile.name.split('.').pop();
+                        const fileName = `${token}_${Date.now()}.${fileExt}`;
+                        const filePath = `consent_forms/${fileName}`;
+
+                        const { error: uploadError } = await supabase.storage
+                            .from('consent_forms')
+                            .upload(filePath, consentFile);
+
+                        if (!uploadError) {
+                            const { data: publicUrlData } = supabase.storage
+                                .from('consent_forms')
+                                .getPublicUrl(filePath);
+                            consentUrl = publicUrlData?.publicUrl || null;
+                        } else {
+                            console.warn('Supabase storage upload failed, saving fallback:', uploadError.message);
+                        }
+                    } catch (storageErr) {
+                        console.warn('Storage bucket upload encountered error:', storageErr);
+                    }
+
+                    // Fallback to base64 payload if storage bucket upload was unavailable or failed
+                    if (!consentUrl && consentFile.size <= 2 * 1024 * 1024) {
+                        try {
+                            const base64Data = await fileToBase64(consentFile);
+                            cleanDetails.consent_form_base64 = base64Data;
+                            cleanDetails.consent_form_name = consentFile.name;
+                        } catch (b64Err) {
+                            console.warn('Base64 encoding fallback error:', b64Err);
+                        }
+                    } else if (consentUrl) {
+                        cleanDetails.consent_form_url = consentUrl;
+                        cleanDetails.consent_form_name = consentFile.name;
+                    }
+                }
+
+                const insertPayload = {
                     token,
                     client_name: clientName.trim(),
                     email: email.trim() || null,
@@ -156,7 +202,12 @@ export default function Ticketing({ mode = 'portal' }) {
                     details: cleanDetails,
                     request_status: 'pending',
                     queue_status: 'not_in_lobby'
-                }).select().single();
+                };
+                if (consentUrl) {
+                    insertPayload.consent_form_path = consentUrl;
+                }
+
+                const { data, error } = await supabase.from('public_tickets').insert(insertPayload).select().single();
 
                 if (error) throw error;
 
@@ -676,7 +727,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                                 <span>{consentFile ? 'Change File' : 'Browse File'}</span>
                                                 <input
                                                     type="file"
-                                                    accept=".pdf,image/png,image/jpeg,image/jpg"
+                                                    accept=".pdf,.doc,.docx,image/png,image/jpeg,image/jpg"
                                                     className="hidden"
                                                     onChange={e => {
                                                         const file = e.target.files?.[0];

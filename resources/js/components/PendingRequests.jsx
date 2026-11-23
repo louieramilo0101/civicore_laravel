@@ -1780,7 +1780,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <input
                                         ref={walkinAuthFileInputRef}
                                         type="file"
-                                        accept=".pdf,image/png,image/jpeg,image/jpg"
+                                        accept=".pdf,.doc,.docx,image/png,image/jpeg,image/jpg"
                                         onChange={handleWalkinFileChange}
                                         className="hidden"
                                     />
