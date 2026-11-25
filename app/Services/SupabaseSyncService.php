@@ -80,11 +80,19 @@ class SupabaseSyncService
                 $existing = Ticket::where('token', $token)->first();
 
                 if (!$existing) {
-                    // Generate local ticket number sequence
-                    $countToday = Ticket::whereDate('created_at', Carbon::today())->count() + 1;
-                    $prefix = strtoupper(substr($sTicket['purpose'] ?? 'GEN', 0, 1));
-                    $localTicketNumber = sprintf('%s-%03d', $prefix, $countToday);
+                    // Generate unique local ticket number matching project format T-YYYY-NNNN
+                    $year = date('Y');
+                    $countThisYear = Ticket::whereYear('created_at', $year)->count();
+                    $seq = $countThisYear + 1;
+                    $localTicketNumber = 'T-' . $year . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
 
+                    // Ensure strictly unique ticket_number even with concurrent or existing seeds
+                    while (Ticket::where('ticket_number', $localTicketNumber)->exists()) {
+                        $seq++;
+                        $localTicketNumber = 'T-' . $year . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+                    }
+
+                    $countToday = Ticket::whereDate('created_at', Carbon::today())->count() + 1;
                     $ticketDetails = is_array($sTicket['details'] ?? null) ? $sTicket['details'] : (json_decode($sTicket['details'] ?? '[]', true) ?? []);
                     $consentFormPath = $sTicket['consent_form_path'] ?? null;
 
@@ -124,8 +132,14 @@ class SupabaseSyncService
                         }
                     }
 
+                    $expiry = Carbon::today(config('app.timezone'))->setTime(17, 0, 0);
+                    if (now(config('app.timezone'))->gt($expiry)) {
+                        $expiry->addDay();
+                    }
+
                     $ticket = Ticket::create([
                         'token'             => $token,
+                        'qr_code_token'     => $token,
                         'ticket_number'     => $localTicketNumber,
                         'client_name'       => $sTicket['client_name'] ?? 'Online Citizen',
                         'email'             => $sTicket['email'] ?? null,
@@ -134,8 +148,10 @@ class SupabaseSyncService
                         'request_status'    => $sTicket['request_status'] ?? 'pending',
                         'queue_status'      => $sTicket['queue_status'] ?? 'not_in_lobby',
                         'queue_number'      => $countToday,
+                        'source'            => 'online',
+                        'expires_at'        => $expiry,
                         'consent_form_path' => $consentFormPath,
-                        'details'           => is_array($ticketDetails) ? json_encode($ticketDetails) : ($sTicket['details'] ?? null),
+                        'details'           => is_array($ticketDetails) ? $ticketDetails : (json_decode($ticketDetails, true) ?: []),
                     ]);
 
                     // Update Supabase with the assigned ticket_number and mark as synced

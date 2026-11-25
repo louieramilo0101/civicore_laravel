@@ -33,3 +33,15 @@ Schedule::command('backup:prune')->dailyAt('06:00');
 //   Windows: Task Scheduler → "At startup" → php artisan backup:compress-old --older-than=3
 //   Linux:   cron @reboot /path/to/artisan backup:compress-old --older-than=3
 Schedule::command('backup:compress-old --older-than=3')->dailyAt('03:00');
+
+/*
+|--------------------------------------------------------------------------
+| Ticket Expiration - Runs every minute to auto-expire overdue tickets
+|--------------------------------------------------------------------------
+|
+| This ensures tickets past their expires_at (5 PM on scheduled day)
+| are automatically marked as 'expired' and removed from active queues.
+| Also logs tickets scheduled for tomorrow for staff awareness.
+|
+*/
+Schedule::command('civicore:expire-tickets')->everyMinute();

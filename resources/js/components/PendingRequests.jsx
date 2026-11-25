@@ -1166,7 +1166,11 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                             <h4 className="font-black text-sm text-slate-700 dark:text-slate-300">Digital Request Processor</h4>
                             <p className="text-xs max-w-sm mt-1">Select an online submission ticket on the left panel to begin linking registry records.</p>
                         </div>
-                    ) : (
+                    ) : (() => {
+                        const parsedDetails = typeof selectedTicket.details === 'string'
+                            ? (() => { try { return JSON.parse(selectedTicket.details); } catch (_) { return {}; } })()
+                            : (selectedTicket.details || {});
+                        return (
                         <div className="flex-1 bg-white/95 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col h-full overflow-y-auto custom-scrollbar">
                             {/* Mobile Back to List Navigation Bar */}
                             <div className="lg:hidden flex items-center justify-between pb-3 mb-3 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
@@ -1320,28 +1324,28 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
                                         {selectedTicket.purpose === 'birth' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Child's Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.first_name, selectedTicket.details?.middle_name, selectedTicket.details?.last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_birth}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_birth}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Father's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.father_name || '—'}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Mother's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.mother_name || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Child's Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[parsedDetails.first_name, parsedDetails.middle_name, parsedDetails.last_name].filter(Boolean).join(' ') || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.date_of_birth || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Birth</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.place_of_birth || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Father's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.father_name || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500">Mother's Name</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.mother_name || '—'}</span></div>
                                             </>
                                         )}
 
                                         {selectedTicket.purpose === 'death' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Deceased Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.deceased_first_name, selectedTicket.details?.deceased_middle_name, selectedTicket.details?.deceased_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_death}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_death}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5" /> Deceased Name</span><span className="font-black text-slate-700 dark:text-slate-200">{[parsedDetails.deceased_first_name, parsedDetails.deceased_middle_name, parsedDetails.deceased_last_name].filter(Boolean).join(' ') || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Date of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.date_of_death || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Place of Death</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.place_of_death || '—'}</span></div>
                                             </>
                                         )}
 
                                         {selectedTicket.purpose === 'marriage' && (
                                             <>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-indigo-400" /> Husband</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.husband_first_name, selectedTicket.details?.husband_middle_name, selectedTicket.details?.husband_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-pink-400" /> Wife</span><span className="font-black text-slate-700 dark:text-slate-200">{[selectedTicket.details?.wife_first_name, selectedTicket.details?.wife_middle_name, selectedTicket.details?.wife_last_name].filter(Boolean).join(' ')}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Marriage Date</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.date_of_marriage}</span></div>
-                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Marriage Place</span><span className="font-bold text-slate-700 dark:text-slate-200">{selectedTicket.details?.place_of_marriage}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-indigo-400" /> Husband</span><span className="font-black text-slate-700 dark:text-slate-200">{[parsedDetails.husband_first_name, parsedDetails.husband_middle_name, parsedDetails.husband_last_name].filter(Boolean).join(' ') || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><UserIcon className="w-3.5 h-3.5 text-pink-400" /> Wife</span><span className="font-black text-slate-700 dark:text-slate-200">{[parsedDetails.wife_first_name, parsedDetails.wife_middle_name, parsedDetails.wife_last_name].filter(Boolean).join(' ') || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Marriage Date</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.date_of_marriage || '—'}</span></div>
+                                                <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-1.5"><span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" /> Marriage Place</span><span className="font-bold text-slate-700 dark:text-slate-200">{parsedDetails.place_of_marriage || '—'}</span></div>
                                             </>
                                         )}
                                     </div>
@@ -1386,7 +1390,8 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                                 </div>
                             )}
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
 

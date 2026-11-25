@@ -108,12 +108,16 @@ start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php arti
 echo [4/6] Launching Supabase Sync Daemon...
 start "Supabase Sync" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan civicore:sync-supabase --daemon"
 
-:: 5. Start Persistent OCR Server
-echo [5/6] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
+:: 5. Start Laravel Scheduler (runs schedule:run every minute for ticket expiration, backups, etc.)
+echo [5/7] Launching Laravel Scheduler...
+start "Laravel Scheduler" cmd /k "title Laravel Scheduler && cd /d C:\laragon\www\civicore_laravel && :loop php artisan schedule:run && timeout /t 60 /nobreak && goto :loop"
+
+:: 6. Start Persistent OCR Server
+echo [6/7] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
 start "OCR Server" cmd /k "scripts\serve-ocr.bat"
 
-:: 6. Start Vite (Frontend) - prompt for dev or build
-echo [6/6] Choose Vite mode:
+:: 7. Start Vite (Frontend) - prompt for dev or build
+echo [7/7] Choose Vite mode:
 echo   [1] Dev Server (Hot Module Replacement, instant updates)
 echo   [2] Build (production build, no HMR)
 echo.
@@ -121,7 +125,7 @@ choice /C 12 /T 20 /D 2 /M "Enter choice (1=Dev, 2=Build, default 2 (Build) in 2
 if %ERRORLEVEL% EQU 2 set "VITE_CMD=npm run build"
 if %ERRORLEVEL% EQU 1 set "VITE_CMD=npm run dev"
 
-echo [6/6] Launching Vite with: %VITE_CMD%
+echo [7/7] Launching Vite with: %VITE_CMD%
 echo.
 echo   ============================================================
 echo   YOUR NETWORK ACCESS (also shown in Vite window title):
@@ -138,8 +142,9 @@ echo ===================================================
 echo   ALL SYSTEMS GO!
 echo   1. Check the "Ollama Server" window to verify local AI status.
 echo   2. Wait for "OCR Reader ready" in the OCR window.
-echo   3. Wait for "VITE ready" in the Vite window.
-echo   4. The Vite window title shows your mobile IP: %PC_IP%
+echo   3. Check "Laravel Scheduler" window - runs ticket expiration, backups every minute.
+echo   4. Wait for "VITE ready" in the Vite window.
+echo   5. The Vite window title shows your mobile IP: %PC_IP%
 echo.
 echo   [NETWORK IP ADDRESSES FOR OTHER DEVICES / PHONES]
 echo   ---------------------------------------------------
@@ -184,6 +189,9 @@ taskkill /FI "WINDOWTITLE eq Queue Listener*" /T /F >nul 2>&1
 
 echo [*] Stopping Supabase Sync Daemon...
 taskkill /FI "WINDOWTITLE eq Supabase Sync*" /T /F >nul 2>&1
+
+echo [*] Stopping Laravel Scheduler...
+taskkill /FI "WINDOWTITLE eq Laravel Scheduler*" /T /F >nul 2>&1
 
 echo [*] Stopping Laravel Server (Apache)...
 "C:\laragon\bin\apache\httpd-2.4.68-260617-Win64-VS18\bin\httpd.exe" -k stop -n httpd >nul 2>&1

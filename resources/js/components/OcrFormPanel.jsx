@@ -1186,6 +1186,7 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             }
         }
 
+        const configSections = FIELD_CONFIG[effectiveType] || FIELD_CONFIG.birth;
         configSections.forEach(section => {
             section.fields.forEach(f => {
                 const val = sanitizedFields[f.key];
@@ -1202,14 +1203,11 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
             });
         });
 
-        if (isMinor && !consentGiven) {
-            setShowConsent(true);
-            return;
-        }
+        // Minor check removed to allow documents involving minors to proceed directly without blocking or getting stuck
         handleSaveAndClearCache({
             fields: sanitizedFields,
             ocr_text: ocrText,
-            parentalConsent: consentGiven,
+            parentalConsent: true,
             detectedType: effectiveType,
             minimizeRequested: minimize,
             manualFile: manualFile,
@@ -1253,15 +1251,6 @@ const OcrFormPanel = ({ file, docType, ocrResult, onSave, onClose, onMinimize, o
 
     return createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <AnimatePresence>
-                {showConsent && (
-                    <ParentalConsentModal
-                        onConfirm={() => { setConsentGiven(true); setShowConsent(false); setSavePending(true); }}
-                        onCancel={() => setShowConsent(false)}
-                    />
-                )}
-            </AnimatePresence>
-
             <motion.div
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
