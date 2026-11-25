@@ -396,4 +396,74 @@ class RegistryController extends Controller
 
         return response()->json(['success' => true, 'certNumber' => $certNumber]);
     }
+
+    /**
+     * Search and retrieve registry records ready to be attached to a ticket.
+     * GET /api/registry/for-attach
+     */
+    public function forAttach(Request $request)
+    {
+        $type = $request->query('type');
+        $search = trim((string) $request->query('search', ''));
+        $perPage = min((int) $request->query('per_page', 50), 100);
+
+        $types = in_array(strtolower((string) $type), ['birth', 'death', 'marriage'], true)
+            ? [strtolower((string) $type)]
+            : ['birth', 'death', 'marriage'];
+
+        $terms = array_values(array_filter(preg_split('/\s+/', $search)));
+        $allRecords = collect();
+
+        foreach ($types as $t) {
+            $model = $this->getModel($t);
+            $query = $model::query()
+                ->where('status', 'active')
+                ->whereNotNull('document_id');
+
+            if (!empty($terms)) {
+                $query->where(function ($subQ) use ($terms) {
+                    foreach ($terms as $term) {
+                        $wildcard = "%{$term}%";
+                        $subQ->where(function ($matchQ) use ($wildcard) {
+                            $matchQ->where('name', 'LIKE', $wildcard)
+                                ->orWhere('certNumber', 'LIKE', $wildcard)
+                                ->orWhere('registry_number', 'LIKE', $wildcard)
+                                ->orWhere('barangay', 'LIKE', $wildcard);
+                        });
+                    }
+                });
+            }
+
+            $records = $query->orderBy('created_at', 'desc')
+                ->limit($perPage)
+                ->get()
+                ->map(function ($record) use ($t) {
+                    return [
+                        'id' => $record->id,
+                        'document_id' => $record->document_id,
+                        'name' => $record->name,
+                        'personName' => $record->name,
+                        'certNumber' => $record->certNumber,
+                        'registry_number' => $record->registry_number,
+                        'barangay' => $record->barangay,
+                        'type' => $t,
+                        'detected_type' => $t,
+                        'created_at' => $record->created_at ? $record->created_at->toIso8601String() : null,
+                    ];
+                });
+
+            $allRecords = $allRecords->concat($records);
+        }
+
+        // Sort combined results by created_at descending
+        $sorted = $allRecords->sortByDesc(function ($item) {
+            return $item['created_at'] ? strtotime($item['created_at']) : 0;
+        })->values()->take($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $sorted,
+            'total' => $sorted->count(),
+        ]);
+    }
 }

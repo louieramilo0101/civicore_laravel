@@ -1302,16 +1302,64 @@ class TicketController extends Controller
     public function getConsentForm($id)
     {
         $ticket = Ticket::withTrashed()->find($id);
-        if (!$ticket || !$ticket->consent_form_path) {
-            return response()->json(['error' => 'Consent or authorization form not found for this ticket.'], 404);
+        if (!$ticket) {
+            return response()->json(['error' => 'Ticket not found.'], 404);
         }
 
-        if (!Storage::disk('public')->exists($ticket->consent_form_path)) {
-            return response()->json(['error' => 'File does not exist in storage.'], 404);
+        $consentPath = $ticket->consent_form_path;
+
+        // If path is a remote URL (e.g. Supabase Storage), redirect directly
+        if (!empty($consentPath) && filter_var($consentPath, FILTER_VALIDATE_URL)) {
+            return redirect()->away($consentPath);
         }
 
-        $fullPath = Storage::disk('public')->path($ticket->consent_form_path);
-        return response()->file($fullPath);
+        // Check local public disk
+        if (!empty($consentPath) && Storage::disk('public')->exists($consentPath)) {
+            $fullPath = Storage::disk('public')->path($consentPath);
+            return response()->file($fullPath);
+        }
+
+        // Fallback: Check if base64 file data exists in details
+        $details = $ticket->details;
+        if (is_string($details)) {
+            $decoded = json_decode($details, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $details = $decoded;
+            }
+        }
+
+        if (is_array($details) && !empty($details['consent_form_base64'])) {
+            try {
+                $base64 = $details['consent_form_base64'];
+                $fileData = null;
+                $mimeType = 'application/pdf';
+                if (preg_match('/^data:([^;]+);base64,(.+)$/s', $base64, $matches)) {
+                    $mimeType = $matches[1];
+                    $fileData = base64_decode(trim($matches[2]));
+                } else {
+                    $fileData = base64_decode(trim($base64));
+                }
+
+                if ($fileData !== false && strlen($fileData) > 0) {
+                    // Backfill to disk for fast subsequent reads
+                    $origName = $details['consent_form_name'] ?? 'consent.pdf';
+                    $ext = pathinfo($origName, PATHINFO_EXTENSION) ?: 'pdf';
+                    $storagePath = "consent_forms/{$ticket->token}_" . time() . ".{$ext}";
+                    Storage::disk('public')->put($storagePath, $fileData);
+                    $ticket->consent_form_path = $storagePath;
+                    $ticket->save();
+
+                    return response($fileData, 200, [
+                        'Content-Type' => $mimeType,
+                        'Content-Disposition' => 'inline; filename="' . $origName . '"',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("getConsentForm: Failed base64 fallback for ticket {$id}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json(['error' => 'Consent or authorization form not found for this ticket.'], 404);
     }
 
     /**
