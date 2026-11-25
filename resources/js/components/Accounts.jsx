@@ -132,7 +132,9 @@ const Accounts = () => {
                     title: 'OCR Engine Switched',
                     message: newEngine === 'ollama'
                         ? 'CiviCORE is now using Local Ollama (Qwen2.5-VL). All document processing is running 100% offline with zero cloud transmission.'
-                        : 'CiviCORE is now using Cloud AI.',
+                        : newEngine === 'paddleocr'
+                            ? 'CiviCORE is now using PaddleOCR (ONNX Runtime). Document text extraction runs 100% offline on CPU.'
+                            : 'CiviCORE is now using Cloud AI (Gemini 2.5 Flash).',
                     type: 'success'
                 });
                 fetchOcrStatus();
@@ -1612,6 +1614,11 @@ const Accounts = () => {
                                                         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${ocrStatusInfo?.ollama?.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                                                         {ocrStatusInfo?.ollama?.online ? 'Ollama Online' : 'Ollama Offline'}
                                                     </span>
+                                                ) : ocrEngine === 'paddleocr' ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800">
+                                                        <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-teal-500" />
+                                                        PaddleOCR (Local CPU)
+                                                    </span>
                                                 ) : (
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800">
                                                         <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-indigo-500" />
@@ -1630,38 +1637,22 @@ const Accounts = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-3 pt-1">
-                                            <button
-                                                type="button"
+                                        <div className="pt-1">
+                                            <select
+                                                value={ocrEngine}
                                                 disabled={isUpdatingOcr}
-                                                onClick={() => handleSwitchOcrEngine('gemini')}
-                                                className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${ocrEngine === 'gemini'
-                                                        ? 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-500/60 dark:border-indigo-500 text-indigo-900 dark:text-indigo-200 shadow-xs ring-1 ring-indigo-500/30'
-                                                        : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/80'
-                                                    }`}
+                                                onChange={(e) => handleSwitchOcrEngine(e.target.value)}
+                                                aria-label="Document OCR Engine"
+                                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/90 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all cursor-pointer disabled:opacity-60"
                                             >
-                                                <CloudIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                                                <span className="text-xs font-black">Cloud AI Engine</span>
-                                                <span className="text-[10px] text-slate-400 dark:text-slate-400">Gemini 2.5 Flash</span>
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                disabled={isUpdatingOcr}
-                                                onClick={() => handleSwitchOcrEngine('ollama')}
-                                                className={`p-3 rounded-xl border flex flex-col items-center text-center gap-1.5 transition-all cursor-pointer ${ocrEngine === 'ollama'
-                                                        ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-950 dark:text-emerald-200 shadow-xs ring-1 ring-emerald-500/30'
-                                                        : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/80'
-                                                    }`}
-                                            >
-                                                <CpuChipIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                                                <span className="text-xs font-black">Local Ollama</span>
-                                                <span className="text-[10px] text-slate-400 dark:text-slate-400">100% Offline ({ollamaModel})</span>
-                                            </button>
+                                                <option value="gemini">Cloud AI Engine — Gemini 2.5 Flash</option>
+                                                <option value="ollama">Local Ollama — 100% Offline ({ollamaModel})</option>
+                                                <option value="paddleocr">PaddleOCR (ONNX CPU) — 100% Offline, Lightweight</option>
+                                            </select>
                                         </div>
 
                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                            Local Ollama runs completely offline on your server machine with zero cloud transmission for maximum privacy.
+                                            Local Ollama and PaddleOCR run completely offline on your server machine with zero cloud transmission for maximum privacy.
                                         </p>
                                     </div>
 

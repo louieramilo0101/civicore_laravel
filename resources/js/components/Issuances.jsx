@@ -820,13 +820,13 @@ const Issuances = () => {
     const filteredCertificates = useMemo(() => {
         const cleanTerm = (searchTerm || '').trim().toLowerCase();
         const cleanType = (selectedType || 'all').toLowerCase();
-        const cleanBrgy = selectedBarangay;
-        const cleanEncoder = selectedEncoder;
+        const cleanBrgy = (selectedBarangay || '').trim().toLowerCase();
+        const cleanEncoder = (selectedEncoder || '').trim().toLowerCase();
 
         return certificates.filter(cert => {
             if (cleanType !== 'all' && (cert.type || '').toLowerCase() !== cleanType) return false;
-            if (cleanBrgy !== 'all' && cert.barangay !== cleanBrgy) return false;
-            if (cleanEncoder !== 'all' && cert.encoded_by !== cleanEncoder) return false;
+            if (cleanBrgy !== 'all' && (cert.barangay || '').trim().toLowerCase() !== cleanBrgy) return false;
+            if (cleanEncoder !== 'all' && (cert.encoded_by || '').trim().toLowerCase() !== cleanEncoder) return false;
 
             if (!cleanTerm) return true;
 

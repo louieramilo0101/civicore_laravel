@@ -7,7 +7,7 @@ import {
     ExclamationTriangleIcon, MagnifyingGlassIcon, XMarkIcon,
     PencilSquareIcon, ShieldExclamationIcon, ShieldCheckIcon, DocumentCheckIcon,
     EyeIcon, CameraIcon, BoltIcon, ArrowPathIcon, StopIcon, PlayIcon,
-    UserIcon, DocumentTextIcon, UsersIcon
+    PauseIcon, UserIcon, DocumentTextIcon, UsersIcon
 } from '@heroicons/react/24/outline';
 import SkeletonLoader from './SkeletonLoader.jsx';
 import { useModal } from './ModalContext.jsx';
@@ -21,8 +21,30 @@ import useDebounce from '../hooks/useDebounce.js';
 import { BirthConfig } from './forms/BirthCertificateConfig.js';
 import { DeathConfig } from './forms/DeathCertificateConfig.js';
 import { MarriageConfig } from './forms/MarriageCertificateConfig.js';
+import { NAIC_BARANGAYS } from './forms/SharedConfig.js';
 
 const OcrFormPanel = lazy(() => import('./OcrFormPanel.jsx'));
+
+/** Normalizes a barangay name before fuzzy matching (copied from OcrFormPanel). */
+const normalizeBrgyString = (name) => {
+    if (!name) return '';
+    return name.toLowerCase()
+        .replace(/^(brgy\.?|barangay)\s+/i, '')
+        .replace(/[^a-z0-9]/gi, '')
+        .trim();
+};
+
+/** Finds the closest configured barangay label for OCR output (copied from OcrFormPanel). */
+const findClosestBarangay = (raw) => {
+    if (!raw) return '';
+    const normalizedRaw = normalizeBrgyString(raw);
+    for (const sb of NAIC_BARANGAYS) {
+        if (normalizeBrgyString(sb) === normalizedRaw || raw.toLowerCase().includes(normalizeBrgyString(sb))) {
+            return sb;
+        }
+    }
+    return '';
+};
 
 
 // ── Document Preview Modal (via Portal) ──────────────────────────────────────
@@ -381,13 +403,28 @@ const Documents = () => {
                 if (qualityMetadata) fd.append('quality_metadata', JSON.stringify(qualityMetadata));
 
                 try {
-                    const res = await fetch('/api/documents/upload', { method: 'POST', body: fd, credentials: 'include' });
+                    const res = await fetch('/api/documents/upload', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'include',
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    const contentType = res.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) {
+                        await res.text();
+                        throw new Error(`Upload failed (HTTP ${res.status}): Server returned non-JSON response.`);
+                    }
+
                     const data = await res.json();
-                    if (data.success) {
+                    if (res.ok && data.success) {
                         successCount++;
                         lastId = data.id;
                     } else {
-                        lastError = data.error || data.message || 'Server rejected the upload';
+                        lastError = data.error || data.message || `Server rejected the upload (HTTP ${res.status})`;
                     }
                 } catch (err) {
                     console.error(`Failed to upload ${sourceFile?.name || 'file'}`, err);
@@ -447,14 +484,44 @@ const Documents = () => {
     };
 
     const bulkProcess = async () => {
-        const pending = globalFiles.filter(f => f.status === 'pending' || f.status === 'failed' || f.status === 'uploaded');
+        // Include stuck jobs (processing/queued/checking older than 5 min) for auto-recovery
+        const now = Date.now();
+        const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+        const isStuck = (f) => {
+            const s = f.status?.toLowerCase();
+            if (!['processing', 'queued', 'checking'].includes(s)) return false;
+            const updated = new Date(f.updated_at).getTime();
+            return (now - updated) > STUCK_THRESHOLD_MS;
+        };
+
+        const pending = globalFiles.filter(f => 
+            f.status === 'pending' || f.status === 'failed' || f.status === 'uploaded' || f.status === 'stopped' || isStuck(f)
+        );
 
         if (!pending.length) {
-            showAlert({ title: 'Nothing to process', message: 'No pending or failed documents found.', type: 'info' });
+            showAlert({ title: 'Nothing to process', message: 'No pending, failed, or stuck documents found.', type: 'info' });
             return;
         }
 
         const documentIds = pending.map(f => f.id);
+        const stuckIds = pending.filter(isStuck).map(f => f.id);
+
+        // First, reset stuck jobs to pending via toggle-ocr (which re-dispatches)
+        if (stuckIds.length > 0) {
+            await runBackgroundTask(`Recovering ${stuckIds.length} stuck job(s)`, async () => {
+                let recovered = 0;
+                for (const id of stuckIds) {
+                    const res = await fetch(`/api/documents/${id}/toggle-ocr`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.success && data.new_status === 'Pending') recovered++;
+                }
+                return { success: true, recovered };
+            });
+        }
 
         const result = await runBackgroundTask('Queueing Documents', async () => {
             const response = await fetch('/api/documents/bulk-process', {
@@ -480,10 +547,86 @@ const Documents = () => {
         if (result && result.success) {
             showAlert({
                 title: 'Action Successful',
-                message: result.message,
+                message: result.message + (stuckIds.length ? ` (recovered ${stuckIds.length} stuck)` : ''),
                 type: 'success'
             });
-            setFiles(prev => prev.map(f => documentIds.includes(f.id) ? { ...f, status: 'processing' } : f));
+            // Use 'queued' status to distinguish from actively processing
+            setFiles(prev => prev.map(f => documentIds.includes(f.id) ? { ...f, status: 'queued' } : f));
+            refreshDocuments(true);
+        }
+    };
+
+    /** Pause all currently pending/processing/queued jobs */
+    const bulkPause = async () => {
+        const active = globalFiles.filter(f => ['pending', 'processing', 'queued'].includes(f.status?.toLowerCase()));
+
+        if (!active.length) {
+            showAlert({ title: 'Nothing to pause', message: 'No active jobs to pause.', type: 'info' });
+            return;
+        }
+
+        const documentIds = active.map(f => f.id);
+
+        const result = await runBackgroundTask(`Pausing ${documentIds.length} jobs`, async () => {
+            let paused = 0;
+            for (const id of documentIds) {
+                const res = await fetch(`/api/documents/${id}/toggle-ocr`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (data.success && data.new_status === 'Stopped') paused++;
+            }
+            return { success: true, paused };
+        });
+
+        if (result && result.success) {
+            showAlert({
+                title: 'Action Successful',
+                message: `Paused ${result.paused} job(s).`,
+                type: 'success'
+            });
+            setFiles(prev => prev.map(f => documentIds.includes(f.id) ? { ...f, status: 'stopped' } : f));
+            refreshDocuments(true);
+        }
+    };
+
+    /** Pause only selected jobs */
+    const pauseSelected = async () => {
+        if (!selectedIds.length) return;
+
+        const toPause = selectedIds.filter(id => {
+            const f = globalFiles.find(x => x.id === id);
+            return f && ['pending', 'processing', 'queued'].includes(f.status?.toLowerCase());
+        });
+
+        if (!toPause.length) {
+            showAlert({ title: 'Nothing to pause', message: 'Selected items have no active jobs.', type: 'info' });
+            return;
+        }
+
+        const result = await runBackgroundTask(`Pausing ${toPause.length} jobs`, async () => {
+            let paused = 0;
+            for (const id of toPause) {
+                const res = await fetch(`/api/documents/${id}/toggle-ocr`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (data.success && data.new_status === 'Stopped') paused++;
+            }
+            return { success: true, paused };
+        });
+
+        if (result && result.success) {
+            showAlert({
+                title: 'Action Successful',
+                message: `Paused ${result.paused} selected job(s).`,
+                type: 'success'
+            });
+            setFiles(prev => prev.map(f => toPause.includes(f.id) ? { ...f, status: 'stopped' } : f));
             refreshDocuments(true);
         }
     };
@@ -810,14 +953,49 @@ const Documents = () => {
 
     /**
      * Returns an object of missing required fields for a document.
+     * Applies the same auto-composition logic as OcrFormPanel before checking.
      * @returns {Object|null} null if all required fields are present, otherwise an object mapping field key -> label
      */
     const getMissingRequiredFields = (file) => {
-        const fields = file.extracted_fields || {};
+        const fields = { ...(file.extracted_fields || {}) };
         let detectedType = (file.detected_type || file.type || 'birth').toLowerCase();
         if (detectedType === 'marriage_license') {
             detectedType = 'marriage';
         }
+
+        // Apply same auto-composition as OcrFormPanel before validation
+        const monthMap = { 'January': '01', 'February': '02', 'March': '03', 'April': '04', 'May': '05', 'June': '06', 'July': '07', 'August': '08', 'September': '09', 'October': '10', 'November': '11', 'December': '12' };
+        const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        // Auto-compose date_of_birth from dob_day, dob_month, dob_year (birth certificates)
+        if (!fields.date_of_birth && (fields.dob_year || fields.dob_month || fields.dob_day)) {
+            const yr = fields.dob_year;
+            const mo = fields.dob_month;
+            const dy = fields.dob_day;
+            if (yr && mo && dy && monthMap[mo]) {
+                fields.date_of_birth = `${yr}-${monthMap[mo]}-${String(dy).padStart(2, '0')}`;
+            }
+        }
+
+        // Auto-compose marriage_parents_date from components (birth certificates)
+        if (!fields.marriage_parents_date && (fields.marriage_parents_year || fields.marriage_parents_month || fields.marriage_parents_day)) {
+            const yr = fields.marriage_parents_year;
+            const mo = fields.marriage_parents_month;
+            const dy = fields.marriage_parents_day;
+            if (yr && mo && dy && monthMap[mo]) {
+                fields.marriage_parents_date = `${yr}-${monthMap[mo]}-${String(dy).padStart(2, '0')}`;
+            }
+        }
+
+        // Auto-detect barangay from address fields if missing (same as OcrFormPanel)
+        if (!fields.barangay || fields.barangay === 'n/a' || fields.barangay === '' || fields.barangay === 'Select...') {
+            const allText = Object.values(fields).filter(v => typeof v === 'string').join(' ');
+            const detectedBrgy = findClosestBarangay(allText);
+            if (detectedBrgy) {
+                fields.barangay = detectedBrgy;
+            }
+        }
+
         const requiredKeys = getRequiredFieldKeys(detectedType);
         const missing = {};
         requiredKeys.forEach(key => {
@@ -1092,7 +1270,7 @@ const Documents = () => {
     const docTypes = [
         { type: 'birth', icon: <UserIcon className="w-5 h-5 text-[#d4a574]" />, name: 'Birth Certificate' },
         { type: 'death', icon: <DocumentTextIcon className="w-5 h-5 text-rose-500" />, name: 'Death Certificate' },
-        { type: 'marriage', icon: <UsersIcon className="w-5 h-5 text-indigo-500" />, name: 'Marriage Contract' },
+        { type: 'marriage', icon: <UsersIcon className="w-5 h-5 text-indigo-500" />, name: 'Marriage Certificate' },
     ];
 
     /** Opens the OCR review panel for a file flagged as a duplicate and
@@ -1119,9 +1297,36 @@ const Documents = () => {
             failed: 'bg-rose-50 text-rose-700 border-rose-100',
             stopped: 'bg-slate-100 text-slate-500 border-slate-300',
             pending: 'text-amber-700',
+            queued: 'text-amber-700',
         };
 
         const s = status?.toLowerCase();
+
+        // ── Queued state: dispatched to queue but not yet picked up by worker ──
+        if (s === 'queued') {
+            const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+            return (
+                <span
+                    className="relative inline-flex items-center overflow-hidden rounded-full border text-[10px] font-extrabold uppercase tracking-tight"
+                    style={{
+                        minWidth: '96px',
+                        height: '24px',
+                        backgroundColor: isDark ? '#431407' : '#fff7ed',
+                        borderColor: isDark ? '#7c2d12' : '#fed7aa',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <span
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{
+                            background: 'linear-gradient(90deg, #f97316, #fb923c, #fdba74)',
+                            animation: 'ocr-pending-fill 2s linear infinite',
+                        }}
+                    />
+                    <span className="relative z-10 font-black" style={{ color: isDark ? '#fdba74' : '#9a3412' }}>In Queue</span>
+                </span>
+            );
+        }
 
         if (s === 'checking') {
             return (
@@ -1628,11 +1833,25 @@ const Documents = () => {
                                                 Approve All
                                             </button>
                                         )}
-                                        {queueFiles.some(f => ['pending', 'failed', 'uploaded'].includes(f.status?.toLowerCase())) && (
+                                        {queueFiles.some(f => ['pending', 'failed', 'uploaded', 'processing', 'queued', 'checking', 'stopped'].includes(f.status?.toLowerCase())) && (
                                             <button onClick={bulkProcess}
                                                 className="text-xs font-bold text-[#d4a574] dark:text-[#d4a574] bg-[#d4a574]/10 dark:bg-[#d4a574]/15 hover:bg-[#d4a574] hover:text-[#0f172a] px-3 py-2 rounded-lg border border-[#d4a574]/20 dark:border-[#d4a574]/30 transition-all flex items-center gap-1.5 disabled:opacity-50">
                                                 <CloudArrowUpIcon className="w-3.5 h-3.5" />
                                                 Process All
+                                            </button>
+                                        )}
+                                        {queueFiles.some(f => ['pending', 'processing', 'queued'].includes(f.status?.toLowerCase())) && (
+                                            <button onClick={bulkPause}
+                                                className="text-xs font-bold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-600 dark:hover:bg-amber-800 hover:text-white px-3 py-2 rounded-lg border border-amber-100 dark:border-amber-900/50 transition-all flex items-center gap-1.5 disabled:opacity-50">
+                                                <PauseIcon className="w-3.5 h-3.5" />
+                                                Pause All
+                                            </button>
+                                        )}
+                                        {selectedIds.length > 0 && queueFiles.some(f => selectedIds.includes(f.id) && ['pending', 'processing', 'queued'].includes(f.status?.toLowerCase())) && (
+                                            <button onClick={pauseSelected}
+                                                className="text-xs font-bold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-600 dark:hover:bg-amber-800 hover:text-white px-3 py-2 rounded-lg border border-amber-100 dark:border-amber-900/50 transition-all flex items-center gap-1.5 disabled:opacity-50">
+                                                <PauseIcon className="w-3.5 h-3.5" />
+                                                Pause Selected
                                             </button>
                                         )}
                                         {selectedIds.length > 0 && (

@@ -506,11 +506,14 @@ class TicketController extends Controller
         $query = Ticket::query()->with('document');
 
         // Hide expired tickets from the active staff queue (past 5 PM on scheduled day)
-        // unless explicitly requested via ?show_expired=true
+        // unless explicitly requested via ?show_expired=true, or looking at completed/expired filters
         $showExpired = filter_var($request->query('show_expired', false), FILTER_VALIDATE_BOOLEAN);
-        if (!$showExpired) {
+        $reqStatus   = strtolower($request->query('request_status', $request->query('status', '')));
+        if (!$showExpired && $reqStatus !== 'completed' && $reqStatus !== 'expired') {
             $query->where(function ($q) {
-                $q->whereNull('expires_at')
+                // Completed and cancelled tickets are historical records; do not hide them just because 5 PM passed
+                $q->whereIn('request_status', ['completed', 'cancelled'])
+                  ->orWhereNull('expires_at')
                   ->orWhere('expires_at', '>', now());
             });
         }
@@ -744,9 +747,6 @@ class TicketController extends Controller
         }
 
         $ticket->document_id = $request->document_id;
-        $ticket->request_status = 'completed';
-        $ticket->queue_status = 'not_in_lobby';
-        $ticket->issued_at = Carbon::now();
         $ticket->save();
 
         $this->syncIssuanceWithTicket($ticket, $request->document_id);
@@ -1126,30 +1126,6 @@ class TicketController extends Controller
                 $upd['requested_by'] = $userName;
             }
             DB::table('ticket_issuances')->where('id', $ti->id)->update($upd);
-        }
-
-        // Also mark the linked registry issuance as Issued (if document was uploaded to registry)
-        if ($ticket->document_id) {
-            $doc = DB::table('documents')->where('id', $ticket->document_id)->first();
-            if ($doc) {
-                $docType = $doc->detected_type ?: $doc->type;
-                $normType = $docType === 'marriage_license' ? 'marriage' : $docType;
-                
-                $registryTable = match ($normType) {
-                    'birth' => 'registry_births',
-                    'death' => 'registry_deaths',
-                    'marriage' => 'registry_marriages',
-                    default => null
-                };
-                
-                if ($registryTable) {
-                    DB::table($registryTable)
-                        ->where('document_id', $ticket->document_id)
-                        ->whereNull('deleted_at')
-                        ->where('status', 'active')
-                        ->update(['status' => 'Issued', 'updated_at' => Carbon::now()]);
-                }
-            }
         }
 
         return response()->json(['success' => true, 'ticket' => $ticket->load('document')]);

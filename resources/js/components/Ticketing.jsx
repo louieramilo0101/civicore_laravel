@@ -768,7 +768,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                             <option value="" disabled>-- Choose Document Type --</option>
                                             <option value="birth">Birth Certificate (Live Birth)</option>
                                             <option value="death">Death Certificate</option>
-                                            <option value="marriage">Marriage Contract</option>
+                                            <option value="marriage">Marriage Certificate</option>
                                         </select>
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                             ▼
@@ -781,7 +781,7 @@ export default function Ticketing({ mode = 'portal' }) {
                                     {[
                                         { id: 'birth', label: 'Birth Certificate', icon: <UserIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Live Birth' },
                                         { id: 'death', label: 'Death Certificate', icon: <DocumentTextIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Death' },
-                                        { id: 'marriage', label: 'Marriage Contract', icon: <UsersIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Marriage' }
+                                        { id: 'marriage', label: 'Marriage Certificate', icon: <UsersIcon className="w-8 h-8 text-slate-700 dark:text-slate-200" />, desc: 'Copy of Certificate of Marriage' }
                                     ].map(item => (
                                         <div
                                             key={item.id}

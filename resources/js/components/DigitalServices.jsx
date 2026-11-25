@@ -6,7 +6,7 @@ import { UserIcon, UsersIcon, DocumentTextIcon, ArchiveBoxIcon, ShieldCheckIcon,
 export default function DigitalServices() {
     const services = [
         { title: 'Birth Registration', icon: <UserIcon className="w-10 h-10 text-[#d4a574]" />, desc: 'Processing and archiving of birth certificates to establish the fundamental legal identity of every citizen.' },
-        { title: 'Marriage Licensing', icon: <UsersIcon className="w-10 h-10 text-indigo-400" />, desc: 'Filing of marriage contracts and issuances of official certifications for legal matrimonial validation.' },
+        { title: 'Marriage Licensing', icon: <UsersIcon className="w-10 h-10 text-indigo-400" />, desc: 'Filing of marriage certificates and issuances of official certifications for legal matrimonial validation.' },
         { title: 'Death Certification', icon: <DocumentTextIcon className="w-10 h-10 text-rose-400" />, desc: 'Secure administration of death records, ensuring proper legal documentation for the deceased.' },
         { title: 'Timely Issuances', icon: <ClockIcon className="w-10 h-10 text-emerald-400" />, desc: 'Providing authenticated copies of civil registry documents to citizens for official and legal purposes.' },
         { title: 'Demographic Archiving', icon: <ArchiveBoxIcon className="w-10 h-10 text-blue-400" />, desc: 'Maintaining the official local database of life events to support municipal planning and statistics.' },

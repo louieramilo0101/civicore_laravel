@@ -4,7 +4,7 @@ setlocal
 
 title CiviCORE Control Center
 echo ===================================================
-echo   CiviCORE: Starting All Systems (V4 Queue Profiles)...
+echo   CiviCORE: Starting All Systems (V4 Queue Profiles + Startup Expiry Check)...
 echo ===================================================
 echo.
 
@@ -105,19 +105,23 @@ echo [3/6] Launching Laravel Queue Listener...
 start "Queue Listener" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan queue:work --queue=low,ocr,default"
 
 :: 4. Start Supabase Sync Daemon
-echo [4/6] Launching Supabase Sync Daemon...
+echo [4/7] Launching Supabase Sync Daemon...
 start "Supabase Sync" cmd /k "cd /d C:\laragon\www\civicore_laravel && php artisan civicore:sync-supabase --daemon"
 
-:: 5. Start Laravel Scheduler (runs schedule:run every minute for ticket expiration, backups, etc.)
-echo [5/7] Launching Laravel Scheduler...
+:: 5. Run immediate ticket expiration check on startup (covers gap before scheduler first run)
+echo [5/7] Running immediate ticket expiration check...
+cd /d C:\laragon\www\civicore_laravel && php artisan civicore:expire-tickets
+
+:: 6. Start Laravel Scheduler (runs schedule:run every minute for ticket expiration, backups, etc.)
+echo [6/7] Launching Laravel Scheduler...
 start "Laravel Scheduler" cmd /k "title Laravel Scheduler && cd /d C:\laragon\www\civicore_laravel && :loop php artisan schedule:run && timeout /t 60 /nobreak && goto :loop"
 
-:: 6. Start Persistent OCR Server
-echo [6/7] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
+:: 7. Start Persistent OCR Server
+echo [7/7] Launching Persistent OCR Server (FastAPI + Dynamic Scaling)...
 start "OCR Server" cmd /k "scripts\serve-ocr.bat"
 
-:: 7. Start Vite (Frontend) - prompt for dev or build
-echo [7/7] Choose Vite mode:
+:: 8. Start Vite (Frontend) - prompt for dev or build
+echo [8/8] Choose Vite mode:
 echo   [1] Dev Server (Hot Module Replacement, instant updates)
 echo   [2] Build (production build, no HMR)
 echo.
@@ -125,7 +129,7 @@ choice /C 12 /T 20 /D 2 /M "Enter choice (1=Dev, 2=Build, default 2 (Build) in 2
 if %ERRORLEVEL% EQU 2 set "VITE_CMD=npm run build"
 if %ERRORLEVEL% EQU 1 set "VITE_CMD=npm run dev"
 
-echo [7/7] Launching Vite with: %VITE_CMD%
+echo [8/8] Launching Vite with: %VITE_CMD%
 echo.
 echo   ============================================================
 echo   YOUR NETWORK ACCESS (also shown in Vite window title):
@@ -142,9 +146,10 @@ echo ===================================================
 echo   ALL SYSTEMS GO!
 echo   1. Check the "Ollama Server" window to verify local AI status.
 echo   2. Wait for "OCR Reader ready" in the OCR window.
-echo   3. Check "Laravel Scheduler" window - runs ticket expiration, backups every minute.
-echo   4. Wait for "VITE ready" in the Vite window.
-echo   5. The Vite window title shows your mobile IP: %PC_IP%
+echo   3. Ticket expiration check ran at startup (see output above).
+echo   4. Check "Laravel Scheduler" window - runs ticket expiration, backups every minute.
+echo   5. Wait for "VITE ready" in the Vite window.
+echo   6. The Vite window title shows your mobile IP: %PC_IP%
 echo.
 echo   [NETWORK IP ADDRESSES FOR OTHER DEVICES / PHONES]
 echo   ---------------------------------------------------

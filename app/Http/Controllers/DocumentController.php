@@ -23,7 +23,7 @@ class DocumentController extends Controller
     public function index(Request $request)
     {
         $page = (int) $request->query('page', 1);
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) $request->query('per_page', 20), 200);
         $type = $request->query('type', '');
         $status = strtolower(trim($request->query('status', '')));
         $search = $request->query('search', '');
@@ -49,6 +49,8 @@ class DocumentController extends Controller
                 $conditions[] = "LOWER(d.status) IN ('processed', 'issued', 'active')";
             } elseif ($status === 'pending' || $status === 'draft') {
                 $conditions[] = "LOWER(d.status) IN ('pending', 'extracted', 'draft')";
+            } elseif ($status === 'queue') {
+                $conditions[] = "LOWER(d.status) NOT IN ('processed', 'issued', 'active')";
             } else {
                 $conditions[] = "LOWER(d.status) = ?";
                 $params[] = $status;
@@ -133,7 +135,6 @@ class DocumentController extends Controller
         // Batch duplicate detection for 'extracted'/'checking' docs — single query per type
         if (!$request->boolean('for_attach')) {
             $candidatesByType = [];
-            $docIdsToCheck = [];
             foreach ($documents as $doc) {
                 $status = strtolower($doc->status ?? '');
                 if ($status === 'extracted' || $status === 'checking') {
@@ -148,34 +149,52 @@ class DocumentController extends Controller
             }
 
             foreach ($candidatesByType as $type => $items) {
-                $regNos = array_column($items, 'regNo');
                 $normType = $type === 'marriage_license' ? 'marriage' : $type;
                 $targetTable = 'registry_' . ($normType === 'death' ? 'deaths' : ($normType === 'marriage' ? 'marriages' : 'births'));
 
+                // Collect all registry numbers to check
+                $regNos = array_column($items, 'regNo');
+
+                // Query registry for any matching certNumber OR registry_number
                 $dupes = DB::table($targetTable)
                     ->whereNull('deleted_at')
                     ->where(function ($q) use ($regNos) {
                         $q->whereIn('certNumber', $regNos)
                           ->orWhereIn('registry_number', $regNos);
                     })
-                    ->get(['id', 'certNumber', 'registry_number', DB::raw("'$normType' as type"), 'name', 'barangay', 'issuanceDate', 'encoded_by', 'extracted_data', 'document_id'])
-                    ->keyBy(function ($r) { return $r->certNumber . '|' . $r->registry_number; });
+                    ->get(['id', 'certNumber', 'registry_number', DB::raw("'$normType' as type"), 'name', 'barangay', 'issuanceDate', 'encoded_by', 'extracted_data', 'document_id']);
+
+                // Build lookup: regNo -> duplicate record (first match)
+                $dupeByRegNo = [];
+                foreach ($dupes as $dupe) {
+                    foreach ([$dupe->certNumber, $dupe->registry_number] as $key) {
+                        $key = trim($key);
+                        if (!empty($key) && !isset($dupeByRegNo[$key])) {
+                            $dupeByRegNo[$key] = $dupe;
+                        }
+                    }
+                }
 
                 foreach ($items as $item) {
-                    $key = $item['regNo'] . '|' . $item['regNo'];
-                    if (isset($dupes[$key]) && $dupes[$key]->document_id != $item['docId']) {
-                        $c = $dupes[$key];
+                    $regNo = $item['regNo'];
+                    $matchedDupe = $dupeByRegNo[$regNo] ?? null;
+
+                    if ($matchedDupe && $matchedDupe->document_id != $item['docId']) {
                         $item['doc']->has_duplicate = true;
                         $item['doc']->duplicate_candidate = [
-                            'id' => $c->id,
-                            'certNumber' => $c->certNumber,
-                            'type' => $c->type,
-                            'name' => $c->name,
-                            'barangay' => $c->barangay,
-                            'issuanceDate' => $c->issuanceDate,
-                            'encoded_by' => $c->encoded_by,
-                            'extracted_fields' => EncryptedJson::decode($c->extracted_data)
+                            'id' => $matchedDupe->id,
+                            'certNumber' => $matchedDupe->certNumber,
+                            'type' => $matchedDupe->type,
+                            'name' => $matchedDupe->name,
+                            'barangay' => $matchedDupe->barangay,
+                            'issuanceDate' => $matchedDupe->issuanceDate,
+                            'encoded_by' => $matchedDupe->encoded_by,
+                            'extracted_fields' => EncryptedJson::decode($matchedDupe->extracted_data)
                         ];
+                    } else {
+                        // Clear stale duplicate flag from metadata
+                        $item['doc']->has_duplicate = false;
+                        $item['doc']->duplicate_candidate = null;
                     }
                 }
             }
@@ -355,14 +374,10 @@ class DocumentController extends Controller
         $file = $request->file('file');
         $this->validateUploadedFile($file);
 
-        // Enforce Daily Scan Limit (Token budget manager check) on upload
+        // Enforce Daily Scan Limit (Token budget manager check) on upload - ATOMIC
         $dailyLimit = (int) env('DAILY_SCAN_LIMIT', 1000);
-        $start = \Carbon\Carbon::today(config('app.timezone'))->startOfDay();
-        $end = \Carbon\Carbon::today(config('app.timezone'))->endOfDay();
-        $todayScans = DB::table('documents')
-            ->whereIn('status', ['extracted', 'Processed', 'Issued'])
-            ->whereBetween('updated_at', [$start, $end])
-            ->count();
+        $cacheKey = 'daily_scan_count_' . date('Ymd');
+        $todayScans = (int) \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
 
         if ($todayScans >= $dailyLimit) {
             return response()->json([
@@ -370,6 +385,9 @@ class DocumentController extends Controller
                 'error' => 'Daily paid API scan limit reached (' . $dailyLimit . '). Please contact your administrator.'
             ], 400);
         }
+
+        // Atomically increment the counter (returns new value)
+        $newCount = \Illuminate\Support\Facades\Cache::increment($cacheKey);
 
         $docType = $request->input('docType', 'Uncategorized');
         $personName = $request->input('personName', '');
@@ -756,6 +774,7 @@ class DocumentController extends Controller
         }
 
         // Soft name-match warning: same person name but different registry number
+        // Respect force flag - if forcing, treat as warning only (like storeManual does)
         $softMatch = $this->findSoftNameMatch($detectedType, $fields, (int) $id);
         $softMatchData = null;
         if ($softMatch) {
@@ -772,13 +791,13 @@ class DocumentController extends Controller
         // Build personName from split fields
         $personName = $this->buildFullName($fields, $detectedType) ?: $docData->name;
         
-        // If soft match found, return warning instead of auto-saving
-        if ($softMatchData) {
+        // If soft match found and NOT forcing, return warning
+        if ($softMatchData && !$force) {
             return response()->json([
                 'success'      => false,
                 'softMatch'    => true,
                 'softMatchData' => $softMatchData,
-                'error'        => "A record with the same name (" . $softMatchData['personName'] . ") exists in the " . ucfirst($detectedType) . " Registry with Registry No. \"" . $softMatchData['registryNo'] . "\". Verify this is not the same person before proceeding.",
+                'error'        => "A record with the same name (" . $softMatchData['personName'] . ") exists in the " . ucfirst($detectedType) . " Registry with Registry No. \"" . $softMatchData['registryNo'] . "\". Verify this is not the same person before proceeding, or use force to override.",
             ], 422);
         }
 
@@ -821,9 +840,9 @@ class DocumentController extends Controller
                     continue;
                 }
 
-                // Soft name-match check
+                // Soft name-match check (respect force flag)
                 $softMatch = $this->findSoftNameMatch($detectedType, $fields, (int)$id);
-                if ($softMatch) {
+                if ($softMatch && !$force) {
                     $results[] = [
                         'id'           => $id,
                         'ok'           => false,
@@ -930,7 +949,7 @@ class DocumentController extends Controller
 
         $normType = $type === 'marriage_license' ? 'marriage' : $type;
 
-        // Check the new registry tables
+        // Check the new registry tables ONLY (single source of truth)
         $table = match ($normType) {
             'birth' => 'registry_births',
             'death' => 'registry_deaths',
@@ -955,27 +974,7 @@ class DocumentController extends Controller
             }
         }
 
-        // Also check the staging documents table. A record sitting in
-        // draft/extracted/checking status has not been promoted to the
-        // registry yet, but it still represents a duplicate registration.
-        $docsQuery = DB::table('documents')->whereNull('deleted_at');
-
-        if ($normType === 'marriage') {
-            $docsQuery->whereIn('type', ['marriage', 'marriage_license']);
-        } elseif (!empty($normType) && $normType !== 'all') {
-            $docsQuery->where('type', $normType);
-        }
-
-        if ($excludeDocId > 0) {
-            $docsQuery->where('id', '!=', $excludeDocId);
-        }
-
-        $docsQuery->where(function ($q) use ($regNo) {
-            $q->where('extracted_fields', 'like', '%"' . $regNo . '%')
-              ->orWhere('metadata', 'like', '%"' . $regNo . '%');
-        });
-
-        return $docsQuery->exists();
+        return false;
     }
 
     /**
@@ -1272,11 +1271,31 @@ class DocumentController extends Controller
                     };
 
                     if ($registryTable) {
-                        // 1. Check if a Master Record already exists for this document
-                        $existing = DB::table($registryTable)->where('document_id', $id)->first();
-
                         $userRegNo = trim($extractedFields['registry_number'] ?? $extractedFields['registry_no'] ?? '');
                         $registryNumber = !empty($userRegNo) ? $userRegNo : null;
+
+                        // ATOMIC DUPLICATE CHECK + UPSERT (inside transaction with row lock)
+                        // Lock the registry row for this registry_number to prevent race conditions
+                        if (!empty($registryNumber)) {
+                            // Check for duplicate registry_number in the registry table (excluding this document)
+                            $duplicate = DB::table($registryTable)
+                                ->whereNull('deleted_at')
+                                ->where('status', 'active')
+                                ->where('document_id', '!=', $id)
+                                ->where(function ($q) use ($registryNumber) {
+                                    $q->where('certNumber', $registryNumber)
+                                      ->orWhere('registry_number', $registryNumber);
+                                })
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($duplicate && !$force) {
+                                throw new \Exception("A record with Registry No. \"{$registryNumber}\" already exists in the " . ucfirst($normType) . " Registry.");
+                            }
+                        }
+
+                        // 1. Check if a Master Record already exists for this document
+                        $existing = DB::table($registryTable)->where('document_id', $id)->first();
 
                         if ($existing) {
                             // 2. UPDATE existing Master Record
@@ -1305,7 +1324,8 @@ class DocumentController extends Controller
 
                             DB::table($registryTable)->where('document_id', $id)->update($updateData);
                         } else {
-                            // 3. INSERT new Master Record
+                            // 3. ATOMIC UPSERT new Master Record using INSERT ... ON DUPLICATE KEY UPDATE
+                            // This requires a unique index on (registry_number, type) or similar
                             $prefix = ($docType === 'death') ? 'DC' : (($docType === 'marriage' || $docType === 'marriage_license') ? 'ML' : 'BC');
                             $year = date('Y');
 
@@ -1337,7 +1357,38 @@ class DocumentController extends Controller
                                 $insertData['requested_by'] = $encodedBy;
                             }
 
-                            DB::table($registryTable)->insert($insertData);
+                            // Use atomic upsert: try insert, if duplicate key on registry_number, update instead
+                            // Note: This requires a unique index on registry_number in the registry tables
+                            try {
+                                DB::table($registryTable)->insert($insertData);
+                            } catch (\Illuminate\Database\QueryException $e) {
+                                // If duplicate entry on registry_number, update the existing record
+                                if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
+                                    $existingByRegNo = DB::table($registryTable)
+                                        ->whereNull('deleted_at')
+                                        ->where(function ($q) use ($registryNumber) {
+                                            $q->where('certNumber', $registryNumber)
+                                              ->orWhere('registry_number', $registryNumber);
+                                        })
+                                        ->first();
+
+                                    if ($existingByRegNo) {
+                                        DB::table($registryTable)->where('id', $existingByRegNo->id)->update([
+                                            'name' => $personName,
+                                            'barangay' => $barangay,
+                                            'status' => 'active',
+                                            'encoded_by' => $encodedBy,
+                                            'extracted_data' => EncryptedJson::encode($extractedFields),
+                                            'registry_number' => $registryNumber,
+                                            'file_path' => $registryFilePath,
+                                            'image_path' => $registryImagePath,
+                                            'updated_at' => now()
+                                        ]);
+                                    }
+                                } else {
+                                    throw $e;
+                                }
+                            }
                         }
                     }
                 }

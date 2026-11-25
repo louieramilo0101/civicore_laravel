@@ -78,6 +78,12 @@ export const DataProvider = ({ children }) => {
         return cached ? JSON.parse(cached) : [];
     });
 
+    // ── State for Ticket Issuances (Citizen Issued Prints) ───────────────────
+    const [ticketIssuances, setTicketIssuances] = useState(() => {
+        const cached = sessionStorage.getItem('civicore_ticket_issuances');
+        return cached ? JSON.parse(cached) : [];
+    });
+
     // ── State for History Logs ───────────────────────────────────────────────
     const [history, setHistory] = useState(() => {
         const cached = sessionStorage.getItem('civicore_history');
@@ -249,7 +255,7 @@ export const DataProvider = ({ children }) => {
         if (!force && now - lastFetch.current.documents < CACHE_TTL_MS) return;
 
         try {
-            const params = new URLSearchParams({ per_page: '100' });
+            const params = new URLSearchParams({ per_page: '200', status: 'queue' });
             if (force) params.set('_', String(now)); // cache-bust on forced refresh
             const response = await fetch(`/api/documents?${params.toString()}`, { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch documents');
@@ -359,6 +365,30 @@ export const DataProvider = ({ children }) => {
         }
     }, []);
 
+    const refreshTicketIssuances = useCallback(async (force = false) => {
+        if (!isAuthenticated()) {
+            return;
+        }
+        const now = Date.now();
+        if (!force && now - (lastFetch.current.ticketIssuances || 0) < CACHE_TTL_MS) return;
+
+        try {
+            const params = new URLSearchParams({ per_page: '500' });
+            if (force) params.set('_', String(now));
+            const response = await fetch(`/api/ticket-issuances?${params.toString()}`, { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch ticket issuances');
+            const data = await response.json();
+
+            if (data.data) {
+                setTicketIssuances(data.data);
+                safeCache('civicore_ticket_issuances', JSON.stringify(data.data));
+            }
+            lastFetch.current.ticketIssuances = now;
+        } catch (err) {
+            console.error('Error refreshing ticket issuances:', err);
+        }
+    }, []);
+
     const refreshHistory = useCallback(async (force = false) => {
         if (!isAuthenticated()) {
             setLoading(prev => ({ ...prev, history: false }));
@@ -423,10 +453,11 @@ export const DataProvider = ({ children }) => {
         refreshStats(true);
         refreshDocuments(true);
         refreshRegistry(true);
+        refreshTicketIssuances(true);
         refreshHistory(true);
         refreshTemplates(true);
         // DO NOT emit global event — this is for polling/visibility, not mutations
-    }, [refreshStats, refreshDocuments, refreshRegistry, refreshHistory, refreshTemplates]);
+    }, [refreshStats, refreshDocuments, refreshRegistry, refreshTicketIssuances, refreshHistory, refreshTemplates]);
 
     // Call this after explicit mutations (delete, restore, purge, etc.).
     // Emits a typed event so subscribers can invalidate only what they need.
@@ -466,10 +497,11 @@ export const DataProvider = ({ children }) => {
             refreshStats();
             refreshDocuments();
             refreshRegistry();
+            refreshTicketIssuances();
             refreshHistory();
             refreshTemplates();
         }, 60000); // 60s background polling
-    }, [refreshStats, refreshDocuments, refreshRegistry, refreshHistory, refreshTemplates]);
+    }, [refreshStats, refreshDocuments, refreshRegistry, refreshTicketIssuances, refreshHistory, refreshTemplates]);
 
     // ── Public Portal Mode Detection ─────────────────────────────────────────
     const isPublicPortal = import.meta.env.VITE_PUBLIC_PORTAL_ONLY === 'true';
@@ -540,6 +572,12 @@ export const DataProvider = ({ children }) => {
             refreshTemplates(true);
         };
 
+        const handleTicketIssuanceEvent = () => {
+            bumpMutation();
+            refreshTicketIssuances(true);
+            refreshStats(true);
+        };
+
         const unsubDocCreated   = on(Events.DOCUMENT_UPLOADED,    handleDocumentEvent);
         const unsubDocUpdated   = on(Events.DOCUMENT_UPDATED,     handleDocumentEvent);
         const unsubDocDeleted   = on(Events.DOCUMENT_DELETED,     handleDocumentEvent);
@@ -564,6 +602,9 @@ export const DataProvider = ({ children }) => {
         const unsubTmpl = on(Events.TEMPLATE_UPDATED, handleTemplateEvent);
         const unsubSet  = on(Events.SETTINGS_UPDATED, handleTemplateEvent);
 
+        const unsubTktIss = on(Events.TICKET_ISSUED, handleTicketIssuanceEvent);
+        const unsubIssIss = on(Events.ISSUANCE_ISSUED, handleTicketIssuanceEvent);
+
         return () => {
             unsubDocCreated(); unsubDocUpdated(); unsubDocDeleted();
             unsubDocRestored(); unsubDocPurged(); unsubDocBulkAppr();
@@ -572,13 +613,15 @@ export const DataProvider = ({ children }) => {
             unsubRegRestored(); unsubRegPurged();
             unsubAcctCreated(); unsubAcctUpdated(); unsubAcctDisabled(); unsubAcctReen();
             unsubTmpl(); unsubSet();
+            unsubTktIss(); unsubIssIss();
         };
-    }, [bumpMutation, refreshDocuments, refreshHistory, refreshStats, refreshRegistry, refreshTemplates]);
+    }, [bumpMutation, refreshDocuments, refreshHistory, refreshStats, refreshRegistry, refreshTicketIssuances, refreshTemplates]);
 
     const value = {
         stats,
         documents,
         registry,
+        ticketIssuances,
         issuances: registry, // Backward-compatibility alias for components still expecting `issuances`
         history,
         templates,
@@ -593,6 +636,7 @@ export const DataProvider = ({ children }) => {
         refreshStats,
         refreshDocuments,
         refreshRegistry,
+        refreshTicketIssuances,
         refreshIssuances: refreshRegistry, // Backward-compatibility alias
         refreshHistory,
         refreshTemplates,

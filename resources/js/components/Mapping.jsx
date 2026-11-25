@@ -83,6 +83,7 @@ const Mapping = () => {
     const markersLayerRef = useRef(null);
     const {
         issuances: apiData,
+        ticketIssuances: rawTicketIssuances,
         documents: docsData,
         loading: dataLoading,
         refreshAll,
@@ -175,6 +176,10 @@ const Mapping = () => {
     const filteredApiData = React.useMemo(() => {
         return (apiData || []).filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
     }, [apiData, quickFilter, dateFrom, dateTo]);
+
+    const filteredTicketIssuances = React.useMemo(() => {
+        return (rawTicketIssuances || []).filter(i => isWithinTimeframe(i.issuanceDate || i.created_at));
+    }, [rawTicketIssuances, quickFilter, dateFrom, dateTo]);
 
     const filteredDocsData = React.useMemo(() => {
         return (docsData || []).filter(d => isWithinTimeframe(d.created_at));
@@ -359,12 +364,19 @@ const Mapping = () => {
             const total = barangay.births + barangay.deaths + barangay.marriages;
 
             if (showHeatmap) {
-                // Heatmap mode: Large soft circles
+                // Heatmap mode: Large soft circles with color per dominant type
                 if (total > 0) {
                     const intensity = Math.min(total / 10, 1); // Scale intensity
+
+                    // Determine dominant type color (same logic as pin mode)
+                    let heatColor = '#f43f5e'; // Default rose
+                    if (barangay.births >= barangay.deaths && barangay.births >= barangay.marriages) heatColor = '#d4a574'; // Gold - births
+                    else if (barangay.deaths >= barangay.births && barangay.deaths >= barangay.marriages) heatColor = '#f43f5e'; // Rose - deaths
+                    else heatColor = '#6366f1'; // Indigo - marriages
+
                     const circle = L.circle(barangay.coords, {
-                        color: '#f43f5e',
-                        fillColor: '#f43f5e',
+                        color: heatColor,
+                        fillColor: heatColor,
                         fillOpacity: 0.1 + (intensity * 0.4),
                         radius: 300 + (intensity * 500),
                         stroke: false,
@@ -577,15 +589,31 @@ const Mapping = () => {
     }, [filteredApiDataNoTickets]);
 
     const filteredPrints = React.useMemo(() => {
-        return filteredApiDataNoTickets.filter(print => {
+        // Source directly from citizen-ticket issuances (ticket_issuances table), with fallback to registry records marked issued
+        const pool = (filteredTicketIssuances && filteredTicketIssuances.length > 0)
+            ? filteredTicketIssuances
+            : filteredApiDataNoTickets.filter(print => {
+                const status = String(print.status || '').toLowerCase();
+                return ['issued', 'printed'].includes(status) ||
+                    Boolean(print.or_number || print.print_remarks || (print.ticket_number && !print.ticket_number.startsWith('T-2026-0')));
+            });
+
+        return pool.filter(print => {
             const matchesFilter = activeFilter === 'all' || getNormalizedType(print) === activeFilter;
-            const status = String(print.status || '').toLowerCase();
-            // A printed/procured record must have been physically printed/issued (status is issued/printed, or has OR number/print remarks)
-            const isPrintedRecord = ['issued', 'printed'].includes(status) ||
-                Boolean(print.or_number || print.print_remarks || (print.ticket_number && !print.ticket_number.startsWith('T-2026-0')));
-            return matchesFilter && isPrintedRecord;
-        });
-    }, [filteredApiDataNoTickets, activeFilter]);
+            return matchesFilter;
+        }).map(p => ({
+            ...p,
+            id: p.id,
+            document_id: p.document_id || p.id,
+            number: p.certNumber || p.registry_number || p.ticket_number || `CERT-#${p.id}`,
+            name: p.name || 'Issued Certificate',
+            type: p.type || getNormalizedType(p),
+            barangay: p.barangay || 'Ibayo Silangan',
+            date: p.issuanceDate || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : ''),
+            encoded_by: p.encoded_by || p.requested_by || 'Staff',
+            status: p.status || 'Issued'
+        }));
+    }, [filteredTicketIssuances, filteredApiDataNoTickets, activeFilter]);
 
     const filteredUploads = React.useMemo(() => {
         return filteredDocsData.filter(doc => {
@@ -1401,25 +1429,25 @@ const Mapping = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right pr-6">
-    <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity">
-        <button
-            onClick={() => locateBarangay(item.barangay)}
-            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-[#d4a574] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-            title="Locate on Map"
-        >
-            <MagnifyingGlassIcon className="w-4 h-4" />
-        </button>
-        <a
-            href={`/api/documents/view/${item.document_id || item.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-indigo-500 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-            title="View Full Document"
-        >
-            <EyeIcon className="w-4 h-4" />
-        </a>
-    </div>
-</td>
+                                            <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => locateBarangay(item.barangay)}
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-[#d4a574] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
+                                                    title="Locate on Map"
+                                                >
+                                                    <MagnifyingGlassIcon className="w-4 h-4" />
+                                                </button>
+                                                <a
+                                                    href={`/api/documents/view/${item.document_id || item.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm rounded-lg text-slate-500 dark:text-slate-200 hover:text-indigo-500 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
+                                                    title="View Full Document"
+                                                >
+                                                    <EyeIcon className="w-4 h-4" />
+                                                </a>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             )}

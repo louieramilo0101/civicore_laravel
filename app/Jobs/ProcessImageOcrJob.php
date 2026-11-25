@@ -100,13 +100,32 @@ class ProcessImageOcrJob implements ShouldQueue
             ]);
 
             if ($response->failed() || !($response->json()['success'] ?? false)) {
-                throw new \Exception("OCR Server error: " . $response->body());
+                $body = $response->json();
+                $detail = $body['detail'] ?? $body['error'] ?? $response->body();
+                $statusCode = $response->status();
+
+                if ($statusCode === 429) {
+                    if (preg_match('/ready in (\d+)s/', $detail, $matches)) {
+                        $waitSeconds = (int)$matches[1];
+                        $waitSeconds = max(1, min($waitSeconds, 300));
+                        $this->release($waitSeconds);
+                        return;
+                    }
+                    $this->release(60);
+                    return;
+                }
+
+                throw new \Exception("OCR Server error: " . $detail);
             }
 
             $result = $response->json();
             if (isset($result['image_token_cost'])) {
                 \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', (int)$result['image_token_cost']);
             }
+
+            // Proactive delay after successful OCR to respect free tier 15 RPM (4s between requests)
+            sleep(6);
+
             $newText = $result['text'] ?? '';
             $detectedType = $result['detected_type'] ?? 'unknown';
             $newFields = $result['extracted_fields'] ?? [];

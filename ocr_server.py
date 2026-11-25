@@ -157,7 +157,7 @@ current_key_index = 0
 def status():
     return {
         "status": "ready",
-        "engines": ["gemini", "ollama"],
+        "engines": ["gemini", "ollama", "paddleocr"],
         "default_engine": "gemini",
         "persistent": True
     }
@@ -262,7 +262,13 @@ def process_ocr_gemini(data: dict):
         
     ocr_engine = str(data.get('ocr_engine', 'gemini')).lower().strip()
     ollama_model = str(data.get('ollama_model', 'qwen2.5vl:3b')).strip()
-    engine_label = f"Local Ollama ({ollama_model})" if ocr_engine in ('ollama', 'local') else "Google Gemini Cloud Vision"
+    engine_label = (
+        f"Local Ollama ({ollama_model})"
+        if ocr_engine in ('ollama', 'local')
+        else "PaddleOCR (ONNX CPU)"
+        if ocr_engine == 'paddleocr'
+        else "Google Gemini Cloud Vision"
+    )
     
     print("\n" + "=" * 70)
     print(f" [OCR PROCESS INITIATED] Time: {start_clock}")
@@ -592,6 +598,34 @@ def process_ocr_gemini(data: dict):
                 status_code=500,
                 detail=f"Local Ollama execution failed: {err_msg}"
             )
+    elif ocr_engine == 'paddleocr':
+        print(" [*] Stage 2/3 - Inference: Executing Local PaddleOCR (RapidOCR ONNX CPU)...")
+        try:
+            global _rapid_ocr_instance
+            if '_rapid_ocr_instance' not in globals() or _rapid_ocr_instance is None:
+                from rapidocr_onnxruntime import RapidOCR
+                _rapid_ocr_instance = RapidOCR()
+
+            img_np = np.array(img.convert("RGB"))
+            result, _ = _rapid_ocr_instance(img_np)
+            lines = [item[1] for item in (result or []) if len(item) >= 2]
+            raw_ocr_text = "\n".join(lines).strip()
+            clean_text = json.dumps({
+                "is_valid_document": bool(raw_ocr_text),
+                "raw_text": raw_ocr_text,
+            }, ensure_ascii=False)
+            engine_used = "paddleocr-onnx"
+            t_infer_duration = time.perf_counter() - t_infer_start
+            print(f" [*] Stage 2/3 - Inference: PaddleOCR completed in {t_infer_duration:.2f}s ({len(lines)} lines)")
+        except Exception as e:
+            err_msg = str(e)
+            t_fail = time.perf_counter() - t_start
+            print(f" [OCR FAILED] PaddleOCR execution failed after {t_fail:.2f}s: {err_msg}")
+            print("=" * 70 + "\n")
+            raise HTTPException(
+                status_code=500,
+                detail=f"PaddleOCR execution failed: {err_msg}"
+            )
     else:
         # Gemini Cloud Vision Pipeline
         print(f" [*] Stage 2/3 - Inference: Sending request to Google Gemini Cloud...")
@@ -746,7 +780,7 @@ def process_ocr_gemini(data: dict):
 
     img_w, img_h = img.size if img else (1024, 1024)
     tiles = math.ceil(img_w / 768) * math.ceil(img_h / 768)
-    image_token_cost = 0 if ocr_engine in ('ollama', 'local') else (tiles * 258)
+    image_token_cost = 0 if ocr_engine in ('ollama', 'local', 'paddleocr') else (tiles * 258)
 
     text_summary = json.dumps(extracted_data, ensure_ascii=False)
 

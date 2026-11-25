@@ -140,7 +140,7 @@ function Dashboard() {
         // Chart updates in place via updateChart() — no destroy/recreate reset
         // Original approach: destroy all charts then recreate new ones
         Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-        
+
         /** Creates a new Chart.js instance for a dashboard panel. */
         const createChart = (id, config) => {
             const ctx = document.getElementById(id);
@@ -227,8 +227,8 @@ function Dashboard() {
                     },
                     title: {
                         display: true,
-                        text: chartMode === 'tickets' 
-                            ? 'Processing Status: Ticket Queue' 
+                        text: chartMode === 'tickets'
+                            ? 'Processing Status: Ticket Queue'
                             : 'Processing Status: Document Uploads',
                         font: { size: 16, weight: 'bold' },
                         color: isDarkMode ? '#ffffff' : '#0f172a'
@@ -389,7 +389,7 @@ function Dashboard() {
                     {/* Compact Human-Centric Stats Grid */}
                     <motion.div variants={containerVariants} initial="hidden" animate="visible" className={`grid ${gridCols} gap-2.5 sm:gap-4`}>
                         {[
-                            { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master', to: '/issuances' },
+                            { label: 'TOTAL RECORD', val: stats.totalDocs, icon: ShieldCheckIcon, color: 'text-white', bg: 'bg-indigo-600 dark:bg-indigo-600', border: 'border-indigo-700 dark:border-indigo-500/50', sub: 'Master', to: '/registry' },
                             { label: 'UPLOAD PENDING', val: stats.pendingDocs, icon: DocumentTextIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Action Needed', to: '/documents' },
                             { label: 'TOTAL ISSUED FILES', val: rotateIssued ? (stats.pendingTickets || 0) : stats.totalIssuances, icon: ClipboardDocumentCheckIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: rotateIssued ? 'Pending Queue' : 'Finalized', onClick: handleRotate, altLabel: rotateIssued ? 'PENDING QUEUE' : 'TOTAL ISSUED FILES' },
                             { label: 'TOTAL Users', val: stats.totalUsers, icon: UsersIcon, color: 'text-slate-900 dark:text-white', bg: 'bg-white dark:bg-slate-900/90', border: 'border-slate-200 dark:border-slate-800', sub: 'Current', to: '/accounts', show: showUsersCard }
@@ -401,7 +401,7 @@ function Dashboard() {
                                 whileTap={{ scale: 0.98 }}
                                 className={`${s.bg} rounded-xl sm:rounded-2xl p-3 sm:p-5 border ${s.border} shadow-xs relative group hover:shadow-md transition-all duration-200 ease-out overflow-hidden`}
                             >
-                                 {s.onClick ? (
+                                {s.onClick ? (
                                     <div onClick={s.onClick} className="absolute inset-0 z-10 cursor-pointer" />
                                 ) : (
                                     <Link to={s.to} className="absolute inset-0 z-10" />

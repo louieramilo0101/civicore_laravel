@@ -132,14 +132,10 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 $imagePath = $pages[0];
             }
 
-            // 2. Enforce Daily Scan Limit (Token budget manager check)
+            // 2. Enforce Daily Scan Limit (Token budget manager check) - ATOMIC
             $dailyLimit = (int) env('DAILY_SCAN_LIMIT', 1000);
-            $start = \Carbon\Carbon::today(config('app.timezone'))->startOfDay();
-            $end = \Carbon\Carbon::today(config('app.timezone'))->endOfDay();
-            $todayScans = DB::table('documents')
-                ->whereIn('status', ['extracted', 'Processed', 'Issued'])
-                ->whereBetween('updated_at', [$start, $end])
-                ->count();
+            $cacheKey = 'daily_scan_count_' . date('Ymd');
+            $todayScans = (int) \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
 
             if ($todayScans >= $dailyLimit) {
                 Log::warning("Daily OCR scan limit of {$dailyLimit} reached. Halting job for Document ID: " . $this->documentId);
@@ -152,6 +148,10 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 ]);
                 return;
             }
+
+            // Update the counter with an expiration at end of day + 1h
+            $expiresAt = \Carbon\Carbon::today(config('app.timezone'))->endOfDay()->addHour();
+            \Illuminate\Support\Facades\Cache::put($cacheKey, $todayScans + 1, $expiresAt);
 
             // 3. Mark status as Processing
             DB::table('documents')->where('id', $this->documentId)->update([
@@ -182,6 +182,10 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 throw new \Exception($validationError);
             }
             Log::info("Executing OCR for Document ID {$this->documentId} using engine: {$ocrEngine} ({$ollamaModel}) on image: {$imagePath}");
+
+            // Pre-request delay to respect free tier rate limits (15 RPM = 4s, using 10s for safety)
+            sleep(10);
+
             $timeoutSeconds = in_array(strtolower($ocrEngine), ['ollama', 'local']) ? 900 : 300;
             $response = Http::timeout($timeoutSeconds)->post('http://127.0.0.1:8080/ocr/gemini', [
                 'file_path' => $imagePath,
@@ -197,6 +201,22 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
             if ($response->failed() || !($response->json()['success'] ?? false)) {
                 $body = $response->json();
                 $detail = $body['detail'] ?? $body['error'] ?? $response->body();
+                $statusCode = $response->status();
+
+                // Handle 429 (rate limit) - extract wait time and release job back to queue with specific delay
+                if ($statusCode === 429) {
+                    // Parse wait seconds from detail like "Key 0 will be ready in 45s."
+                    if (preg_match('/ready in (\d+)s/', $detail, $matches)) {
+                        $waitSeconds = (int)$matches[1];
+                        $waitSeconds = max(1, min($waitSeconds, 300)); // clamp 1-300s
+                        $this->release($waitSeconds);
+                        return;
+                    }
+                    // Fallback: use default backoff
+                    $this->release(60);
+                    return;
+                }
+
                 throw new \Exception($detail);
             }
 
@@ -286,6 +306,9 @@ class ProcessDocumentOcr implements ShouldQueue, ShouldBeUnique
                 $metadata['image_token_cost'] = $cost;
                 \Illuminate\Support\Facades\Cache::increment('total_gemini_tokens_used', $cost);
             }
+
+            // Proactive delay after successful OCR to respect free tier 15 RPM (4s between requests)
+            sleep(6);
 
             if (isset($result['processing_time_seconds'])) {
                 $metadata['ocr_processing_time'] = $result['processing_time_seconds'];

@@ -531,6 +531,7 @@ const Registry = () => {
 
     useEffect(() => {
         // Registry records across 3 tables (birth, death, marriage)
+        console.log('DEBUG rawRegistry:', (rawRegistry || []).map(i => ({ id: i.id, type: i.type, name: i.name })).slice(0, 5));
         const combined = (rawRegistry || []).map(i => {
             const linkedDoc = (rawDocuments || []).find(d => Number(d.id) === Number(i.document_id));
             const rawType = (i.type || 'birth').toLowerCase();
@@ -549,6 +550,7 @@ const Registry = () => {
                 source: 'registry',
                 document_id: i.document_id || linkedDoc?.id || null,
                 image_path: linkedDoc?.image_path || i.source_image_path || i.image_path || null,
+                _search: `${i.certNumber || ''} ${i.registry_number || ''} ${i.name || ''} ${i.barangay || ''} ${i.type || ''} ${i.encoded_by || ''}`.toLowerCase(),
                 raw: {
                     ...i,
                     type,
@@ -568,6 +570,7 @@ const Registry = () => {
             }
             return b.realId - a.realId;
         });
+        console.log('DEBUG combined:', combined.map(c => ({ id: c.id, type: c.type, name: c.name })).slice(0, 5));
         setCertificates(combined);
     }, [rawRegistry, rawDocuments]);
 
@@ -1018,13 +1021,20 @@ const Registry = () => {
     const filteredCertificates = useMemo(() => {
         const cleanTerm = (searchTerm || '').trim().toLowerCase();
         const cleanType = (selectedType || 'all').toLowerCase();
-        const cleanBrgy = selectedBarangay;
-        const cleanEncoder = selectedEncoder;
+        const cleanBrgy = (selectedBarangay || '').trim().toLowerCase();
+        const cleanEncoder = (selectedEncoder || '').trim().toLowerCase();
+
+        console.log('DEBUG filter:', { 
+            selectedType, 
+            cleanType, 
+            certTypes: certificates.map(c => c.type).slice(0, 10),
+            totalCerts: certificates.length
+        });
 
         return certificates.filter(cert => {
             if (cleanType !== 'all' && (cert.type || '').toLowerCase() !== cleanType) return false;
-            if (cleanBrgy !== 'all' && cert.barangay !== cleanBrgy) return false;
-            if (cleanEncoder !== 'all' && cert.encoded_by !== cleanEncoder) return false;
+            if (cleanBrgy !== 'all' && (cert.barangay || '').trim().toLowerCase() !== cleanBrgy) return false;
+            if (cleanEncoder !== 'all' && (cert.encoded_by || '').trim().toLowerCase() !== cleanEncoder) return false;
 
             if (!cleanTerm) return true;
 
@@ -1569,10 +1579,6 @@ const Registry = () => {
                                 const deathCount = certificates.filter(c => (c.type || '').toLowerCase() === 'death').length;
                                 const marriageCount = certificates.filter(c => (c.type || '').toLowerCase().includes('marriage')).length;
                                 const total = certificates.length;
-                                const issuedCount = certificates.filter(c => c.status === 'Issued').length;
-                                const approvedCount = certificates.filter(c => c.status === 'Approved').length;
-                                const pendingCount = certificates.filter(c => c.status === 'Active').length;
-                                const pendingApprovalCount = certificates.filter(c => c.status === 'Pending Approval').length;
 
                                 const categories = [
                                     { label: 'Birth Certificates', count: birthCount, color: '#d4a574', bg: 'bg-[#d4a574]/10 dark:bg-[#d4a574]/5', bar: 'bg-[#d4a574]', emoji: 'BR' },
@@ -1617,23 +1623,6 @@ const Registry = () => {
                                                     </div>
                                                 </div>
                                             ))}
-
-                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
-                                                <h4 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Issuance Status Breakdown</h4>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {[
-                                                        { label: 'Issued', count: issuedCount, color: 'text-indigo-600 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900/50' },
-                                                        { label: 'Approved', count: approvedCount, color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50' },
-                                                        { label: 'Active', count: pendingCount, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700' },
-                                                        { label: 'Pending Approval', count: pendingApprovalCount, color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50' },
-                                                    ].map(s => (
-                                                        <div key={s.label} className={`p-3 rounded-xl border ${s.bg} flex items-center justify-between`}>
-                                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{s.label}</span>
-                                                            <span className={`text-lg font-black ${s.color}`}>{s.count}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
                                         </div>
 
                                         {/* Right: SVG Donut Chart */}

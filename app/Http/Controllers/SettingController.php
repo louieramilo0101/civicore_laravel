@@ -52,7 +52,7 @@ class SettingController extends Controller
             'announcement_active'   => 'nullable|boolean',
             'announcement_text'     => 'nullable|string|max:500',
             'ticket_limits_enabled' => 'nullable|boolean',
-            'ocr_engine'            => 'nullable|string|in:gemini,ollama',
+            'ocr_engine'            => 'nullable|string|in:gemini,ollama,paddleocr',
             'ollama_model'          => 'nullable|string|max:100',
         ]);
 

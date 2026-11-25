@@ -33,6 +33,7 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { decode as cam2qrDecode } from 'cam2qr';
+import { emit, Events } from '../utils/dataEvents.js';
 import AttachDocumentModal from './AttachDocumentModal';
 
 /**
@@ -600,7 +601,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                         request_status: statusFilter,
                         purpose: purposeFilter,
                         sort_order: sortOrder,
-                        show_expired: statusFilter === 'expired' ? true : false,
+                        show_expired: ['expired', 'completed', 'all'].includes(statusFilter),
                         _: Date.now() // Cache-busting timestamp parameter
                     }
                 }),
@@ -628,9 +629,9 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
 
             if (ticketsRes.data.length > 0) {
                 if (selectedTicket) {
-                    /** Keep the selected record synchronized with refreshed server data without deselecting */
+                    /** Keep the selected record synchronized with refreshed server data; clear selection if the ticket is no longer in the filtered list (e.g. after issuance) */
                     const matched = ticketsRes.data.find(t => t.id === selectedTicket.id);
-                    setSelectedTicket(matched || selectedTicket);
+                    setSelectedTicket(matched || null);
                 }
                 // Do NOT auto-select first ticket on refresh — user must explicitly click to select
             } else {
@@ -770,6 +771,7 @@ export default function PendingRequests({ showAlert, refreshCounter, viewSelecto
                 setMobileView('list');
                 setSelectedTicket(null);
                 fetchPendingTickets(false);
+                emit(Events.TICKET_ISSUED, { ticketId: selectedTicket.id, ticket_number: selectedTicket.ticket_number });
                 if (refreshCounter) refreshCounter();
             }
         } catch (err) {

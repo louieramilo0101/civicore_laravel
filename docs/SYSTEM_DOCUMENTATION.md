@@ -791,7 +791,7 @@ To explain the React architecture to the panel, you should trace the flow of a s
 *   **`PageTransition.jsx`**: Wraps pages in animation logic so they fade or slide in smoothly when navigating.
 
 ### E. `forms/` Directory
-*   This folder contains the specific, heavily customized input forms tailored for the complex fields of a Birth Certificate, Death Certificate, or Marriage Contract. Separating these keeps `OcrFormPanel.jsx` from becoming ten thousand lines of code.
+*   This folder contains the specific, heavily customized input forms tailored for the complex fields of a Birth Certificate, Death Certificate, or Marriage Certificate. Separating these keeps `OcrFormPanel.jsx` from becoming ten thousand lines of code.
 
 ---
 
